@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "G": {
+      "item": "minecraft:glass"
+    },
+    "A": {
+      "item": "minecraft:amethyst"
+    }
+  },
+  "pattern": [
+    "IGI",
+    "GAG",
+    "IGI"
+  ],
+  "result": {
+    "item": "simplyscreens:screen"
+  },
+  "show_notification": true
+}
