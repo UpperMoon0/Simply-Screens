@@ -1,6 +1,8 @@
-package org.nstut.simplyscreens;
+package com.nstut.simplyscreens;
 
 import com.mojang.logging.LogUtils;
+import com.nstut.simplyscreens.client.ClientSetup;
+import com.nstut.simplyscreens.network.PacketRegistries;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
@@ -12,9 +14,10 @@ import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import org.nstut.simplyscreens.blocks.BlockRegistries;
-import org.nstut.simplyscreens.creative_tabs.CreativeTabRegistries;
-import org.nstut.simplyscreens.items.ItemRegistries;
+import com.nstut.simplyscreens.blocks.BlockRegistries;
+import com.nstut.simplyscreens.blocks.entities.BlockEntityRegistries;
+import com.nstut.simplyscreens.creative_tabs.CreativeTabRegistries;
+import com.nstut.simplyscreens.items.ItemRegistries;
 import org.slf4j.Logger;
 
 // The value here should match an entry in the META-INF/mods.toml file
@@ -32,8 +35,13 @@ public class SimplyScreens {
         // Register the commonSetup method for modloading
         modEventBus.addListener(this::commonSetup);
 
+        MinecraftForge.EVENT_BUS.addListener(ClientSetup::setup);
+
         // Register blocks
         BlockRegistries.BLOCKS.register(modEventBus);
+
+        // Register block entities
+        BlockEntityRegistries.BLOCK_ENTITIES.register(modEventBus);
 
         // Register the Deferred Register to the mod event bus so items get registered
         ItemRegistries.ITEMS.register(modEventBus);
@@ -52,7 +60,7 @@ public class SimplyScreens {
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
-
+        PacketRegistries.register();
     }
 
     // Add the example block item to the building blocks tab

@@ -1,4 +1,4 @@
-package org.nstut.simplyscreens.creative_tabs;
+package com.nstut.simplyscreens.creative_tabs;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -7,8 +7,8 @@ import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.RegistryObject;
-import org.nstut.simplyscreens.SimplyScreens;
-import org.nstut.simplyscreens.items.ItemRegistries;
+import com.nstut.simplyscreens.SimplyScreens;
+import com.nstut.simplyscreens.items.ItemRegistries;
 
 public class CreativeTabRegistries {
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, SimplyScreens.MOD_ID);

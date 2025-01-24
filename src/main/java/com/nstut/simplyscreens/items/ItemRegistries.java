@@ -1,12 +1,12 @@
-package org.nstut.simplyscreens.items;
+package com.nstut.simplyscreens.items;
 
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
-import org.nstut.simplyscreens.SimplyScreens;
-import org.nstut.simplyscreens.blocks.BlockRegistries;
+import com.nstut.simplyscreens.SimplyScreens;
+import com.nstut.simplyscreens.blocks.BlockRegistries;
 
 import java.util.HashSet;
 import java.util.Set;
