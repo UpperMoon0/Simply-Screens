@@ -1,11 +1,11 @@
-package com.nstut.simplyscreens.blocks.entities;
+package com.nstut.simply_screens.blocks.entities;
 
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
-import com.nstut.simplyscreens.SimplyScreens;
-import com.nstut.simplyscreens.blocks.BlockRegistries;
+import com.nstut.simply_screens.SimplyScreens;
+import com.nstut.simply_screens.blocks.BlockRegistries;
 
 @SuppressWarnings("ConstantConditions")
 public class BlockEntityRegistries {

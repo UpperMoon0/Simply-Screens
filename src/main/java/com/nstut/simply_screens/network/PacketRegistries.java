@@ -1,4 +1,4 @@
-package com.nstut.simplyscreens.network;
+package com.nstut.simply_screens.network;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkDirection;

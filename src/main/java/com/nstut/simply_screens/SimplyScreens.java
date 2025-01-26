@@ -1,8 +1,8 @@
-package com.nstut.simplyscreens;
+package com.nstut.simply_screens;
 
 import com.mojang.logging.LogUtils;
-import com.nstut.simplyscreens.client.ClientSetup;
-import com.nstut.simplyscreens.network.PacketRegistries;
+import com.nstut.simply_screens.client.ClientSetup;
+import com.nstut.simply_screens.network.PacketRegistries;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
@@ -14,10 +14,10 @@ import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import com.nstut.simplyscreens.blocks.BlockRegistries;
-import com.nstut.simplyscreens.blocks.entities.BlockEntityRegistries;
-import com.nstut.simplyscreens.creative_tabs.CreativeTabRegistries;
-import com.nstut.simplyscreens.items.ItemRegistries;
+import com.nstut.simply_screens.blocks.BlockRegistries;
+import com.nstut.simply_screens.blocks.entities.BlockEntityRegistries;
+import com.nstut.simply_screens.creative_tabs.CreativeTabRegistries;
+import com.nstut.simply_screens.items.ItemRegistries;
 import org.slf4j.Logger;
 
 // The value here should match an entry in the META-INF/mods.toml file

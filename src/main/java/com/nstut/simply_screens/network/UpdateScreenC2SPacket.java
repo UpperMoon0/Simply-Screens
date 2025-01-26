@@ -1,6 +1,6 @@
-package com.nstut.simplyscreens.network;
+package com.nstut.simply_screens.network;
 
-import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
+import com.nstut.simply_screens.blocks.entities.ScreenBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
@@ -34,10 +34,9 @@ public class UpdateScreenC2SPacket {
             ServerPlayer sender = context.get().getSender(); // Get the sender
             if (sender != null) { // Ensure sender is not null
                 ServerLevel level = sender.serverLevel(); // Get the server level
-                // Ensure level is not null
                 BlockEntity blockEntity = level.getBlockEntity(pos);
                 if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
-                    screenBlockEntity.setImagePath(imagePath); // Update the block entity
+                    screenBlockEntity.setImagePathAndSync(imagePath); // Update the block entity
                 }
             }
         });

@@ -1,4 +1,4 @@
-package com.nstut.simplyscreens;
+package com.nstut.simply_screens;
 
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.eventbus.api.SubscribeEvent;

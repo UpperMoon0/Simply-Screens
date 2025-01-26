@@ -1,18 +1,18 @@
-package com.nstut.simplyscreens.client.renderer;
+package com.nstut.simply_screens.client.renderer;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
-import com.nstut.simplyscreens.SimplyScreens;
-import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
+import com.nstut.simply_screens.SimplyScreens;
+import com.nstut.simply_screens.blocks.entities.ScreenBlockEntity;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.renderer.texture.TextureManager;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.BlockState;
@@ -34,15 +34,25 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
 
     private static final Logger LOGGER = Logger.getLogger(ScreenBlockEntityRenderer.class.getName());
     private static final Map<String, ResourceLocation> loadedTextures = new HashMap<>();
+    private static final int FULL_BRIGHT_LIGHT = 15728880; // Full brightness light level for unaffected rendering
 
     public ScreenBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
     }
 
     @Override
     public void render(ScreenBlockEntity blockEntity, float partialTicks, @NotNull PoseStack poseStack, @NotNull MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
-        // Get the block state and determine the facing direction
+        boolean isAnchor = blockEntity.isAnchor();
+
+        if (!isAnchor) {
+            return;
+        }
+
         BlockState blockState = blockEntity.getBlockState();
         Direction direction = blockState.getValue(BlockStateProperties.HORIZONTAL_FACING);
+
+        // Get the width and height of the screen
+        int width = blockEntity.getScreenWidth();
+        int height = blockEntity.getScreenHeight();
 
         // Get the imagePath from the block entity's NBT tag
         String imagePath = blockEntity.getImagePath();
@@ -78,14 +88,43 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         // Translate to the front face of the block
         poseStack.translate(0, 0, -0.501);
 
-        // Scale the image to fit the block face
-        poseStack.scale(1.0f, 1.0f, 1.0f);
+        // Scale the image to fit the block face while preserving the aspect ratio
+        float[] scaleFactors = getScaleFactors(texture, width, height);
+        poseStack.scale(scaleFactors[0], scaleFactors[1], 1.0f);
 
         // Render the image on the front face of the block
-        renderScreenImage(texture, poseStack, bufferSource, packedLight, packedOverlay);
+        renderScreenImage(texture, poseStack, bufferSource, packedOverlay, width, height);
 
         // Pop the PoseStack to restore the previous state
         poseStack.popPose();
+    }
+
+    private float[] getScaleFactors(ResourceLocation texture, int width, int height) {
+        TextureManager textureManager = Minecraft.getInstance().getTextureManager();
+        DynamicTexture dynamicTexture = (DynamicTexture) textureManager.getTexture(texture);
+
+        NativeImage nativeImage = dynamicTexture.getPixels();
+
+        if (nativeImage == null) {
+            return new float[]{1.0f, 1.0f};
+        }
+
+        int imageWidth = nativeImage.getWidth();
+        int imageHeight = nativeImage.getHeight();
+
+        float aspectRatio = (float) imageWidth / imageHeight;
+        float scaleX = width;
+        float scaleY = height;
+
+        if (aspectRatio > 1) {
+            // Wider image, scale width to maxWidth and adjust height accordingly
+            scaleY = height / aspectRatio;
+        } else {
+            // Taller image, scale height to maxHeight and adjust width accordingly
+            scaleX = width * aspectRatio;
+        }
+
+        return new float[]{scaleX, scaleY};
     }
 
     private ResourceLocation loadExternalTexture(String imagePath) throws IOException {
@@ -123,41 +162,57 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         return textureLocation;
     }
 
-    private void renderScreenImage(ResourceLocation texture, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
+    private void renderScreenImage(ResourceLocation texture, PoseStack poseStack, MultiBufferSource bufferSource, int packedOverlay, int width, int height) {
         VertexConsumer vertexConsumer = bufferSource.getBuffer(RenderType.entityCutout(texture));
-        PoseStack.Pose pose = poseStack.last();
+        poseStack.last();
+        PoseStack.Pose pose;
 
-        int fullBrightLight = 15728880;  // Use maximum light level to make the image unaffected by darkness
+        // Apply full brightness light to keep the image unaffected by ambient lighting
+        int fullBrightLight = FULL_BRIGHT_LIGHT;
 
-        // Draw a quad with the texture on the front face
-        vertexConsumer.vertex(pose.pose(), -0.5f, 0.5f, 0)
+        // Push the pose stack to apply transformations
+        poseStack.pushPose();
+
+        // Apply scaling based on the desired dimensions
+        float scaleX = 1.0f / width;  // Normalize width
+        float scaleY = 1.0f / height; // Normalize height
+        poseStack.scale(scaleX, scaleY, 1.0f); // Apply uniform scaling for X and Y
+
+        // Recompute pose after scaling
+        pose = poseStack.last();
+
+        // Define the vertices with scaled coordinates
+        vertexConsumer.vertex(pose.pose(), -width + 0.5f, height - 0.5f, 0)
                 .color(255, 255, 255, 255)
                 .uv(1, 0)
                 .overlayCoords(packedOverlay)
-                .uv2(fullBrightLight)
+                .uv2(fullBrightLight)  // Full bright light applied here
                 .normal(pose.normal(), 0, 0, 1)
                 .endVertex();
-        vertexConsumer.vertex(pose.pose(), 0.5f, 0.5f, 0)
+        vertexConsumer.vertex(pose.pose(), 0.5f, height - 0.5f, 0)
                 .color(255, 255, 255, 255)
                 .uv(0, 0)
                 .overlayCoords(packedOverlay)
-                .uv2(fullBrightLight)
+                .uv2(fullBrightLight)  // Full bright light applied here
                 .normal(pose.normal(), 0, 0, 1)
                 .endVertex();
         vertexConsumer.vertex(pose.pose(), 0.5f, -0.5f, 0)
                 .color(255, 255, 255, 255)
                 .uv(0, 1)
                 .overlayCoords(packedOverlay)
-                .uv2(fullBrightLight)
+                .uv2(fullBrightLight)  // Full bright light applied here
                 .normal(pose.normal(), 0, 0, 1)
                 .endVertex();
-        vertexConsumer.vertex(pose.pose(), -0.5f, -0.5f, 0)
+        vertexConsumer.vertex(pose.pose(), -width + 0.5f, -0.5f, 0)
                 .color(255, 255, 255, 255)
                 .uv(1, 1)
                 .overlayCoords(packedOverlay)
-                .uv2(fullBrightLight)
+                .uv2(fullBrightLight)  // Full bright light applied here
                 .normal(pose.normal(), 0, 0, 1)
                 .endVertex();
+
+        // Restore the previous pose stack state
+        poseStack.popPose();
     }
 
     @Override

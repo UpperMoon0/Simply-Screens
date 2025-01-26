@@ -1,7 +1,7 @@
-package com.nstut.simplyscreens.blocks;
+package com.nstut.simply_screens.blocks;
 
 import com.mojang.logging.LogUtils;
-import com.nstut.simplyscreens.screens.ImageUploadScreen;
+import com.nstut.simply_screens.screens.ImageUploadScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.player.Player;
@@ -15,7 +15,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import org.jetbrains.annotations.NotNull;
-import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
+import com.nstut.simply_screens.blocks.entities.ScreenBlockEntity;
 import org.slf4j.Logger;
 
 import net.minecraft.client.Minecraft;
@@ -70,7 +70,7 @@ public class ScreenBlock extends Block implements EntityBlock {
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, @NotNull BlockState state, @NotNull BlockEntityType<T> blockEntityType) {
         return level.isClientSide ? null : (lvl, pos, blockState, blockEntity) -> {
             if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
-                //screenBlockEntity.tick(lvl);
+                screenBlockEntity.tick(lvl, pos, blockState);
             }
         };
     }

@@ -1,9 +1,9 @@
-package com.nstut.simplyscreens.screens;
+package com.nstut.simply_screens.screens;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
-import com.nstut.simplyscreens.network.PacketRegistries;
-import com.nstut.simplyscreens.network.UpdateScreenC2SPacket;
+import com.nstut.simply_screens.blocks.entities.ScreenBlockEntity;
+import com.nstut.simply_screens.network.PacketRegistries;
+import com.nstut.simply_screens.network.UpdateScreenC2SPacket;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.core.BlockPos;
