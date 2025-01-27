@@ -13,15 +13,15 @@ import java.util.function.Supplier;
 public class UpdateScreenS2CPacket {
     private final BlockPos pos;
     private final String imagePath;
-    private final boolean isAnchor;
+    private final BlockPos anchorPos;
     private final int screenWidth;
     private final int screenHeight;
 
     // Constructor to initialize the packet with data
-    public UpdateScreenS2CPacket(BlockPos pos, String imagePath, boolean isAnchor, int screenWidth, int screenHeight) {
+    public UpdateScreenS2CPacket(BlockPos pos, String imagePath, BlockPos anchorPos, int screenWidth, int screenHeight) {
         this.pos = pos;
         this.imagePath = imagePath;
-        this.isAnchor = isAnchor;
+        this.anchorPos = anchorPos;
         this.screenWidth = screenWidth;
         this.screenHeight = screenHeight;
     }
@@ -30,7 +30,7 @@ public class UpdateScreenS2CPacket {
     public UpdateScreenS2CPacket(FriendlyByteBuf buffer) {
         this.pos = buffer.readBlockPos();
         this.imagePath = buffer.readUtf(32767);
-        this.isAnchor = buffer.readBoolean();
+        this.anchorPos = buffer.readBoolean() ? buffer.readBlockPos() : null;
         this.screenWidth = buffer.readInt();
         this.screenHeight = buffer.readInt();
     }
@@ -39,7 +39,12 @@ public class UpdateScreenS2CPacket {
     public void encode(FriendlyByteBuf buffer) {
         buffer.writeBlockPos(pos);
         buffer.writeUtf(imagePath);
-        buffer.writeBoolean(isAnchor);
+        if (anchorPos != null) {
+            buffer.writeBoolean(true);
+            buffer.writeBlockPos(anchorPos);
+        } else {
+            buffer.writeBoolean(false);
+        }
         buffer.writeInt(screenWidth);
         buffer.writeInt(screenHeight);
     }
@@ -55,7 +60,7 @@ public class UpdateScreenS2CPacket {
                 if (blockEntity instanceof ScreenBlockEntity) {
                     // Update the block entity's image path
                     ((ScreenBlockEntity) blockEntity).setImagePath(imagePath);
-                    ((ScreenBlockEntity) blockEntity).setAnchor(isAnchor);
+                    ((ScreenBlockEntity) blockEntity).setAnchorPos(anchorPos);
                     ((ScreenBlockEntity) blockEntity).setScreenWidth(screenWidth);
                     ((ScreenBlockEntity) blockEntity).setScreenHeight(screenHeight);
                 }

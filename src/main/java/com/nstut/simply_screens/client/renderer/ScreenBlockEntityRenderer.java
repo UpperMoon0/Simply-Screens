@@ -1,7 +1,6 @@
 package com.nstut.simply_screens.client.renderer;
 
 import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
@@ -93,7 +92,7 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         poseStack.scale(scaleFactors[0], scaleFactors[1], 1.0f);
 
         // Render the image on the front face of the block
-        renderScreenImage(texture, poseStack, bufferSource, packedOverlay, width, height);
+        renderScreenImage(texture, poseStack, bufferSource, packedOverlay, width, height, scaleFactors[0], scaleFactors[1]);
 
         // Pop the PoseStack to restore the previous state
         poseStack.popPose();
@@ -162,7 +161,14 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         return textureLocation;
     }
 
-    private void renderScreenImage(ResourceLocation texture, PoseStack poseStack, MultiBufferSource bufferSource, int packedOverlay, int width, int height) {
+    private void renderScreenImage(ResourceLocation texture,
+                                   PoseStack poseStack,
+                                   MultiBufferSource bufferSource,
+                                   int packedOverlay,
+                                   int screenWidth,
+                                   int screenHeight,
+                                   float imageScaleX,
+                                   float imageScaleY) {
         VertexConsumer vertexConsumer = bufferSource.getBuffer(RenderType.entityCutout(texture));
         poseStack.last();
         PoseStack.Pose pose;
@@ -174,36 +180,39 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         poseStack.pushPose();
 
         // Apply scaling based on the desired dimensions
-        float scaleX = 1.0f / width;  // Normalize width
-        float scaleY = 1.0f / height; // Normalize height
+        float scaleX = 1.0f / screenWidth;  // Normalize width
+        float scaleY = 1.0f / screenHeight; // Normalize height
         poseStack.scale(scaleX, scaleY, 1.0f); // Apply uniform scaling for X and Y
+
+        float xOffset = (screenWidth - imageScaleX) / 2;
+        float yOffset = (screenHeight - imageScaleY) / 2;
 
         // Recompute pose after scaling
         pose = poseStack.last();
 
         // Define the vertices with scaled coordinates
-        vertexConsumer.vertex(pose.pose(), -width + 0.5f, height - 0.5f, 0)
+        vertexConsumer.vertex(pose.pose(), -screenWidth + 0.5f - xOffset, screenHeight - 0.5f + yOffset, 0)
                 .color(255, 255, 255, 255)
                 .uv(1, 0)
                 .overlayCoords(packedOverlay)
                 .uv2(fullBrightLight)  // Full bright light applied here
                 .normal(pose.normal(), 0, 0, 1)
                 .endVertex();
-        vertexConsumer.vertex(pose.pose(), 0.5f, height - 0.5f, 0)
+        vertexConsumer.vertex(pose.pose(), 0.5f - xOffset, screenHeight - 0.5f + yOffset, 0)
                 .color(255, 255, 255, 255)
                 .uv(0, 0)
                 .overlayCoords(packedOverlay)
                 .uv2(fullBrightLight)  // Full bright light applied here
                 .normal(pose.normal(), 0, 0, 1)
                 .endVertex();
-        vertexConsumer.vertex(pose.pose(), 0.5f, -0.5f, 0)
+        vertexConsumer.vertex(pose.pose(), 0.5f - xOffset, -0.5f + yOffset, 0)
                 .color(255, 255, 255, 255)
                 .uv(0, 1)
                 .overlayCoords(packedOverlay)
                 .uv2(fullBrightLight)  // Full bright light applied here
                 .normal(pose.normal(), 0, 0, 1)
                 .endVertex();
-        vertexConsumer.vertex(pose.pose(), -width + 0.5f, -0.5f, 0)
+        vertexConsumer.vertex(pose.pose(), -screenWidth + 0.5f - xOffset, -0.5f + yOffset, 0)
                 .color(255, 255, 255, 255)
                 .uv(1, 1)
                 .overlayCoords(packedOverlay)

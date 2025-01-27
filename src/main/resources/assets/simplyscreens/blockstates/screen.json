@@ -1,19 +1,49 @@
 {
   "variants": {
-    "facing=north": {
+    "state=0,facing=north": {
       "model": "simplyscreens:block/screen"
     },
-    "facing=south": {
+    "state=0,facing=south": {
       "y": 180,
       "model": "simplyscreens:block/screen"
     },
-    "facing=west": {
+    "state=0,facing=west": {
       "y": 270,
       "model": "simplyscreens:block/screen"
     },
-    "facing=east": {
+    "state=0,facing=east": {
       "y": 90,
       "model": "simplyscreens:block/screen"
+    },
+    "state=1,facing=north": {
+      "model": "simplyscreens:block/screen_anchor"
+    },
+    "state=1,facing=south": {
+      "y": 180,
+      "model": "simplyscreens:block/screen_anchor"
+    },
+    "state=1,facing=west": {
+      "y": 270,
+      "model": "simplyscreens:block/screen_anchor"
+    },
+    "state=1,facing=east": {
+      "y": 90,
+      "model": "simplyscreens:block/screen_anchor"
+    },
+    "state=2,facing=north": {
+      "model": "simplyscreens:block/screen_error"
+    },
+    "state=2,facing=south": {
+      "y": 180,
+      "model": "simplyscreens:block/screen_error"
+    },
+    "state=2,facing=west": {
+      "y": 270,
+      "model": "simplyscreens:block/screen_error"
+    },
+    "state=2,facing=east": {
+      "y": 90,
+      "model": "simplyscreens:block/screen_error"
     }
   }
 }

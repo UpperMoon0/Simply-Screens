@@ -1,11 +1,16 @@
 package com.nstut.simply_screens;
 
 import com.mojang.logging.LogUtils;
+import com.nstut.simply_screens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simply_screens.client.ClientSetup;
 import com.nstut.simply_screens.network.PacketRegistries;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
+import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -34,7 +39,6 @@ public class SimplyScreens {
 
         // Register the commonSetup method for modloading
         modEventBus.addListener(this::commonSetup);
-
         MinecraftForge.EVENT_BUS.addListener(ClientSetup::setup);
 
         // Register blocks
@@ -57,6 +61,22 @@ public class SimplyScreens {
 
         // Register our mod's ForgeConfigSpec so that Forge can create and load the config file for us
         context.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+    }
+
+    @SubscribeEvent
+    public void onBlockBroken(BlockEvent.BreakEvent event) {
+        Level level = (Level) event.getLevel();
+
+        if (level.isClientSide()) {
+            return;
+        }
+
+        BlockPos pos = event.getPos();
+
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+        if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
+            screenBlockEntity.onRemoved();
+        }
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {

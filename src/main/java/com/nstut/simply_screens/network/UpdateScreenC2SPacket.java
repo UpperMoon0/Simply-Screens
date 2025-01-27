@@ -36,7 +36,13 @@ public class UpdateScreenC2SPacket {
                 ServerLevel level = sender.serverLevel(); // Get the server level
                 BlockEntity blockEntity = level.getBlockEntity(pos);
                 if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
-                    screenBlockEntity.setImagePathAndSync(imagePath); // Update the block entity
+                    BlockPos anchorPos = screenBlockEntity.getAnchorPos();
+                    if (anchorPos != null) {
+                        BlockEntity anchorBlockEntity = level.getBlockEntity(anchorPos);
+                        if (anchorBlockEntity instanceof ScreenBlockEntity anchorScreenBlockEntity) {
+                            anchorScreenBlockEntity.setImagePathAndSync(imagePath); // Update the anchor block entity
+                        }
+                    }
                 }
             }
         });
