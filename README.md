@@ -1,2 +1,3 @@
 # MC-Mod-Simply-Screens
-Adds a simple screen to display local images or images from the web in Minecraft.
+A simple mod that adds screens to Minecraft that can display images from local files or the web.
+![Demo](demo.png)
