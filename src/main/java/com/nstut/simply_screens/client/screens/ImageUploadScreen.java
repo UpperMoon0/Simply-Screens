@@ -47,14 +47,14 @@ public class ImageUploadScreen extends Screen {
         this.imagePathField = new EditBox(this.font, guiLeft + 10, guiTop + 48, 140, 20, Component.literal(""));
         this.imagePathField.setMaxLength(255);
 
-        if (initialImagePath != null && !initialImagePath.isEmpty()) {
+        if (initialImagePath != null && !initialImagePath.isBlank()) {
             this.imagePathField.setValue(initialImagePath);
         }
 
         // Create the "Upload Image" button
         Button uploadButton = Button.builder(Component.literal("Load Image"), button -> {
                     String filePath = imagePathField.getValue();
-                    if (!filePath.isEmpty()) {
+                    if (!filePath.isBlank()) {
                         sendScreenInputsToServer(filePath);
                     }
                 })

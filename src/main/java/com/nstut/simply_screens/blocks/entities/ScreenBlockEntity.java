@@ -155,6 +155,9 @@ public class ScreenBlockEntity extends BlockEntity {
 
                 // Disable the anchor for ScreenBlockEntities, excluding the anchor block itself
                 if (blockEntity instanceof ScreenBlockEntity screenBlockEntity && !currentPos.equals(worldPosition)) {
+                    if (screenBlockEntity.isAnchor() && !screenBlockEntity.imagePath.isBlank()) {
+                        imagePath = screenBlockEntity.imagePath;
+                    }
                     screenBlockEntity.updateScreen(imagePath, screenWidth, screenHeight, worldPosition);
                 }
             }
