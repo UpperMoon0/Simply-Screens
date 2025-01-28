@@ -38,13 +38,13 @@ public class ImageUploadScreen extends Screen {
     protected void init() {
         super.init();
 
-        fetchImagePathFromBlockEntity();
+        fetchDataFromBlockEntity();
 
         int guiLeft = (this.width - SCREEN_WIDTH) / 2;
         int guiTop = (this.height - SCREEN_HEIGHT) / 2;
 
         // Initialize the EditBox for image path input
-        this.imagePathField = new EditBox(this.font, guiLeft + 10, guiTop + 40, 140, 20, Component.literal("Enter Image Path"));
+        this.imagePathField = new EditBox(this.font, guiLeft + 10, guiTop + 48, 140, 20, Component.literal(""));
         this.imagePathField.setMaxLength(255);
 
         if (initialImagePath != null && !initialImagePath.isEmpty()) {
@@ -52,15 +52,17 @@ public class ImageUploadScreen extends Screen {
         }
 
         // Create the "Upload Image" button
-        Button uploadButton = Button.builder(Component.literal("Upload Image"), button -> {
+        Button uploadButton = Button.builder(Component.literal("Load Image"), button -> {
                     String filePath = imagePathField.getValue();
                     if (!filePath.isEmpty()) {
-                        sendImagePathToServer(filePath);
+                        sendScreenInputsToServer(filePath);
                     }
                 })
-                .pos(guiLeft + 21, guiTop + 70)
+                .pos(guiLeft + 21, guiTop + 90)
                 .size(120, 20)
                 .build();
+
+
 
         this.addRenderableWidget(this.imagePathField);
         this.addRenderableWidget(uploadButton);
@@ -74,12 +76,21 @@ public class ImageUploadScreen extends Screen {
         int guiTop = (this.height - SCREEN_HEIGHT) / 2;
         pGuiGraphics.blit(BACKGROUND_TEXTURE, guiLeft, guiTop, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
+        // Draw the title at the top center
+        String title = "Screen";
+        int titleX = guiLeft + (SCREEN_WIDTH - this.font.width(title)) / 2;
+        pGuiGraphics.drawString(this.font, title, titleX, guiTop + 10, 0x3F3F3F, false);
+
+        String pathLabel = "Image Path / URL:";
+        int pathLabelX = guiLeft + 12;
+        pGuiGraphics.drawString(this.font, pathLabel, pathLabelX, guiTop + 35, 0x3F3F3F, false);
+
         // Draw widgets and other components
         super.render(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
         this.imagePathField.render(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
     }
 
-    private void fetchImagePathFromBlockEntity() {
+    private void fetchDataFromBlockEntity() {
         if (this.minecraft != null && this.minecraft.level != null) {
             BlockEntity blockEntity = this.minecraft.level.getBlockEntity(this.blockEntityPos);
             if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
@@ -88,7 +99,38 @@ public class ImageUploadScreen extends Screen {
         }
     }
 
-    private void sendImagePathToServer(String imagePath) {
+    private void sendScreenInputsToServer(String imagePath) {
         PacketRegistries.sendToServer(new UpdateScreenC2SPacket(blockEntityPos, imagePath));
     }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (this.minecraft == null) {
+            return false;
+        }
+
+        // Check if the inventory key is pressed and the EditBox is NOT focused
+        if (this.minecraft.options.keyInventory.matches(keyCode, scanCode) && !this.imagePathField.isFocused()) {
+            this.onClose(); // Close the screen
+            return true;    // Mark the key event as handled
+        }
+
+        // Pass other keys to the parent class for normal processing
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        // Check if the click is inside the EditBox bounds
+        if (this.imagePathField.isFocused() && this.imagePathField.isMouseOver(mouseX, mouseY)) {
+            // Lose focus if already focused and clicked
+            this.imagePathField.setFocused(false);
+            return true;
+        }
+
+        // Otherwise, handle the default behavior
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
 }
+

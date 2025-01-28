@@ -32,8 +32,13 @@ public class ScreenBlockEntity extends BlockEntity {
         anchorPos = pos;
     }
 
-    public void setImagePathAndSync(String path) {
-        this.imagePath = path;
+    public void toggleMode() {
+        updateClients();
+        setChanged();
+    }
+
+    public void updateFromScreenInputs(String imagePath) {
+        this.imagePath = imagePath;
         updateClients();
         setChanged();
     }

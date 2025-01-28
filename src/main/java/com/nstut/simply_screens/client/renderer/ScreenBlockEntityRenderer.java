@@ -21,6 +21,7 @@ import org.jetbrains.annotations.NotNull;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -40,30 +41,41 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
 
     @Override
     public void render(ScreenBlockEntity blockEntity, float partialTicks, @NotNull PoseStack poseStack, @NotNull MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
-        boolean isAnchor = blockEntity.isAnchor();
-
-        if (!isAnchor) {
+        // Check if the block entity is an anchor; only anchors should render images
+        if (!blockEntity.isAnchor()) {
             return;
         }
 
         BlockState blockState = blockEntity.getBlockState();
         Direction direction = blockState.getValue(BlockStateProperties.HORIZONTAL_FACING);
 
-        // Get the width and height of the screen
+        // Get the screen dimensions
         int width = blockEntity.getScreenWidth();
         int height = blockEntity.getScreenHeight();
 
-        // Get the imagePath from the block entity's NBT tag
+        // Get the imagePath and the mode (Local or Internet)
         String imagePath = blockEntity.getImagePath();
 
-        // Load the texture if it's not already loaded
+        if (imagePath == null || imagePath.isEmpty()) {
+            // No image to render; skip
+            return;
+        }
+
+        // Load the texture based on the mode
         ResourceLocation texture = loadedTextures.get(imagePath);
         if (texture == null) {
             try {
-                texture = loadExternalTexture(imagePath);
+                if (isPathLocal(imagePath)) {
+                    // Load texture from a local file
+                    texture = loadExternalTexture(imagePath);
+                } else {
+                    // Load texture from a URL (internet)
+                    texture = loadInternetTexture(imagePath);
+                }
                 loadedTextures.put(imagePath, texture);
             } catch (Exception e) {
-                // If loading fails, skip rendering
+                // If loading fails, log an error and skip rendering
+                LOGGER.warning("Failed to load texture for " + imagePath + ": " + e.getMessage());
                 return;
             }
         }
@@ -97,6 +109,40 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         // Pop the PoseStack to restore the previous state
         poseStack.popPose();
     }
+
+    private boolean isPathLocal(String imagePath) {
+        return !imagePath.startsWith("http://") && !imagePath.startsWith("https://");
+    }
+
+    private ResourceLocation loadInternetTexture(String imagePath) throws IOException {
+        URL url = new URL(imagePath);
+        BufferedImage bufferedImage = ImageIO.read(url);
+
+        // Convert BufferedImage to NativeImage
+        NativeImage nativeImage = new NativeImage(bufferedImage.getWidth(), bufferedImage.getHeight(), false);
+        for (int y = 0; y < bufferedImage.getHeight(); y++) {
+            for (int x = 0; x < bufferedImage.getWidth(); x++) {
+                int argb = bufferedImage.getRGB(x, y);
+                int alpha = (argb >> 24) & 0xFF;
+                int red = (argb >> 16) & 0xFF;
+                int green = (argb >> 8) & 0xFF;
+                int blue = argb & 0xFF;
+                int abgr = (alpha << 24) | (blue << 16) | (green << 8) | red;
+                nativeImage.setPixelRGBA(x, y, abgr);
+            }
+        }
+
+        // Create a DynamicTexture with the NativeImage
+        DynamicTexture dynamicTexture = new DynamicTexture(nativeImage);
+        TextureManager textureManager = Minecraft.getInstance().getTextureManager();
+
+        // Generate a unique ResourceLocation
+        ResourceLocation textureLocation = new ResourceLocation(SimplyScreens.MOD_ID, "screen_image_" + imagePath.hashCode());
+        textureManager.register(textureLocation, dynamicTexture);
+
+        return textureLocation;
+    }
+
 
     private float[] getScaleFactors(ResourceLocation texture, int width, int height) {
         TextureManager textureManager = Minecraft.getInstance().getTextureManager();

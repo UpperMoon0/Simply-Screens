@@ -21,7 +21,7 @@ public class UpdateScreenC2SPacket {
 
     public UpdateScreenC2SPacket(FriendlyByteBuf buffer) {
         this.pos = buffer.readBlockPos();
-        this.imagePath = buffer.readUtf(32767); // Read the string from the buffer
+        this.imagePath = buffer.readUtf(32767);
     }
 
     public void encode(FriendlyByteBuf buffer) {
@@ -40,7 +40,7 @@ public class UpdateScreenC2SPacket {
                     if (anchorPos != null) {
                         BlockEntity anchorBlockEntity = level.getBlockEntity(anchorPos);
                         if (anchorBlockEntity instanceof ScreenBlockEntity anchorScreenBlockEntity) {
-                            anchorScreenBlockEntity.setImagePathAndSync(imagePath); // Update the anchor block entity
+                            anchorScreenBlockEntity.updateFromScreenInputs(imagePath);
                         }
                     }
                 }
