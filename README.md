@@ -1,6 +1,8 @@
 # Simply Screens
 A simple mod that adds screens to Minecraft that can display images from local files or the web.
 
+CurseForge page: https://legacy.curseforge.com/minecraft/mc-mods/simply-screens
+
 ![Demo](demo.png)
 
 Features:
