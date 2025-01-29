@@ -9,6 +9,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.jetbrains.annotations.NotNull;
@@ -18,151 +19,122 @@ import java.util.logging.Logger;
 @Setter
 @Getter
 public class ScreenBlockEntity extends BlockEntity {
-
     private static final Logger LOGGER = Logger.getLogger(ScreenBlockEntity.class.getName());
 
+    // Screen configuration properties
     private String imagePath = "";
     private BlockPos anchorPos;
-    private int tickSinceLastUpdate = 0;
     private int screenWidth = 1;
     private int screenHeight = 1;
+    private boolean maintainAspectRatio = true;
+
+    // System properties
+    private int tickSinceLastUpdate = 0;
 
     public ScreenBlockEntity(BlockPos pos, BlockState state) {
         super(BlockEntityRegistries.SCREEN.get(), pos, state);
-        anchorPos = pos;
+        this.anchorPos = pos;
     }
 
-    public void updateFromScreenInputs(String imagePath) {
-        this.imagePath = imagePath;
-        updateClients();
-        setChanged();
-    }
-
-    public void writeTag(CompoundTag tag) {
-        tag.putString("imagePath", imagePath);
-        if (anchorPos != null) {
-            tag.putInt("anchorX", anchorPos.getX());
-            tag.putInt("anchorY", anchorPos.getY());
-            tag.putInt("anchorZ", anchorPos.getZ());
-        }
-        tag.putInt("screenWidth", screenWidth);
-        tag.putInt("screenHeight", screenHeight);
-    }
-
-    public void readTag(CompoundTag tag) {
-        if (tag.contains("imagePath")) {
-            imagePath = tag.getString("imagePath");
-        }
-        if (tag.contains("anchorX") && tag.contains("anchorY") && tag.contains("anchorZ")) {
-            anchorPos = new BlockPos(tag.getInt("anchorX"), tag.getInt("anchorY"), tag.getInt("anchorZ"));
-        }
-        if (tag.contains("screenWidth")) {
-            screenWidth = tag.getInt("screenWidth");
-        }
-        if (tag.contains("screenHeight")) {
-            screenHeight = tag.getInt("screenHeight");
-        }
-    }
-
+    // Serialization methods
     @Override
     public void saveAdditional(@NotNull CompoundTag tag) {
         super.saveAdditional(tag);
-        writeTag(tag);
+        writePersistentData(tag);
         updateClients();
     }
 
     @Override
     public void load(@NotNull CompoundTag tag) {
         super.load(tag);
-        readTag(tag);
+        readPersistentData(tag);
     }
 
+    private void writePersistentData(CompoundTag tag) {
+        tag.putString("imagePath", imagePath);
+        tag.putBoolean("maintainAspectRatio", maintainAspectRatio);
+        tag.putInt("screenWidth", screenWidth);
+        tag.putInt("screenHeight", screenHeight);
+
+        if (anchorPos != null) {
+            tag.putInt("anchorX", anchorPos.getX());
+            tag.putInt("anchorY", anchorPos.getY());
+            tag.putInt("anchorZ", anchorPos.getZ());
+        }
+    }
+
+    private void readPersistentData(CompoundTag tag) {
+        imagePath = tag.getString("imagePath");
+        maintainAspectRatio = tag.getBoolean("maintainAspectRatio");
+        screenWidth = tag.getInt("screenWidth");
+        screenHeight = tag.getInt("screenHeight");
+
+        if (tag.contains("anchorX") && tag.contains("anchorY") && tag.contains("anchorZ")) {
+            anchorPos = new BlockPos(
+                    tag.getInt("anchorX"),
+                    tag.getInt("anchorY"),
+                    tag.getInt("anchorZ")
+            );
+        }
+    }
+
+    // Network synchronization
     @Override
     public ClientboundBlockEntityDataPacket getUpdatePacket() {
-        CompoundTag tag = new CompoundTag();
-        writeTag(tag);
-        return ClientboundBlockEntityDataPacket.create(this, (blockEntity) -> tag);
+        return ClientboundBlockEntityDataPacket.create(this);
     }
 
     @Override
     public void handleUpdateTag(CompoundTag tag) {
         super.handleUpdateTag(tag);
-        readTag(tag);
+        readPersistentData(tag);
     }
 
     private void updateClients() {
         if (level != null && !level.isClientSide) {
-            UpdateScreenS2CPacket packet = new UpdateScreenS2CPacket(worldPosition, imagePath, anchorPos, screenWidth, screenHeight);
+            UpdateScreenS2CPacket packet = new UpdateScreenS2CPacket(
+                    worldPosition,
+                    imagePath,
+                    anchorPos,
+                    screenWidth,
+                    screenHeight,
+                    maintainAspectRatio
+            );
             PacketRegistries.sendToClients(packet);
         }
     }
 
-    public void updateScreen(String imagePath, int screenWidth, int screenHeight, BlockPos anchorPos) {
-        if (level == null) {
-            return;
-        }
-
+    // Core functionality
+    public void updateFromScreenInputs(String imagePath, boolean maintainAspectRatio) {
         this.imagePath = imagePath;
-        this.screenWidth = screenWidth;
-        this.screenHeight = screenHeight;
-        this.anchorPos = anchorPos;
+        this.maintainAspectRatio = maintainAspectRatio;
         updateClients();
         setChanged();
-        BlockState currentState = getBlockState();
-        if (currentState.getBlock() instanceof ScreenBlock) {
-            level.setBlock(worldPosition, currentState.setValue(ScreenBlock.STATE, isAnchor()? ScreenBlock.STATE_ANCHOR : ScreenBlock.STATE_CHILD), 3);
-        }
     }
 
-    public boolean isAnchor() {
-        return (anchorPos != null && anchorPos.equals(worldPosition));
-    }
+    public void updateScreen(String imagePath, int width, int height, BlockPos anchor, boolean maintainAspect) {
+        if (level == null) return;
 
-    /**
-     * Disables the anchor status of all ScreenBlockEntities within the rectangular region
-     * defined by the anchor position (anchorPos) and the far corner (farCorner).
-     * The region is determined based on the facing direction of the screen structure.
-     *
-     * @param farCorner The position of the far corner (top-right corner of the screen structure).
-     * @param facing    The direction the screen structure is facing.
-     */
-    public void updateChildScreens(BlockPos farCorner, Direction facing) {
-        if (level == null) {
-            return;
-        }
+        this.imagePath = imagePath;
+        this.screenWidth = width;
+        this.screenHeight = height;
+        this.anchorPos = anchor;
+        this.maintainAspectRatio = maintainAspect;
 
-        // Define the horizontal and vertical traversal directions based on the screen's facing
-        Direction perpendicular = getPerpendicular(facing);
+        updateClients();
+        setChanged();
 
-        // Calculate the horizontal and vertical extents
-        int horizontalExtent = Math.abs(farCorner.getX() - worldPosition.getX());
-        if (facing == Direction.WEST || facing == Direction.EAST) {
-            horizontalExtent = Math.abs(farCorner.getZ() - worldPosition.getZ());
-        }
-        int verticalExtent = farCorner.getY() - worldPosition.getY();
-
-        // Traverse through the rectangular region and disable anchors
-        for (int i = 0; i <= horizontalExtent; i++) {
-            for (int j = 0; j <= verticalExtent; j++) {
-                // Calculate the current block position
-                BlockPos currentPos = worldPosition.relative(perpendicular, i).offset(0, j, 0);
-                BlockEntity blockEntity = level.getBlockEntity(currentPos);
-
-                // Disable the anchor for ScreenBlockEntities, excluding the anchor block itself
-                if (blockEntity instanceof ScreenBlockEntity screenBlockEntity && !currentPos.equals(worldPosition)) {
-                    if (screenBlockEntity.isAnchor() && !screenBlockEntity.imagePath.isBlank()) {
-                        imagePath = screenBlockEntity.imagePath;
-                    }
-                    screenBlockEntity.updateScreen(imagePath, screenWidth, screenHeight, worldPosition);
-                }
-            }
+        if (getBlockState().getBlock() instanceof ScreenBlock block) {
+            BlockState newState = getBlockState().setValue(
+                    ScreenBlock.STATE,
+                    isAnchor() ? ScreenBlock.STATE_ANCHOR : ScreenBlock.STATE_CHILD
+            );
+            level.setBlock(worldPosition, newState, Block.UPDATE_ALL);
         }
     }
 
     public void tick() {
-        if (level == null) {
-            return;
-        }
+        if (level == null) return;
 
         if (isAnchor()) {
             if (tickSinceLastUpdate++ >= 20) {
@@ -170,143 +142,165 @@ public class ScreenBlockEntity extends BlockEntity {
                 tickSinceLastUpdate = 0;
             }
         } else {
-            if (anchorPos == null) {
-                return;
-            }
+            verifyAnchorValidity();
+        }
+    }
 
-            BlockEntity blockEntity = level.getBlockEntity(anchorPos);
-            if (!(blockEntity instanceof ScreenBlockEntity screenBlockEntity) || !screenBlockEntity.isAnchor()) {
-                imagePath = "";
-                anchorPos = null;
-                screenWidth = 1;
-                screenHeight = 1;
-                BlockState currentState = getBlockState();
-                if (currentState.getBlock() instanceof ScreenBlock) {
-                    level.setBlock(worldPosition, currentState.setValue(ScreenBlock.STATE, ScreenBlock.STATE_ERROR), 3);
+    // Structure management
+    private void updateScreenStructure() {
+        Direction facing = getBlockState().getValue(ScreenBlock.FACING);
+        BlockPos farCorner = calculateStructureBounds(facing);
+
+        if (farCorner != null) {
+            updateChildScreens(farCorner, facing);
+            calculateScreenDimensions(facing, farCorner);
+        }
+    }
+
+    private void updateChildScreens(BlockPos farCorner, Direction facing) {
+        if (level == null) return;
+
+        Direction perpendicular = getPerpendicularDirection(facing);
+        int horizontalExtent = facing.getAxis() == Direction.Axis.Z ?
+                Math.abs(farCorner.getX() - worldPosition.getX()) :
+                Math.abs(farCorner.getZ() - worldPosition.getZ());
+
+        int verticalExtent = farCorner.getY() - worldPosition.getY();
+
+        for (int i = 0; i <= horizontalExtent; i++) {
+            for (int j = 0; j <= verticalExtent; j++) {
+                BlockPos currentPos = worldPosition.relative(perpendicular, i).above(j);
+                BlockEntity be = level.getBlockEntity(currentPos);
+
+                if (be instanceof ScreenBlockEntity childEntity && !currentPos.equals(worldPosition)) {
+                    if (childEntity.isAnchor() && !childEntity.imagePath.isBlank()) {
+                        this.imagePath = childEntity.imagePath;
+                    }
+                    childEntity.updateScreen(imagePath, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
                 }
             }
         }
     }
 
-    public void updateScreenStructure() {
-        Direction facing = getBlockState().getValue(ScreenBlock.FACING);
-        BlockPos farCorner = getFarCorner(facing);
-        if (farCorner == null) {
-            return;
-        }
-        updateChildScreens(farCorner, facing);
-        screenWidth = switch (facing) {
-            case NORTH, SOUTH -> Math.abs(farCorner.getX() - worldPosition.getX()) + 1;
-            case WEST, EAST -> Math.abs(farCorner.getZ() - worldPosition.getZ()) + 1;
-            default -> 0;
-        };
+    private void calculateScreenDimensions(Direction facing, BlockPos farCorner) {
+        screenWidth = facing.getAxis() == Direction.Axis.Z ?
+                Math.abs(farCorner.getX() - worldPosition.getX()) + 1 :
+                Math.abs(farCorner.getZ() - worldPosition.getZ()) + 1;
+
         screenHeight = farCorner.getY() - worldPosition.getY() + 1;
     }
 
-    /**
-     * Determines the farthest corner (top-right) of a rectangular screen structure
-     * starting from the given anchor position (bottom-left corner) and facing direction.
-     * The method ensures that the farthest corner is part of a valid rectangle of contiguous
-     * ScreenBlockEntities, starting from the anchor block.
-     * @param facing    The direction the screen structure is facing.
-     *                  Valid values are NORTH, SOUTH, EAST, or WEST.
-     * @return The position of the farthest corner (top-right) of the rectangular screen structure.
-     * @throws IllegalArgumentException If the provided facing direction is invalid.
-     */
-    private BlockPos getFarCorner(Direction facing) {
-        // Ensure the level is valid before proceeding
-        if (level == null) {
-            return null;
-        }
+    private BlockPos calculateStructureBounds(Direction facing) {
+        if (level == null) return null;
 
-        // Determine the perpendicular directions based on facing
-        Direction perpendicular = getPerpendicular(facing);
+        Direction perpendicular = getPerpendicularDirection(facing);
+        int maxHorizontal = findMaxExtension(perpendicular);
+        int maxVertical = findMaxExtension(Direction.UP);
 
-        // Calculate furthestRight by traversing in the perpendicular direction
-        int furthestRight = 0;
-        BlockPos currentPos = worldPosition.relative(perpendicular);
-        while (level.getBlockEntity(currentPos) instanceof ScreenBlockEntity) {
-            furthestRight++;
-            currentPos = currentPos.relative(perpendicular);
-        }
+        int bestWidth = 0;
+        int bestHeight = 0;
 
-        // Calculate furthestUp by traversing upwards
-        int furthestUp = 0;
-        currentPos = worldPosition.above();
-        while (level.getBlockEntity(currentPos) instanceof ScreenBlockEntity) {
-            furthestUp++;
-            currentPos = currentPos.above();
-        }
-
-        // Initialize variables for the best rectangle dimensions
-        int bestRight = 0;
-        int bestUp = 0;
-
-        // Check all rectangles within the extents
-        for (int right = 0; right <= furthestRight; right++) {
-            for (int up = 0; up <= furthestUp; up++) {
-                boolean validRectangle = true;
-
-                // Validate the rectangle by checking all positions within it
-                for (int x = 0; x <= right && validRectangle; x++) {
-                    for (int y = 0; y <= up; y++) {
-                        BlockPos checkPos = worldPosition.relative(perpendicular, x).above(y);
-                        if (!checkPos.equals(worldPosition)
-                                && !(level.getBlockEntity(checkPos) instanceof ScreenBlockEntity)) {
-                            validRectangle = false;
-                            break;
-                        }
+        for (int w = 0; w <= maxHorizontal; w++) {
+            for (int h = 0; h <= maxVertical; h++) {
+                if (isValidStructure(w, h, perpendicular)) {
+                    if ((w + 1) * (h + 1) > (bestWidth + 1) * (bestHeight + 1)) {
+                        bestWidth = w;
+                        bestHeight = h;
                     }
-                }
-
-                // Update the best rectangle dimensions if a larger valid rectangle is found
-                if (validRectangle && (right + 1) * (up + 1) > (bestRight + 1) * (bestUp + 1)) {
-                    bestRight = right;
-                    bestUp = up;
                 }
             }
         }
 
-        // Calculate the far corner based on the best rectangle's dimensions
-        return worldPosition.relative(perpendicular, bestRight).above(bestUp);
+        return worldPosition.relative(perpendicular, bestWidth).above(bestHeight);
     }
 
-    public Direction getPerpendicular(Direction facing) {
+    private boolean isValidStructure(int width, int height, Direction direction) {
+        if (level == null) return false;
+
+        for (int x = 0; x <= width; x++) {
+            for (int y = 0; y <= height; y++) {
+                BlockPos checkPos = worldPosition
+                        .relative(direction, x)
+                        .above(y);
+
+                if (!checkPos.equals(worldPosition) &&
+                        !(level.getBlockEntity(checkPos) instanceof ScreenBlockEntity)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private int findMaxExtension(Direction direction) {
+        if (level == null) return 0;
+
+        int extension = 0;
+        BlockPos current = worldPosition.relative(direction);
+
+        while (level.getBlockEntity(current) instanceof ScreenBlockEntity) {
+            extension++;
+            current = current.relative(direction);
+        }
+
+        return extension;
+    }
+
+    // Helper methods
+    private void verifyAnchorValidity() {
+        if (anchorPos == null || level == null) return;
+
+        BlockEntity be = level.getBlockEntity(anchorPos);
+        if (!(be instanceof ScreenBlockEntity anchorEntity) || !anchorEntity.isAnchor()) {
+            resetToDefaultState();
+        }
+    }
+
+    private void resetToDefaultState() {
+        if (level == null) return;
+
+        imagePath = "";
+        anchorPos = null;
+        screenWidth = 1;
+        screenHeight = 1;
+
+        if (getBlockState().getBlock() instanceof ScreenBlock) {
+            BlockState errorState = getBlockState()
+                    .setValue(ScreenBlock.STATE, ScreenBlock.STATE_ERROR);
+            level.setBlock(worldPosition, errorState, Block.UPDATE_ALL);
+        }
+    }
+
+    public boolean isAnchor() {
+        return anchorPos != null && anchorPos.equals(worldPosition);
+    }
+
+    private static Direction getPerpendicularDirection(Direction facing) {
         return switch (facing) {
             case NORTH -> Direction.WEST;
             case SOUTH -> Direction.EAST;
             case WEST -> Direction.SOUTH;
             case EAST -> Direction.NORTH;
-            default -> throw new IllegalArgumentException("Invalid facing direction");
+            default -> throw new IllegalArgumentException("Invalid facing direction: " + facing);
         };
     }
 
+    // Lifecycle management
     public void onRemoved() {
-        if (level == null || level.isClientSide) {
-            return;
-        }
+        if (level == null || level.isClientSide || !isAnchor()) return;
+        if (screenWidth == 1 && screenHeight == 1) return;
 
-        if (isAnchor()) {
-            if (screenWidth == 1 && screenHeight == 1) {
-                return;
-            }
+        Direction facing = getBlockState().getValue(ScreenBlock.FACING);
+        Direction perpendicular = getPerpendicularDirection(facing);
 
-            Direction facing = getBlockState().getValue(ScreenBlock.FACING);
-            Direction perpendicular = getPerpendicular(facing);
+        boolean promoteVertical = (screenWidth * (screenHeight - 1)) > ((screenWidth - 1) * screenHeight);
+        BlockPos newAnchorPos = promoteVertical ?
+                worldPosition.above() :
+                worldPosition.relative(perpendicular);
 
-            int topArea = screenWidth * (screenHeight - 1);
-            int rightArea = (screenWidth - 1) * screenHeight;
-            if (topArea > rightArea) {
-                ScreenBlockEntity screenBlockEntity = (ScreenBlockEntity) level.getBlockEntity(worldPosition.above());
-                if (screenBlockEntity != null) {
-                    screenBlockEntity.updateScreen(imagePath, screenWidth, screenHeight, screenBlockEntity.worldPosition);
-                }
-            } else {
-                ScreenBlockEntity screenBlockEntity = (ScreenBlockEntity) level.getBlockEntity(worldPosition.relative(perpendicular));
-                if (screenBlockEntity != null) {
-                    screenBlockEntity.updateScreen(imagePath, screenWidth, screenHeight, screenBlockEntity.worldPosition);
-                }
-            }
+        BlockEntity newAnchor = level.getBlockEntity(newAnchorPos);
+        if (newAnchor instanceof ScreenBlockEntity screenEntity) {
+            screenEntity.updateScreen(imagePath, screenWidth, screenHeight, newAnchorPos, maintainAspectRatio);
         }
     }
 }

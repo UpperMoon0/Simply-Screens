@@ -13,20 +13,24 @@ import java.util.function.Supplier;
 public class UpdateScreenC2SPacket {
     private final BlockPos pos;
     private final String imagePath;
+    private final boolean maintainAspectRatio;
 
-    public UpdateScreenC2SPacket(BlockPos pos, String imagePath) {
+    public UpdateScreenC2SPacket(BlockPos pos, String imagePath, boolean maintainAspectRatio) {
         this.pos = pos;
         this.imagePath = imagePath;
+        this.maintainAspectRatio = maintainAspectRatio;
     }
 
     public UpdateScreenC2SPacket(FriendlyByteBuf buffer) {
         this.pos = buffer.readBlockPos();
         this.imagePath = buffer.readUtf(32767);
+        this.maintainAspectRatio = buffer.readBoolean();
     }
 
     public void encode(FriendlyByteBuf buffer) {
         buffer.writeBlockPos(pos);
         buffer.writeUtf(imagePath);
+        buffer.writeBoolean(maintainAspectRatio);
     }
 
     public void handle(Supplier<NetworkEvent.Context> context) {
@@ -40,7 +44,7 @@ public class UpdateScreenC2SPacket {
                     if (anchorPos != null) {
                         BlockEntity anchorBlockEntity = level.getBlockEntity(anchorPos);
                         if (anchorBlockEntity instanceof ScreenBlockEntity anchorScreenBlockEntity) {
-                            anchorScreenBlockEntity.updateFromScreenInputs(imagePath);
+                            anchorScreenBlockEntity.updateFromScreenInputs(imagePath, maintainAspectRatio);
                         }
                     }
                 }

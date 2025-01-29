@@ -6,6 +6,7 @@ import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import com.nstut.simplyscreens.network.UpdateScreenC2SPacket;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -28,6 +29,8 @@ public class ImageLoadScreen extends Screen {
     private EditBox imagePathField;
     private final BlockPos blockEntityPos;
     private String initialImagePath;
+    private boolean initialMaintainAspectRatio = true;
+    private Checkbox maintainAspectCheckbox;
 
     public ImageLoadScreen(BlockPos blockEntityPos) {
         super(Component.literal("Image Upload Screen"));
@@ -44,25 +47,27 @@ public class ImageLoadScreen extends Screen {
         int guiTop = (this.height - SCREEN_HEIGHT) / 2;
 
         // Initialize the EditBox for image path input
-        this.imagePathField = new EditBox(this.font, guiLeft + 10, guiTop + 48, 140, 20, Component.literal(""));
+        this.imagePathField = new EditBox(this.font, guiLeft + 10, guiTop + 40, 140, 20, Component.literal(""));
         this.imagePathField.setMaxLength(255);
 
         if (initialImagePath != null && !initialImagePath.isBlank()) {
             this.imagePathField.setValue(initialImagePath);
         }
 
+        maintainAspectCheckbox = new Checkbox(guiLeft + 10, guiTop + 70, 20, 20, Component.literal("Maintain Aspect Ratio"), initialMaintainAspectRatio);
+
+        this.addRenderableWidget(maintainAspectCheckbox);
+
         // Create the "Upload Image" button
         Button uploadButton = Button.builder(Component.literal("Load Image"), button -> {
                     String filePath = imagePathField.getValue();
                     if (!filePath.isBlank()) {
-                        sendScreenInputsToServer(filePath);
+                        sendScreenInputsToServer(filePath, maintainAspectCheckbox.selected());
                     }
                 })
-                .pos(guiLeft + 21, guiTop + 90)
+                .pos(guiLeft + 21, guiTop + 98)
                 .size(120, 20)
                 .build();
-
-
 
         this.addRenderableWidget(this.imagePathField);
         this.addRenderableWidget(uploadButton);
@@ -83,7 +88,7 @@ public class ImageLoadScreen extends Screen {
 
         String pathLabel = "Image Path / URL:";
         int pathLabelX = guiLeft + 12;
-        pGuiGraphics.drawString(this.font, pathLabel, pathLabelX, guiTop + 35, 0x3F3F3F, false);
+        pGuiGraphics.drawString(this.font, pathLabel, pathLabelX, guiTop + 27, 0x3F3F3F, false);
 
         // Draw widgets and other components
         super.render(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
@@ -92,15 +97,16 @@ public class ImageLoadScreen extends Screen {
 
     private void fetchDataFromBlockEntity() {
         if (this.minecraft != null && this.minecraft.level != null) {
-            BlockEntity blockEntity = this.minecraft.level.getBlockEntity(this.blockEntityPos);
+            BlockEntity blockEntity = this.minecraft.level.getBlockEntity(blockEntityPos);
             if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
-                this.initialImagePath = screenBlockEntity.getImagePath();
+                initialImagePath = screenBlockEntity.getImagePath();
+                initialMaintainAspectRatio = screenBlockEntity.isMaintainAspectRatio();
             }
         }
     }
 
-    private void sendScreenInputsToServer(String imagePath) {
-        PacketRegistries.sendToServer(new UpdateScreenC2SPacket(blockEntityPos, imagePath));
+    private void sendScreenInputsToServer(String imagePath, boolean maintainAspectRatio) {
+        PacketRegistries.sendToServer(new UpdateScreenC2SPacket(blockEntityPos, imagePath, maintainAspectRatio));
     }
 
     @Override

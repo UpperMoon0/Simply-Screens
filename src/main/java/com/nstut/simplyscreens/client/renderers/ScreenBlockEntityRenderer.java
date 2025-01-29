@@ -11,7 +11,6 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.BlockState;
@@ -21,6 +20,7 @@ import org.jetbrains.annotations.NotNull;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
@@ -31,234 +31,217 @@ import net.minecraft.client.Minecraft;
 import javax.imageio.ImageIO;
 
 public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBlockEntity> {
-
     private static final Logger LOGGER = Logger.getLogger(ScreenBlockEntityRenderer.class.getName());
-    private static final Map<String, ResourceLocation> loadedTextures = new HashMap<>();
-    private static final int FULL_BRIGHT_LIGHT = 15728880; // Full brightness light level for unaffected rendering
+    private static final Map<String, ResourceLocation> TEXTURE_CACHE = new HashMap<>();
+    private static final int FULL_BRIGHTNESS = 15728880;
+    private static final float FRONT_OFFSET = -0.501f;
 
     public ScreenBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
     }
 
     @Override
-    public void render(ScreenBlockEntity blockEntity, float partialTicks, @NotNull PoseStack poseStack, @NotNull MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
-        // Check if the block entity is an anchor; only anchors should render images
-        if (!blockEntity.isAnchor()) {
-            return;
-        }
+    public void render(@NotNull ScreenBlockEntity blockEntity, float partialTicks, @NotNull PoseStack poseStack,
+                       @NotNull MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
+        if (!shouldRender(blockEntity)) return;
 
         BlockState blockState = blockEntity.getBlockState();
-        Direction direction = blockState.getValue(BlockStateProperties.HORIZONTAL_FACING);
-
-        // Get the imagePath and the mode (Local or Internet)
+        Direction facing = blockState.getValue(BlockStateProperties.HORIZONTAL_FACING);
         String imagePath = blockEntity.getImagePath();
 
-        if (imagePath == null || imagePath.isEmpty()) {
-            // No image to render; skip
-            return;
-        }
+        ResourceLocation texture = getOrLoadTexture(imagePath);
+        if (texture == null) return;
 
-        // Load the texture based on the mode
-        ResourceLocation texture = loadedTextures.get(imagePath);
-        if (texture == null) {
+        prepareRenderingTransform(poseStack, blockEntity, facing);
+        renderTextureQuad(texture, poseStack, bufferSource, packedOverlay);
+    }
+
+    private boolean shouldRender(ScreenBlockEntity blockEntity) {
+        return blockEntity.isAnchor() &&
+                !blockEntity.getImagePath().isEmpty();
+    }
+
+    private ResourceLocation getOrLoadTexture(String imagePath) {
+        return TEXTURE_CACHE.computeIfAbsent(imagePath, path -> {
             try {
-                if (isPathLocal(imagePath)) {
-                    // Load texture from a local file
-                    texture = loadExternalTexture(imagePath);
-                } else {
-                    // Load texture from a URL (internet)
-                    texture = loadInternetTexture(imagePath);
-                }
-                loadedTextures.put(imagePath, texture);
+                return loadTextureResource(path);
             } catch (Exception e) {
-                // If loading fails, log an error and skip rendering
-                LOGGER.warning("Failed to load texture for " + imagePath + ": " + e.getMessage());
-                return;
+                LOGGER.warning("Failed to load texture: " + path + " - " + e.getMessage());
+                return null;
             }
-        }
+        });
+    }
 
-        // Push the PoseStack for transformations
+    private ResourceLocation loadTextureResource(String path) throws IOException {
+        if (isRemoteResource(path)) {
+            return loadWebTexture(new URL(path));
+        }
+        return loadLocalTexture(new File(path));
+    }
+
+    private boolean isRemoteResource(String path) {
+        return path.startsWith("http://") || path.startsWith("https://");
+    }
+
+    private void prepareRenderingTransform(PoseStack poseStack, ScreenBlockEntity blockEntity, Direction facing) {
         poseStack.pushPose();
 
-        // Translate to the center of the block
+        // Center on block
         poseStack.translate(0.5, 0.5, 0.5);
 
-        // Rotate based on the facing direction
-        float rotationAngle = switch (direction) {
-            case NORTH -> 0;
+        // Apply facing rotation
+        applyFacingRotation(poseStack, facing);
+
+        // Move to front face
+        poseStack.translate(0, 0, FRONT_OFFSET);
+
+        // Adjust for screen structure size
+        centerOnScreenStructure(poseStack, blockEntity);
+
+        // Apply aspect ratio scaling
+        applyAspectRatioScaling(poseStack, blockEntity);
+    }
+
+    private void applyFacingRotation(PoseStack poseStack, Direction facing) {
+        float rotation = switch (facing) {
             case SOUTH -> 180;
             case WEST -> 90;
             case EAST -> -90;
-            default -> 0;
+            default -> 0; // NORTH
         };
-        poseStack.mulPose(Axis.YP.rotationDegrees(rotationAngle));
+        poseStack.mulPose(Axis.YP.rotationDegrees(rotation));
+    }
 
-        // Translate to the front face of the block
-        poseStack.translate(0, 0, -0.501);
-
-        // Get screen dimensions and facing direction
-        int screenWidth = blockEntity.getScreenWidth();
-        int screenHeight = blockEntity.getScreenHeight();
-
-        // Calculate the center of the screen structure
-        float centerX = -(screenWidth - 1) / 2f;
-        float centerY = (screenHeight - 1) / 2f;
-
-        // Translate to the center of the screen structure
+    private void centerOnScreenStructure(PoseStack poseStack, ScreenBlockEntity blockEntity) {
+        float centerX = -(blockEntity.getScreenWidth() - 1) / 2f;
+        float centerY = (blockEntity.getScreenHeight() - 1) / 2f;
         poseStack.translate(centerX, centerY, 0);
-
-        // Scale the image to fit while preserving aspect ratio
-        float[] scaleFactors = getScaleFactors(texture, screenWidth, screenHeight);
-        poseStack.scale(scaleFactors[0], scaleFactors[1], 1.0f);
-
-        // Render the image as a centered unit quad
-        renderScreenImage(texture, poseStack, bufferSource, packedOverlay);
-
-        // Pop the PoseStack to restore the previous state
-        poseStack.popPose();
     }
 
-    private boolean isPathLocal(String imagePath) {
-        return !imagePath.startsWith("http://") && !imagePath.startsWith("https://");
+    private void applyAspectRatioScaling(PoseStack poseStack, ScreenBlockEntity blockEntity) {
+        ResourceLocation texture = TEXTURE_CACHE.get(blockEntity.getImagePath());
+        if (texture == null) return;
+
+        float[] scales = calculateScalingFactors(
+                texture,
+                blockEntity.getScreenWidth(),
+                blockEntity.getScreenHeight(),
+                blockEntity.isMaintainAspectRatio()
+        );
+
+        poseStack.scale(scales[0], scales[1], 1.0f);
     }
 
-    private ResourceLocation loadInternetTexture(String imagePath) throws IOException {
-        URL url = new URL(imagePath);
-        BufferedImage bufferedImage = ImageIO.read(url);
-
-        // Convert BufferedImage to NativeImage
-        NativeImage nativeImage = new NativeImage(bufferedImage.getWidth(), bufferedImage.getHeight(), false);
-        for (int y = 0; y < bufferedImage.getHeight(); y++) {
-            for (int x = 0; x < bufferedImage.getWidth(); x++) {
-                int argb = bufferedImage.getRGB(x, y);
-                int alpha = (argb >> 24) & 0xFF;
-                int red = (argb >> 16) & 0xFF;
-                int green = (argb >> 8) & 0xFF;
-                int blue = argb & 0xFF;
-                int abgr = (alpha << 24) | (blue << 16) | (green << 8) | red;
-                nativeImage.setPixelRGBA(x, y, abgr);
-            }
+    private float[] calculateScalingFactors(ResourceLocation texture, int width, int height, boolean keepAspect) {
+        if (!keepAspect) {
+            return new float[]{width, height};
         }
 
-        // Create a DynamicTexture with the NativeImage
-        DynamicTexture dynamicTexture = new DynamicTexture(nativeImage);
-        TextureManager textureManager = Minecraft.getInstance().getTextureManager();
+        NativeImage image = getTextureImage(texture);
+        if (image == null) return new float[]{1, 1};
 
-        // Generate a unique ResourceLocation
-        ResourceLocation textureLocation = new ResourceLocation(SimplyScreens.MOD_ID, "screen_image_" + imagePath.hashCode());
-        textureManager.register(textureLocation, dynamicTexture);
-
-        return textureLocation;
-    }
-
-    private float[] getScaleFactors(ResourceLocation texture, int width, int height) {
-        TextureManager textureManager = Minecraft.getInstance().getTextureManager();
-        DynamicTexture dynamicTexture = (DynamicTexture) textureManager.getTexture(texture);
-
-        NativeImage nativeImage = dynamicTexture.getPixels();
-        if (nativeImage == null) {
-            return new float[]{1.0f, 1.0f};
-        }
-
-        int imageWidth = nativeImage.getWidth();
-        int imageHeight = nativeImage.getHeight();
-
-        float imageAspect = (float) imageWidth / imageHeight;
+        float imageAspect = (float) image.getWidth() / image.getHeight();
         float screenAspect = (float) width / height;
 
-        float scaleX, scaleY;
-
-        if (imageAspect > screenAspect) {
-            // Fit to screen width
-            scaleX = width;
-            scaleY = width / imageAspect;
-        } else {
-            // Fit to screen height
-            scaleX = height * imageAspect;
-            scaleY = height;
-        }
-
-        return new float[]{scaleX, scaleY};
+        return imageAspect > screenAspect ?
+                new float[]{width, width / imageAspect} :  // Width-constrained
+                new float[]{height * imageAspect, height}; // Height-constrained
     }
 
-    private ResourceLocation loadExternalTexture(String imagePath) throws IOException {
-        // Load the image using the external path
-        File imageFile = new File(imagePath);
-        BufferedImage bufferedImage = ImageIO.read(imageFile);
+    private NativeImage getTextureImage(ResourceLocation texture) {
+        DynamicTexture dynamicTexture = (DynamicTexture) Minecraft.getInstance()
+                .getTextureManager()
+                .getTexture(texture);
 
-        // Convert BufferedImage to NativeImage
-        NativeImage nativeImage = new NativeImage(bufferedImage.getWidth(), bufferedImage.getHeight(), false);
-        for (int y = 0; y < bufferedImage.getHeight(); y++) {
-            for (int x = 0; x < bufferedImage.getWidth(); x++) {
-                // Get the ARGB color from the BufferedImage
-                int argb = bufferedImage.getRGB(x, y);
-                int alpha = (argb >> 24) & 0xFF;
-                int red = (argb >> 16) & 0xFF;
-                int green = (argb >> 8) & 0xFF;
-                int blue = argb & 0xFF;
-
-                // Convert ARGB to ABGR
-                int abgr = (alpha << 24) | (blue << 16) | (green << 8) | red;
-
-                // Set the color in NativeImage
-                nativeImage.setPixelRGBA(x, y, abgr);
-            }
-        }
-
-        // Create a DynamicTexture with the NativeImage
-        DynamicTexture dynamicTexture = new DynamicTexture(nativeImage);
-        TextureManager textureManager = Minecraft.getInstance().getTextureManager();
-
-        // Create a unique ResourceLocation
-        ResourceLocation textureLocation = new ResourceLocation(SimplyScreens.MOD_ID, "screen_image_" + imageFile.hashCode());
-        textureManager.register(textureLocation, dynamicTexture);  // Register the texture
-
-        return textureLocation;
+        return dynamicTexture.getPixels();
     }
 
-    private void renderScreenImage(ResourceLocation texture,
-                                   PoseStack poseStack,
-                                   MultiBufferSource bufferSource,
-                                   int packedOverlay) {
-        VertexConsumer vertexConsumer = bufferSource.getBuffer(RenderType.entityCutout(texture));
-        poseStack.pushPose();
-
+    private void renderTextureQuad(ResourceLocation texture, PoseStack poseStack,
+                                   MultiBufferSource bufferSource, int packedOverlay) {
+        VertexConsumer vertexBuffer = bufferSource.getBuffer(RenderType.entityCutout(texture));
         PoseStack.Pose pose = poseStack.last();
-        int fullBrightLight = 15728880;
 
-        // Define vertices for a unit quad centered at the origin
-        vertexConsumer.vertex(pose.pose(), -0.5f, 0.5f, 0)
+        buildTexturedQuad(vertexBuffer, pose, packedOverlay);
+        poseStack.popPose();
+    }
+
+    private void buildTexturedQuad(VertexConsumer consumer, PoseStack.Pose pose, int overlay) {
+        // Top-right vertex
+        consumer.vertex(pose.pose(), -0.5f, 0.5f, 0)
                 .color(255, 255, 255, 255)
                 .uv(1, 0)
-                .overlayCoords(packedOverlay)
-                .uv2(fullBrightLight)
+                .overlayCoords(overlay)
+                .uv2(FULL_BRIGHTNESS)
                 .normal(pose.normal(), 0, 0, 1)
                 .endVertex();
 
-        vertexConsumer.vertex(pose.pose(), 0.5f, 0.5f, 0)
+        // Top-left vertex
+        consumer.vertex(pose.pose(), 0.5f, 0.5f, 0)
                 .color(255, 255, 255, 255)
                 .uv(0, 0)
-                .overlayCoords(packedOverlay)
-                .uv2(fullBrightLight)
+                .overlayCoords(overlay)
+                .uv2(FULL_BRIGHTNESS)
                 .normal(pose.normal(), 0, 0, 1)
                 .endVertex();
 
-        vertexConsumer.vertex(pose.pose(), 0.5f, -0.5f, 0)
+        // Bottom-left vertex
+        consumer.vertex(pose.pose(), 0.5f, -0.5f, 0)
                 .color(255, 255, 255, 255)
                 .uv(0, 1)
-                .overlayCoords(packedOverlay)
-                .uv2(fullBrightLight)
+                .overlayCoords(overlay)
+                .uv2(FULL_BRIGHTNESS)
                 .normal(pose.normal(), 0, 0, 1)
                 .endVertex();
 
-        vertexConsumer.vertex(pose.pose(), -0.5f, -0.5f, 0)
+        // Bottom-right vertex
+        consumer.vertex(pose.pose(), -0.5f, -0.5f, 0)
                 .color(255, 255, 255, 255)
                 .uv(1, 1)
-                .overlayCoords(packedOverlay)
-                .uv2(fullBrightLight)
+                .overlayCoords(overlay)
+                .uv2(FULL_BRIGHTNESS)
                 .normal(pose.normal(), 0, 0, 1)
                 .endVertex();
+    }
 
-        poseStack.popPose();
+    // Shared texture loading implementation
+    private ResourceLocation loadWebTexture(URL url) throws IOException {
+        try (InputStream stream = url.openStream()) {
+            return createTextureResource(ImageIO.read(stream), url.toString());
+        }
+    }
+
+    private ResourceLocation loadLocalTexture(File file) throws IOException {
+        return createTextureResource(ImageIO.read(file), file.getName());
+    }
+
+    private ResourceLocation createTextureResource(BufferedImage image, String sourceId) throws IOException {
+        try (NativeImage nativeImage = convertToNativeImage(image)) {
+            DynamicTexture texture = new DynamicTexture(nativeImage);
+            ResourceLocation location = new ResourceLocation(
+                    SimplyScreens.MOD_ID,
+                    "screen_tex/" + sourceId.hashCode()
+            );
+
+            Minecraft.getInstance().getTextureManager().register(location, texture);
+            return location;
+        }
+    }
+
+    private NativeImage convertToNativeImage(BufferedImage image) {
+        NativeImage nativeImage = new NativeImage(image.getWidth(), image.getHeight(), false);
+        for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) {
+                int argb = image.getRGB(x, y);
+                nativeImage.setPixelRGBA(x, y, convertARGBtoABGR(argb));
+            }
+        }
+        return nativeImage;
+    }
+
+    private int convertARGBtoABGR(int argb) {
+        return (argb & 0xFF000000) |       // Alpha
+                ((argb & 0x00FF0000) >> 16) | // Blue
+                (argb & 0x0000FF00) |        // Green
+                ((argb & 0x000000FF) << 16);  // Red
     }
 
     @Override

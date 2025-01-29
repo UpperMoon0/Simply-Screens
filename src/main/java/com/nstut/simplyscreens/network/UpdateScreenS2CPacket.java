@@ -16,14 +16,16 @@ public class UpdateScreenS2CPacket {
     private final BlockPos anchorPos;
     private final int screenWidth;
     private final int screenHeight;
+    private final boolean maintainAspectRatio;
 
     // Constructor to initialize the packet with data
-    public UpdateScreenS2CPacket(BlockPos pos, String imagePath, BlockPos anchorPos, int screenWidth, int screenHeight) {
+    public UpdateScreenS2CPacket(BlockPos pos, String imagePath, BlockPos anchorPos, int screenWidth, int screenHeight, boolean maintainAspectRatio) {
         this.pos = pos;
         this.imagePath = imagePath;
         this.anchorPos = anchorPos;
         this.screenWidth = screenWidth;
         this.screenHeight = screenHeight;
+        this.maintainAspectRatio = maintainAspectRatio;
     }
 
     // Decoder to read the data from the buffer on the client side
@@ -33,6 +35,7 @@ public class UpdateScreenS2CPacket {
         this.anchorPos = buffer.readBoolean() ? buffer.readBlockPos() : null;
         this.screenWidth = buffer.readInt();
         this.screenHeight = buffer.readInt();
+        this.maintainAspectRatio = buffer.readBoolean();
     }
 
     // Method to encode the data into a buffer to be sent to the client
@@ -47,6 +50,7 @@ public class UpdateScreenS2CPacket {
         }
         buffer.writeInt(screenWidth);
         buffer.writeInt(screenHeight);
+        buffer.writeBoolean(maintainAspectRatio);
     }
 
     // Handler for processing the packet on the client side
@@ -63,6 +67,7 @@ public class UpdateScreenS2CPacket {
                     ((ScreenBlockEntity) blockEntity).setAnchorPos(anchorPos);
                     ((ScreenBlockEntity) blockEntity).setScreenWidth(screenWidth);
                     ((ScreenBlockEntity) blockEntity).setScreenHeight(screenHeight);
+                    ((ScreenBlockEntity) blockEntity).setMaintainAspectRatio(maintainAspectRatio);
                 }
             }
         });
