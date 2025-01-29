@@ -1,4 +1,4 @@
-package com.nstut.simplyscreens.client.renderer;
+package com.nstut.simplyscreens.client.renderers;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -49,10 +49,6 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         BlockState blockState = blockEntity.getBlockState();
         Direction direction = blockState.getValue(BlockStateProperties.HORIZONTAL_FACING);
 
-        // Get the screen dimensions
-        int width = blockEntity.getScreenWidth();
-        int height = blockEntity.getScreenHeight();
-
         // Get the imagePath and the mode (Local or Internet)
         String imagePath = blockEntity.getImagePath();
 
@@ -99,12 +95,23 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         // Translate to the front face of the block
         poseStack.translate(0, 0, -0.501);
 
-        // Scale the image to fit the block face while preserving the aspect ratio
-        float[] scaleFactors = getScaleFactors(texture, width, height);
+        // Get screen dimensions and facing direction
+        int screenWidth = blockEntity.getScreenWidth();
+        int screenHeight = blockEntity.getScreenHeight();
+
+        // Calculate the center of the screen structure
+        float centerX = -(screenWidth - 1) / 2f;
+        float centerY = (screenHeight - 1) / 2f;
+
+        // Translate to the center of the screen structure
+        poseStack.translate(centerX, centerY, 0);
+
+        // Scale the image to fit while preserving aspect ratio
+        float[] scaleFactors = getScaleFactors(texture, screenWidth, screenHeight);
         poseStack.scale(scaleFactors[0], scaleFactors[1], 1.0f);
 
-        // Render the image on the front face of the block
-        renderScreenImage(texture, poseStack, bufferSource, packedOverlay, width, height, scaleFactors[0], scaleFactors[1]);
+        // Render the image as a centered unit quad
+        renderScreenImage(texture, poseStack, bufferSource, packedOverlay);
 
         // Pop the PoseStack to restore the previous state
         poseStack.popPose();
@@ -143,13 +150,11 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         return textureLocation;
     }
 
-
     private float[] getScaleFactors(ResourceLocation texture, int width, int height) {
         TextureManager textureManager = Minecraft.getInstance().getTextureManager();
         DynamicTexture dynamicTexture = (DynamicTexture) textureManager.getTexture(texture);
 
         NativeImage nativeImage = dynamicTexture.getPixels();
-
         if (nativeImage == null) {
             return new float[]{1.0f, 1.0f};
         }
@@ -157,16 +162,19 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         int imageWidth = nativeImage.getWidth();
         int imageHeight = nativeImage.getHeight();
 
-        float aspectRatio = (float) imageWidth / imageHeight;
-        float scaleX = width;
-        float scaleY = height;
+        float imageAspect = (float) imageWidth / imageHeight;
+        float screenAspect = (float) width / height;
 
-        if (aspectRatio > 1) {
-            // Wider image, scale width to maxWidth and adjust height accordingly
-            scaleY = height / aspectRatio;
+        float scaleX, scaleY;
+
+        if (imageAspect > screenAspect) {
+            // Fit to screen width
+            scaleX = width;
+            scaleY = width / imageAspect;
         } else {
-            // Taller image, scale height to maxHeight and adjust width accordingly
-            scaleX = width * aspectRatio;
+            // Fit to screen height
+            scaleX = height * imageAspect;
+            scaleY = height;
         }
 
         return new float[]{scaleX, scaleY};
@@ -210,73 +218,51 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
     private void renderScreenImage(ResourceLocation texture,
                                    PoseStack poseStack,
                                    MultiBufferSource bufferSource,
-                                   int packedOverlay,
-                                   int screenWidth,
-                                   int screenHeight,
-                                   float imageScaleX,
-                                   float imageScaleY) {
+                                   int packedOverlay) {
         VertexConsumer vertexConsumer = bufferSource.getBuffer(RenderType.entityCutout(texture));
-        poseStack.last();
-        PoseStack.Pose pose;
-
-        // Apply full brightness light to keep the image unaffected by ambient lighting
-        int fullBrightLight = FULL_BRIGHT_LIGHT;
-
-        // Push the pose stack to apply transformations
         poseStack.pushPose();
 
-        // Apply scaling based on the desired dimensions
-        float scaleX = 1.0f / screenWidth;  // Normalize width
-        float scaleY = 1.0f / screenHeight; // Normalize height
-        poseStack.scale(scaleX, scaleY, 1.0f); // Apply uniform scaling for X and Y
+        PoseStack.Pose pose = poseStack.last();
+        int fullBrightLight = 15728880;
 
-        float xOffset = (screenWidth - imageScaleX) / 2;
-        float yOffset = (screenHeight - imageScaleY) / 2;
-
-        // Recompute pose after scaling
-        pose = poseStack.last();
-
-        // Define the vertices with scaled coordinates
-        vertexConsumer.vertex(pose.pose(), -screenWidth + 0.5f - xOffset, screenHeight - 0.5f + yOffset, 0)
+        // Define vertices for a unit quad centered at the origin
+        vertexConsumer.vertex(pose.pose(), -0.5f, 0.5f, 0)
                 .color(255, 255, 255, 255)
                 .uv(1, 0)
                 .overlayCoords(packedOverlay)
-                .uv2(fullBrightLight)  // Full bright light applied here
-                .normal(pose.normal(), 0, 0, 1)
-                .endVertex();
-        vertexConsumer.vertex(pose.pose(), 0.5f - xOffset, screenHeight - 0.5f + yOffset, 0)
-                .color(255, 255, 255, 255)
-                .uv(0, 0)
-                .overlayCoords(packedOverlay)
-                .uv2(fullBrightLight)  // Full bright light applied here
-                .normal(pose.normal(), 0, 0, 1)
-                .endVertex();
-        vertexConsumer.vertex(pose.pose(), 0.5f - xOffset, -0.5f + yOffset, 0)
-                .color(255, 255, 255, 255)
-                .uv(0, 1)
-                .overlayCoords(packedOverlay)
-                .uv2(fullBrightLight)  // Full bright light applied here
-                .normal(pose.normal(), 0, 0, 1)
-                .endVertex();
-        vertexConsumer.vertex(pose.pose(), -screenWidth + 0.5f - xOffset, -0.5f + yOffset, 0)
-                .color(255, 255, 255, 255)
-                .uv(1, 1)
-                .overlayCoords(packedOverlay)
-                .uv2(fullBrightLight)  // Full bright light applied here
+                .uv2(fullBrightLight)
                 .normal(pose.normal(), 0, 0, 1)
                 .endVertex();
 
-        // Restore the previous pose stack state
+        vertexConsumer.vertex(pose.pose(), 0.5f, 0.5f, 0)
+                .color(255, 255, 255, 255)
+                .uv(0, 0)
+                .overlayCoords(packedOverlay)
+                .uv2(fullBrightLight)
+                .normal(pose.normal(), 0, 0, 1)
+                .endVertex();
+
+        vertexConsumer.vertex(pose.pose(), 0.5f, -0.5f, 0)
+                .color(255, 255, 255, 255)
+                .uv(0, 1)
+                .overlayCoords(packedOverlay)
+                .uv2(fullBrightLight)
+                .normal(pose.normal(), 0, 0, 1)
+                .endVertex();
+
+        vertexConsumer.vertex(pose.pose(), -0.5f, -0.5f, 0)
+                .color(255, 255, 255, 255)
+                .uv(1, 1)
+                .overlayCoords(packedOverlay)
+                .uv2(fullBrightLight)
+                .normal(pose.normal(), 0, 0, 1)
+                .endVertex();
+
         poseStack.popPose();
     }
 
     @Override
-    public boolean shouldRenderOffScreen(@NotNull ScreenBlockEntity blockEntity) {
-        return true;
-    }
-
-    @Override
     public int getViewDistance() {
-        return 512;
+        return 128;
     }
 }

@@ -32,11 +32,6 @@ public class ScreenBlockEntity extends BlockEntity {
         anchorPos = pos;
     }
 
-    public void toggleMode() {
-        updateClients();
-        setChanged();
-    }
-
     public void updateFromScreenInputs(String imagePath) {
         this.imagePath = imagePath;
         updateClients();
@@ -276,7 +271,7 @@ public class ScreenBlockEntity extends BlockEntity {
         return worldPosition.relative(perpendicular, bestRight).above(bestUp);
     }
 
-    private Direction getPerpendicular(Direction facing) {
+    public Direction getPerpendicular(Direction facing) {
         return switch (facing) {
             case NORTH -> Direction.WEST;
             case SOUTH -> Direction.EAST;
@@ -292,7 +287,6 @@ public class ScreenBlockEntity extends BlockEntity {
         }
 
         if (isAnchor()) {
-            LOGGER.info("Anchor block broken at " + worldPosition);
             if (screenWidth == 1 && screenHeight == 1) {
                 return;
             }

@@ -2,7 +2,7 @@ package com.nstut.simplyscreens.client;
 
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.BlockEntityRegistries;
-import com.nstut.simplyscreens.client.renderer.ScreenBlockEntityRenderer;
+import com.nstut.simplyscreens.client.renderers.ScreenBlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
