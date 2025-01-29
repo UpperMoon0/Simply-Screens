@@ -1,6 +1,6 @@
-package com.nstut.simply_screens.network;
+package com.nstut.simplyscreens.network;
 
-import com.nstut.simply_screens.blocks.entities.ScreenBlockEntity;
+import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;

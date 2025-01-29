@@ -1,8 +1,8 @@
-package com.nstut.simply_screens.blocks.entities;
+package com.nstut.simplyscreens.blocks.entities;
 
-import com.nstut.simply_screens.blocks.ScreenBlock;
-import com.nstut.simply_screens.network.PacketRegistries;
-import com.nstut.simply_screens.network.UpdateScreenS2CPacket;
+import com.nstut.simplyscreens.blocks.ScreenBlock;
+import com.nstut.simplyscreens.network.PacketRegistries;
+import com.nstut.simplyscreens.network.UpdateScreenS2CPacket;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.core.BlockPos;

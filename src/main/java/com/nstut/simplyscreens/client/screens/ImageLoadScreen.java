@@ -1,10 +1,10 @@
-package com.nstut.simply_screens.client.screens;
+package com.nstut.simplyscreens.client.screens;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.nstut.simply_screens.SimplyScreens;
-import com.nstut.simply_screens.blocks.entities.ScreenBlockEntity;
-import com.nstut.simply_screens.network.PacketRegistries;
-import com.nstut.simply_screens.network.UpdateScreenC2SPacket;
+import com.nstut.simplyscreens.SimplyScreens;
+import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
+import com.nstut.simplyscreens.network.PacketRegistries;
+import com.nstut.simplyscreens.network.UpdateScreenC2SPacket;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.core.BlockPos;
@@ -17,9 +17,9 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.logging.Logger;
 
-public class ImageUploadScreen extends Screen {
+public class ImageLoadScreen extends Screen {
 
-    private static final Logger LOGGER = Logger.getLogger(ImageUploadScreen.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(ImageLoadScreen.class.getName());
     private static final ResourceLocation BACKGROUND_TEXTURE = new ResourceLocation(SimplyScreens.MOD_ID, "textures/gui/screen.png");
 
     private static final int SCREEN_WIDTH = 162;
@@ -29,7 +29,7 @@ public class ImageUploadScreen extends Screen {
     private final BlockPos blockEntityPos;
     private String initialImagePath;
 
-    public ImageUploadScreen(BlockPos blockEntityPos) {
+    public ImageLoadScreen(BlockPos blockEntityPos) {
         super(Component.literal("Image Upload Screen"));
         this.blockEntityPos = blockEntityPos;
     }

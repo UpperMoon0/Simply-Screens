@@ -1,4 +1,4 @@
-package com.nstut.simply_screens.network;
+package com.nstut.simplyscreens.network;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkDirection;
@@ -16,7 +16,7 @@ public class PacketRegistries {
 
     public static void register() {
         SimpleChannel net = NetworkRegistry.ChannelBuilder
-                .named(new ResourceLocation("biotech", "messages"))
+                .named(new ResourceLocation("simplyscreens", "messages"))
                 .networkProtocolVersion(() -> "1.0")
                 .clientAcceptedVersions(s -> true)
                 .serverAcceptedVersions(s -> true)

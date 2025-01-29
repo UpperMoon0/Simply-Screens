@@ -1,11 +1,11 @@
-package com.nstut.simply_screens.client.renderer;
+package com.nstut.simplyscreens.client.renderer;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
-import com.nstut.simply_screens.SimplyScreens;
-import com.nstut.simply_screens.blocks.entities.ScreenBlockEntity;
+import com.nstut.simplyscreens.SimplyScreens;
+import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;

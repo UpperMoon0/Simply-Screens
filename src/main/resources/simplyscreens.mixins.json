@@ -1,7 +1,7 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "org.nstut.simplyscreens.mixin",
+  "package": "com.nstut.simplyscreens.mixins",
   "compatibilityLevel": "JAVA_8",
   "refmap": "simplyscreens.refmap.json",
   "mixins": [
