@@ -388,12 +388,16 @@ public class ScreenBlockEntity extends BlockEntity {
             case SOUTH -> Direction.EAST;
             case WEST -> Direction.SOUTH;
             case EAST -> Direction.NORTH;
-            case UP, DOWN -> Direction.NORTH;
+            case UP, DOWN -> Direction.WEST; // Changed from NORTH to WEST
         };
     }
 
     public void checkIfAnchorWasRemoved() {
         if (level == null || level.isClientSide || !isAnchor()) return;
+
+        // Immediate structure update before promotion
+        updateScreenStructure();
+
         if (screenWidth == 1 && screenHeight == 1) return;
 
         Direction facing = getBlockState().getValue(ScreenBlock.FACING);
@@ -401,21 +405,48 @@ public class ScreenBlockEntity extends BlockEntity {
 
         BlockEntity newAnchorBe = level.getBlockEntity(newAnchorPos);
         if (newAnchorBe instanceof ScreenBlockEntity newAnchor) {
-            // Transfer image settings to the new anchor
-            newAnchor.updateScreen(this.imagePath, this.screenWidth, this.screenHeight, newAnchorPos, this.maintainAspectRatio);
-            // Update all children in the original structure to point to the new anchor
-            updateChildrenToNewAnchor(newAnchorPos, facing);
-            // Force the new anchor to update its structure immediately
+            // Force immediate update of new anchor
             newAnchor.updateScreenStructure();
+            newAnchor.updateScreen(this.imagePath, this.screenWidth, this.screenHeight, newAnchorPos, this.maintainAspectRatio);
+
+            // Update children immediately
+            updateChildrenToNewAnchor(newAnchorPos, facing);
+
+            // Force render updates
+            newAnchor.markForRenderUpdate();
         }
+
+        // Immediately update network sync
+        PacketRegistries.sendToClients(new UpdateScreenS2CPacket(
+                newAnchorPos,
+                imagePath,
+                newAnchorPos,
+                screenWidth,
+                screenHeight,
+                maintainAspectRatio
+        ));
     }
 
     private BlockPos determineNewAnchorPosition(Direction facing) {
         boolean promoteVertical = (screenWidth * (screenHeight - 1)) > ((screenWidth - 1) * screenHeight);
+
         if (promoteVertical) {
-            return worldPosition.above();
+            if (facing.getAxis().isHorizontal()) {
+                // Horizontal facing: promote upwards (Y-axis)
+                return worldPosition.above();
+            } else {
+                // Vertical facing: promote along height direction (SOUTH for UP, NORTH for DOWN)
+                Direction heightDir = (facing == Direction.UP) ? Direction.SOUTH : Direction.NORTH;
+                return worldPosition.relative(heightDir);
+            }
         } else {
-            return worldPosition.relative(getPerpendicularDirection(facing));
+            if (facing.getAxis().isHorizontal()) {
+                // Horizontal facing: promote along perpendicular direction
+                return worldPosition.relative(getPerpendicularDirection(facing));
+            } else {
+                // Vertical facing: promote along width direction (WEST)
+                return worldPosition.relative(Direction.WEST);
+            }
         }
     }
 
@@ -432,6 +463,10 @@ public class ScreenBlockEntity extends BlockEntity {
                     child.setAnchorPos(newAnchorPos);
                     child.setChanged();
                     child.updateClients();
+
+                    // Force immediate block update
+                    child.markForRenderUpdate();
+                    level.sendBlockUpdated(childPos, child.getBlockState(), child.getBlockState(), Block.UPDATE_ALL);
                 }
             }
         }
