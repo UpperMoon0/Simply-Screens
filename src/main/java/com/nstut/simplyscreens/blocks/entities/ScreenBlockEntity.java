@@ -188,7 +188,7 @@ public class ScreenBlockEntity extends BlockEntity {
                 }
             }
         } else {
-            // Vertical facing (up/down) 
+            // Vertical facing (up/down)
             if (facing == Direction.UP) {
                 int width = worldPosition.getX() - farCorner.getX();
                 int height = farCorner.getZ() - worldPosition.getZ();
