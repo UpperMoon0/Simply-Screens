@@ -28,13 +28,12 @@ import net.minecraft.world.phys.BlockHitResult;
 
 public class ScreenBlock extends Block implements EntityBlock {
 
-    public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
+    public static final DirectionProperty FACING = DirectionProperty.create("facing", Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST, Direction.UP, Direction.DOWN);
     public static final IntegerProperty STATE = IntegerProperty.create("state", 0, 2);
 
-    // Define constants for the states
-    public static final int STATE_CHILD = 0;   // Represents a "Child" block
-    public static final int STATE_ANCHOR = 1;  // Represents an "Anchor" block
-    public static final int STATE_ERROR = 2;  // Represents a "Broken" block
+    public static final int STATE_CHILD = 0;
+    public static final int STATE_ANCHOR = 1;
+    public static final int STATE_ERROR = 2;
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
@@ -42,7 +41,7 @@ public class ScreenBlock extends Block implements EntityBlock {
         super(BlockBehaviour.Properties.copy(Blocks.IRON_BLOCK).noOcclusion());
         this.registerDefaultState(this.stateDefinition.any()
                 .setValue(FACING, Direction.NORTH)
-                .setValue(STATE, STATE_ANCHOR)); // Default to Anchor
+                .setValue(STATE, STATE_ANCHOR));
     }
 
     @Override
@@ -53,8 +52,8 @@ public class ScreenBlock extends Block implements EntityBlock {
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         return this.defaultBlockState()
-                .setValue(FACING, context.getHorizontalDirection().getOpposite())
-                .setValue(STATE, STATE_ANCHOR); // Set as Anchor when placed
+                .setValue(FACING, context.getNearestLookingDirection().getOpposite())
+                .setValue(STATE, STATE_ANCHOR);
     }
 
     @SuppressWarnings("deprecation")
@@ -71,14 +70,12 @@ public class ScreenBlock extends Block implements EntityBlock {
     @SuppressWarnings("deprecation")
     @Override
     public @NotNull InteractionResult use(@NotNull BlockState state, Level level, @NotNull BlockPos pos, @NotNull Player player, @NotNull InteractionHand hand, @NotNull BlockHitResult hit) {
-        // Open the ImageUploadScreen when the player interacts with the block
         if (level.isClientSide) {
             Minecraft.getInstance().setScreen(new ImageLoadScreen(pos));
         }
         return InteractionResult.SUCCESS;
     }
 
-    // This method adds the BlockEntityTicker to the block entity
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, @NotNull BlockState state, @NotNull BlockEntityType<T> blockEntityType) {
         return level.isClientSide ? null : (lvl, pos, blockState, blockEntity) -> {
@@ -86,18 +83,5 @@ public class ScreenBlock extends Block implements EntityBlock {
                 screenBlockEntity.tick();
             }
         };
-    }
-
-    /**
-     * Helper method to change the state of the block.
-     */
-    public void setBlockState(Level level, BlockPos pos, int newState) {
-        BlockState currentState = level.getBlockState(pos);
-        if (currentState.getBlock() instanceof ScreenBlock &&
-                (newState == STATE_CHILD || newState == STATE_ANCHOR || newState == STATE_ERROR)) {
-            level.setBlock(pos, currentState.setValue(STATE, newState), 3);
-        } else {
-            LOGGER.warn("Invalid state change attempted for block at {}: {}", pos, newState);
-        }
     }
 }

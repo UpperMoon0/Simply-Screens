@@ -34,7 +34,7 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
     private static final Logger LOGGER = Logger.getLogger(ScreenBlockEntityRenderer.class.getName());
     private static final Map<String, ResourceLocation> TEXTURE_CACHE = new HashMap<>();
     private static final int FULL_BRIGHTNESS = 15728880;
-    private static final float FRONT_OFFSET = -0.501f;
+    private static final float BASE_OFFSET = 0.501f;
 
     public ScreenBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
     }
@@ -45,7 +45,7 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         if (!shouldRender(blockEntity)) return;
 
         BlockState blockState = blockEntity.getBlockState();
-        Direction facing = blockState.getValue(BlockStateProperties.HORIZONTAL_FACING);
+        Direction facing = blockState.getValue(BlockStateProperties.FACING);
         String imagePath = blockEntity.getImagePath();
 
         ResourceLocation texture = getOrLoadTexture(imagePath);
@@ -53,6 +53,80 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
 
         prepareRenderingTransform(poseStack, blockEntity, facing);
         renderTextureQuad(texture, poseStack, bufferSource, packedOverlay);
+    }
+
+    @Override
+    public int getViewDistance() {
+        return 128;
+    }
+
+    private void prepareRenderingTransform(PoseStack poseStack, ScreenBlockEntity blockEntity, Direction facing) {
+        poseStack.pushPose();
+
+        // Center on block
+        poseStack.translate(0.5, 0.5, 0.5);
+
+        // Apply facing rotation
+        applyFacingRotation(poseStack, facing);
+
+        // Move to front face with direction-aware offset
+        float frontOffset = calculateFrontOffset(facing);
+        poseStack.translate(0, 0, frontOffset);
+
+        // Adjust for screen structure size
+        centerOnScreenStructure(poseStack, blockEntity, facing);
+
+        // Apply aspect ratio scaling
+        applyAspectRatioScaling(poseStack, blockEntity);
+    }
+
+    private float calculateFrontOffset(Direction facing) {
+        return switch (facing) {
+            case NORTH, SOUTH -> -BASE_OFFSET;
+            default -> BASE_OFFSET;
+        };
+    }
+
+    private void applyFacingRotation(PoseStack poseStack, Direction facing) {
+        switch (facing) {
+            case SOUTH:
+                poseStack.mulPose(Axis.YP.rotationDegrees(180));
+                break;
+            case WEST:
+                poseStack.mulPose(Axis.YP.rotationDegrees(270));
+                poseStack.scale(-1, 1, 1);
+                break;
+            case EAST:
+                poseStack.mulPose(Axis.YP.rotationDegrees(90));
+                poseStack.scale(-1, 1, 1);
+                break;
+            case UP:
+                poseStack.mulPose(Axis.XP.rotationDegrees(270));
+                poseStack.scale(1, -1, 1);
+                break;
+            case DOWN:
+                poseStack.mulPose(Axis.XP.rotationDegrees(90));
+                poseStack.scale(1, -1, 1);
+                break;
+            // NORTH: no rotation needed
+        }
+    }
+
+    private void centerOnScreenStructure(PoseStack poseStack, ScreenBlockEntity blockEntity, Direction facing) {
+        float centerX;
+        float centerY;
+
+        if (facing.getAxis().isHorizontal()) {
+            // Horizontal screen: width is along x or z, height is vertical (y-axis)
+            centerX = -(blockEntity.getScreenWidth() - 1) / 2f;
+            centerY = (blockEntity.getScreenHeight() - 1) / 2f;
+        } else {
+            // Vertical screens (UP/DOWN): width is x-axis, height is z-axis
+            centerX = -(blockEntity.getScreenWidth() - 1) / 2f;
+            centerY = (blockEntity.getScreenHeight() - 1) / 2f;
+        }
+
+        poseStack.translate(centerX, centerY, 0);
     }
 
     private boolean shouldRender(ScreenBlockEntity blockEntity) {
@@ -82,41 +156,6 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         return path.startsWith("http://") || path.startsWith("https://");
     }
 
-    private void prepareRenderingTransform(PoseStack poseStack, ScreenBlockEntity blockEntity, Direction facing) {
-        poseStack.pushPose();
-
-        // Center on block
-        poseStack.translate(0.5, 0.5, 0.5);
-
-        // Apply facing rotation
-        applyFacingRotation(poseStack, facing);
-
-        // Move to front face
-        poseStack.translate(0, 0, FRONT_OFFSET);
-
-        // Adjust for screen structure size
-        centerOnScreenStructure(poseStack, blockEntity);
-
-        // Apply aspect ratio scaling
-        applyAspectRatioScaling(poseStack, blockEntity);
-    }
-
-    private void applyFacingRotation(PoseStack poseStack, Direction facing) {
-        float rotation = switch (facing) {
-            case SOUTH -> 180;
-            case WEST -> 90;
-            case EAST -> -90;
-            default -> 0; // NORTH
-        };
-        poseStack.mulPose(Axis.YP.rotationDegrees(rotation));
-    }
-
-    private void centerOnScreenStructure(PoseStack poseStack, ScreenBlockEntity blockEntity) {
-        float centerX = -(blockEntity.getScreenWidth() - 1) / 2f;
-        float centerY = (blockEntity.getScreenHeight() - 1) / 2f;
-        poseStack.translate(centerX, centerY, 0);
-    }
-
     private void applyAspectRatioScaling(PoseStack poseStack, ScreenBlockEntity blockEntity) {
         ResourceLocation texture = TEXTURE_CACHE.get(blockEntity.getImagePath());
         if (texture == null) return;
@@ -143,8 +182,8 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         float screenAspect = (float) width / height;
 
         return imageAspect > screenAspect ?
-                new float[]{width, width / imageAspect} :  // Width-constrained
-                new float[]{height * imageAspect, height}; // Height-constrained
+                new float[]{width, width / imageAspect} :
+                new float[]{height * imageAspect, height};
     }
 
     private NativeImage getTextureImage(ResourceLocation texture) {
@@ -213,7 +252,7 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         return createTextureResource(ImageIO.read(file), file.getName());
     }
 
-    private ResourceLocation createTextureResource(BufferedImage image, String sourceId) throws IOException {
+    private ResourceLocation createTextureResource(BufferedImage image, String sourceId) {
         try (NativeImage nativeImage = convertToNativeImage(image)) {
             DynamicTexture texture = new DynamicTexture(nativeImage);
             ResourceLocation location = new ResourceLocation(
@@ -238,14 +277,9 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
     }
 
     private int convertARGBtoABGR(int argb) {
-        return (argb & 0xFF000000) |       // Alpha
-                ((argb & 0x00FF0000) >> 16) | // Blue
-                (argb & 0x0000FF00) |        // Green
-                ((argb & 0x000000FF) << 16);  // Red
-    }
-
-    @Override
-    public int getViewDistance() {
-        return 128;
+        return (argb & 0xFF000000) |
+                ((argb & 0x00FF0000) >> 16) |
+                (argb & 0x0000FF00) |
+                ((argb & 0x000000FF) << 16);
     }
 }
