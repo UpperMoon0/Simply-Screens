@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
+import com.nstut.simplyscreens.Config;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -57,7 +58,7 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
 
     @Override
     public int getViewDistance() {
-        return 128;
+        return Config.VIEW_DISTANCE.get();
     }
 
     private void prepareRenderingTransform(PoseStack poseStack, ScreenBlockEntity blockEntity, Direction facing) {
@@ -157,16 +158,15 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
     }
 
     private void applyAspectRatioScaling(PoseStack poseStack, ScreenBlockEntity blockEntity) {
+        // Get fresh values directly from block entity
+        int width = blockEntity.getScreenWidth();
+        int height = blockEntity.getScreenHeight();
+        boolean maintainAspect = blockEntity.isMaintainAspectRatio();
+
         ResourceLocation texture = TEXTURE_CACHE.get(blockEntity.getImagePath());
         if (texture == null) return;
 
-        float[] scales = calculateScalingFactors(
-                texture,
-                blockEntity.getScreenWidth(),
-                blockEntity.getScreenHeight(),
-                blockEntity.isMaintainAspectRatio()
-        );
-
+        float[] scales = calculateScalingFactors(texture, width, height, maintainAspect);
         poseStack.scale(scales[0], scales[1], 1.0f);
     }
 

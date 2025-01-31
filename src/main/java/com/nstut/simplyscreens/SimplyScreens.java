@@ -1,12 +1,15 @@
 package com.nstut.simplyscreens;
 
 import com.mojang.logging.LogUtils;
+import com.nstut.simplyscreens.blocks.ScreenBlock;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simplyscreens.client.ClientSetup;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
@@ -25,7 +28,6 @@ import com.nstut.simplyscreens.creative_tabs.CreativeTabRegistries;
 import com.nstut.simplyscreens.items.ItemRegistries;
 import org.slf4j.Logger;
 
-// The value here should match an entry in the META-INF/mods.toml file
 @Mod(SimplyScreens.MOD_ID)
 public class SimplyScreens {
 
@@ -37,7 +39,7 @@ public class SimplyScreens {
     public SimplyScreens(FMLJavaModLoadingContext context) {
         IEventBus modEventBus = context.getModEventBus();
 
-        // Register the commonSetup method for modloading
+        // Register the commonSetup method for mod loading
         modEventBus.addListener(this::commonSetup);
         MinecraftForge.EVENT_BUS.addListener(ClientSetup::setup);
 
@@ -75,7 +77,52 @@ public class SimplyScreens {
 
         BlockEntity blockEntity = level.getBlockEntity(pos);
         if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
-            screenBlockEntity.onRemoved();
+            screenBlockEntity.checkIfAnchorWasRemoved();
+        }
+
+        // Notify neighboring screen structures to update
+        for (Direction direction : Direction.values()) {
+            BlockPos neighborPos = pos.relative(direction);
+            BlockEntity neighborBe = level.getBlockEntity(neighborPos);
+            if (neighborBe instanceof ScreenBlockEntity neighborScreen) {
+                BlockPos anchorPos = neighborScreen.getAnchorPos();
+                if (anchorPos != null) {
+                    BlockEntity anchorBe = level.getBlockEntity(anchorPos);
+                    if (anchorBe instanceof ScreenBlockEntity anchor && anchor.isAnchor()) {
+                        anchor.updateScreenStructure();
+                    }
+                }
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public void onBlockPlaced(BlockEvent.EntityPlaceEvent event) {
+        BlockState placedBlock = event.getPlacedBlock();
+        if (!(placedBlock.getBlock() instanceof ScreenBlock)) {
+            return;
+        }
+
+        Level level = (Level) event.getLevel();
+        BlockPos pos = event.getPos();
+
+        if (level.isClientSide()) {
+            return;
+        }
+
+        // Check all neighboring blocks for existing screen structures
+        for (Direction direction : Direction.values()) {
+            BlockPos neighborPos = pos.relative(direction);
+            BlockEntity neighborBe = level.getBlockEntity(neighborPos);
+            if (neighborBe instanceof ScreenBlockEntity neighborScreen) {
+                BlockPos anchorPos = neighborScreen.getAnchorPos();
+                if (anchorPos != null) {
+                    BlockEntity anchorBe = level.getBlockEntity(anchorPos);
+                    if (anchorBe instanceof ScreenBlockEntity anchor && anchor.isAnchor()) {
+                        anchor.updateScreenStructure(); // Trigger structure update
+                    }
+                }
+            }
         }
     }
 
