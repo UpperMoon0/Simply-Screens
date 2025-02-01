@@ -76,22 +76,16 @@ public class SimplyScreens {
         BlockPos pos = event.getPos();
 
         BlockEntity blockEntity = level.getBlockEntity(pos);
-        if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
-            screenBlockEntity.checkIfAnchorWasRemoved();
+        if (blockEntity instanceof ScreenBlockEntity screenBlockEntity && screenBlockEntity.isAnchor()) {
+            screenBlockEntity.findNewAnchor();
         }
 
         // Notify neighboring screen structures to update
         for (Direction direction : Direction.values()) {
             BlockPos neighborPos = pos.relative(direction);
             BlockEntity neighborBe = level.getBlockEntity(neighborPos);
-            if (neighborBe instanceof ScreenBlockEntity neighborScreen) {
-                BlockPos anchorPos = neighborScreen.getAnchorPos();
-                if (anchorPos != null) {
-                    BlockEntity anchorBe = level.getBlockEntity(anchorPos);
-                    if (anchorBe instanceof ScreenBlockEntity anchor && anchor.isAnchor()) {
-                        anchor.updateScreenStructure();
-                    }
-                }
+            if (neighborBe instanceof ScreenBlockEntity screenBe) {
+                screenBe.onNeighborRemoved();
             }
         }
     }
@@ -115,13 +109,7 @@ public class SimplyScreens {
             BlockPos neighborPos = pos.relative(direction);
             BlockEntity neighborBe = level.getBlockEntity(neighborPos);
             if (neighborBe instanceof ScreenBlockEntity neighborScreen) {
-                BlockPos anchorPos = neighborScreen.getAnchorPos();
-                if (anchorPos != null) {
-                    BlockEntity anchorBe = level.getBlockEntity(anchorPos);
-                    if (anchorBe instanceof ScreenBlockEntity anchor && anchor.isAnchor()) {
-                        anchor.updateScreenStructure(); // Trigger structure update
-                    }
-                }
+                neighborScreen.onNeighborPlaced(pos, direction.getOpposite());
             }
         }
     }

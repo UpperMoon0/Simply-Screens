@@ -16,6 +16,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.logging.Logger;
+import java.util.stream.IntStream;
 
 @Setter
 @Getter
@@ -104,7 +105,6 @@ public class ScreenBlockEntity extends BlockEntity {
         this.imagePath = imagePath;
         this.maintainAspectRatio = maintainAspectRatio;
         updateClients();
-        setChanged();
     }
 
     public void updateScreen(String imagePath, int width, int height, BlockPos anchor, boolean maintainAspect) {
@@ -117,7 +117,6 @@ public class ScreenBlockEntity extends BlockEntity {
         this.maintainAspectRatio = maintainAspect;
 
         updateClients();
-        setChanged();
 
         if (getBlockState().getBlock() instanceof ScreenBlock) {
             BlockState newState = getBlockState().setValue(
@@ -165,9 +164,9 @@ public class ScreenBlockEntity extends BlockEntity {
     private void updateChildScreens(BlockPos farCorner, Direction facing) {
         if (level == null || level.isClientSide) return;
 
-        if (facing.getAxis().isHorizontal()) {
+        if (isHorizontal(facing)) {
             // Existing horizontal logic unchanged
-            Direction perpendicular = getPerpendicularDirection(facing);
+            Direction widthDirection = getWidthDirection(facing);
             int horizontalExtent = facing.getAxis() == Direction.Axis.Z ?
                     Math.abs(farCorner.getX() - worldPosition.getX()) :
                     Math.abs(farCorner.getZ() - worldPosition.getZ());
@@ -176,7 +175,7 @@ public class ScreenBlockEntity extends BlockEntity {
 
             for (int i = 0; i <= horizontalExtent; i++) {
                 for (int j = 0; j <= verticalExtent; j++) {
-                    BlockPos currentPos = worldPosition.relative(perpendicular, i).above(j);
+                    BlockPos currentPos = worldPosition.relative(widthDirection, i).above(j);
                     BlockEntity be = level.getBlockEntity(currentPos);
 
                     if (be instanceof ScreenBlockEntity childEntity && !currentPos.equals(worldPosition)) {
@@ -215,6 +214,10 @@ public class ScreenBlockEntity extends BlockEntity {
         }
     }
 
+    private static boolean isHorizontal(Direction facing) {
+        return facing.getAxis().isHorizontal();
+    }
+
     private void updateChildAtPosition(BlockPos currentPos) {
         if (level == null || level.isClientSide) return;
 
@@ -228,7 +231,7 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     private void calculateScreenDimensions(Direction facing, BlockPos farCorner) {
-        if (facing.getAxis().isHorizontal()) {
+        if (isHorizontal(facing)) {
             screenWidth = facing.getAxis() == Direction.Axis.Z ?
                     Math.abs(farCorner.getX() - worldPosition.getX()) + 1 :
                     Math.abs(farCorner.getZ() - worldPosition.getZ()) + 1;
@@ -244,10 +247,10 @@ public class ScreenBlockEntity extends BlockEntity {
     private BlockPos calculateStructureBounds(Direction facing) {
         if (level == null || level.isClientSide) return null;
 
-        if (facing.getAxis().isHorizontal()) {
+        if (isHorizontal(facing)) {
             // Existing horizontal facing logic unchanged
-            Direction perpendicular = getPerpendicularDirection(facing);
-            int maxHorizontal = findMaxExtension(perpendicular);
+            Direction widthDirection = getWidthDirection(facing);
+            int maxHorizontal = findMaxExtension(widthDirection);
             int maxVertical = findMaxExtension(Direction.UP);
 
             int bestWidth = 0;
@@ -255,7 +258,7 @@ public class ScreenBlockEntity extends BlockEntity {
 
             for (int w = 0; w <= maxHorizontal; w++) {
                 for (int h = 0; h <= maxVertical; h++) {
-                    if (isValidStructureHorizontal(w, h, perpendicular)) {
+                    if (isValidHorizontalStructure(w, h, widthDirection)) {
                         if ((w + 1) * (h + 1) > (bestWidth + 1) * (bestHeight + 1)) {
                             bestWidth = w;
                             bestHeight = h;
@@ -264,7 +267,7 @@ public class ScreenBlockEntity extends BlockEntity {
                 }
             }
 
-            return worldPosition.relative(perpendicular, bestWidth).above(bestHeight);
+            return worldPosition.relative(widthDirection, bestWidth).above(bestHeight);
         } else {
             // Vertical facing (up/down)
             if (facing == Direction.UP) {
@@ -277,7 +280,7 @@ public class ScreenBlockEntity extends BlockEntity {
 
                 for (int w = 0; w <= maxWest; w++) {
                     for (int h = 0; h <= maxSouth; h++) {
-                        if (isValidStructureVertical(w, h, Direction.SOUTH)) {
+                        if (isValidVerticalStructure(w, h, Direction.SOUTH)) {
                             if ((w + 1) * (h + 1) > (bestWidth + 1) * (bestHeight + 1)) {
                                 bestWidth = w;
                                 bestHeight = h;
@@ -296,7 +299,7 @@ public class ScreenBlockEntity extends BlockEntity {
 
                 for (int w = 0; w <= maxWest; w++) {
                     for (int h = 0; h <= maxNorth; h++) {
-                        if (isValidStructureVertical(w, h, Direction.NORTH)) {
+                        if (isValidVerticalStructure(w, h, Direction.NORTH)) {
                             if ((w + 1) * (h + 1) > (bestWidth + 1) * (bestHeight + 1)) {
                                 bestWidth = w;
                                 bestHeight = h;
@@ -309,36 +312,28 @@ public class ScreenBlockEntity extends BlockEntity {
         }
     }
 
-    private boolean isValidStructureHorizontal(int width, int height, Direction direction) {
+    private boolean isValidHorizontalStructure(int width, int height, Direction direction) {
         if (level == null || level.isClientSide) return false;
 
-        for (int i = 0; i <= width; i++) {
-            for (int j = 0; j <= height; j++) {
-                BlockPos checkPos = worldPosition.relative(direction, i).above(j);
-
-                if (!checkPos.equals(worldPosition) &&
-                        !(level.getBlockEntity(checkPos) instanceof ScreenBlockEntity)) {
-                    return false;
-                }
-            }
-        }
-        return true;
+        return IntStream.rangeClosed(0, width)
+                .allMatch(i -> IntStream.rangeClosed(0, height)
+                        .allMatch(j -> {
+                            BlockPos checkPos = worldPosition.relative(direction, i).above(j);
+                            return checkPos.equals(worldPosition) || (level.getBlockEntity(checkPos) instanceof ScreenBlockEntity);
+                        }));
     }
 
-    private boolean isValidStructureVertical(int width, int height, Direction heightDir) {
+    private boolean isValidVerticalStructure(int width, int height, Direction heightDir) {
         if (level == null) return false;
 
-        for (int w = 0; w <= width; w++) {
-            for (int h = 0; h <= height; h++) {
-                BlockPos checkPos = worldPosition.relative(Direction.WEST, w).relative(heightDir, h);
-                if (!checkPos.equals(worldPosition) &&
-                        !(level.getBlockEntity(checkPos) instanceof ScreenBlockEntity)) {
-                    return false;
-                }
-            }
-        }
-        return true;
+        return IntStream.rangeClosed(0, width)
+                .allMatch(w -> IntStream.rangeClosed(0, height)
+                        .allMatch(h -> {
+                            BlockPos checkPos = worldPosition.relative(Direction.WEST, w).relative(heightDir, h);
+                            return checkPos.equals(worldPosition) || (level.getBlockEntity(checkPos) instanceof ScreenBlockEntity);
+                        }));
     }
+
 
     private int findMaxExtension(Direction direction) {
         if (level == null) return 0;
@@ -359,11 +354,11 @@ public class ScreenBlockEntity extends BlockEntity {
 
         BlockEntity be = level.getBlockEntity(anchorPos);
         if (!(be instanceof ScreenBlockEntity anchorEntity) || !anchorEntity.isAnchor()) {
-            resetToDefaultState();
+            switchToErrorState();
         }
     }
 
-    private void resetToDefaultState() {
+    private void switchToErrorState() {
         if (level == null) return;
 
         imagePath = "";
@@ -382,7 +377,7 @@ public class ScreenBlockEntity extends BlockEntity {
         return anchorPos != null && anchorPos.equals(worldPosition);
     }
 
-    private static Direction getPerpendicularDirection(Direction facing) {
+    private static Direction getWidthDirection(Direction facing) {
         return switch (facing) {
             case NORTH -> Direction.WEST;
             case SOUTH -> Direction.EAST;
@@ -392,8 +387,12 @@ public class ScreenBlockEntity extends BlockEntity {
         };
     }
 
-    public void checkIfAnchorWasRemoved() {
-        if (level == null || level.isClientSide || !isAnchor()) return;
+    private static Direction getHeightDirection(Direction facing) {
+        return isHorizontal(facing) ? Direction.UP : facing == Direction.UP ? Direction.SOUTH : Direction.NORTH;
+    }
+
+    public void findNewAnchor() {
+        if (level == null || level.isClientSide) return;
 
         // Immediate structure update before promotion
         updateScreenStructure();
@@ -401,7 +400,7 @@ public class ScreenBlockEntity extends BlockEntity {
         if (screenWidth == 1 && screenHeight == 1) return;
 
         Direction facing = getBlockState().getValue(ScreenBlock.FACING);
-        BlockPos newAnchorPos = determineNewAnchorPosition(facing);
+        BlockPos newAnchorPos = findNewAnchorPosition(facing);
 
         BlockEntity newAnchorBe = level.getBlockEntity(newAnchorPos);
         if (newAnchorBe instanceof ScreenBlockEntity newAnchor) {
@@ -427,26 +426,13 @@ public class ScreenBlockEntity extends BlockEntity {
         ));
     }
 
-    private BlockPos determineNewAnchorPosition(Direction facing) {
-        boolean promoteVertical = (screenWidth * (screenHeight - 1)) > ((screenWidth - 1) * screenHeight);
+    private BlockPos findNewAnchorPosition(Direction facing) {
+        boolean promoteAbove = (screenWidth * (screenHeight - 1)) > ((screenWidth - 1) * screenHeight);
 
-        if (promoteVertical) {
-            if (facing.getAxis().isHorizontal()) {
-                // Horizontal facing: promote upwards (Y-axis)
-                return worldPosition.above();
-            } else {
-                // Vertical facing: promote along height direction (SOUTH for UP, NORTH for DOWN)
-                Direction heightDir = (facing == Direction.UP) ? Direction.SOUTH : Direction.NORTH;
-                return worldPosition.relative(heightDir);
-            }
+        if (promoteAbove) {
+            return worldPosition.relative(getHeightDirection(facing));
         } else {
-            if (facing.getAxis().isHorizontal()) {
-                // Horizontal facing: promote along perpendicular direction
-                return worldPosition.relative(getPerpendicularDirection(facing));
-            } else {
-                // Vertical facing: promote along width direction (WEST)
-                return worldPosition.relative(Direction.WEST);
-            }
+            return worldPosition.relative(getWidthDirection(facing));
         }
     }
 
@@ -461,7 +447,6 @@ public class ScreenBlockEntity extends BlockEntity {
                 BlockEntity be = level.getBlockEntity(childPos);
                 if (be instanceof ScreenBlockEntity child) {
                     child.setAnchorPos(newAnchorPos);
-                    child.setChanged();
                     child.updateClients();
 
                     // Force immediate block update
@@ -473,14 +458,44 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     private BlockPos calculateChildPosition(Direction facing, int x, int y) {
-        Direction perpendicular = getPerpendicularDirection(facing);
-        if (facing.getAxis().isHorizontal()) {
-            return worldPosition.relative(perpendicular, x).above(y);
+        Direction widthDirection = getWidthDirection(facing);
+        Direction heightDirection = getHeightDirection(facing);
+        return worldPosition.relative(widthDirection, x).relative(heightDirection, y);
+    }
+
+    public void onNeighborRemoved() {
+        if (level == null || level.isClientSide || anchorPos == null) return;
+
+        if (anchorPos.equals(worldPosition)) {
+            updateScreenStructure();
         } else {
-            if (facing == Direction.UP) {
-                return worldPosition.relative(Direction.WEST, x).relative(Direction.SOUTH, y);
-            } else {
-                return worldPosition.relative(Direction.WEST, x).relative(Direction.NORTH, y);
+            BlockEntity anchorBe = level.getBlockEntity(anchorPos);
+            if (anchorBe instanceof ScreenBlockEntity anchor) {
+                anchor.updateScreenStructure();
+            }
+        }
+    }
+
+    public void onNeighborPlaced(BlockPos neighborPos, Direction neighborDir) {
+        if (level == null || level.isClientSide || anchorPos == null) return;
+
+        Direction facing = getBlockState().getValue(ScreenBlock.FACING);
+
+        if (anchorPos.equals(neighborPos)) {
+            Direction negativeHeightDir = getHeightDirection(facing).getOpposite();
+            Direction negativeWidthDir = getWidthDirection(facing).getOpposite();
+            if (neighborDir == negativeHeightDir || neighborDir == negativeWidthDir) {
+                BlockEntity neighborBe = level.getBlockEntity(neighborPos);
+
+                if (neighborBe instanceof ScreenBlockEntity neighborScreen) {
+                    neighborScreen.updateScreenStructure();
+                }
+            }
+            updateScreenStructure();
+        } else {
+            BlockEntity anchorBe = level.getBlockEntity(anchorPos);
+            if (anchorBe instanceof ScreenBlockEntity anchor && anchor.isAnchor()) {
+                anchor.updateScreenStructure();
             }
         }
     }
