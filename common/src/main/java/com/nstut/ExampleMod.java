@@ -1,9 +1,11 @@
 package com.nstut;
 
+import com.nstut.simplyscreens.SimplyScreens;
+
 public final class ExampleMod {
-    public static final String MOD_ID = "simply_screens";
+    public static final String MOD_ID = SimplyScreens.MOD_ID;
 
     public static void init() {
-        // Write common init code here.
+        SimplyScreens.init();
     }
 }

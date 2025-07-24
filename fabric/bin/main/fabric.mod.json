@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "simply_screens",
+  "id": "simplyscreens",
   "version": "${version}",
   "name": "Simply Screens",
   "description": "This is an example description! Tell everyone what your mod is about!",
@@ -12,7 +12,7 @@
     "sources": "https://github.com/FabricMC/fabric-example-mod"
   },
   "license": "CC0-1.0",
-  "icon": "assets/simply_screens/icon.png",
+  "icon": "assets/simplyscreens/icon.png",
   "environment": "*",
   "entrypoints": {
     "main": [
@@ -23,7 +23,7 @@
     ]
   },
   "mixins": [
-    "simply_screens.mixins.json"
+    "simplyscreens.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.16.14",

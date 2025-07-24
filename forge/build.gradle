@@ -4,7 +4,7 @@ plugins {
 
 loom {
     forge {
-        mixinConfig "simply_screens.mixins.json"
+        mixinConfig "simplyscreens.mixins.json"
     }
 }
 
