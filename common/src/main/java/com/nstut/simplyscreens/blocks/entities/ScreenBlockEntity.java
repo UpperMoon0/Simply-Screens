@@ -1,6 +1,7 @@
 package com.nstut.simplyscreens.blocks.entities;
 
 import com.nstut.simplyscreens.Config;
+import com.nstut.simplyscreens.DisplayMode;
 import com.nstut.simplyscreens.blocks.ScreenBlock;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import com.nstut.simplyscreens.network.UpdateScreenS2CPacket;
@@ -24,7 +25,9 @@ import java.util.stream.IntStream;
 public class ScreenBlockEntity extends BlockEntity {
     private static final Logger LOGGER = Logger.getLogger(ScreenBlockEntity.class.getName());
 
-    private String imagePath = "";
+    private DisplayMode displayMode = DisplayMode.INTERNET;
+    private String imageUrl = "";
+    private String internetUrl = "";
     private String imageHash = "";
     private BlockPos anchorPos;
     private int screenWidth = 1;
@@ -51,7 +54,9 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     private void writePersistentData(CompoundTag tag) {
-        tag.putString("imagePath", imagePath);
+        tag.putString("displayMode", displayMode.name());
+        tag.putString("imageUrl", imageUrl);
+        tag.putString("internetUrl", internetUrl);
         tag.putString("imageHash", imageHash);
         tag.putBoolean("maintainAspectRatio", maintainAspectRatio);
         tag.putInt("screenWidth", screenWidth);
@@ -65,7 +70,11 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     private void readPersistentData(CompoundTag tag) {
-        imagePath = tag.getString("imagePath");
+        if (tag.contains("displayMode")) {
+            displayMode = DisplayMode.valueOf(tag.getString("displayMode"));
+        }
+        imageUrl = tag.getString("imageUrl");
+        internetUrl = tag.getString("internetUrl");
         imageHash = tag.getString("imageHash");
         maintainAspectRatio = tag.getBoolean("maintainAspectRatio");
         screenWidth = tag.getInt("screenWidth");
@@ -96,6 +105,9 @@ public class ScreenBlockEntity extends BlockEntity {
         if (level != null && !level.isClientSide) {
             UpdateScreenS2CPacket packet = new UpdateScreenS2CPacket(
                     worldPosition,
+                    displayMode,
+                    imageUrl,
+                    internetUrl,
                     imageHash,
                     anchorPos,
                     screenWidth,
@@ -117,9 +129,11 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     public void updateFromCache(String imageHash, boolean maintainAspectRatio) {
+        this.displayMode = DisplayMode.LOCAL;
         this.imageHash = imageHash;
         this.maintainAspectRatio = maintainAspectRatio;
-        this.imagePath = ""; // Clear URL if a local image is loaded
+        this.imageUrl = "";
+        this.internetUrl = "";
         updateClients();
         setChanged();
     }
@@ -129,15 +143,27 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     public String getImagePath() {
-        return imagePath;
+        switch (displayMode) {
+            case INTERNET:
+                return internetUrl;
+            case LOCAL:
+                if (imageHash != null && !imageHash.isEmpty()) {
+                    return "simplyscreens_cache/" + imageHash + ".png";
+                }
+                return imageUrl;
+            default:
+                return "";
+        }
     }
 
-    public void updateFromScreenInputs(String imagePath, boolean maintainAspectRatio) {
+    public void updateFromScreenInputs(DisplayMode displayMode, String imageUrl, String internetUrl, boolean maintainAspectRatio) {
         if (level == null || level.isClientSide || !isAnchor()) {
             return;
         }
 
-        this.imagePath = imagePath;
+        this.displayMode = displayMode;
+        this.imageUrl = imageUrl;
+        this.internetUrl = internetUrl;
         this.maintainAspectRatio = maintainAspectRatio;
         this.imageHash = "";
 
@@ -145,10 +171,12 @@ public class ScreenBlockEntity extends BlockEntity {
         setChanged();
     }
 
-    public void updateScreen(String imagePath, String imageHash, int width, int height, BlockPos anchor, boolean maintainAspect) {
+    public void updateScreen(DisplayMode displayMode, String imageUrl, String internetUrl, String imageHash, int width, int height, BlockPos anchor, boolean maintainAspect) {
         if (level == null || level.isClientSide) return;
 
-        this.imagePath = imagePath;
+        this.displayMode = displayMode;
+        this.imageUrl = imageUrl;
+        this.internetUrl = internetUrl;
         this.imageHash = imageHash;
         this.screenWidth = width;
         this.screenHeight = height;
@@ -187,7 +215,7 @@ public class ScreenBlockEntity extends BlockEntity {
             calculateScreenDimensions(facing, farCorner);
 
             // Add this line to force immediate client update
-            this.updateScreen(this.imagePath, this.imageHash, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
+            this.updateScreen(this.displayMode, this.imageUrl, this.internetUrl, this.imageHash, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
 
             updateChildScreens(farCorner, facing);
         }
@@ -221,7 +249,7 @@ public class ScreenBlockEntity extends BlockEntity {
                         if (childEntity.isAnchor() && !childEntity.imageHash.isBlank()) {
                             this.imageHash = childEntity.imageHash;
                         }
-                        childEntity.updateScreen(this.imagePath, imageHash, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
+                        childEntity.updateScreen(this.displayMode, this.imageUrl, this.internetUrl, imageHash, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
                     }
                 }
             }
@@ -265,7 +293,7 @@ public class ScreenBlockEntity extends BlockEntity {
             if (childEntity.isAnchor() && !childEntity.imageHash.isBlank()) {
                 this.imageHash = childEntity.imageHash;
             }
-            childEntity.updateScreen(this.imagePath, imageHash, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
+            childEntity.updateScreen(this.displayMode, this.imageUrl, this.internetUrl, imageHash, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
         }
     }
 
@@ -445,7 +473,7 @@ public class ScreenBlockEntity extends BlockEntity {
         if (newAnchorBe instanceof ScreenBlockEntity newAnchor) {
             // Force immediate update of new anchor
             newAnchor.updateScreenStructure();
-            newAnchor.updateScreen(this.imagePath, this.imageHash, this.screenWidth, this.screenHeight, newAnchorPos, this.maintainAspectRatio);
+            newAnchor.updateScreen(this.displayMode, this.imageUrl, this.internetUrl, this.imageHash, this.screenWidth, this.screenHeight, newAnchorPos, this.maintainAspectRatio);
 
             // Update children immediately
             updateChildrenToNewAnchor(newAnchorPos, facing);
@@ -459,6 +487,9 @@ public class ScreenBlockEntity extends BlockEntity {
             for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
                 PacketRegistries.CHANNEL.sendToPlayer(player, new UpdateScreenS2CPacket(
                         newAnchorPos,
+                        displayMode,
+                        imageUrl,
+                        internetUrl,
                         imageHash,
                         newAnchorPos,
                         screenWidth,

@@ -38,7 +38,7 @@ public class ServerImageCache {
             if (player.level().getBlockEntity(msg.getBlockPos()) instanceof ScreenBlockEntity screen) {
                 String fullImageHash = msg.getImageHash() + "." + msg.getImageExtension();
                 screen.updateFromCache(fullImageHash, msg.isMaintainAspectRatio());
-                broadcastScreenUpdate(screen.getBlockPos(), fullImageHash, player.getServer());
+                broadcastScreenUpdate(screen.getBlockPos(), fullImageHash, msg.isMaintainAspectRatio(), player.getServer());
             }
         } else {
             PENDING_UPLOADS.put(msg.getImageHash(), msg.getBlockPos());
@@ -97,7 +97,7 @@ public class ServerImageCache {
                         BlockEntity be = level.getBlockEntity(blockPos);
                         if (be instanceof ScreenBlockEntity screen) {
                             screen.updateFromCache(fullImageHash, maintainAspectRatio);
-                            broadcastScreenUpdate(blockPos, fullImageHash, server);
+                            broadcastScreenUpdate(blockPos, fullImageHash, maintainAspectRatio, server);
                             break;
                         }
                     }
@@ -135,8 +135,8 @@ public class ServerImageCache {
         }
     }
 
-    private static void broadcastScreenUpdate(BlockPos blockPos, String imageHash, MinecraftServer server) {
-        UpdateScreenWithCachedImageS2CPacket packet = new UpdateScreenWithCachedImageS2CPacket(blockPos, imageHash);
+    private static void broadcastScreenUpdate(BlockPos blockPos, String imageHash, boolean maintainAspectRatio, MinecraftServer server) {
+        UpdateScreenWithCachedImageS2CPacket packet = new UpdateScreenWithCachedImageS2CPacket(blockPos, imageHash, maintainAspectRatio);
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
             if (p.level().isLoaded(blockPos)) {
                 PacketRegistries.CHANNEL.sendToPlayer(p, packet);

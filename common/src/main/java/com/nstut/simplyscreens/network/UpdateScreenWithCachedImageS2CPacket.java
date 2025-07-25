@@ -14,20 +14,24 @@ public class UpdateScreenWithCachedImageS2CPacket {
 
     private final BlockPos blockPos;
     private final String imageHash;
+    private final boolean maintainAspectRatio;
 
-    public UpdateScreenWithCachedImageS2CPacket(BlockPos blockPos, String imageHash) {
+    public UpdateScreenWithCachedImageS2CPacket(BlockPos blockPos, String imageHash, boolean maintainAspectRatio) {
         this.blockPos = blockPos;
         this.imageHash = imageHash;
+        this.maintainAspectRatio = maintainAspectRatio;
     }
 
     public UpdateScreenWithCachedImageS2CPacket(FriendlyByteBuf buf) {
         this.blockPos = buf.readBlockPos();
         this.imageHash = buf.readUtf();
+        this.maintainAspectRatio = buf.readBoolean();
     }
 
     public void write(FriendlyByteBuf buf) {
         buf.writeBlockPos(blockPos);
         buf.writeUtf(imageHash);
+        buf.writeBoolean(maintainAspectRatio);
     }
 
     public static void handle(UpdateScreenWithCachedImageS2CPacket msg, Supplier<NetworkManager.PacketContext> context) {
@@ -40,5 +44,9 @@ public class UpdateScreenWithCachedImageS2CPacket {
 
     public String getImageHash() {
         return imageHash;
+    }
+
+    public boolean shouldMaintainAspectRatio() {
+        return maintainAspectRatio;
     }
 }

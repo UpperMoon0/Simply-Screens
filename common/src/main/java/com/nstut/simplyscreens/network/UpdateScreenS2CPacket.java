@@ -1,5 +1,6 @@
 package com.nstut.simplyscreens.network;
 
+import com.nstut.simplyscreens.DisplayMode;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -11,15 +12,21 @@ import java.util.function.Supplier;
 
 public class UpdateScreenS2CPacket {
     private final BlockPos pos;
-    private final String imagePath;
+    private final DisplayMode displayMode;
+    private final String imageUrl;
+    private final String internetUrl;
+    private final String imageHash;
     private final BlockPos anchorPos;
     private final int screenWidth;
     private final int screenHeight;
     private final boolean maintainAspectRatio;
 
-    public UpdateScreenS2CPacket(BlockPos pos, String imagePath, BlockPos anchorPos, int screenWidth, int screenHeight, boolean maintainAspectRatio) {
+    public UpdateScreenS2CPacket(BlockPos pos, DisplayMode displayMode, String imageUrl, String internetUrl, String imageHash, BlockPos anchorPos, int screenWidth, int screenHeight, boolean maintainAspectRatio) {
         this.pos = pos;
-        this.imagePath = imagePath;
+        this.displayMode = displayMode;
+        this.imageUrl = imageUrl;
+        this.internetUrl = internetUrl;
+        this.imageHash = imageHash;
         this.anchorPos = anchorPos;
         this.screenWidth = screenWidth;
         this.screenHeight = screenHeight;
@@ -28,7 +35,10 @@ public class UpdateScreenS2CPacket {
 
     public UpdateScreenS2CPacket(FriendlyByteBuf buf) {
         pos = buf.readBlockPos();
-        imagePath = buf.readUtf();
+        displayMode = buf.readEnum(DisplayMode.class);
+        imageUrl = buf.readUtf();
+        internetUrl = buf.readUtf();
+        imageHash = buf.readUtf();
         if (buf.readBoolean()) {
             anchorPos = buf.readBlockPos();
         } else {
@@ -41,7 +51,10 @@ public class UpdateScreenS2CPacket {
 
     public void encode(FriendlyByteBuf buf) {
         buf.writeBlockPos(pos);
-        buf.writeUtf(imagePath);
+        buf.writeEnum(displayMode);
+        buf.writeUtf(imageUrl);
+        buf.writeUtf(internetUrl);
+        buf.writeUtf(imageHash);
         buf.writeBoolean(anchorPos != null);
         if (anchorPos != null) {
             buf.writeBlockPos(anchorPos);
@@ -57,7 +70,10 @@ public class UpdateScreenS2CPacket {
             if (level != null) {
                 BlockEntity blockEntity = level.getBlockEntity(pos);
                 if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
-                    screenBlockEntity.setImagePath(imagePath);
+                    screenBlockEntity.setDisplayMode(displayMode);
+                    screenBlockEntity.setImageUrl(imageUrl);
+                    screenBlockEntity.setInternetUrl(internetUrl);
+                    screenBlockEntity.setImageHash(imageHash);
                     screenBlockEntity.setAnchorPos(anchorPos);
                     screenBlockEntity.setScreenWidth(screenWidth);
                     screenBlockEntity.setScreenHeight(screenHeight);

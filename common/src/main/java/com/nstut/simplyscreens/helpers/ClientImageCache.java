@@ -62,11 +62,11 @@ public class ClientImageCache {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
 
-        Path imagePath = mc.gameDirectory.toPath().resolve("simply_screens_images").resolve(msg.getImageHash());
+        Path imagePath = mc.gameDirectory.toPath().resolve("simply_screens_cache").resolve(msg.getImageHash());
         if (Files.exists(imagePath)) {
             BlockEntity be = mc.level.getBlockEntity(msg.getBlockPos());
             if (be instanceof ScreenBlockEntity screen) {
-                screen.setImageHash(msg.getImageHash());
+                screen.updateFromCache(msg.getImageHash(), msg.shouldMaintainAspectRatio());
             }
         } else {
             PacketRegistries.CHANNEL.sendToServer(new RequestImageDownloadC2SPacket(msg.getImageHash()));
@@ -101,7 +101,7 @@ public class ClientImageCache {
         }
 
         Minecraft mc = Minecraft.getInstance();
-        Path imagesDir = mc.gameDirectory.toPath().resolve("simply_screens_images");
+        Path imagesDir = mc.gameDirectory.toPath().resolve("simply_screens_cache");
         imagesDir.toFile().mkdirs();
         File imageFile = imagesDir.resolve(imageHash).toFile();
 
