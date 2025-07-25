@@ -3,6 +3,7 @@ package com.nstut.simplyscreens.client.screens;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
+import com.nstut.simplyscreens.client.gui.widgets.ImageListWidget;
 import com.nstut.simplyscreens.helpers.ClientImageCache;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import com.nstut.simplyscreens.network.UpdateScreenC2SPacket;
@@ -16,15 +17,17 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.jetbrains.annotations.NotNull;
+import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
-import java.nio.file.Files;
+import java.io.File;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class ImageLoadScreen extends Screen {
     private static final ResourceLocation BACKGROUND_TEXTURE = new ResourceLocation(SimplyScreens.MOD_ID, "textures/gui/screen.png");
 
     private static final int SCREEN_WIDTH = 162;
-    private static final int SCREEN_HEIGHT = 128;
+    private static final int SCREEN_HEIGHT = 158;
 
     private enum Mode {
         INTERNET,
@@ -40,6 +43,10 @@ public class ImageLoadScreen extends Screen {
     private Checkbox maintainAspectCheckbox;
     private Button internetButton;
     private Button localButton;
+    private ImageListWidget imageListWidget;
+    private Button uploadButton;
+    private Button selectButton;
+    private Button uploadLocalFileButton;
 
     public ImageLoadScreen(BlockPos blockEntityPos) {
         super(Component.literal("Image Upload Screen"));
@@ -74,28 +81,51 @@ public class ImageLoadScreen extends Screen {
             this.imagePathField.setValue(initialImagePath);
         }
 
-        maintainAspectCheckbox = new Checkbox(guiLeft + 10, guiTop + 86, 20, 20, Component.literal("Maintain Aspect Ratio"), initialMaintainAspectRatio);
+        maintainAspectCheckbox = new Checkbox(guiLeft + 10, guiTop + 116, 20, 20, Component.literal("Maintain Aspect Ratio"), initialMaintainAspectRatio);
 
         // Create the "Upload Image" button
-        Button uploadButton = Button.builder(Component.literal("Load Image"), button -> {
+        uploadButton = Button.builder(Component.literal("Load Image"), button -> {
                     String filePath = imagePathField.getValue();
-                    if (!filePath.isBlank()) {
-                        if (isHttpUrl(filePath)) {
-                            sendScreenInputsToServer(filePath, maintainAspectCheckbox.selected());
-                        } else {
-                            ClientImageCache.sendImageToServer(Path.of(filePath), blockEntityPos);
-                        }
+                    if (!filePath.isBlank() && isHttpUrl(filePath)) {
+                        sendScreenInputsToServer(filePath, maintainAspectCheckbox.selected());
                     }
                 })
                 .pos(guiLeft + 21, guiTop + 108)
                 .size(120, 20)
                 .build();
 
-        this.addRenderableWidget(internetButton);
+        selectButton = Button.builder(Component.literal("Select Image"), button -> {
+                    File selectedFile = imageListWidget.getSelected();
+                    if (selectedFile != null) {
+                        sendScreenInputsToServer(selectedFile.getName(), maintainAspectCheckbox.selected());
+                        imageListWidget.setDisplayedImage(selectedFile.getName());
+                    }
+                })
+                .pos(guiLeft + 21, guiTop + 108)
+                .size(120, 20)
+                .build();
+
+        uploadLocalFileButton = Button.builder(Component.literal("Upload"), button -> openFileDialog())
+                .pos(guiLeft + 21, guiTop + 128)
+                .size(120, 20)
+                .build();
+
+        imageListWidget = new ImageListWidget(guiLeft + 10, guiTop + 54, 140, 50, Component.literal(""), file -> {
+            // No-op
+            });
+    
+            if (initialImagePath != null && !initialImagePath.isBlank() && !isHttpUrl(initialImagePath)) {
+                imageListWidget.setDisplayedImage(initialImagePath);
+            }
+    
+            this.addRenderableWidget(internetButton);
         this.addRenderableWidget(localButton);
         this.addRenderableWidget(this.imagePathField);
         this.addRenderableWidget(maintainAspectCheckbox);
         this.addRenderableWidget(uploadButton);
+        this.addRenderableWidget(selectButton);
+        this.addRenderableWidget(uploadLocalFileButton);
+        this.addRenderableWidget(imageListWidget);
 
         updateMode(currentMode);
     }
@@ -135,6 +165,32 @@ public class ImageLoadScreen extends Screen {
         localButton.active = currentMode != Mode.LOCAL;
 
         imagePathField.setVisible(currentMode == Mode.INTERNET);
+        maintainAspectCheckbox.visible = true;
+
+        uploadButton.visible = currentMode == Mode.INTERNET;
+        selectButton.visible = currentMode == Mode.LOCAL;
+        uploadLocalFileButton.visible = currentMode == Mode.LOCAL;
+
+        imageListWidget.setVisible(currentMode == Mode.LOCAL);
+    }
+
+    private void openFileDialog() {
+        String selectedFile = TinyFileDialogs.tinyfd_openFileDialog(
+                "Select Image",
+                null,
+                null,
+                "Image Files",
+                false
+        );
+
+        if (selectedFile != null) {
+            Path imagePath = Paths.get(selectedFile);
+            ClientImageCache.sendImageToServer(imagePath, blockEntityPos, maintainAspectCheckbox.selected(), () -> {
+                if (this.minecraft != null) {
+                    this.minecraft.execute(imageListWidget::refresh);
+                }
+            });
+        }
     }
 
     private void fetchDataFromBlockEntity() {
@@ -184,5 +240,10 @@ public class ImageLoadScreen extends Screen {
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
+    @Override
+    public void onClose() {
+        super.onClose();
+        imageListWidget.close();
+    }
 }
 

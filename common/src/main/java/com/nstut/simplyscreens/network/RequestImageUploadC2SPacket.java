@@ -16,21 +16,24 @@ public class RequestImageUploadC2SPacket {
     private final String imageHash;
     private final String imageExtension;
     private final BlockPos blockPos;
+    private final boolean maintainAspectRatio;
 
-    public RequestImageUploadC2SPacket(String imageHash, String imageExtension, BlockPos blockPos) {
+    public RequestImageUploadC2SPacket(String imageHash, String imageExtension, BlockPos blockPos, boolean maintainAspectRatio) {
         this.imageHash = imageHash;
         this.imageExtension = imageExtension;
         this.blockPos = blockPos;
+        this.maintainAspectRatio = maintainAspectRatio;
     }
 
     public void write(FriendlyByteBuf buf) {
         buf.writeUtf(imageHash);
         buf.writeUtf(imageExtension);
         buf.writeBlockPos(blockPos);
+        buf.writeBoolean(maintainAspectRatio);
     }
 
     public static RequestImageUploadC2SPacket read(FriendlyByteBuf buf) {
-        return new RequestImageUploadC2SPacket(buf.readUtf(), buf.readUtf(), buf.readBlockPos());
+        return new RequestImageUploadC2SPacket(buf.readUtf(), buf.readUtf(), buf.readBlockPos(), buf.readBoolean());
     }
 
     public static void apply(RequestImageUploadC2SPacket msg, Supplier<NetworkManager.PacketContext> context) {
@@ -48,5 +51,9 @@ public class RequestImageUploadC2SPacket {
 
     public BlockPos getBlockPos() {
         return blockPos;
+    }
+
+    public boolean isMaintainAspectRatio() {
+        return maintainAspectRatio;
     }
 }

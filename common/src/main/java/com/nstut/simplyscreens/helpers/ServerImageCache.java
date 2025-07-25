@@ -25,6 +25,7 @@ public class ServerImageCache {
     private static final Map<String, Integer> CHUNKS_RECEIVED = new ConcurrentHashMap<>();
     private static final Map<String, BlockPos> PENDING_UPLOADS = new ConcurrentHashMap<>();
     private static final Map<String, String> IMAGE_EXTENSIONS = new ConcurrentHashMap<>();
+    private static final Map<String, Boolean> PENDING_ASPECT_RATIOS = new ConcurrentHashMap<>();
 
     public static void handleRequestImageUpload(RequestImageUploadC2SPacket msg, ServerPlayer player) {
         MinecraftServer server = player.getServer();
@@ -36,12 +37,13 @@ public class ServerImageCache {
         if (imageFile.exists()) {
             if (player.level().getBlockEntity(msg.getBlockPos()) instanceof ScreenBlockEntity screen) {
                 String fullImageHash = msg.getImageHash() + "." + msg.getImageExtension();
-                screen.setImageHash(fullImageHash);
+                screen.updateFromCache(fullImageHash, msg.isMaintainAspectRatio());
                 broadcastScreenUpdate(screen.getBlockPos(), fullImageHash, player.getServer());
             }
         } else {
             PENDING_UPLOADS.put(msg.getImageHash(), msg.getBlockPos());
             IMAGE_EXTENSIONS.put(msg.getImageHash(), msg.getImageExtension());
+            PENDING_ASPECT_RATIOS.put(msg.getImageHash(), msg.isMaintainAspectRatio());
         }
     }
 
@@ -88,12 +90,13 @@ public class ServerImageCache {
             fos.write(imageData);
 
             BlockPos blockPos = PENDING_UPLOADS.get(imageHash);
+            boolean maintainAspectRatio = PENDING_ASPECT_RATIOS.getOrDefault(imageHash, true);
             if (blockPos != null) {
                 server.execute(() -> {
                     for (var level : server.getAllLevels()) {
                         BlockEntity be = level.getBlockEntity(blockPos);
                         if (be instanceof ScreenBlockEntity screen) {
-                            screen.setImageHash(fullImageHash);
+                            screen.updateFromCache(fullImageHash, maintainAspectRatio);
                             broadcastScreenUpdate(blockPos, fullImageHash, server);
                             break;
                         }
@@ -146,5 +149,6 @@ public class ServerImageCache {
         CHUNKS_RECEIVED.remove(imageHash);
         PENDING_UPLOADS.remove(imageHash);
         IMAGE_EXTENSIONS.remove(imageHash);
+        PENDING_ASPECT_RATIOS.remove(imageHash);
     }
 }

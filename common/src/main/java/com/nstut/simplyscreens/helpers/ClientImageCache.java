@@ -21,15 +21,17 @@ public class ClientImageCache {
     private static final int CHUNK_SIZE = 16 * 1024; // 16KB per chunk
     private static final Map<String, byte[][]> INCOMING_CHUNKS = new ConcurrentHashMap<>();
     private static final Map<String, Integer> CHUNKS_RECEIVED = new ConcurrentHashMap<>();
+    private static final Map<String, Runnable> UPLOAD_CALLBACKS = new ConcurrentHashMap<>();
 
-    public static void sendImageToServer(Path imagePath, BlockPos blockPos) {
+    public static void sendImageToServer(Path imagePath, BlockPos blockPos, boolean maintainAspectRatio, Runnable callback) {
         try {
             byte[] imageData = Files.readAllBytes(imagePath);
             String imageHash = Hashing.sha256().hashBytes(imageData).toString();
             String extension = FilenameUtils.getExtension(imagePath.getFileName().toString());
 
-            PacketRegistries.CHANNEL.sendToServer(new RequestImageUploadC2SPacket(imageHash, extension, blockPos));
+            PacketRegistries.CHANNEL.sendToServer(new RequestImageUploadC2SPacket(imageHash, extension, blockPos, maintainAspectRatio));
 
+            UPLOAD_CALLBACKS.put(imageHash, callback);
             sendImageInChunks(imageHash, imageData);
         } catch (IOException e) {
             SimplyScreens.LOGGER.error("Failed to read image file: " + imagePath, e);
@@ -46,6 +48,12 @@ public class ClientImageCache {
             System.arraycopy(imageData, start, chunk, 0, length);
 
             PacketRegistries.CHANNEL.sendToServer(new ImageChunkC2SPacket(imageHash, i, totalChunks, chunk));
+        }
+
+        // After sending all chunks, execute the callback
+        Runnable callback = UPLOAD_CALLBACKS.remove(imageHash);
+        if (callback != null) {
+            callback.run();
         }
     }
 

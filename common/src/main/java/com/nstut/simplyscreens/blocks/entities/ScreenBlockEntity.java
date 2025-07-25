@@ -116,6 +116,14 @@ public class ScreenBlockEntity extends BlockEntity {
         setChanged();
     }
 
+    public void updateFromCache(String imageHash, boolean maintainAspectRatio) {
+        this.imageHash = imageHash;
+        this.maintainAspectRatio = maintainAspectRatio;
+        this.imagePath = ""; // Clear URL if a local image is loaded
+        updateClients();
+        setChanged();
+    }
+
     public String getImageHash() {
         return imageHash;
     }

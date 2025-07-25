@@ -31,6 +31,7 @@ public class ImageListWidget extends AbstractWidget {
     private List<File> filteredImageFiles = new ArrayList<>();
     private double scrollAmount;
     private File selected;
+    private String displayedImage;
     private final Consumer<File> onSelect;
 
     public ImageListWidget(int x, int y, int width, int height, Component message, Consumer<File> onSelect) {
@@ -96,9 +97,14 @@ public class ImageListWidget extends AbstractWidget {
             File imageFile = filteredImageFiles.get(i);
             boolean isHovered = mouseX >= itemX && mouseX < itemX + ITEM_SIZE && mouseY >= itemY && mouseY < itemY + ITEM_SIZE;
             boolean isSelected = selected == imageFile;
+            boolean isDisplayed = displayedImage != null && displayedImage.equals(imageFile.getName());
 
             int backgroundColor = isSelected ? 0xFF808080 : (isHovered ? 0xFF404040 : 0xFF202020);
             guiGraphics.fill(itemX, itemY, itemX + ITEM_SIZE, itemY + ITEM_SIZE, backgroundColor);
+
+            if (isDisplayed) {
+                guiGraphics.renderOutline(itemX, itemY, ITEM_SIZE, ITEM_SIZE, 0xFF00FF00);
+            }
 
             ResourceLocation texture = textureCache.computeIfAbsent(imageFile, file -> {
                 try (FileInputStream stream = new FileInputStream(file)) {
@@ -180,5 +186,17 @@ public class ImageListWidget extends AbstractWidget {
     public void close() {
         textureCache.values().forEach(Minecraft.getInstance().getTextureManager()::release);
         textureCache.clear();
+    }
+
+    public void setVisible(boolean visible) {
+        this.visible = visible;
+    }
+
+    public void refresh() {
+        loadImages();
+    }
+
+    public void setDisplayedImage(String displayedImage) {
+        this.displayedImage = displayedImage;
     }
 }
