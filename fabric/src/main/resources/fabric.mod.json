@@ -16,7 +16,7 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "com.nstut.simplyscreens.SimplyScreens"
+      "com.nstut.simplyscreens.fabric.SimplyScreensImpl"
     ],
     "client": [
       "com.nstut.simplyscreens.client.ClientSetup"

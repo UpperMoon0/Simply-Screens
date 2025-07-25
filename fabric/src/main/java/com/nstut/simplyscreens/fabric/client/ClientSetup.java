@@ -1,4 +1,4 @@
-package com.nstut.simplyscreens.client;
+package com.nstut.simplyscreens.fabric.client;
 
 import com.nstut.simplyscreens.blocks.entities.BlockEntityRegistries;
 import com.nstut.simplyscreens.client.renderers.ScreenBlockEntityRenderer;

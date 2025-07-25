@@ -124,6 +124,19 @@ public class ScreenBlockEntity extends BlockEntity {
         return imagePath;
     }
 
+    public void updateFromScreenInputs(String imagePath, boolean maintainAspectRatio) {
+        if (level == null || level.isClientSide || !isAnchor()) {
+            return;
+        }
+
+        this.imagePath = imagePath;
+        this.maintainAspectRatio = maintainAspectRatio;
+        this.imageHash = "";
+
+        updateScreenStructure();
+        setChanged();
+    }
+
     public void updateScreen(String imagePath, String imageHash, int width, int height, BlockPos anchor, boolean maintainAspect) {
         if (level == null || level.isClientSide) return;
 
