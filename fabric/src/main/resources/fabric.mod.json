@@ -3,23 +3,23 @@
   "id": "simplyscreens",
   "version": "${version}",
   "name": "Simply Screens",
-  "description": "This is an example description! Tell everyone what your mod is about!",
+  "description": "A simple mod that adds screens to display images from a URL.",
   "authors": [
-    "Me!"
+    "nstut"
   ],
   "contact": {
-    "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/FabricMC/fabric-example-mod"
+    "homepage": "https://www.curseforge.com/minecraft/mc-mods/simply-screens",
+    "sources": "https://github.com/nstut/simply-screens"
   },
   "license": "CC0-1.0",
   "icon": "assets/simplyscreens/icon.png",
   "environment": "*",
   "entrypoints": {
     "main": [
-      "com.nstut.fabric.ExampleModFabric"
+      "com.nstut.simplyscreens.SimplyScreens"
     ],
     "client": [
-      "com.nstut.fabric.client.ExampleModFabricClient"
+      "com.nstut.simplyscreens.client.ClientSetup"
     ]
   },
   "mixins": [
@@ -31,8 +31,5 @@
     "java": ">=17",
     "architectury": ">=9.2.14",
     "fabric-api": "*"
-  },
-  "suggests": {
-    "another-mod": "*"
   }
 }
