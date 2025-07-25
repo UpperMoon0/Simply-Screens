@@ -26,11 +26,20 @@ public class ImageLoadScreen extends Screen {
     private static final int SCREEN_WIDTH = 162;
     private static final int SCREEN_HEIGHT = 128;
 
+    private enum Mode {
+        INTERNET,
+        LOCAL
+    }
+
+    private Mode currentMode = Mode.INTERNET;
+
     private EditBox imagePathField;
     private final BlockPos blockEntityPos;
     private String initialImagePath;
     private boolean initialMaintainAspectRatio = true;
     private Checkbox maintainAspectCheckbox;
+    private Button internetButton;
+    private Button localButton;
 
     public ImageLoadScreen(BlockPos blockEntityPos) {
         super(Component.literal("Image Upload Screen"));
@@ -46,17 +55,26 @@ public class ImageLoadScreen extends Screen {
         int guiLeft = (this.width - SCREEN_WIDTH) / 2;
         int guiTop = (this.height - SCREEN_HEIGHT) / 2;
 
+        // Internet and Local buttons
+        internetButton = Button.builder(Component.literal("Internet"), button -> updateMode(Mode.INTERNET))
+                .pos(guiLeft + 8, guiTop + 32)
+                .size(70, 20)
+                .build();
+
+        localButton = Button.builder(Component.literal("Local"), button -> updateMode(Mode.LOCAL))
+                .pos(guiLeft + 83, guiTop + 32)
+                .size(70, 20)
+                .build();
+
         // Initialize the EditBox for image path input
-        this.imagePathField = new EditBox(this.font, guiLeft + 10, guiTop + 40, 140, 20, Component.literal(""));
+        this.imagePathField = new EditBox(this.font, guiLeft + 10, guiTop + 64, 140, 20, Component.literal(""));
         this.imagePathField.setMaxLength(255);
 
         if (initialImagePath != null && !initialImagePath.isBlank()) {
             this.imagePathField.setValue(initialImagePath);
         }
 
-        maintainAspectCheckbox = new Checkbox(guiLeft + 10, guiTop + 70, 20, 20, Component.literal("Maintain Aspect Ratio"), initialMaintainAspectRatio);
-
-        this.addRenderableWidget(maintainAspectCheckbox);
+        maintainAspectCheckbox = new Checkbox(guiLeft + 10, guiTop + 86, 20, 20, Component.literal("Maintain Aspect Ratio"), initialMaintainAspectRatio);
 
         // Create the "Upload Image" button
         Button uploadButton = Button.builder(Component.literal("Load Image"), button -> {
@@ -69,12 +87,17 @@ public class ImageLoadScreen extends Screen {
                         }
                     }
                 })
-                .pos(guiLeft + 21, guiTop + 98)
+                .pos(guiLeft + 21, guiTop + 108)
                 .size(120, 20)
                 .build();
 
+        this.addRenderableWidget(internetButton);
+        this.addRenderableWidget(localButton);
         this.addRenderableWidget(this.imagePathField);
+        this.addRenderableWidget(maintainAspectCheckbox);
         this.addRenderableWidget(uploadButton);
+
+        updateMode(currentMode);
     }
 
     @Override
@@ -90,13 +113,28 @@ public class ImageLoadScreen extends Screen {
         int titleX = guiLeft + (SCREEN_WIDTH - this.font.width(title)) / 2;
         pGuiGraphics.drawString(this.font, title, titleX, guiTop + 10, 0x3F3F3F, false);
 
-        String pathLabel = "Image Path / URL:";
-        int pathLabelX = guiLeft + 12;
-        pGuiGraphics.drawString(this.font, pathLabel, pathLabelX, guiTop + 27, 0x3F3F3F, false);
+        // Draw the "Image source" label
+        String sourceLabel = "Image source";
+        int sourceLabelX = guiLeft + 12;
+        pGuiGraphics.drawString(this.font, sourceLabel, sourceLabelX, guiTop + 22, 0x3F3F3F, false);
+
+        if (currentMode == Mode.INTERNET) {
+            String pathLabel = "Image URL";
+            int pathLabelX = guiLeft + 12;
+            pGuiGraphics.drawString(this.font, pathLabel, pathLabelX, guiTop + 54, 0x3F3F3F, false);
+        }
 
         // Draw widgets and other components
         super.render(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
-        this.imagePathField.render(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
+    }
+
+    private void updateMode(Mode newMode) {
+        currentMode = newMode;
+
+        internetButton.active = currentMode != Mode.INTERNET;
+        localButton.active = currentMode != Mode.LOCAL;
+
+        imagePathField.setVisible(currentMode == Mode.INTERNET);
     }
 
     private void fetchDataFromBlockEntity() {
