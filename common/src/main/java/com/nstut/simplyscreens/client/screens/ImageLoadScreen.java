@@ -3,6 +3,7 @@ package com.nstut.simplyscreens.client.screens;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
+import com.nstut.simplyscreens.helpers.ClientImageCache;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import com.nstut.simplyscreens.network.UpdateScreenC2SPacket;
 import net.minecraft.client.gui.components.Button;
@@ -16,11 +17,10 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.logging.Logger;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class ImageLoadScreen extends Screen {
-
-    private static final Logger LOGGER = Logger.getLogger(ImageLoadScreen.class.getName());
     private static final ResourceLocation BACKGROUND_TEXTURE = new ResourceLocation(SimplyScreens.MOD_ID, "textures/gui/screen.png");
 
     private static final int SCREEN_WIDTH = 162;
@@ -62,7 +62,11 @@ public class ImageLoadScreen extends Screen {
         Button uploadButton = Button.builder(Component.literal("Load Image"), button -> {
                     String filePath = imagePathField.getValue();
                     if (!filePath.isBlank()) {
-                        sendScreenInputsToServer(filePath, maintainAspectCheckbox.selected());
+                        if (isHttpUrl(filePath)) {
+                            sendScreenInputsToServer(filePath, maintainAspectCheckbox.selected());
+                        } else {
+                            ClientImageCache.sendImageToServer(Path.of(filePath), blockEntityPos);
+                        }
                     }
                 })
                 .pos(guiLeft + 21, guiTop + 98)
@@ -107,6 +111,10 @@ public class ImageLoadScreen extends Screen {
 
     private void sendScreenInputsToServer(String imagePath, boolean maintainAspectRatio) {
         PacketRegistries.CHANNEL.sendToServer(new UpdateScreenC2SPacket(blockEntityPos, imagePath, maintainAspectRatio));
+    }
+
+    private boolean isHttpUrl(String url) {
+        return url.startsWith("http://") || url.startsWith("https://");
     }
 
     @Override

@@ -89,6 +89,8 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
     }
 
     private void applyFacingRotation(PoseStack poseStack, Direction facing) {
+        // This method applies additional rotations and flips based on the screen's facing direction.
+        // This is an intentional and required feature for the screen to function as intended.
         switch (facing) {
             case SOUTH:
                 poseStack.mulPose(Axis.YP.rotationDegrees(180));
@@ -204,6 +206,8 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
     }
 
     private void buildTexturedQuad(VertexConsumer consumer, PoseStack.Pose pose, int overlay) {
+        // The UV coordinates are intentionally flipped horizontally (U is swapped)
+        // to ensure the image displays correctly on the screen. This is not a bug.
         // Top-right vertex
         consumer.vertex(pose.pose(), -0.5f, 0.5f, 0)
                 .color(255, 255, 255, 255)

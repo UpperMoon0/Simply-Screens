@@ -20,5 +20,35 @@ public class PacketRegistries {
                 UpdateScreenS2CPacket::new,
                 UpdateScreenS2CPacket::handle
         );
+
+        CHANNEL.register(RequestImageUploadC2SPacket.class,
+                RequestImageUploadC2SPacket::write,
+                RequestImageUploadC2SPacket::read,
+                RequestImageUploadC2SPacket::apply
+        );
+
+        CHANNEL.register(ImageChunkC2SPacket.class,
+                ImageChunkC2SPacket::write,
+                ImageChunkC2SPacket::read,
+                ImageChunkC2SPacket::apply
+        );
+
+        CHANNEL.register(UpdateScreenWithCachedImageS2CPacket.class,
+                UpdateScreenWithCachedImageS2CPacket::write,
+                UpdateScreenWithCachedImageS2CPacket::new,
+                UpdateScreenWithCachedImageS2CPacket::handle
+        );
+
+        CHANNEL.register(ImageChunkS2CPacket.class,
+                ImageChunkS2CPacket::write,
+                ImageChunkS2CPacket::new,
+                ImageChunkS2CPacket::handle
+        );
+
+        CHANNEL.register(RequestImageDownloadC2SPacket.class,
+                RequestImageDownloadC2SPacket::write,
+                RequestImageDownloadC2SPacket::new,
+                RequestImageDownloadC2SPacket::apply
+        );
     }
 }
