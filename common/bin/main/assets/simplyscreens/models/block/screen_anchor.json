@@ -1,8 +1,0 @@
-{
-  "textures": {
-    "front": "simplyscreens:block/screen_front",
-    "top": "simplyscreens:block/screen_top",
-    "side": "simplyscreens:block/screen_side_anchor"
-  },
-  "parent": "minecraft:block/orientable"
-}
