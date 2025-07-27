@@ -26,6 +26,7 @@ public class ServerImageCache {
     private static final Map<String, BlockPos> PENDING_UPLOADS = new ConcurrentHashMap<>();
     private static final Map<String, String> IMAGE_EXTENSIONS = new ConcurrentHashMap<>();
     private static final Map<String, Boolean> PENDING_ASPECT_RATIOS = new ConcurrentHashMap<>();
+    private static final Map<String, ServerPlayer> UPLOADING_PLAYERS = new ConcurrentHashMap<>();
 
     public static void handleRequestImageUpload(RequestImageUploadC2SPacket msg, ServerPlayer player) {
         MinecraftServer server = player.getServer();
@@ -44,6 +45,7 @@ public class ServerImageCache {
             PENDING_UPLOADS.put(msg.getImageHash(), msg.getBlockPos());
             IMAGE_EXTENSIONS.put(msg.getImageHash(), msg.getImageExtension());
             PENDING_ASPECT_RATIOS.put(msg.getImageHash(), msg.isMaintainAspectRatio());
+            UPLOADING_PLAYERS.put(msg.getImageHash(), player);
         }
     }
 
@@ -104,6 +106,12 @@ public class ServerImageCache {
                 });
             }
 
+            // Notify the client that the upload is complete
+            ServerPlayer uploadingPlayer = UPLOADING_PLAYERS.get(imageHash);
+            if (uploadingPlayer != null) {
+                PacketRegistries.CHANNEL.sendToPlayer(uploadingPlayer, new UploadCompleteS2CPacket());
+            }
+
         } catch (IOException e) {
             SimplyScreens.LOGGER.error("Failed to save image " + imageHash, e);
         } finally {
@@ -150,5 +158,6 @@ public class ServerImageCache {
         PENDING_UPLOADS.remove(imageHash);
         IMAGE_EXTENSIONS.remove(imageHash);
         PENDING_ASPECT_RATIOS.remove(imageHash);
+        UPLOADING_PLAYERS.remove(imageHash);
     }
 }

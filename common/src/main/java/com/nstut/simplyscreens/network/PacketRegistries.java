@@ -50,5 +50,11 @@ public class PacketRegistries {
                 RequestImageDownloadC2SPacket::new,
                 RequestImageDownloadC2SPacket::apply
         );
+
+        CHANNEL.register(UploadCompleteS2CPacket.class,
+                UploadCompleteS2CPacket::encode,
+                UploadCompleteS2CPacket::new,
+                UploadCompleteS2CPacket::handle
+        );
     }
 }

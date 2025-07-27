@@ -158,6 +158,10 @@ public class ImageLoadScreen extends Screen {
             String pathLabel = "Image URL";
             int pathLabelX = guiLeft + 12;
             pGuiGraphics.drawString(this.font, pathLabel, pathLabelX, guiTop + 54, 0x3F3F3F, false);
+        } else if (currentMode == DisplayMode.LOCAL) {
+            String pathLabel = "Cached Images";
+            int pathLabelX = guiLeft + 12;
+            pGuiGraphics.drawString(this.font, pathLabel, pathLabelX, guiTop + 44, 0x3F3F3F, false);
         }
 
         // Draw widgets and other components
@@ -171,7 +175,7 @@ public class ImageLoadScreen extends Screen {
         localButton.active = currentMode != DisplayMode.LOCAL;
 
         internetUrlField.setVisible(currentMode == DisplayMode.INTERNET);
-        imageUrlField.setVisible(currentMode == DisplayMode.LOCAL);
+        imageUrlField.setVisible(false);
         maintainAspectCheckbox.visible = true;
 
         uploadButton.visible = currentMode == DisplayMode.INTERNET;
@@ -192,11 +196,7 @@ public class ImageLoadScreen extends Screen {
 
         if (selectedFile != null) {
             Path imagePath = Paths.get(selectedFile);
-            ClientImageCache.sendImageToServer(imagePath, blockEntityPos, maintainAspectCheckbox.selected(), () -> {
-                if (this.minecraft != null) {
-                    this.minecraft.execute(imageListWidget::refresh);
-                }
-            });
+            ClientImageCache.sendImageToServer(imagePath, blockEntityPos, maintainAspectCheckbox.selected(), null);
         }
     }
 
@@ -262,5 +262,9 @@ public class ImageLoadScreen extends Screen {
     public void onClose() {
         super.onClose();
         imageListWidget.close();
+    }
+
+    public ImageListWidget getImageListWidget() {
+        return imageListWidget;
     }
 }

@@ -49,12 +49,6 @@ public class ClientImageCache {
 
             PacketRegistries.CHANNEL.sendToServer(new ImageChunkC2SPacket(imageHash, i, totalChunks, chunk));
         }
-
-        // After sending all chunks, execute the callback
-        Runnable callback = UPLOAD_CALLBACKS.remove(imageHash);
-        if (callback != null) {
-            callback.run();
-        }
     }
 
 
