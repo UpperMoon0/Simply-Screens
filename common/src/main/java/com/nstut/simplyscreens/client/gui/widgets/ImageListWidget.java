@@ -26,15 +26,45 @@ import java.util.stream.Collectors;
 public class ImageListWidget extends AbstractWidget {
     private static final int ITEM_SIZE = 40;
     private static final int PADDING = 2;
-    private final Map<File, ResourceLocation> textureCache = new HashMap<>();
-    private List<File> imageFiles = new ArrayList<>();
-    private List<File> filteredImageFiles = new ArrayList<>();
+    private final Map<String, ResourceLocation> textureCache = new HashMap<>();
+    private List<ImageEntry> imageFiles = new ArrayList<>();
+    private List<ImageEntry> filteredImageFiles = new ArrayList<>();
     private double scrollAmount;
-    private File selected;
+    private ImageEntry selected;
     private String displayedImage;
-    private final Consumer<File> onSelect;
+    private final Consumer<ImageEntry> onSelect;
 
-    public ImageListWidget(int x, int y, int width, int height, Component message, Consumer<File> onSelect) {
+    public static class ImageEntry {
+        private final File metadataFile;
+        private final String displayName;
+        private final String imageHash;
+        private final String extension;
+
+        public ImageEntry(File metadataFile, String displayName, String imageHash, String extension) {
+            this.metadataFile = metadataFile;
+            this.displayName = displayName;
+            this.imageHash = imageHash;
+            this.extension = extension;
+        }
+
+        public File getMetadataFile() {
+            return metadataFile;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
+
+        public String getImageHash() {
+            return imageHash;
+        }
+
+        public String getExtension() {
+            return extension;
+        }
+    }
+
+    public ImageListWidget(int x, int y, int width, int height, Component message, Consumer<ImageEntry> onSelect) {
         super(x, y, width, height, message);
         this.onSelect = onSelect;
         loadImages();
@@ -47,7 +77,18 @@ public class ImageListWidget extends AbstractWidget {
             try {
                 this.imageFiles = Files.walk(imagesDir)
                         .filter(path -> path.toString().endsWith(".json"))
-                        .map(Path::toFile)
+                        .map(path -> {
+                            try {
+                                String content = Files.readString(path);
+                                com.nstut.simplyscreens.helpers.ImageMetadata metadata = new com.google.gson.Gson().fromJson(content, com.nstut.simplyscreens.helpers.ImageMetadata.class);
+                                String imageHash = path.getFileName().toString().replace(".json", "");
+                                return new ImageEntry(path.toFile(), metadata.getName(), imageHash, metadata.getExtension());
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                                return null;
+                            }
+                        })
+                        .filter(java.util.Objects::nonNull)
                         .collect(Collectors.toList());
                 this.filteredImageFiles = new ArrayList<>(this.imageFiles);
             } catch (IOException e) {
@@ -86,32 +127,29 @@ public class ImageListWidget extends AbstractWidget {
         for (int i = 0; i < filteredImageFiles.size(); i++) {
             int row = i / itemsPerRow;
             int col = i % itemsPerRow;
-    
+
             int itemX = this.getX() + PADDING + col * (ITEM_SIZE + PADDING);
             int itemY = this.getY() + PADDING + row * (ITEM_SIZE + PADDING) - (int) scrollAmount;
-    
+
             if (itemY + ITEM_SIZE < this.getY() || itemY > this.getY() + this.height) {
                 continue;
             }
-    
-            File metadataFile = filteredImageFiles.get(i);
+
+            ImageEntry entry = filteredImageFiles.get(i);
             boolean isHovered = mouseX >= itemX && mouseX < itemX + ITEM_SIZE && mouseY >= itemY && mouseY < itemY + ITEM_SIZE;
-            boolean isSelected = selected == metadataFile;
-            boolean isDisplayed = displayedImage != null && displayedImage.equals(metadataFile.getName().replace(".json", ""));
-    
+            boolean isSelected = selected == entry;
+            boolean isDisplayed = displayedImage != null && displayedImage.equals(entry.getImageHash());
+
             int backgroundColor = isSelected ? 0xFF808080 : (isHovered ? 0xFF404040 : 0xFF202020);
             guiGraphics.fill(itemX, itemY, itemX + ITEM_SIZE, itemY + ITEM_SIZE, backgroundColor);
-    
+
             if (isDisplayed) {
                 guiGraphics.renderOutline(itemX, itemY, ITEM_SIZE, ITEM_SIZE, 0xFF00FF00);
             }
-    
-            ResourceLocation texture = textureCache.computeIfAbsent(metadataFile, file -> {
+
+            ResourceLocation texture = textureCache.computeIfAbsent(entry.getImageHash(), hash -> {
                 try {
-                    String content = Files.readString(file.toPath());
-                    com.nstut.simplyscreens.helpers.ImageMetadata metadata = new com.google.gson.Gson().fromJson(content, com.nstut.simplyscreens.helpers.ImageMetadata.class);
-                    String imageHash = file.getName().replace(".json", "");
-                    File imageFile = new File(file.getParentFile(), imageHash + "." + metadata.getExtension());
+                    File imageFile = new File(entry.getMetadataFile().getParentFile(), entry.getImageHash() + "." + entry.getExtension());
                     try (FileInputStream stream = new FileInputStream(imageFile)) {
                         NativeImage nativeImage = NativeImage.read(stream);
                         DynamicTexture dynamicTexture = new DynamicTexture(nativeImage);
@@ -122,7 +160,7 @@ public class ImageListWidget extends AbstractWidget {
                     return null;
                 }
             });
-    
+
             if (texture != null) {
                 RenderSystem.setShaderTexture(0, texture);
                 guiGraphics.blit(texture, itemX + 2, itemY + 2, 0, 0, ITEM_SIZE - 4, ITEM_SIZE - 4, ITEM_SIZE - 4, ITEM_SIZE - 4);
@@ -176,16 +214,7 @@ public class ImageListWidget extends AbstractWidget {
         } else {
             String lowerCaseSearchTerm = searchTerm.toLowerCase();
             this.filteredImageFiles = this.imageFiles.stream()
-                    .filter(file -> {
-                        try {
-                            String content = Files.readString(file.toPath());
-                            com.nstut.simplyscreens.helpers.ImageMetadata metadata = new com.google.gson.Gson().fromJson(content, com.nstut.simplyscreens.helpers.ImageMetadata.class);
-                            return metadata.getName().toLowerCase().contains(lowerCaseSearchTerm);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                            return false;
-                        }
-                    })
+                    .filter(entry -> entry.getDisplayName().toLowerCase().contains(lowerCaseSearchTerm))
                     .collect(Collectors.toList());
         }
         this.scrollAmount = 0;
@@ -194,7 +223,7 @@ public class ImageListWidget extends AbstractWidget {
         }
     }
 
-    public File getSelected() {
+    public ImageEntry getSelected() {
         return selected;
     }
 

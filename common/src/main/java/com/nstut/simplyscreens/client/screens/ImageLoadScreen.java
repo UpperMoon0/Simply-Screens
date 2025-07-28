@@ -96,18 +96,11 @@ public class ImageLoadScreen extends Screen {
                 .build();
 
         selectButton = Button.builder(Component.literal("Select Image"), button -> {
-                    File selectedFile = imageListWidget.getSelected();
-                    if (selectedFile != null) {
-                        try {
-                            String content = java.nio.file.Files.readString(selectedFile.toPath());
-                            com.nstut.simplyscreens.helpers.ImageMetadata metadata = new com.google.gson.Gson().fromJson(content, com.nstut.simplyscreens.helpers.ImageMetadata.class);
-                            imageUrlField.setValue(metadata.getName());
-                            sendScreenInputsToServer();
-                            String imageHash = selectedFile.getName().replace(".json", "");
-                            imageListWidget.setDisplayedImage(imageHash);
-                        } catch (java.io.IOException e) {
-                            e.printStackTrace();
-                        }
+                    ImageListWidget.ImageEntry selectedEntry = imageListWidget.getSelected();
+                    if (selectedEntry != null) {
+                        imageUrlField.setValue(selectedEntry.getImageHash());
+                        sendScreenInputsToServer();
+                        imageListWidget.setDisplayedImage(selectedEntry.getImageHash());
                     }
                 })
                 .pos(guiLeft + 21, guiTop + 108)
@@ -119,16 +112,9 @@ public class ImageLoadScreen extends Screen {
                 .size(120, 20)
                 .build();
 
-        imageListWidget = new ImageListWidget(guiLeft + 10, guiTop + 54, 140, 50, Component.literal(""), file -> {
-            if (file != null) {
-                try {
-                    String content = java.nio.file.Files.readString(file.toPath());
-                    com.nstut.simplyscreens.helpers.ImageMetadata metadata = new com.google.gson.Gson().fromJson(content, com.nstut.simplyscreens.helpers.ImageMetadata.class);
-                    imageUrlField.setValue(metadata.getName());
-                    sendScreenInputsToServer();
-                } catch (java.io.IOException e) {
-                    e.printStackTrace();
-                }
+        imageListWidget = new ImageListWidget(guiLeft + 10, guiTop + 54, 140, 50, Component.literal(""), entry -> {
+            if (entry != null) {
+                imageUrlField.setValue(entry.getDisplayName());
             }
         });
 
