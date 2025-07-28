@@ -195,6 +195,10 @@ public class ImageListWidget extends AbstractWidget {
     public void refresh() {
         loadImages();
     }
+    
+    public void tick() {
+        // No-op for now
+    }
 
     public void setDisplayedImage(String displayedImage) {
         this.displayedImage = displayedImage;

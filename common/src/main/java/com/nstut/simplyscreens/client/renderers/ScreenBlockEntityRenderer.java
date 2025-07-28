@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -152,7 +153,8 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         if (isRemoteResource(path)) {
             return loadWebTexture(new URL(path));
         }
-        return loadLocalTexture(new File(path));
+        Path imagePath = Minecraft.getInstance().gameDirectory.toPath().resolve("simply_screens_cache").resolve(path);
+        return loadLocalTexture(imagePath.toFile());
     }
 
     private boolean isRemoteResource(String path) {

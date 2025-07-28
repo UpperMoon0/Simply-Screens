@@ -61,34 +61,34 @@ public class ServerImageCache {
     private static void reassembleAndSaveImage(String imageHash, MinecraftServer server) {
         byte[][] chunks = CHUNK_CACHE.get(imageHash);
         if (chunks == null) return;
-
+    
         String imageExtension = IMAGE_EXTENSIONS.get(imageHash);
         if (imageExtension == null) {
             SimplyScreens.LOGGER.error("Image extension not found for hash: " + imageHash);
             cleanup(imageHash);
             return;
         }
-
+    
         int totalSize = 0;
         for (byte[] chunk : chunks) {
             totalSize += chunk.length;
         }
-
+    
         byte[] imageData = new byte[totalSize];
         int offset = 0;
         for (byte[] chunk : chunks) {
             System.arraycopy(chunk, 0, imageData, offset, chunk.length);
             offset += chunk.length;
         }
-
+    
         Path imagesDir = server.getWorldPath(LevelResource.ROOT).resolve("simply_screens_images");
         imagesDir.toFile().mkdirs();
         String fullImageHash = imageHash + "." + imageExtension;
         File imageFile = imagesDir.resolve(fullImageHash).toFile();
-
+    
         try (FileOutputStream fos = new FileOutputStream(imageFile)) {
             fos.write(imageData);
-
+    
             BlockPos blockPos = PENDING_UPLOADS.get(imageHash);
             boolean maintainAspectRatio = PENDING_ASPECT_RATIOS.getOrDefault(imageHash, true);
             if (blockPos != null) {
@@ -103,7 +103,12 @@ public class ServerImageCache {
                     }
                 });
             }
-
+    
+            // Notify the client that the image has been uploaded
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                PacketRegistries.CHANNEL.sendToPlayer(player, new UpdateScreenWithCachedImageS2CPacket(blockPos, fullImageHash, maintainAspectRatio));
+            }
+    
         } catch (IOException e) {
             SimplyScreens.LOGGER.error("Failed to save image " + imageHash, e);
         } finally {

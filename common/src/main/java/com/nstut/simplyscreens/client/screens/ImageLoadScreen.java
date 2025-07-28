@@ -189,7 +189,7 @@ public class ImageLoadScreen extends Screen {
                 "Image Files",
                 false
         );
-
+    
         if (selectedFile != null) {
             Path imagePath = Paths.get(selectedFile);
             ClientImageCache.sendImageToServer(imagePath, blockEntityPos, maintainAspectCheckbox.selected(), () -> {
@@ -198,6 +198,12 @@ public class ImageLoadScreen extends Screen {
                 }
             });
         }
+    }
+    
+    @Override
+    public void tick() {
+        super.tick();
+        imageListWidget.tick();
     }
 
     private void fetchDataFromBlockEntity() {

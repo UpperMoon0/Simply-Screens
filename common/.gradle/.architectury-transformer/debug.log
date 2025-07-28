@@ -4,11 +4,11 @@
 [Architectury Transformer DEBUG] ============================
 [Architectury Transformer DEBUG] 
 [Architectury Transformer DEBUG] Transforming 5 transformer(s) from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-1.0.0-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-1.0.0-transformProductionFabric.jar: 
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapMixinVariables@4e9ee0e
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformExpectPlatform@5948dde9
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapInjectables@13d624ca
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapMixinVariables@4e57979f
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformExpectPlatform@7959f78d
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapInjectables@5b3dd152
 [Architectury Transformer DEBUG]  - AddRefmapName(enabled=() -> kotlin.Boolean)
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformPlatformOnly@2ba7070e
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformPlatformOnly@3994e5a
 [Architectury Transformer DEBUG] Transforming from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-1.0.0-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-1.0.0-transformProductionFabric.jar with 5 transformer(s) on dev.architectury.transformer.handler.SimpleTransformerHandler
 [Architectury Transformer DEBUG] Found class transformer
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/SimplyScreens with maxs=true frames=true
@@ -81,13 +81,15 @@
 [Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.82.Final\c7350a71920f3ae9142945e25fed4846cce53374\netty-transport-native-epoll-4.1.82.Final-linux-x86_64.jar
 [Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.82.Final\476409d6255001ca53a55f65b01c13822f8dc93a\netty-transport-native-epoll-4.1.82.Final-linux-aarch_64.jar
 [Architectury Transformer DEBUG]  - D:\Workspaces\MC Mods\Output Devices\Simply-Screens\.gradle\loom-cache\remapped_mods\loom_mappings_1_20_1_layered_hash_40359_v2\dev\architectury\architectury\9.2.14\architectury-9.2.14.jar
-[Architectury Transformer] Read classpath in 3.146 s
+[Architectury Transformer] Read classpath in 8.375 s
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ClientImageCache with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/DisplayMode with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/creative_tabs/CreativeTabRegistries with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/Config with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/screens/ImageLoadScreen with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer$1 with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/gui/widgets/ImageListWidget with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/ScreenBlock with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity$1 with maxs=true frames=true
@@ -97,23 +99,23 @@
 [Architectury Transformer DEBUG] Found mixin config(s): /simplyscreens.mixins.json
 [Architectury Transformer DEBUG] Injecting simply_screens-common-common-refmap.json to /simplyscreens.mixins.json
 [Architectury Transformer DEBUG] Closed File Systems for D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-1.0.0-transformProductionFabric.jar
-[Architectury Transformer] Transformed jar with 5 transformer(s) in 3.564 s
+[Architectury Transformer] Transformed jar with 5 transformer(s) in 9.103 s
 [Architectury Transformer DEBUG] 
 [Architectury Transformer DEBUG] ============================
 [Architectury Transformer DEBUG] Transforming from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-1.0.0-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-1.0.0-transformProductionForge.jar
 [Architectury Transformer DEBUG] ============================
 [Architectury Transformer DEBUG] 
 [Architectury Transformer DEBUG] Transforming 7 transformer(s) from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-1.0.0-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-1.0.0-transformProductionForge.jar: 
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformExpectPlatform@194cd3c5
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapInjectables@473bb729
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformExpectPlatform@ac430fd
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapInjectables@18854283
 [Architectury Transformer DEBUG]  - AddRefmapName(enabled=() -> kotlin.Boolean)
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformPlatformOnly@676bf5d7
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformForgeAnnotations@579cc414
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformForgeEnvironment@3e7e7597
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.FixForgeMixin@2709e48c
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformPlatformOnly@73ad8cf0
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformForgeAnnotations@66ef424b
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformForgeEnvironment@5f03a8d0
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.FixForgeMixin@78cf2987
 [Architectury Transformer DEBUG] Transforming from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-1.0.0-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-1.0.0-transformProductionForge.jar with 7 transformer(s) on dev.architectury.transformer.handler.SimpleTransformerHandler
 [Architectury Transformer DEBUG] Remapping with 1 mapping provider(s):
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformForgeEnvironment$$Lambda/0x000001af2608ae20@513717a
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformForgeEnvironment$$Lambda/0x0000025e370a6588@33a25396
 [Architectury Transformer DEBUG] Provided 58 classpath jar(s):
 [Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\dev.architectury\architectury-injectables\1.0.10\62db2a366d662606d1b23ad02ccc3212ed37ec3\architectury-injectables-1.0.10.jar
 [Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.fabricmc\fabric-loader\0.16.14\5778d47f536bf2c63ed2abc1a56f5a1c129e34a\fabric-loader-0.16.14.jar
@@ -173,21 +175,22 @@
 [Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.82.Final\c7350a71920f3ae9142945e25fed4846cce53374\netty-transport-native-epoll-4.1.82.Final-linux-x86_64.jar
 [Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.82.Final\476409d6255001ca53a55f65b01c13822f8dc93a\netty-transport-native-epoll-4.1.82.Final-linux-aarch_64.jar
 [Architectury Transformer DEBUG]  - D:\Workspaces\MC Mods\Output Devices\Simply-Screens\.gradle\loom-cache\remapped_mods\loom_mappings_1_20_1_layered_hash_40359_v2\dev\architectury\architectury\9.2.14\architectury-9.2.14.jar
-[Architectury Transformer] Read classpath in 1.703 s
+[Architectury Transformer] Read classpath in 2.844 s
 [Architectury Transformer DEBUG] Remapping Classes:
 [Architectury Transformer DEBUG] net/fabricmc/api/EnvType -> net/minecraftforge/api/distmarker/Dist
 [Architectury Transformer DEBUG] net/fabricmc/api/Environment -> net/minecraftforge/api/distmarker/OnlyIn
 [Architectury Transformer DEBUG] Found class transformer
-[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/SimplyScreens with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/DisplayMode with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/Config with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/SimplyScreens with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/ImageChunkC2SPacket with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenS2CPacket with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenWithCachedImageS2CPacket with maxs=true frames=true
-[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/ImageChunkC2SPacket with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/RequestImageUploadC2SPacket with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/RequestImageDownloadC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenC2SPacket with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/ImageChunkS2CPacket with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/PacketRegistries with maxs=true frames=true
-[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenC2SPacket with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/items/ItemRegistries with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ServerImageCache with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ClientImageCache with maxs=true frames=true
@@ -195,11 +198,12 @@
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/screens/ImageLoadScreen with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer$1 with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/gui/widgets/ImageListWidget with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/BlockRegistries with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/ScreenBlock with maxs=true frames=true
-[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/BlockEntityRegistries with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity$1 with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity with maxs=true frames=true
 [Architectury Transformer DEBUG] Checking whether /simplyscreens.mixins.json is a mixin config.
 [Architectury Transformer DEBUG] Found mixin config(s): /simplyscreens.mixins.json
 [Architectury Transformer DEBUG] Injecting simply_screens-common-common-refmap.json to /simplyscreens.mixins.json
@@ -208,7 +212,7 @@
 [Architectury Transformer DEBUG] Injecting MixinConfigs into /META-INF/MANIFEST.MF
 [Architectury Transformer DEBUG] Remapping refmap from intermediary to srg: simply_screens-common-common-refmap.json
 [Architectury Transformer DEBUG] Closed File Systems for D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-1.0.0-transformProductionForge.jar
-[Architectury Transformer] Transformed jar with 7 transformer(s) in 3.241 s
+[Architectury Transformer] Transformed jar with 7 transformer(s) in 4.830 s
 [Architectury Transformer DEBUG] Closed File Systems for D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-1.0.0.jar
 [Architectury Transformer DEBUG] 
 [Architectury Transformer DEBUG] ============================
@@ -216,11 +220,11 @@
 [Architectury Transformer DEBUG] ============================
 [Architectury Transformer DEBUG] 
 [Architectury Transformer DEBUG] Transforming 5 transformer(s) from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-1.0.0-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-1.0.0-transformProductionFabric.jar: 
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapMixinVariables@e469ca0
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformExpectPlatform@1598941b
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapInjectables@28279465
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapMixinVariables@715362a6
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformExpectPlatform@38e14922
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapInjectables@2e694c63
 [Architectury Transformer DEBUG]  - AddRefmapName(enabled=() -> kotlin.Boolean)
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformPlatformOnly@68a15847
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformPlatformOnly@301aa948
 [Architectury Transformer DEBUG] Transforming from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-1.0.0-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-1.0.0-transformProductionFabric.jar with 5 transformer(s) on dev.architectury.transformer.handler.SimpleTransformerHandler
 [Architectury Transformer DEBUG] Found class transformer
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/SimplyScreens with maxs=true frames=true
@@ -293,7 +297,7 @@
 [Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.82.Final\c7350a71920f3ae9142945e25fed4846cce53374\netty-transport-native-epoll-4.1.82.Final-linux-x86_64.jar
 [Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.82.Final\476409d6255001ca53a55f65b01c13822f8dc93a\netty-transport-native-epoll-4.1.82.Final-linux-aarch_64.jar
 [Architectury Transformer DEBUG]  - D:\Workspaces\MC Mods\Output Devices\Simply-Screens\.gradle\loom-cache\remapped_mods\loom_mappings_1_20_1_layered_hash_40359_v2\dev\architectury\architectury\9.2.14\architectury-9.2.14.jar
-[Architectury Transformer] Read classpath in 5.636 s
+[Architectury Transformer] Read classpath in 4.902 s
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ClientImageCache with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/DisplayMode with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/creative_tabs/CreativeTabRegistries with maxs=true frames=true
@@ -311,23 +315,24 @@
 [Architectury Transformer DEBUG] Found mixin config(s): /simplyscreens.mixins.json
 [Architectury Transformer DEBUG] Injecting simply_screens-common-common-refmap.json to /simplyscreens.mixins.json
 [Architectury Transformer DEBUG] Closed File Systems for D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-1.0.0-transformProductionFabric.jar
-[Architectury Transformer] Transformed jar with 5 transformer(s) in 5.948 s
+[Architectury Transformer] Transformed jar with 5 transformer(s) in 5.159 s
+[Architectury Transformer DEBUG] Closed File Systems for D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-1.0.0.jar
 [Architectury Transformer DEBUG] 
 [Architectury Transformer DEBUG] ============================
 [Architectury Transformer DEBUG] Transforming from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-1.0.0-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-1.0.0-transformProductionForge.jar
 [Architectury Transformer DEBUG] ============================
 [Architectury Transformer DEBUG] 
 [Architectury Transformer DEBUG] Transforming 7 transformer(s) from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-1.0.0-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-1.0.0-transformProductionForge.jar: 
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformExpectPlatform@73bf478f
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapInjectables@4d7cf613
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformExpectPlatform@574658cb
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapInjectables@2fd5f1cf
 [Architectury Transformer DEBUG]  - AddRefmapName(enabled=() -> kotlin.Boolean)
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformPlatformOnly@59a805ac
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformForgeAnnotations@78b6c94e
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformForgeEnvironment@4693cd2d
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.FixForgeMixin@db3d0d0
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformPlatformOnly@5ed15126
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformForgeAnnotations@583abfef
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformForgeEnvironment@ed323
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.FixForgeMixin@7ca642ca
 [Architectury Transformer DEBUG] Transforming from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-1.0.0-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-1.0.0-transformProductionForge.jar with 7 transformer(s) on dev.architectury.transformer.handler.SimpleTransformerHandler
 [Architectury Transformer DEBUG] Remapping with 1 mapping provider(s):
-[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformForgeEnvironment$$Lambda/0x000001af2608ae20@513717a
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformForgeEnvironment$$Lambda/0x0000025e370a6588@33a25396
 [Architectury Transformer DEBUG] Provided 58 classpath jar(s):
 [Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\dev.architectury\architectury-injectables\1.0.10\62db2a366d662606d1b23ad02ccc3212ed37ec3\architectury-injectables-1.0.10.jar
 [Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.fabricmc\fabric-loader\0.16.14\5778d47f536bf2c63ed2abc1a56f5a1c129e34a\fabric-loader-0.16.14.jar
@@ -387,7 +392,7 @@
 [Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.82.Final\c7350a71920f3ae9142945e25fed4846cce53374\netty-transport-native-epoll-4.1.82.Final-linux-x86_64.jar
 [Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.82.Final\476409d6255001ca53a55f65b01c13822f8dc93a\netty-transport-native-epoll-4.1.82.Final-linux-aarch_64.jar
 [Architectury Transformer DEBUG]  - D:\Workspaces\MC Mods\Output Devices\Simply-Screens\.gradle\loom-cache\remapped_mods\loom_mappings_1_20_1_layered_hash_40359_v2\dev\architectury\architectury\9.2.14\architectury-9.2.14.jar
-[Architectury Transformer] Read classpath in 1.587 s
+[Architectury Transformer] Read classpath in 2.004 s
 [Architectury Transformer DEBUG] Remapping Classes:
 [Architectury Transformer DEBUG] net/fabricmc/api/EnvType -> net/minecraftforge/api/distmarker/Dist
 [Architectury Transformer DEBUG] net/fabricmc/api/Environment -> net/minecraftforge/api/distmarker/OnlyIn
@@ -395,14 +400,14 @@
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/DisplayMode with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/Config with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/SimplyScreens with maxs=true frames=true
-[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/PacketRegistries with maxs=true frames=true
-[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/RequestImageDownloadC2SPacket with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenS2CPacket with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenWithCachedImageS2CPacket with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/ImageChunkC2SPacket with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/RequestImageUploadC2SPacket with maxs=true frames=true
-[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/ImageChunkS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/RequestImageDownloadC2SPacket with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/ImageChunkS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/PacketRegistries with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/items/ItemRegistries with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ServerImageCache with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ClientImageCache with maxs=true frames=true
@@ -413,9 +418,9 @@
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/gui/widgets/ImageListWidget with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/BlockRegistries with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/ScreenBlock with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/BlockEntityRegistries with maxs=true frames=true
 [Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity$1 with maxs=true frames=true
-[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity with maxs=true frames=true
 [Architectury Transformer DEBUG] Checking whether /simplyscreens.mixins.json is a mixin config.
 [Architectury Transformer DEBUG] Found mixin config(s): /simplyscreens.mixins.json
 [Architectury Transformer DEBUG] Injecting simply_screens-common-common-refmap.json to /simplyscreens.mixins.json
@@ -424,5 +429,4 @@
 [Architectury Transformer DEBUG] Injecting MixinConfigs into /META-INF/MANIFEST.MF
 [Architectury Transformer DEBUG] Remapping refmap from intermediary to srg: simply_screens-common-common-refmap.json
 [Architectury Transformer DEBUG] Closed File Systems for D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-1.0.0-transformProductionForge.jar
-[Architectury Transformer] Transformed jar with 7 transformer(s) in 2.415 s
-[Architectury Transformer DEBUG] Closed File Systems for D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-1.0.0.jar
+[Architectury Transformer] Transformed jar with 7 transformer(s) in 3.481 s

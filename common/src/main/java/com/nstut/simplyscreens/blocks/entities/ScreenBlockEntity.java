@@ -148,7 +148,7 @@ public class ScreenBlockEntity extends BlockEntity {
                 return internetUrl;
             case LOCAL:
                 if (imageHash != null && !imageHash.isEmpty()) {
-                    return "simplyscreens_cache/" + imageHash + ".png";
+                    return imageHash;
                 }
                 return imageUrl;
             default:
