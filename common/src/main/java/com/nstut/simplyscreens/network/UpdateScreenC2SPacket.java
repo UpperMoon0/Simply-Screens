@@ -13,31 +13,35 @@ import dev.architectury.networking.NetworkManager;
 public class UpdateScreenC2SPacket {
     private final BlockPos pos;
     private final DisplayMode displayMode;
-    private final String imageUrl;
     private final String internetUrl;
+    private final String localHash;
+    private final String localExtension;
     private final boolean maintainAspectRatio;
 
-    public UpdateScreenC2SPacket(BlockPos pos, DisplayMode displayMode, String imageUrl, String internetUrl, boolean maintainAspectRatio) {
+    public UpdateScreenC2SPacket(BlockPos pos, DisplayMode displayMode, String internetUrl, String localHash, String localExtension, boolean maintainAspectRatio) {
         this.pos = pos;
         this.displayMode = displayMode;
-        this.imageUrl = imageUrl;
         this.internetUrl = internetUrl;
+        this.localHash = localHash;
+        this.localExtension = localExtension;
         this.maintainAspectRatio = maintainAspectRatio;
     }
 
     public UpdateScreenC2SPacket(FriendlyByteBuf buf) {
         pos = buf.readBlockPos();
         displayMode = buf.readEnum(DisplayMode.class);
-        imageUrl = buf.readUtf();
         internetUrl = buf.readUtf();
+        localHash = buf.readUtf();
+        localExtension = buf.readUtf();
         maintainAspectRatio = buf.readBoolean();
     }
 
     public void encode(FriendlyByteBuf buf) {
         buf.writeBlockPos(pos);
         buf.writeEnum(displayMode);
-        buf.writeUtf(imageUrl);
         buf.writeUtf(internetUrl);
+        buf.writeUtf(localHash);
+        buf.writeUtf(localExtension);
         buf.writeBoolean(maintainAspectRatio);
     }
 
@@ -57,7 +61,7 @@ public class UpdateScreenC2SPacket {
                     BlockEntity anchorBlockEntity = level.getBlockEntity(anchorPos);
 
                     if (anchorBlockEntity instanceof ScreenBlockEntity anchorScreenBlockEntity) {
-                        anchorScreenBlockEntity.updateFromScreenInputs(displayMode, imageUrl, internetUrl, maintainAspectRatio);
+                        anchorScreenBlockEntity.updateFromScreenInputs(displayMode, internetUrl, localHash, localExtension, maintainAspectRatio);
                     }
                 }
             }

@@ -20,7 +20,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import org.jetbrains.annotations.NotNull;
 import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
-import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -33,10 +32,10 @@ public class ImageLoadScreen extends Screen {
     private DisplayMode currentMode = DisplayMode.INTERNET;
 
     private EditBox internetUrlField;
-    private EditBox imageUrlField;
+    private EditBox localImageField;
     private final BlockPos blockEntityPos;
     private String initialInternetUrl;
-    private String initialImageUrl;
+    private String initialLocalHash;
     private boolean initialMaintainAspectRatio = true;
     private DisplayMode initialDisplayMode = DisplayMode.INTERNET;
     private Checkbox maintainAspectCheckbox;
@@ -77,10 +76,10 @@ public class ImageLoadScreen extends Screen {
         this.internetUrlField.setMaxLength(255);
         this.internetUrlField.setValue(initialInternetUrl);
 
-        this.imageUrlField = new EditBox(this.font, guiLeft + 10, guiTop + 64, 140, 20, Component.literal(""));
-        this.imageUrlField.setMaxLength(255);
-        this.imageUrlField.setValue(initialImageUrl);
-        this.imageUrlField.setEditable(false);
+        this.localImageField = new EditBox(this.font, guiLeft + 10, guiTop + 64, 140, 20, Component.literal(""));
+        this.localImageField.setMaxLength(255);
+        this.localImageField.setValue(initialLocalHash);
+        this.localImageField.setEditable(false);
 
         maintainAspectCheckbox = new Checkbox(guiLeft + 10, guiTop + 116, 20, 20, Component.literal("Maintain Aspect Ratio"), initialMaintainAspectRatio);
 
@@ -98,7 +97,7 @@ public class ImageLoadScreen extends Screen {
         selectButton = Button.builder(Component.literal("Select Image"), button -> {
                     ImageListWidget.ImageEntry selectedEntry = imageListWidget.getSelected();
                     if (selectedEntry != null) {
-                        imageUrlField.setValue(selectedEntry.getImageHash());
+                        localImageField.setValue(selectedEntry.getImageHash());
                         sendScreenInputsToServer();
                         imageListWidget.setDisplayedImage(selectedEntry.getImageHash());
                     }
@@ -114,18 +113,18 @@ public class ImageLoadScreen extends Screen {
 
         imageListWidget = new ImageListWidget(guiLeft + 10, guiTop + 54, 140, 50, Component.literal(""), entry -> {
             if (entry != null) {
-                imageUrlField.setValue(entry.getDisplayName());
+                localImageField.setValue(entry.getDisplayName());
             }
         });
 
-        if (initialImageUrl != null && !initialImageUrl.isBlank()) {
-            imageListWidget.setDisplayedImage(initialImageUrl);
+        if (initialLocalHash != null && !initialLocalHash.isBlank()) {
+            imageListWidget.setDisplayedImage(initialLocalHash);
         }
 
         this.addRenderableWidget(internetButton);
         this.addRenderableWidget(localButton);
         this.addRenderableWidget(this.internetUrlField);
-        this.addRenderableWidget(this.imageUrlField);
+        this.addRenderableWidget(this.localImageField);
         this.addRenderableWidget(maintainAspectCheckbox);
         this.addRenderableWidget(uploadButton);
         this.addRenderableWidget(selectButton);
@@ -174,7 +173,7 @@ public class ImageLoadScreen extends Screen {
         localButton.active = currentMode != DisplayMode.LOCAL;
 
         internetUrlField.setVisible(currentMode == DisplayMode.INTERNET);
-        imageUrlField.setVisible(false);
+        localImageField.setVisible(false);
         maintainAspectCheckbox.visible = true;
 
         uploadButton.visible = currentMode == DisplayMode.INTERNET;
@@ -211,7 +210,7 @@ public class ImageLoadScreen extends Screen {
             if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                 initialDisplayMode = screenBlockEntity.getDisplayMode();
                 initialInternetUrl = screenBlockEntity.getInternetUrl();
-                initialImageUrl = screenBlockEntity.getImageUrl();
+                initialLocalHash = screenBlockEntity.getLocalHash();
                 initialMaintainAspectRatio = screenBlockEntity.isMaintainAspectRatio();
             }
         }
@@ -219,10 +218,19 @@ public class ImageLoadScreen extends Screen {
 
     private void sendScreenInputsToServer() {
         String internetUrl = internetUrlField.getValue();
-        String imageUrl = imageUrlField.getValue();
+        String localHash = "";
+        String localExtension = "";
         boolean maintainAspectRatio = maintainAspectCheckbox.selected();
 
-        PacketRegistries.CHANNEL.sendToServer(new UpdateScreenC2SPacket(blockEntityPos, currentMode, imageUrl, internetUrl, maintainAspectRatio));
+        if (currentMode == DisplayMode.LOCAL) {
+            ImageListWidget.ImageEntry selectedEntry = imageListWidget.getSelected();
+            if (selectedEntry != null) {
+                localHash = selectedEntry.getImageHash();
+                localExtension = selectedEntry.getImageExtension();
+            }
+        }
+
+        PacketRegistries.CHANNEL.sendToServer(new UpdateScreenC2SPacket(blockEntityPos, currentMode, internetUrl, localHash, localExtension, maintainAspectRatio));
     }
 
     private boolean isHttpUrl(String url) {
@@ -236,7 +244,7 @@ public class ImageLoadScreen extends Screen {
         }
 
         // Check if the inventory key is pressed and the EditBox is NOT focused
-        if (this.minecraft.options.keyInventory.matches(keyCode, scanCode) && !this.internetUrlField.isFocused() && !this.imageUrlField.isFocused()) {
+        if (this.minecraft.options.keyInventory.matches(keyCode, scanCode) && !this.internetUrlField.isFocused() && !this.localImageField.isFocused()) {
             this.onClose(); // Close the screen
             return true;    // Mark the key event as handled
         }
@@ -249,16 +257,16 @@ public class ImageLoadScreen extends Screen {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (this.internetUrlField.isMouseOver(mouseX, mouseY)) {
             this.internetUrlField.setFocused(true);
-            this.imageUrlField.setFocused(false);
+            this.localImageField.setFocused(false);
             return true;
-        } else if (this.imageUrlField.isMouseOver(mouseX, mouseY)) {
+        } else if (this.localImageField.isMouseOver(mouseX, mouseY)) {
             this.internetUrlField.setFocused(false);
-            this.imageUrlField.setFocused(true);
+            this.localImageField.setFocused(true);
             return true;
         }
 
         this.internetUrlField.setFocused(false);
-        this.imageUrlField.setFocused(false);
+        this.localImageField.setFocused(false);
 
         return super.mouseClicked(mouseX, mouseY, button);
     }

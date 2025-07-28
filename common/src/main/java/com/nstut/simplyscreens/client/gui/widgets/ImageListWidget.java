@@ -59,7 +59,7 @@ public class ImageListWidget extends AbstractWidget {
             return imageHash;
         }
 
-        public String getExtension() {
+        public String getImageExtension() {
             return extension;
         }
     }
@@ -149,7 +149,7 @@ public class ImageListWidget extends AbstractWidget {
 
             ResourceLocation texture = textureCache.computeIfAbsent(entry.getImageHash(), hash -> {
                 try {
-                    File imageFile = new File(entry.getMetadataFile().getParentFile(), entry.getImageHash() + "." + entry.getExtension());
+                    File imageFile = new File(entry.getMetadataFile().getParentFile(), entry.getImageHash() + "." + entry.getImageExtension());
                     try (FileInputStream stream = new FileInputStream(imageFile)) {
                         NativeImage nativeImage = NativeImage.read(stream);
                         DynamicTexture dynamicTexture = new DynamicTexture(nativeImage);

@@ -108,7 +108,18 @@ public class ClientImageCache {
 
         BlockEntity be = mc.level.getBlockEntity(msg.getBlockPos());
         if (be instanceof ScreenBlockEntity screen) {
-            screen.updateFromCache(msg.getImageHash(), msg.shouldMaintainAspectRatio());
+            String fullHash = msg.getImageHash();
+            String hash = "";
+            String ext = "";
+
+            if (fullHash != null && fullHash.contains(".")) {
+                hash = fullHash.substring(0, fullHash.lastIndexOf('.'));
+                ext = fullHash.substring(fullHash.lastIndexOf('.') + 1);
+            } else {
+                hash = fullHash;
+            }
+
+            screen.updateFromCache(hash, ext, msg.shouldMaintainAspectRatio());
             mc.level.sendBlockUpdated(msg.getBlockPos(), be.getBlockState(), be.getBlockState(), 3);
         }
 

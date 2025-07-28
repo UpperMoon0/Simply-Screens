@@ -36,7 +36,7 @@ public class ServerImageCache {
         if (imageFile.exists()) {
             if (player.level().getBlockEntity(msg.getBlockPos()) instanceof ScreenBlockEntity screen) {
                 String fullImageHash = msg.getImageHash() + "." + msg.getImageExtension();
-                screen.updateFromCache(fullImageHash, msg.isMaintainAspectRatio());
+                screen.updateFromCache(msg.getImageHash(), msg.getImageExtension(), msg.isMaintainAspectRatio());
                 broadcastScreenUpdate(screen.getBlockPos(), fullImageHash, msg.isMaintainAspectRatio(), player.getServer());
             }
         } else {
@@ -104,7 +104,7 @@ public class ServerImageCache {
                     for (var level : server.getAllLevels()) {
                         BlockEntity be = level.getBlockEntity(blockPos);
                         if (be instanceof ScreenBlockEntity screen) {
-                            screen.updateFromCache(fullImageHash, maintainAspectRatio);
+                            screen.updateFromCache(imageHash, imageExtension, maintainAspectRatio);
                             broadcastScreenUpdate(blockPos, fullImageHash, maintainAspectRatio, server);
                             break;
                         }

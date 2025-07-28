@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import com.nstut.simplyscreens.Config;
+import com.nstut.simplyscreens.DisplayMode;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simplyscreens.helpers.ClientImageCache;
@@ -49,8 +50,9 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         BlockState blockState = blockEntity.getBlockState();
         Direction facing = blockState.getValue(BlockStateProperties.FACING);
         String imagePath = blockEntity.getImagePath();
+        DisplayMode displayMode = blockEntity.getDisplayMode();
 
-        ResourceLocation texture = getOrLoadTexture(imagePath);
+        ResourceLocation texture = getOrLoadTexture(imagePath, displayMode);
         if (texture == null) return;
 
         prepareRenderingTransform(poseStack, blockEntity, facing);
@@ -138,10 +140,10 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
                 !blockEntity.getImagePath().isEmpty();
     }
 
-    private ResourceLocation getOrLoadTexture(String imagePath) {
+    private ResourceLocation getOrLoadTexture(String imagePath, DisplayMode displayMode) {
         return TEXTURE_CACHE.computeIfAbsent(imagePath, path -> {
             try {
-                return loadTextureResource(path);
+                return loadTextureResource(path, displayMode);
             } catch (Exception e) {
                 LOGGER.warning("Failed to load texture: " + path + " - " + e.getMessage());
                 return null;
@@ -149,19 +151,16 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         });
     }
 
-    private ResourceLocation loadTextureResource(String path) throws IOException {
-        if (isRemoteResource(path)) {
+    private ResourceLocation loadTextureResource(String path, DisplayMode displayMode) throws IOException {
+        if (displayMode == DisplayMode.INTERNET) {
             return loadWebTexture(new URL(path));
         }
+
         File imageFile = ClientImageCache.getImagePath(path).toFile();
         if (!imageFile.exists()) {
             throw new IOException("Can't read input file!");
         }
         return loadLocalTexture(imageFile);
-    }
-
-    private boolean isRemoteResource(String path) {
-        return path.startsWith("http://") || path.startsWith("https://");
     }
 
     private void applyAspectRatioScaling(PoseStack poseStack, ScreenBlockEntity blockEntity) {

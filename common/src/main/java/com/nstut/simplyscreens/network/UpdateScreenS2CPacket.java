@@ -13,20 +13,20 @@ import java.util.function.Supplier;
 public class UpdateScreenS2CPacket {
     private final BlockPos pos;
     private final DisplayMode displayMode;
-    private final String imageUrl;
     private final String internetUrl;
-    private final String imageHash;
+    private final String localHash;
+    private final String localExtension;
     private final BlockPos anchorPos;
     private final int screenWidth;
     private final int screenHeight;
     private final boolean maintainAspectRatio;
 
-    public UpdateScreenS2CPacket(BlockPos pos, DisplayMode displayMode, String imageUrl, String internetUrl, String imageHash, BlockPos anchorPos, int screenWidth, int screenHeight, boolean maintainAspectRatio) {
+    public UpdateScreenS2CPacket(BlockPos pos, DisplayMode displayMode, String internetUrl, String localHash, String localExtension, BlockPos anchorPos, int screenWidth, int screenHeight, boolean maintainAspectRatio) {
         this.pos = pos;
         this.displayMode = displayMode;
-        this.imageUrl = imageUrl;
         this.internetUrl = internetUrl;
-        this.imageHash = imageHash;
+        this.localHash = localHash;
+        this.localExtension = localExtension;
         this.anchorPos = anchorPos;
         this.screenWidth = screenWidth;
         this.screenHeight = screenHeight;
@@ -36,9 +36,9 @@ public class UpdateScreenS2CPacket {
     public UpdateScreenS2CPacket(FriendlyByteBuf buf) {
         pos = buf.readBlockPos();
         displayMode = buf.readEnum(DisplayMode.class);
-        imageUrl = buf.readUtf();
         internetUrl = buf.readUtf();
-        imageHash = buf.readUtf();
+        localHash = buf.readUtf();
+        localExtension = buf.readUtf();
         if (buf.readBoolean()) {
             anchorPos = buf.readBlockPos();
         } else {
@@ -52,9 +52,9 @@ public class UpdateScreenS2CPacket {
     public void encode(FriendlyByteBuf buf) {
         buf.writeBlockPos(pos);
         buf.writeEnum(displayMode);
-        buf.writeUtf(imageUrl);
         buf.writeUtf(internetUrl);
-        buf.writeUtf(imageHash);
+        buf.writeUtf(localHash);
+        buf.writeUtf(localExtension);
         buf.writeBoolean(anchorPos != null);
         if (anchorPos != null) {
             buf.writeBlockPos(anchorPos);
@@ -71,9 +71,9 @@ public class UpdateScreenS2CPacket {
                 BlockEntity blockEntity = level.getBlockEntity(pos);
                 if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                     screenBlockEntity.setDisplayMode(displayMode);
-                    screenBlockEntity.setImageUrl(imageUrl);
                     screenBlockEntity.setInternetUrl(internetUrl);
-                    screenBlockEntity.setImageHash(imageHash);
+                    screenBlockEntity.setLocalHash(localHash);
+                    screenBlockEntity.setLocalExtension(localExtension);
                     screenBlockEntity.setAnchorPos(anchorPos);
                     screenBlockEntity.setScreenWidth(screenWidth);
                     screenBlockEntity.setScreenHeight(screenHeight);
