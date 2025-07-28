@@ -103,7 +103,8 @@ public class ImageLoadScreen extends Screen {
                             com.nstut.simplyscreens.helpers.ImageMetadata metadata = new com.google.gson.Gson().fromJson(content, com.nstut.simplyscreens.helpers.ImageMetadata.class);
                             imageUrlField.setValue(metadata.getName());
                             sendScreenInputsToServer();
-                            imageListWidget.setDisplayedImage(metadata.getHash());
+                            String imageHash = selectedFile.getName().replace(".json", "");
+                            imageListWidget.setDisplayedImage(imageHash);
                         } catch (java.io.IOException e) {
                             e.printStackTrace();
                         }

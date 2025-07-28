@@ -110,7 +110,8 @@ public class ImageListWidget extends AbstractWidget {
                 try {
                     String content = Files.readString(file.toPath());
                     com.nstut.simplyscreens.helpers.ImageMetadata metadata = new com.google.gson.Gson().fromJson(content, com.nstut.simplyscreens.helpers.ImageMetadata.class);
-                    File imageFile = new File(file.getParentFile(), metadata.getHash() + "." + metadata.getExtension());
+                    String imageHash = file.getName().replace(".json", "");
+                    File imageFile = new File(file.getParentFile(), imageHash + "." + metadata.getExtension());
                     try (FileInputStream stream = new FileInputStream(imageFile)) {
                         NativeImage nativeImage = NativeImage.read(stream);
                         DynamicTexture dynamicTexture = new DynamicTexture(nativeImage);

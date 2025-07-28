@@ -8,6 +8,8 @@ import com.nstut.simplyscreens.network.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.storage.LevelResource;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -29,9 +31,9 @@ public class ClientImageCache {
             String imageHash = Hashing.sha1().hashBytes(imageData).toString();
             String imageExtension = Files.getFileExtension(imagePath.getFileName().toString());
             String imageName = imagePath.getFileName().toString();
-    
+
             PacketRegistries.CHANNEL.sendToServer(new RequestImageUploadC2SPacket(imageName, imageHash, imageExtension, blockPos, maintainAspectRatio));
-    
+
             int totalChunks = (int) Math.ceil((double) imageData.length / CHUNK_SIZE);
             for (int i = 0; i < totalChunks; i++) {
                 int start = i * CHUNK_SIZE;
@@ -39,7 +41,7 @@ public class ClientImageCache {
                 byte[] chunk = Arrays.copyOfRange(imageData, start, end);
                 PacketRegistries.CHANNEL.sendToServer(new ImageChunkC2SPacket(imageHash, i, totalChunks, chunk));
             }
-    
+
             PENDING_DOWNLOADS.put(imageHash, onComplete);
         } catch (IOException e) {
             SimplyScreens.LOGGER.error("Failed to read or send image", e);
@@ -57,12 +59,12 @@ public class ClientImageCache {
         }
     }
 
-    private static void reassembleAndSaveImage(String imageHash) {
-        byte[][] chunks = CHUNK_CACHE.get(imageHash);
+    private static void reassembleAndSaveImage(String fullImageHash) {
+        byte[][] chunks = CHUNK_CACHE.get(fullImageHash);
         if (chunks == null) return;
 
-        String imageExtension = Files.getFileExtension(imageHash);
-        String imageName = imageHash.substring(0, imageHash.lastIndexOf('.'));
+        String imageHash = fullImageHash.substring(0, fullImageHash.lastIndexOf('.'));
+        String imageExtension = Files.getFileExtension(fullImageHash);
 
         int totalSize = 0;
         for (byte[] chunk : chunks) {
@@ -76,35 +78,33 @@ public class ClientImageCache {
             offset += chunk.length;
         }
 
-        File imageFile = getImagePath(imageName + "." + imageExtension).toFile();
+        File imageFile = getImagePath(imageHash, imageExtension).toFile();
         imageFile.getParentFile().mkdirs();
 
         try (FileOutputStream fos = new FileOutputStream(imageFile)) {
             fos.write(imageData);
-            if (PENDING_DOWNLOADS.containsKey(imageName)) {
-                PENDING_DOWNLOADS.get(imageName).run();
-                PENDING_DOWNLOADS.remove(imageName);
+            if (PENDING_DOWNLOADS.containsKey(imageHash)) {
+                PENDING_DOWNLOADS.get(imageHash).run();
+                PENDING_DOWNLOADS.remove(imageHash);
             }
         } catch (IOException e) {
-            SimplyScreens.LOGGER.error("Failed to save image " + imageName, e);
+            SimplyScreens.LOGGER.error("Failed to save image " + imageHash, e);
         } finally {
-            CHUNK_CACHE.remove(imageHash);
-            CHUNKS_RECEIVED.remove(imageHash);
+            CHUNK_CACHE.remove(fullImageHash);
+            CHUNKS_RECEIVED.remove(fullImageHash);
         }
     }
 
     public static void handleUpdateScreenWithCachedImage(UpdateScreenWithCachedImageS2CPacket msg) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
-    
+
         BlockEntity be = mc.level.getBlockEntity(msg.getBlockPos());
         if (be instanceof ScreenBlockEntity screen) {
-            screen.setImageUrl(msg.getImageHash());
-            screen.setMaintainAspectRatio(msg.shouldMaintainAspectRatio());
-            screen.setChanged();
+            screen.updateFromCache(msg.getImageHash(), msg.shouldMaintainAspectRatio());
             mc.level.sendBlockUpdated(msg.getBlockPos(), be.getBlockState(), be.getBlockState(), 3);
         }
-    
+
         String fullHash = msg.getImageHash();
         if (fullHash != null && fullHash.contains(".")) {
             String hash = fullHash.substring(0, fullHash.lastIndexOf('.'));
@@ -115,7 +115,22 @@ public class ClientImageCache {
         }
     }
 
-    public static Path getImagePath(String imageHash) {
-        return Minecraft.getInstance().gameDirectory.toPath().resolve("simply_screens_cache").resolve(imageHash);
+    public static Path getImagesDir() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.isSingleplayer()) {
+            MinecraftServer server = mc.getSingleplayerServer();
+            if (server != null) {
+                return server.getWorldPath(LevelResource.ROOT).resolve("simply_screens_images");
+            }
+        }
+        return mc.gameDirectory.toPath().resolve("simply_screens_images");
+    }
+
+    public static Path getImagePath(String imageHash, String extension) {
+        return getImagesDir().resolve(imageHash + "." + extension);
+    }
+
+    public static Path getImagePath(String fullImageName) {
+        return getImagesDir().resolve(fullImageName);
     }
 }
