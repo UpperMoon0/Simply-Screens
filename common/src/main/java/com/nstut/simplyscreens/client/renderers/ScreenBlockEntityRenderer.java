@@ -7,6 +7,7 @@ import com.mojang.math.Axis;
 import com.nstut.simplyscreens.Config;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
+import com.nstut.simplyscreens.helpers.ClientImageCache;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -152,7 +153,11 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         if (isRemoteResource(path)) {
             return loadWebTexture(new URL(path));
         }
-        return loadLocalTexture(new File(path));
+        File imageFile = ClientImageCache.getImagePath(path).toFile();
+        if (!imageFile.exists()) {
+            throw new IOException("Can't read input file!");
+        }
+        return loadLocalTexture(imageFile);
     }
 
     private boolean isRemoteResource(String path) {

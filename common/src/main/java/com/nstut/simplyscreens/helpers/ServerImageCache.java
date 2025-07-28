@@ -4,7 +4,6 @@ import com.google.common.io.Files;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simplyscreens.network.*;
-import dev.architectury.networking.NetworkManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -26,14 +25,13 @@ public class ServerImageCache {
     private static final Map<String, BlockPos> PENDING_UPLOADS = new ConcurrentHashMap<>();
     private static final Map<String, String> IMAGE_EXTENSIONS = new ConcurrentHashMap<>();
     private static final Map<String, Boolean> PENDING_ASPECT_RATIOS = new ConcurrentHashMap<>();
-    private static final Map<String, ServerPlayer> UPLOADING_PLAYERS = new ConcurrentHashMap<>();
+    private static final Map<String, String> PENDING_IMAGE_NAMES = new ConcurrentHashMap<>();
 
     public static void handleRequestImageUpload(RequestImageUploadC2SPacket msg, ServerPlayer player) {
         MinecraftServer server = player.getServer();
         if (server == null) return;
 
-        Path imagesDir = server.getWorldPath(LevelResource.ROOT).resolve("simply_screens_images");
-        File imageFile = imagesDir.resolve(msg.getImageHash() + "." + msg.getImageExtension()).toFile();
+        File imageFile = getImagePath(server, msg.getImageHash(), msg.getImageExtension()).toFile();
 
         if (imageFile.exists()) {
             if (player.level().getBlockEntity(msg.getBlockPos()) instanceof ScreenBlockEntity screen) {
@@ -45,7 +43,7 @@ public class ServerImageCache {
             PENDING_UPLOADS.put(msg.getImageHash(), msg.getBlockPos());
             IMAGE_EXTENSIONS.put(msg.getImageHash(), msg.getImageExtension());
             PENDING_ASPECT_RATIOS.put(msg.getImageHash(), msg.isMaintainAspectRatio());
-            UPLOADING_PLAYERS.put(msg.getImageHash(), player);
+            PENDING_IMAGE_NAMES.put(msg.getImageHash(), msg.getImageName());
         }
     }
 
@@ -83,13 +81,20 @@ public class ServerImageCache {
             offset += chunk.length;
         }
 
-        Path imagesDir = server.getWorldPath(LevelResource.ROOT).resolve("simply_screens_images");
+        Path imagesDir = getImagesDir(server);
         imagesDir.toFile().mkdirs();
         String fullImageHash = imageHash + "." + imageExtension;
         File imageFile = imagesDir.resolve(fullImageHash).toFile();
+        File metadataFile = imagesDir.resolve(imageHash + ".json").toFile();
 
         try (FileOutputStream fos = new FileOutputStream(imageFile)) {
             fos.write(imageData);
+
+            String imageName = PENDING_IMAGE_NAMES.get(imageHash);
+            ImageMetadata metadata = new ImageMetadata(imageName, imageExtension, System.currentTimeMillis());
+            try (java.io.FileWriter writer = new java.io.FileWriter(metadataFile)) {
+                new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(metadata, writer);
+            }
 
             BlockPos blockPos = PENDING_UPLOADS.get(imageHash);
             boolean maintainAspectRatio = PENDING_ASPECT_RATIOS.getOrDefault(imageHash, true);
@@ -106,10 +111,9 @@ public class ServerImageCache {
                 });
             }
 
-            // Notify the client that the upload is complete
-            ServerPlayer uploadingPlayer = UPLOADING_PLAYERS.get(imageHash);
-            if (uploadingPlayer != null) {
-                PacketRegistries.CHANNEL.sendToPlayer(uploadingPlayer, new UploadCompleteS2CPacket());
+            // Notify the client that the image has been uploaded
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                PacketRegistries.CHANNEL.sendToPlayer(player, new UpdateScreenWithCachedImageS2CPacket(blockPos, fullImageHash, maintainAspectRatio));
             }
 
         } catch (IOException e) {
@@ -123,8 +127,7 @@ public class ServerImageCache {
         MinecraftServer server = player.getServer();
         if (server == null) return;
 
-        Path imagesDir = server.getWorldPath(LevelResource.ROOT).resolve("simply_screens_images");
-        File imageFile = imagesDir.resolve(msg.getImageHash()).toFile();
+        File imageFile = getImagePath(server, msg.getImageHash()).toFile();
 
         if (imageFile.exists()) {
             try {
@@ -158,6 +161,18 @@ public class ServerImageCache {
         PENDING_UPLOADS.remove(imageHash);
         IMAGE_EXTENSIONS.remove(imageHash);
         PENDING_ASPECT_RATIOS.remove(imageHash);
-        UPLOADING_PLAYERS.remove(imageHash);
+        PENDING_IMAGE_NAMES.remove(imageHash);
+    }
+
+    private static Path getImagesDir(MinecraftServer server) {
+        return server.getWorldPath(LevelResource.ROOT).resolve("simply_screens_images");
+    }
+
+    private static Path getImagePath(MinecraftServer server, String imageHash, String extension) {
+        return getImagesDir(server).resolve(imageHash + "." + extension);
+    }
+
+    private static Path getImagePath(MinecraftServer server, String fullImageName) {
+        return getImagesDir(server).resolve(fullImageName);
     }
 }

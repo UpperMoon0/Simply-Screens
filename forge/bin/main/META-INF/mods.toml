@@ -1,15 +1,17 @@
 modLoader = "javafml"
 loaderVersion = "[47,)"
 #issueTrackerURL = ""
-license = "Insert License Here"
+issueTrackerURL = "https://github.com/nstut/simply-screens/issues"
+license = "MIT"
 
 [[mods]]
 modId = "simplyscreens"
 version = "${version}"
 displayName = "Simply Screens"
-authors = "Me!"
+displayURL="https://www.curseforge.com/minecraft/mc-mods/simply-screens"
+authors = "nstut"
 description = '''
-This is an example description! Tell everyone what your mod is about!
+A simple mod that adds screens to display images from a URL.
 '''
 #logoFile = ""
 

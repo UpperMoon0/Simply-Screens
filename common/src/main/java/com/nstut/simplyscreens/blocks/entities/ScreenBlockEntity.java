@@ -143,17 +143,11 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     public String getImagePath() {
-        switch (displayMode) {
-            case INTERNET:
-                return internetUrl;
-            case LOCAL:
-                if (imageHash != null && !imageHash.isEmpty()) {
-                    return "simplyscreens_cache/" + imageHash + ".png";
-                }
-                return imageUrl;
-            default:
-                return "";
-        }
+        return switch (displayMode) {
+            case INTERNET -> internetUrl;
+            case LOCAL -> imageHash;
+            default -> "";
+        };
     }
 
     public void updateFromScreenInputs(DisplayMode displayMode, String imageUrl, String internetUrl, boolean maintainAspectRatio) {
