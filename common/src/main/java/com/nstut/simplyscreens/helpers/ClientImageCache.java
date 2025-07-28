@@ -36,7 +36,9 @@ public class ClientImageCache {
 
             sendImageInChunks(imageHash, imageData);
 
-            PENDING_DOWNLOADS.put(imageHash, onComplete);
+            if (onComplete != null) {
+                PENDING_DOWNLOADS.put(imageHash, onComplete);
+            }
         } catch (IOException e) {
             SimplyScreens.LOGGER.error("Failed to read or send image", e);
         }

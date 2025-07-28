@@ -209,7 +209,7 @@ public class ImageLoadScreen extends Screen {
     
         if (selectedFile != null) {
             Path imagePath = Paths.get(selectedFile);
-            ClientImageCache.sendImageToServer(imagePath, blockEntityPos, maintainAspectCheckbox.selected(), null);
+            ClientImageCache.sendImageToServer(imagePath, blockEntityPos, maintainAspectCheckbox.selected(), imageListWidget::refresh);
         }
     }
     

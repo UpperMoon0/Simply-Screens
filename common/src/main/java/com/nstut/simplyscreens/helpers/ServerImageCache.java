@@ -91,7 +91,8 @@ public class ServerImageCache {
             fos.write(imageData);
 
             String imageName = PENDING_IMAGE_NAMES.get(imageHash);
-            ImageMetadata metadata = new ImageMetadata(imageName, imageExtension, System.currentTimeMillis());
+            String imageNameWithoutExtension = Files.getNameWithoutExtension(imageName);
+            ImageMetadata metadata = new ImageMetadata(imageNameWithoutExtension, imageExtension, System.currentTimeMillis());
             try (java.io.FileWriter writer = new java.io.FileWriter(metadataFile)) {
                 new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(metadata, writer);
             }

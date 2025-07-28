@@ -52,7 +52,7 @@ public class PacketRegistries {
         );
 
         CHANNEL.register(UploadCompleteS2CPacket.class,
-                UploadCompleteS2CPacket::encode,
+                UploadCompleteS2CPacket::write,
                 UploadCompleteS2CPacket::new,
                 UploadCompleteS2CPacket::handle
         );
