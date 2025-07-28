@@ -26,14 +26,15 @@ public class ServerImageCache {
     private static final Map<String, BlockPos> PENDING_UPLOADS = new ConcurrentHashMap<>();
     private static final Map<String, String> IMAGE_EXTENSIONS = new ConcurrentHashMap<>();
     private static final Map<String, Boolean> PENDING_ASPECT_RATIOS = new ConcurrentHashMap<>();
-
+    private static final Map<String, String> PENDING_IMAGE_NAMES = new ConcurrentHashMap<>();
+    
     public static void handleRequestImageUpload(RequestImageUploadC2SPacket msg, ServerPlayer player) {
         MinecraftServer server = player.getServer();
         if (server == null) return;
-
+    
         Path imagesDir = server.getWorldPath(LevelResource.ROOT).resolve("simply_screens_images");
         File imageFile = imagesDir.resolve(msg.getImageHash() + "." + msg.getImageExtension()).toFile();
-
+    
         if (imageFile.exists()) {
             if (player.level().getBlockEntity(msg.getBlockPos()) instanceof ScreenBlockEntity screen) {
                 String fullImageHash = msg.getImageHash() + "." + msg.getImageExtension();
@@ -44,6 +45,7 @@ public class ServerImageCache {
             PENDING_UPLOADS.put(msg.getImageHash(), msg.getBlockPos());
             IMAGE_EXTENSIONS.put(msg.getImageHash(), msg.getImageExtension());
             PENDING_ASPECT_RATIOS.put(msg.getImageHash(), msg.isMaintainAspectRatio());
+            PENDING_IMAGE_NAMES.put(msg.getImageHash(), msg.getImageName());
         }
     }
 
@@ -85,9 +87,16 @@ public class ServerImageCache {
         imagesDir.toFile().mkdirs();
         String fullImageHash = imageHash + "." + imageExtension;
         File imageFile = imagesDir.resolve(fullImageHash).toFile();
+        File metadataFile = imagesDir.resolve(imageHash + ".json").toFile();
     
         try (FileOutputStream fos = new FileOutputStream(imageFile)) {
             fos.write(imageData);
+    
+            String imageName = PENDING_IMAGE_NAMES.get(imageHash);
+            ImageMetadata metadata = new ImageMetadata(imageName, imageHash, imageExtension, System.currentTimeMillis());
+            try (java.io.FileWriter writer = new java.io.FileWriter(metadataFile)) {
+                new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(metadata, writer);
+            }
     
             BlockPos blockPos = PENDING_UPLOADS.get(imageHash);
             boolean maintainAspectRatio = PENDING_ASPECT_RATIOS.getOrDefault(imageHash, true);
@@ -155,5 +164,6 @@ public class ServerImageCache {
         PENDING_UPLOADS.remove(imageHash);
         IMAGE_EXTENSIONS.remove(imageHash);
         PENDING_ASPECT_RATIOS.remove(imageHash);
+        PENDING_IMAGE_NAMES.remove(imageHash);
     }
 }

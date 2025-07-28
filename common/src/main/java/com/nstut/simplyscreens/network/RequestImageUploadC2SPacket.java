@@ -13,12 +13,14 @@ import java.util.function.Supplier;
 public class RequestImageUploadC2SPacket {
     public static final ResourceLocation ID = new ResourceLocation(SimplyScreens.MOD_ID, "request_image_upload");
 
+    private final String imageName;
     private final String imageHash;
     private final String imageExtension;
     private final BlockPos blockPos;
     private final boolean maintainAspectRatio;
 
-    public RequestImageUploadC2SPacket(String imageHash, String imageExtension, BlockPos blockPos, boolean maintainAspectRatio) {
+    public RequestImageUploadC2SPacket(String imageName, String imageHash, String imageExtension, BlockPos blockPos, boolean maintainAspectRatio) {
+        this.imageName = imageName;
         this.imageHash = imageHash;
         this.imageExtension = imageExtension;
         this.blockPos = blockPos;
@@ -26,6 +28,7 @@ public class RequestImageUploadC2SPacket {
     }
 
     public void write(FriendlyByteBuf buf) {
+        buf.writeUtf(imageName);
         buf.writeUtf(imageHash);
         buf.writeUtf(imageExtension);
         buf.writeBlockPos(blockPos);
@@ -33,12 +36,16 @@ public class RequestImageUploadC2SPacket {
     }
 
     public static RequestImageUploadC2SPacket read(FriendlyByteBuf buf) {
-        return new RequestImageUploadC2SPacket(buf.readUtf(), buf.readUtf(), buf.readBlockPos(), buf.readBoolean());
+        return new RequestImageUploadC2SPacket(buf.readUtf(), buf.readUtf(), buf.readUtf(), buf.readBlockPos(), buf.readBoolean());
     }
 
     public static void apply(RequestImageUploadC2SPacket msg, Supplier<NetworkManager.PacketContext> context) {
         ServerPlayer player = (ServerPlayer) context.get().getPlayer();
         context.get().queue(() -> ServerImageCache.handleRequestImageUpload(msg, player));
+    }
+
+    public String getImageName() {
+        return imageName;
     }
 
     public String getImageHash() {

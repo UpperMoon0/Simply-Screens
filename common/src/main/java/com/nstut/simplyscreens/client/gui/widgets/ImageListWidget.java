@@ -46,7 +46,7 @@ public class ImageListWidget extends AbstractWidget {
         if (Files.exists(imagesDir) && Files.isDirectory(imagesDir)) {
             try {
                 this.imageFiles = Files.walk(imagesDir)
-                        .filter(Files::isRegularFile)
+                        .filter(path -> path.toString().endsWith(".json"))
                         .map(Path::toFile)
                         .collect(Collectors.toList());
                 this.filteredImageFiles = new ArrayList<>(this.imageFiles);
@@ -59,7 +59,7 @@ public class ImageListWidget extends AbstractWidget {
     @Override
     protected void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         guiGraphics.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, 0xFF000000);
-
+    
         if (filteredImageFiles.isEmpty()) {
             Component message = Component.literal("No images found");
             int textWidth = Minecraft.getInstance().font.width(message);
@@ -68,11 +68,11 @@ public class ImageListWidget extends AbstractWidget {
             guiGraphics.drawString(Minecraft.getInstance().font, message, textX, textY, 0xFFFFFFFF);
             return;
         }
-
+    
         int itemsPerRow = Math.max(1, (this.width - PADDING) / (ITEM_SIZE + PADDING));
         int contentHeight = ((filteredImageFiles.size() + itemsPerRow - 1) / itemsPerRow) * (ITEM_SIZE + PADDING);
         int maxScroll = Math.max(0, contentHeight - this.height);
-
+    
         if (maxScroll > 0) {
             int scrollbarX = this.getX() + this.width - 6;
             int scrollbarHeight = (int) ((float) this.height / contentHeight * this.height);
@@ -80,49 +80,54 @@ public class ImageListWidget extends AbstractWidget {
             int scrollbarY = (int) (this.scrollAmount * (this.height - scrollbarHeight) / maxScroll) + this.getY();
             guiGraphics.fill(scrollbarX, scrollbarY, scrollbarX + 6, scrollbarY + scrollbarHeight, 0xFF888888);
         }
-
+    
         guiGraphics.enableScissor(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height);
-
+    
         for (int i = 0; i < filteredImageFiles.size(); i++) {
             int row = i / itemsPerRow;
             int col = i % itemsPerRow;
-
+    
             int itemX = this.getX() + PADDING + col * (ITEM_SIZE + PADDING);
             int itemY = this.getY() + PADDING + row * (ITEM_SIZE + PADDING) - (int) scrollAmount;
-
+    
             if (itemY + ITEM_SIZE < this.getY() || itemY > this.getY() + this.height) {
                 continue;
             }
-
-            File imageFile = filteredImageFiles.get(i);
+    
+            File metadataFile = filteredImageFiles.get(i);
             boolean isHovered = mouseX >= itemX && mouseX < itemX + ITEM_SIZE && mouseY >= itemY && mouseY < itemY + ITEM_SIZE;
-            boolean isSelected = selected == imageFile;
-            boolean isDisplayed = displayedImage != null && displayedImage.equals(imageFile.getName());
-
+            boolean isSelected = selected == metadataFile;
+            boolean isDisplayed = displayedImage != null && displayedImage.equals(metadataFile.getName().replace(".json", ""));
+    
             int backgroundColor = isSelected ? 0xFF808080 : (isHovered ? 0xFF404040 : 0xFF202020);
             guiGraphics.fill(itemX, itemY, itemX + ITEM_SIZE, itemY + ITEM_SIZE, backgroundColor);
-
+    
             if (isDisplayed) {
                 guiGraphics.renderOutline(itemX, itemY, ITEM_SIZE, ITEM_SIZE, 0xFF00FF00);
             }
-
-            ResourceLocation texture = textureCache.computeIfAbsent(imageFile, file -> {
-                try (FileInputStream stream = new FileInputStream(file)) {
-                    NativeImage nativeImage = NativeImage.read(stream);
-                    DynamicTexture dynamicTexture = new DynamicTexture(nativeImage);
-                    return Minecraft.getInstance().getTextureManager().register(file.getName(), dynamicTexture);
+    
+            ResourceLocation texture = textureCache.computeIfAbsent(metadataFile, file -> {
+                try {
+                    String content = Files.readString(file.toPath());
+                    com.nstut.simplyscreens.helpers.ImageMetadata metadata = new com.google.gson.Gson().fromJson(content, com.nstut.simplyscreens.helpers.ImageMetadata.class);
+                    File imageFile = new File(file.getParentFile(), metadata.getHash() + "." + metadata.getExtension());
+                    try (FileInputStream stream = new FileInputStream(imageFile)) {
+                        NativeImage nativeImage = NativeImage.read(stream);
+                        DynamicTexture dynamicTexture = new DynamicTexture(nativeImage);
+                        return Minecraft.getInstance().getTextureManager().register(imageFile.getName(), dynamicTexture);
+                    }
                 } catch (IOException e) {
                     e.printStackTrace();
                     return null;
                 }
             });
-
+    
             if (texture != null) {
                 RenderSystem.setShaderTexture(0, texture);
                 guiGraphics.blit(texture, itemX + 2, itemY + 2, 0, 0, ITEM_SIZE - 4, ITEM_SIZE - 4, ITEM_SIZE - 4, ITEM_SIZE - 4);
             }
         }
-
+    
         guiGraphics.disableScissor();
     }
 
@@ -170,7 +175,16 @@ public class ImageListWidget extends AbstractWidget {
         } else {
             String lowerCaseSearchTerm = searchTerm.toLowerCase();
             this.filteredImageFiles = this.imageFiles.stream()
-                    .filter(file -> file.getName().toLowerCase().contains(lowerCaseSearchTerm))
+                    .filter(file -> {
+                        try {
+                            String content = Files.readString(file.toPath());
+                            com.nstut.simplyscreens.helpers.ImageMetadata metadata = new com.google.gson.Gson().fromJson(content, com.nstut.simplyscreens.helpers.ImageMetadata.class);
+                            return metadata.getName().toLowerCase().contains(lowerCaseSearchTerm);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                            return false;
+                        }
+                    })
                     .collect(Collectors.toList());
         }
         this.scrollAmount = 0;

@@ -28,9 +28,10 @@ public class ClientImageCache {
             byte[] imageData = java.nio.file.Files.readAllBytes(imagePath);
             String imageHash = Hashing.sha1().hashBytes(imageData).toString();
             String imageExtension = Files.getFileExtension(imagePath.getFileName().toString());
-
-            PacketRegistries.CHANNEL.sendToServer(new RequestImageUploadC2SPacket(imageHash, imageExtension, blockPos, maintainAspectRatio));
-
+            String imageName = imagePath.getFileName().toString();
+    
+            PacketRegistries.CHANNEL.sendToServer(new RequestImageUploadC2SPacket(imageName, imageHash, imageExtension, blockPos, maintainAspectRatio));
+    
             int totalChunks = (int) Math.ceil((double) imageData.length / CHUNK_SIZE);
             for (int i = 0; i < totalChunks; i++) {
                 int start = i * CHUNK_SIZE;
@@ -38,8 +39,8 @@ public class ClientImageCache {
                 byte[] chunk = Arrays.copyOfRange(imageData, start, end);
                 PacketRegistries.CHANNEL.sendToServer(new ImageChunkC2SPacket(imageHash, i, totalChunks, chunk));
             }
-
-            PENDING_DOWNLOADS.put(imageHash + "." + imageExtension, onComplete);
+    
+            PENDING_DOWNLOADS.put(imageHash, onComplete);
         } catch (IOException e) {
             SimplyScreens.LOGGER.error("Failed to read or send image", e);
         }
@@ -104,9 +105,13 @@ public class ClientImageCache {
             mc.level.sendBlockUpdated(msg.getBlockPos(), be.getBlockState(), be.getBlockState(), 3);
         }
     
-        if (PENDING_DOWNLOADS.containsKey(msg.getImageHash())) {
-            PENDING_DOWNLOADS.get(msg.getImageHash()).run();
-            PENDING_DOWNLOADS.remove(msg.getImageHash());
+        String fullHash = msg.getImageHash();
+        if (fullHash != null && fullHash.contains(".")) {
+            String hash = fullHash.substring(0, fullHash.lastIndexOf('.'));
+            if (PENDING_DOWNLOADS.containsKey(hash)) {
+                PENDING_DOWNLOADS.get(hash).run();
+                PENDING_DOWNLOADS.remove(hash);
+            }
         }
     }
 
