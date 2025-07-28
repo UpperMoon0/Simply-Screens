@@ -81,7 +81,13 @@ public class ImageLoadScreen extends Screen {
         this.localImageField.setValue(initialLocalHash);
         this.localImageField.setEditable(false);
 
-        maintainAspectCheckbox = new Checkbox(guiLeft + 10, guiTop + 116, 20, 20, Component.literal("Maintain Aspect Ratio"), initialMaintainAspectRatio);
+        maintainAspectCheckbox = new Checkbox(guiLeft + 10, guiTop + 116, 20, 20, Component.literal("Maintain Aspect Ratio"), initialMaintainAspectRatio) {
+            @Override
+            public void onPress() {
+                super.onPress();
+                sendScreenInputsToServer();
+            }
+        };
 
         // Create the "Load Image" button
         uploadButton = Button.builder(Component.literal("Load Image"), button -> {
