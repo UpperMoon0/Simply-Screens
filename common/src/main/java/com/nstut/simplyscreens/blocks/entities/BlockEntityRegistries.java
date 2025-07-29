@@ -16,7 +16,4 @@ public class BlockEntityRegistries {
                     BlockEntityType.Builder.of(ScreenBlockEntity::new, BlockRegistries.SCREEN.get())
                             .build(null));
 
-    public static void init() {
-        BLOCK_ENTITIES.register();
-    }
 }

@@ -1,7 +1,6 @@
 package com.nstut.simplyscreens.helpers;
 
 import com.google.common.hash.Hashing;
-import com.google.common.io.Files;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simplyscreens.network.*;
@@ -29,7 +28,8 @@ public class ClientImageCache {
         try {
             byte[] imageData = java.nio.file.Files.readAllBytes(imagePath);
             String imageHash = Hashing.sha1().hashBytes(imageData).toString();
-            String imageExtension = Files.getFileExtension(imagePath.getFileName().toString());
+            String fileName = imagePath.getFileName().toString();
+            String imageExtension = fileName.substring(fileName.lastIndexOf('.') + 1);
             String imageName = imagePath.getFileName().toString();
 
             PacketRegistries.CHANNEL.sendToServer(new RequestImageUploadC2SPacket(imageName, imageHash, imageExtension, blockPos, maintainAspectRatio));
@@ -71,7 +71,7 @@ public class ClientImageCache {
         if (chunks == null) return;
 
         String imageHash = fullImageHash.substring(0, fullImageHash.lastIndexOf('.'));
-        String imageExtension = Files.getFileExtension(fullImageHash);
+        String imageExtension = fullImageHash.substring(fullImageHash.lastIndexOf('.') + 1);
 
         int totalSize = 0;
         for (byte[] chunk : chunks) {

@@ -19,7 +19,4 @@ public class CreativeTabRegistries {
             .build()
     );
 
-    public static void init() {
-        CREATIVE_TABS.register();
-    }
 }

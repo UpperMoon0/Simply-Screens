@@ -11,7 +11,4 @@ public class BlockRegistries {
 
     public static final RegistrySupplier<Block> SCREEN = BLOCKS.register("screen", ScreenBlock::new);
 
-    public static void init() {
-        BLOCKS.register();
-    }
 }

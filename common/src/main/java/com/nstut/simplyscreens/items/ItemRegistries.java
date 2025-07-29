@@ -22,7 +22,4 @@ public class ItemRegistries {
         ITEM_LIST.add(SCREEN);
     }
 
-    public static void init() {
-        ITEMS.register();
-    }
 }

@@ -44,6 +44,9 @@ subprojects {
         mappings loom.officialMojangMappings()
         compileOnly "org.projectlombok:lombok:1.18.34"
         annotationProcessor "org.projectlombok:lombok:1.18.34"
+
+        // Add WebP support for ImageIO
+        implementation "org.sejda.imageio:webp-imageio:0.1.6"
     }
 
     java {
