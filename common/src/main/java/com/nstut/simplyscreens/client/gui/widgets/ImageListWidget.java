@@ -237,6 +237,8 @@ public class ImageListWidget extends AbstractWidget {
     }
 
     public void refresh() {
+        this.imageFiles.clear();
+        this.filteredImageFiles.clear();
         loadImages();
     }
     

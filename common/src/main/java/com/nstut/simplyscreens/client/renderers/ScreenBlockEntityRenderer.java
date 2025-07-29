@@ -8,6 +8,7 @@ import com.nstut.simplyscreens.Config;
 import com.nstut.simplyscreens.DisplayMode;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
+import com.nstut.simplyscreens.client.helpers.ImageUtils;
 import com.nstut.simplyscreens.helpers.ClientImageCache;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -15,6 +16,7 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.Util;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.core.Direction;
@@ -24,18 +26,21 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Logger;
+import java.util.concurrent.CompletableFuture;
 
 import net.minecraft.client.Minecraft;
+import org.slf4j.Logger;
 
 import javax.imageio.ImageIO;
 
 public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBlockEntity> {
-    private static final Logger LOGGER = Logger.getLogger(ScreenBlockEntityRenderer.class.getName());
+    private static final Logger LOGGER = SimplyScreens.LOGGER;
     private static final Map<String, ResourceLocation> TEXTURE_CACHE = new HashMap<>();
+    private static final Map<String, Boolean> PENDING_WEB_TEXTURES = new HashMap<>();
     private static final int FULL_BRIGHTNESS = 15728880;
     private static final float BASE_OFFSET = 0.501f;
 
@@ -141,26 +146,52 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
     }
 
     private ResourceLocation getOrLoadTexture(String imagePath, DisplayMode displayMode) {
-        return TEXTURE_CACHE.computeIfAbsent(imagePath, path -> {
-            try {
-                return loadTextureResource(path, displayMode);
-            } catch (Exception e) {
-                LOGGER.warning("Failed to load texture: " + path + " - " + e.getMessage());
+        if (TEXTURE_CACHE.containsKey(imagePath)) {
+            return TEXTURE_CACHE.get(imagePath);
+        }
+
+        if (displayMode == DisplayMode.INTERNET) {
+            if (PENDING_WEB_TEXTURES.getOrDefault(imagePath, false)) {
                 return null;
             }
-        });
-    }
 
-    private ResourceLocation loadTextureResource(String path, DisplayMode displayMode) throws IOException {
-        if (displayMode == DisplayMode.INTERNET) {
-            return loadWebTexture(new URL(path));
-        }
+            PENDING_WEB_TEXTURES.put(imagePath, true);
+            LOGGER.info("Initiating web texture download for: {}", imagePath);
 
-        File imageFile = ClientImageCache.getImagePath(path).toFile();
-        if (!imageFile.exists()) {
-            throw new IOException("Can't read input file!");
+            CompletableFuture.supplyAsync(() -> {
+                try {
+                    return loadWebTexture(new URL(imagePath));
+                } catch (IOException e) {
+                    LOGGER.error("Failed to load web texture asynchronously: " + imagePath, e);
+                    return null;
+                }
+            }, Util.backgroundExecutor()).thenAcceptAsync(image -> {
+                if (image != null) {
+                    ResourceLocation resourceLocation = ImageUtils.createTextureResource(image, imagePath);
+                    if (resourceLocation != null) {
+                        TEXTURE_CACHE.put(imagePath, resourceLocation);
+                        LOGGER.info("Successfully loaded and cached web texture: {}", imagePath);
+                    }
+                }
+                PENDING_WEB_TEXTURES.remove(imagePath);
+            }, Minecraft.getInstance());
+
+            return null;
+        } else {
+            try {
+                File imageFile = ClientImageCache.getImagePath(imagePath).toFile();
+                if (!imageFile.exists()) {
+                    LOGGER.error("Local image file not found: {}", imageFile.getAbsolutePath());
+                    return null;
+                }
+                ResourceLocation resourceLocation = loadLocalTexture(imageFile);
+                TEXTURE_CACHE.put(imagePath, resourceLocation);
+                return resourceLocation;
+            } catch (Exception e) {
+                LOGGER.error("Failed to load texture: " + imagePath, e);
+                return null;
+            }
         }
-        return loadLocalTexture(imageFile);
     }
 
     private void applyAspectRatioScaling(PoseStack poseStack, ScreenBlockEntity blockEntity) {
@@ -249,45 +280,47 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
                 .endVertex();
     }
 
-    // Shared texture loading implementation
-    private ResourceLocation loadWebTexture(URL url) throws IOException {
-        try (InputStream stream = url.openStream()) {
-            return createTextureResource(ImageIO.read(stream), url.toString());
+    private BufferedImage loadWebTexture(URL url) throws IOException {
+        HttpURLConnection connection = null;
+        try {
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setInstanceFollowRedirects(true);
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36");
+            connection.setRequestProperty("Accept", "image/webp,image/apng,image/*,*/*;q=0.8");
+            connection.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
+
+            int responseCode = connection.getResponseCode();
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                LOGGER.error("Failed to download image from {}. Server responded with code: {}", url, responseCode);
+                throw new IOException("Server returned non-OK response code: " + responseCode);
+            }
+
+            String contentType = connection.getContentType();
+            LOGGER.info("Response from {}: Code={}, Content-Type={}", url, responseCode, contentType);
+
+            if (contentType == null || !contentType.startsWith("image/")) {
+                LOGGER.warn("Content-Type from {} is not an image type (was {}). Attempting to decode anyway.", url, contentType);
+            }
+
+            try (InputStream stream = connection.getInputStream()) {
+                BufferedImage image = ImageIO.read(stream);
+                if (image == null) {
+                    LOGGER.error("Failed to decode image from URL: {}. ImageIO.read returned null.", url);
+                    throw new IOException("ImageIO.read returned null");
+                }
+                return image;
+            }
+        } catch (IOException e) {
+            LOGGER.error("Failed to open, read, or process stream from URL [{}]: {}", url, e.getMessage());
+            throw e;
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
         }
     }
 
     private ResourceLocation loadLocalTexture(File file) throws IOException {
-        return createTextureResource(ImageIO.read(file), file.getName());
-    }
-
-    private ResourceLocation createTextureResource(BufferedImage image, String sourceId) {
-        try (NativeImage nativeImage = convertToNativeImage(image)) {
-            DynamicTexture texture = new DynamicTexture(nativeImage);
-            ResourceLocation location = new ResourceLocation(
-                    SimplyScreens.MOD_ID,
-                    "screen_tex/" + sourceId.hashCode()
-            );
-
-            Minecraft.getInstance().getTextureManager().register(location, texture);
-            return location;
-        }
-    }
-
-    private NativeImage convertToNativeImage(BufferedImage image) {
-        NativeImage nativeImage = new NativeImage(image.getWidth(), image.getHeight(), false);
-        for (int y = 0; y < image.getHeight(); y++) {
-            for (int x = 0; x < image.getWidth(); x++) {
-                int argb = image.getRGB(x, y);
-                nativeImage.setPixelRGBA(x, y, convertARGBtoABGR(argb));
-            }
-        }
-        return nativeImage;
-    }
-
-    private int convertARGBtoABGR(int argb) {
-        return (argb & 0xFF000000) |
-                ((argb & 0x00FF0000) >> 16) |
-                (argb & 0x0000FF00) |
-                ((argb & 0x000000FF) << 16);
+        return ImageUtils.createTextureResource(ImageIO.read(file), file.getName());
     }
 }

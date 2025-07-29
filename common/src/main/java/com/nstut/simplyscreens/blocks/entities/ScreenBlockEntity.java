@@ -157,10 +157,17 @@ public class ScreenBlockEntity extends BlockEntity {
         }
 
         this.displayMode = displayMode;
-        this.internetUrl = internetUrl;
-        this.localHash = localHash;
-        this.localExtension = localExtension;
         this.maintainAspectRatio = maintainAspectRatio;
+
+        if (displayMode == DisplayMode.INTERNET) {
+            this.internetUrl = internetUrl;
+            this.localHash = "";
+            this.localExtension = "";
+        } else {
+            this.internetUrl = "";
+            this.localHash = localHash;
+            this.localExtension = localExtension;
+        }
 
         updateScreenStructure();
         setChanged();

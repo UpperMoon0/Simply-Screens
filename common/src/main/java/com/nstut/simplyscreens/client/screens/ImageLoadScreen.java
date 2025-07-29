@@ -32,7 +32,6 @@ public class ImageLoadScreen extends Screen {
     private DisplayMode currentMode = DisplayMode.INTERNET;
 
     private EditBox internetUrlField;
-    private EditBox localImageField;
     private final BlockPos blockEntityPos;
     private String initialInternetUrl;
     private String initialLocalHash;
@@ -72,16 +71,12 @@ public class ImageLoadScreen extends Screen {
                 .build();
 
         // Initialize the EditBox for image path input
-        this.internetUrlField = new EditBox(this.font, guiLeft + 10, guiTop + 64, 140, 20, Component.literal(""));
+        this.internetUrlField = new EditBox(this.font, guiLeft + 10, guiTop + 69, 140, 20, Component.literal(""));
         this.internetUrlField.setMaxLength(255);
         this.internetUrlField.setValue(initialInternetUrl);
+        this.internetUrlField.setResponder(text -> sendScreenInputsToServer());
 
-        this.localImageField = new EditBox(this.font, guiLeft + 10, guiTop + 64, 140, 20, Component.literal(""));
-        this.localImageField.setMaxLength(255);
-        this.localImageField.setValue(initialLocalHash);
-        this.localImageField.setEditable(false);
-
-        maintainAspectCheckbox = new Checkbox(guiLeft + 10, guiTop + 116, 20, 20, Component.literal("Maintain Aspect Ratio"), initialMaintainAspectRatio) {
+        maintainAspectCheckbox = new Checkbox(guiLeft + 10, guiTop + 131, 20, 20, Component.literal("Maintain Aspect Ratio"), initialMaintainAspectRatio) {
             @Override
             public void onPress() {
                 super.onPress();
@@ -96,14 +91,13 @@ public class ImageLoadScreen extends Screen {
                         sendScreenInputsToServer();
                     }
                 })
-                .pos(guiLeft + 21, guiTop + 88)
+                .pos(guiLeft + 21, guiTop + 93)
                 .size(120, 20)
                 .build();
 
         selectButton = Button.builder(Component.literal("Select Image"), button -> {
                     ImageListWidget.ImageEntry selectedEntry = imageListWidget.getSelected();
                     if (selectedEntry != null) {
-                        localImageField.setValue(selectedEntry.getImageHash());
                         sendScreenInputsToServer();
                         imageListWidget.setDisplayedImage(selectedEntry.getImageHash());
                     }
@@ -118,9 +112,6 @@ public class ImageLoadScreen extends Screen {
                 .build();
 
         imageListWidget = new ImageListWidget(guiLeft + 10, guiTop + 54, 140, 50, Component.literal(""), entry -> {
-            if (entry != null) {
-                localImageField.setValue(entry.getDisplayName());
-            }
         });
 
         if (initialLocalHash != null && !initialLocalHash.isBlank()) {
@@ -130,7 +121,6 @@ public class ImageLoadScreen extends Screen {
         this.addRenderableWidget(internetButton);
         this.addRenderableWidget(localButton);
         this.addRenderableWidget(this.internetUrlField);
-        this.addRenderableWidget(this.localImageField);
         this.addRenderableWidget(maintainAspectCheckbox);
         this.addRenderableWidget(uploadButton);
         this.addRenderableWidget(selectButton);
@@ -161,11 +151,11 @@ public class ImageLoadScreen extends Screen {
         if (currentMode == DisplayMode.INTERNET) {
             String pathLabel = "Image URL";
             int pathLabelX = guiLeft + 12;
-            pGuiGraphics.drawString(this.font, pathLabel, pathLabelX, guiTop + 54, 0x3F3F3F, false);
+            pGuiGraphics.drawString(this.font, pathLabel, pathLabelX, guiTop + 59, 0x3F3F3F, false);
         } else if (currentMode == DisplayMode.LOCAL) {
             String pathLabel = "Cached Images";
             int pathLabelX = guiLeft + 12;
-            pGuiGraphics.drawString(this.font, pathLabel, pathLabelX, guiTop + 44, 0x3F3F3F, false);
+            pGuiGraphics.drawString(this.font, pathLabel, pathLabelX, guiTop + 59, 0x3F3F3F, false);
         }
 
         // Draw widgets and other components
@@ -179,7 +169,7 @@ public class ImageLoadScreen extends Screen {
         localButton.active = currentMode != DisplayMode.LOCAL;
 
         internetUrlField.setVisible(currentMode == DisplayMode.INTERNET);
-        localImageField.setVisible(false);
+        internetUrlField.setEditable(currentMode == DisplayMode.INTERNET);
         maintainAspectCheckbox.visible = true;
 
         uploadButton.visible = currentMode == DisplayMode.INTERNET;
@@ -187,6 +177,7 @@ public class ImageLoadScreen extends Screen {
         uploadLocalFileButton.visible = currentMode == DisplayMode.LOCAL;
 
         imageListWidget.setVisible(currentMode == DisplayMode.LOCAL);
+
     }
 
     private void openFileDialog() {
@@ -250,31 +241,13 @@ public class ImageLoadScreen extends Screen {
         }
 
         // Check if the inventory key is pressed and the EditBox is NOT focused
-        if (this.minecraft.options.keyInventory.matches(keyCode, scanCode) && !this.internetUrlField.isFocused() && !this.localImageField.isFocused()) {
+        if (this.minecraft.options.keyInventory.matches(keyCode, scanCode) && !this.internetUrlField.isFocused()) {
             this.onClose(); // Close the screen
             return true;    // Mark the key event as handled
         }
 
         // Pass other keys to the parent class for normal processing
         return super.keyPressed(keyCode, scanCode, modifiers);
-    }
-
-    @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (this.internetUrlField.isMouseOver(mouseX, mouseY)) {
-            this.internetUrlField.setFocused(true);
-            this.localImageField.setFocused(false);
-            return true;
-        } else if (this.localImageField.isMouseOver(mouseX, mouseY)) {
-            this.internetUrlField.setFocused(false);
-            this.localImageField.setFocused(true);
-            return true;
-        }
-
-        this.internetUrlField.setFocused(false);
-        this.localImageField.setFocused(false);
-
-        return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
