@@ -6,6 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
+import net.minecraft.client.gui.narration.NarratedElementType;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -205,7 +206,13 @@ public class ImageListWidget extends AbstractWidget {
 
     @Override
     protected void updateWidgetNarration(NarrationElementOutput narrationElementOutput) {
-        // TODO: Implement narration
+        narrationElementOutput.add(NarratedElementType.TITLE, getMessage());
+
+        if (this.selected != null) {
+            narrationElementOutput.add(NarratedElementType.USAGE, Component.literal("Selected image: " + this.selected.getDisplayName()));
+        } else {
+            narrationElementOutput.add(NarratedElementType.USAGE, Component.literal("No image selected. Click to select an image."));
+        }
     }
 
     public void filter(String searchTerm) {

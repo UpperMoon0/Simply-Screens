@@ -27,7 +27,7 @@ public class ClientImageCache {
     public static void sendImageToServer(Path imagePath, BlockPos blockPos, boolean maintainAspectRatio, Runnable onComplete) {
         try {
             byte[] imageData = java.nio.file.Files.readAllBytes(imagePath);
-            String imageHash = Hashing.sha1().hashBytes(imageData).toString();
+            String imageHash = Hashing.sha256().hashBytes(imageData).toString();
             String fileName = imagePath.getFileName().toString();
             String imageExtension = fileName.substring(fileName.lastIndexOf('.') + 1);
             String imageName = imagePath.getFileName().toString();

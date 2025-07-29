@@ -100,6 +100,8 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         // This method applies additional rotations and flips based on the screen's facing direction.
         // This is an intentional and required feature for the screen to function as intended.
         switch (facing) {
+            case NORTH:
+                break;
             case SOUTH:
                 poseStack.mulPose(Axis.YP.rotationDegrees(180));
                 break;

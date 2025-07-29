@@ -1,6 +1,5 @@
 package com.nstut.simplyscreens.blocks;
 
-import com.mojang.logging.LogUtils;
 import com.nstut.simplyscreens.client.screens.ImageLoadScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -17,7 +16,6 @@ import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import org.jetbrains.annotations.NotNull;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
-import org.slf4j.Logger;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.InteractionHand;
@@ -34,8 +32,6 @@ public class ScreenBlock extends Block implements EntityBlock {
     public static final int STATE_CHILD = 0;
     public static final int STATE_ANCHOR = 1;
     public static final int STATE_ERROR = 2;
-
-    private static final Logger LOGGER = LogUtils.getLogger();
 
     public ScreenBlock() {
         super(BlockBehaviour.Properties.copy(Blocks.IRON_BLOCK).noOcclusion());
@@ -56,7 +52,6 @@ public class ScreenBlock extends Block implements EntityBlock {
                 .setValue(STATE, STATE_ANCHOR);
     }
 
-    @SuppressWarnings("deprecation")
     @Override
     public @NotNull RenderShape getRenderShape(@NotNull BlockState pState) {
         return RenderShape.MODEL;
@@ -67,7 +62,6 @@ public class ScreenBlock extends Block implements EntityBlock {
         return new ScreenBlockEntity(pos, state);
     }
 
-    @SuppressWarnings("deprecation")
     @Override
     public @NotNull InteractionResult use(@NotNull BlockState state, Level level, @NotNull BlockPos pos, @NotNull Player player, @NotNull InteractionHand hand, @NotNull BlockHitResult hit) {
         if (level.isClientSide) {

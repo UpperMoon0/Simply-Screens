@@ -17,14 +17,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.logging.Logger;
 import java.util.stream.IntStream;
 
 @Setter
 @Getter
 public class ScreenBlockEntity extends BlockEntity {
-    private static final Logger LOGGER = Logger.getLogger(ScreenBlockEntity.class.getName());
-
     private DisplayMode displayMode = DisplayMode.INTERNET;
     private String internetUrl = "";
     private String localHash = "";
