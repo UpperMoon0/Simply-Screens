@@ -37,17 +37,9 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
 
         BlockState blockState = blockEntity.getBlockState();
         Direction facing = blockState.getValue(BlockStateProperties.FACING);
-        String imageIdString = blockEntity.getImageId();
+        UUID imageId = blockEntity.getImageId();
 
-        if (imageIdString.isEmpty()) {
-            return;
-        }
-
-        UUID imageId;
-        try {
-            imageId = UUID.fromString(imageIdString);
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn("Invalid UUID for screen at {}: {}", blockEntity.getBlockPos(), imageIdString);
+        if (imageId == null) {
             return;
         }
 
@@ -140,7 +132,7 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
 
     private boolean shouldRender(ScreenBlockEntity blockEntity) {
         return blockEntity.isAnchor() &&
-                !blockEntity.getImageId().isEmpty();
+                blockEntity.getImageId() != null;
     }
 
     private void applyAspectRatioScaling(PoseStack poseStack, ScreenBlockEntity blockEntity) {
@@ -149,7 +141,7 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         int height = blockEntity.getScreenHeight();
         boolean maintainAspect = blockEntity.isMaintainAspectRatio();
 
-        UUID imageId = UUID.fromString(blockEntity.getImageId());
+        UUID imageId = blockEntity.getImageId();
         DynamicTexture texture = ClientImageManager.getImageTexture(imageId);
         if (texture == null) return;
 

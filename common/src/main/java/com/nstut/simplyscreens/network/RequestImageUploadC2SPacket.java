@@ -7,6 +7,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import java.util.UUID;
 
 import java.util.function.Supplier;
 
@@ -48,13 +49,13 @@ public class RequestImageUploadC2SPacket {
     public static void apply(RequestImageUploadC2SPacket msg, Supplier<NetworkManager.PacketContext> context) {
         ServerPlayer player = (ServerPlayer) context.get().getPlayer();
         context.get().queue(() -> {
-            String imageId = ServerImageManager.saveImage(player.getServer(), msg.source, msg.data, msg.originalName);
+            UUID imageId = ServerImageManager.saveImage(player.getServer(), msg.originalName, msg.data);
             if (imageId != null) {
                 player.getServer().execute(() -> {
                     if (player.level().getBlockEntity(msg.blockPos) instanceof com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity screen) {
-                        String extension = msg.originalName.substring(msg.originalName.lastIndexOf('.') + 1);
-                        screen.setImage(imageId, extension, msg.maintainAspectRatio);
-                        UpdateScreenWithCachedImageS2CPacket packet = new UpdateScreenWithCachedImageS2CPacket(msg.blockPos, imageId + "." + extension, msg.maintainAspectRatio);
+                        screen.setImageId(imageId);
+                        screen.setMaintainAspectRatio(msg.maintainAspectRatio);
+                        UpdateScreenWithCachedImageS2CPacket packet = new UpdateScreenWithCachedImageS2CPacket(msg.blockPos, imageId, msg.maintainAspectRatio);
                         for (ServerPlayer p : player.getServer().getPlayerList().getPlayers()) {
                             if (p.level().isLoaded(msg.blockPos)) {
                                 PacketRegistries.CHANNEL.sendToPlayer(p, packet);

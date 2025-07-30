@@ -21,7 +21,7 @@ import java.util.stream.Stream;
 public class ServerImageManager {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    public static UUID saveImage(MinecraftServer server, String imageName, byte[] data) {
+    public static UUID saveImage(MinecraftServer server, String originalName, byte[] data) {
         try {
             String extension = "png";
             UUID imageId = UUID.randomUUID();
@@ -37,7 +37,7 @@ public class ServerImageManager {
             }
 
             File metadataFile = imagesDir.resolve(imageId + ".json").toFile();
-            ImageMetadata metadata = new ImageMetadata(imageName, imageId.toString(), extension, imageName);
+            ImageMetadata metadata = new ImageMetadata(originalName, imageId.toString(), extension, originalName);
             try (FileWriter writer = new FileWriter(metadataFile)) {
                 GSON.toJson(metadata, writer);
             }

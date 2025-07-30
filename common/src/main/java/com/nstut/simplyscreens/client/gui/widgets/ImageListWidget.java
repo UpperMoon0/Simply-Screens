@@ -36,17 +36,17 @@ public class ImageListWidget extends AbstractWidget {
     private List<ImageEntry> filteredImageFiles = new ArrayList<>();
     private double scrollAmount;
     private ImageEntry selected;
-    private String displayedImage;
+    private UUID displayedImage;
     private final Consumer<ImageEntry> onSelect;
 
     public static class ImageEntry {
         private final String displayName;
-        private final String imageId;
+        private final UUID imageId;
         private final String extension;
 
         public ImageEntry(String displayName, String imageId, String extension) {
             this.displayName = displayName;
-            this.imageId = imageId;
+            this.imageId = UUID.fromString(imageId);
             this.extension = extension;
         }
 
@@ -54,7 +54,7 @@ public class ImageListWidget extends AbstractWidget {
             return displayName;
         }
 
-        public String getImageId() {
+        public UUID getImageId() {
             return imageId;
         }
 
@@ -126,7 +126,7 @@ public class ImageListWidget extends AbstractWidget {
                 guiGraphics.renderOutline(itemX, itemY, ITEM_SIZE, ITEM_SIZE, 0xFF00FF00);
             }
 
-            ResourceLocation texture = textureCache.computeIfAbsent(entry.getImageId(), id -> {
+            ResourceLocation texture = textureCache.computeIfAbsent(entry.getImageId().toString(), id -> {
                 PacketRegistries.CHANNEL.sendToServer(new com.nstut.simplyscreens.network.RequestImageDownloadC2SPacket(UUID.fromString(id)));
                 return null;
             });
@@ -222,7 +222,7 @@ public class ImageListWidget extends AbstractWidget {
         // No-op for now
     }
 
-    public void setDisplayedImage(String displayedImage) {
+    public void setDisplayedImage(UUID displayedImage) {
         this.displayedImage = displayedImage;
     }
 

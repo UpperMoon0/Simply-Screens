@@ -31,7 +31,7 @@ public class ImageLoadScreen extends Screen {
     private static final int SCREEN_HEIGHT = 166;
 
     private final BlockPos blockEntityPos;
-    private String initialLocalHash;
+    private java.util.UUID initialLocalHash;
     private boolean initialMaintainAspectRatio = true;
 
     private ImageListWidget imageListWidget;
@@ -79,31 +79,35 @@ public class ImageLoadScreen extends Screen {
     }
 
     private void initMainPage(int guiLeft, int guiTop) {
-        imageListWidget = new ImageListWidget(guiLeft + 8, guiTop + 8, 160, 100, Component.literal(""), this::onImageSelected);
+        imageListWidget = new ImageListWidget(guiLeft + 8, guiTop + 8, 160, 84, Component.literal(""), this::onImageSelected);
         addRenderableWidget(imageListWidget);
 
+        maintainAspectCheckbox = new Checkbox(guiLeft + 8, guiTop + 94, 160, 20, Component.literal("Maintain Aspect Ratio"), this.initialMaintainAspectRatio);
+        addRenderableWidget(maintainAspectCheckbox);
+
         selectButton = Button.builder(Component.literal("Select"), button -> onSelect())
-                .pos(guiLeft + 8, guiTop + 112)
-                .size(160, 20)
+                .pos(guiLeft + 8, guiTop + 116)
+                .size(78, 20)
                 .build();
         selectButton.active = false;
         addRenderableWidget(selectButton);
 
-        uploadFromComputerButton = Button.builder(Component.literal("Upload from Computer"), button -> onUploadFromComputer())
-                .pos(guiLeft + 8, guiTop + 136)
-                .size(160, 20)
+        uploadFromComputerButton = Button.builder(Component.literal("Upload"), button -> onUploadFromComputer())
+                .pos(guiLeft + 90, guiTop + 116)
+                .size(78, 20)
                 .build();
         addRenderableWidget(uploadFromComputerButton);
 
         downloadFromInternetButton = Button.builder(Component.literal("Download from Internet"), button -> setPage(Page.DOWNLOAD))
-                .pos(guiLeft + 8, guiTop + 160)
+                .pos(guiLeft + 8, guiTop + 140)
                 .size(160, 20)
                 .build();
         addRenderableWidget(downloadFromInternetButton);
     }
 
     private void initDownloadPage(int guiLeft, int guiTop) {
-        addRenderableWidget(new EditBox(this.font, guiLeft + 8, guiTop + 28, 160, 20, Component.literal("Image URL")));
+        urlInput = new EditBox(this.font, guiLeft + 8, guiTop + 28, 160, 20, Component.literal("Image URL"));
+        addRenderableWidget(urlInput);
 
         downloadButton = Button.builder(Component.literal("Download"), button -> onDownload())
                 .pos(guiLeft + 8, guiTop + 52)
@@ -187,17 +191,10 @@ public class ImageLoadScreen extends Screen {
     }
 
     private void sendScreenInputsToServer() {
-        String imageId = "";
-        String imageExtension = "";
-        boolean maintainAspectRatio = maintainAspectCheckbox.selected();
-
         ImageListWidget.ImageEntry selectedEntry = imageListWidget.getSelected();
         if (selectedEntry != null) {
-            imageId = selectedEntry.getImageId();
-            imageExtension = selectedEntry.getImageExtension();
+            PacketRegistries.CHANNEL.sendToServer(new UpdateScreenC2SPacket(blockEntityPos, selectedEntry.getImageId()));
         }
-
-        PacketRegistries.CHANNEL.sendToServer(new UpdateScreenC2SPacket(blockEntityPos, "", imageId, imageExtension, maintainAspectRatio));
     }
 
     @Override
