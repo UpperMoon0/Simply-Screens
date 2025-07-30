@@ -1,6 +1,7 @@
 package com.nstut.simplyscreens.helpers;
 
 import com.google.common.io.Files;
+import com.nstut.simplyscreens.DisplayMode;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simplyscreens.network.*;
@@ -26,6 +27,8 @@ public class ServerImageCache {
     private static final Map<String, String> IMAGE_EXTENSIONS = new ConcurrentHashMap<>();
     private static final Map<String, Boolean> PENDING_ASPECT_RATIOS = new ConcurrentHashMap<>();
     private static final Map<String, String> PENDING_IMAGE_NAMES = new ConcurrentHashMap<>();
+    private static final Map<String, DisplayMode> PENDING_DISPLAY_MODES = new ConcurrentHashMap<>();
+    private static final Map<String, String> PENDING_URLS = new ConcurrentHashMap<>();
 
     public static void handleRequestImageUpload(RequestImageUploadC2SPacket msg, ServerPlayer player) {
         MinecraftServer server = player.getServer();
@@ -44,6 +47,10 @@ public class ServerImageCache {
             IMAGE_EXTENSIONS.put(msg.getImageHash(), msg.getImageExtension());
             PENDING_ASPECT_RATIOS.put(msg.getImageHash(), msg.isMaintainAspectRatio());
             PENDING_IMAGE_NAMES.put(msg.getImageHash(), msg.getImageName());
+            PENDING_DISPLAY_MODES.put(msg.getImageHash(), msg.getDisplayMode());
+            if (msg.getDisplayMode() == DisplayMode.INTERNET) {
+                PENDING_URLS.put(msg.getImageHash(), msg.getUrl());
+            }
         }
     }
 
@@ -92,7 +99,9 @@ public class ServerImageCache {
 
             String imageName = PENDING_IMAGE_NAMES.get(imageHash);
             String imageNameWithoutExtension = Files.getNameWithoutExtension(imageName);
-            ImageMetadata metadata = new ImageMetadata(imageNameWithoutExtension, imageExtension, System.currentTimeMillis());
+            DisplayMode displayMode = PENDING_DISPLAY_MODES.getOrDefault(imageHash, DisplayMode.LOCAL);
+            String url = PENDING_URLS.get(imageHash);
+            ImageMetadata metadata = new ImageMetadata(imageNameWithoutExtension, imageExtension, System.currentTimeMillis(), displayMode, url);
             try (java.io.FileWriter writer = new java.io.FileWriter(metadataFile)) {
                 new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(metadata, writer);
             }
@@ -163,6 +172,8 @@ public class ServerImageCache {
         IMAGE_EXTENSIONS.remove(imageHash);
         PENDING_ASPECT_RATIOS.remove(imageHash);
         PENDING_IMAGE_NAMES.remove(imageHash);
+        PENDING_DISPLAY_MODES.remove(imageHash);
+        PENDING_URLS.remove(imageHash);
     }
 
     private static Path getImagesDir(MinecraftServer server) {

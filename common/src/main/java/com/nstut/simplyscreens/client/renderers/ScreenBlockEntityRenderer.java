@@ -1,6 +1,7 @@
 package com.nstut.simplyscreens.client.renderers;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import com.google.common.hash.Hashing;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
@@ -23,11 +24,10 @@ import net.minecraft.core.Direction;
 import org.jetbrains.annotations.NotNull;
 
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -153,6 +153,29 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         }
 
         if (displayMode == DisplayMode.INTERNET) {
+            String url = imagePath;
+            String urlHash = Hashing.sha256().hashString(url, StandardCharsets.UTF_8).toString();
+            String extension = "png";
+            try {
+                String pathPart = new URL(url).getPath();
+                if (pathPart.contains(".")) {
+                    extension = pathPart.substring(pathPart.lastIndexOf('.') + 1);
+                }
+            } catch (Exception ignored) {
+            }
+
+            File cachedFile = ClientImageCache.getImagePath(urlHash, extension).toFile();
+
+            if (cachedFile.exists()) {
+                try {
+                    ResourceLocation resourceLocation = loadLocalTexture(cachedFile);
+                    TEXTURE_CACHE.put(imagePath, resourceLocation);
+                    return resourceLocation;
+                } catch (IOException e) {
+                    LOGGER.error("Failed to load cached web image: " + imagePath, e);
+                }
+            }
+
             if (PENDING_WEB_TEXTURES.getOrDefault(imagePath, false)) {
                 return null;
             }
@@ -162,7 +185,7 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
 
             CompletableFuture.supplyAsync(() -> {
                 try {
-                    return loadWebTexture(new URL(imagePath));
+                    return loadWebTexture(new URL(imagePath), cachedFile);
                 } catch (IOException e) {
                     LOGGER.error("Failed to load web texture asynchronously: " + imagePath, e);
                     return null;
@@ -282,14 +305,16 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
                 .endVertex();
     }
 
-    private BufferedImage loadWebTexture(URL url) throws IOException {
+    private BufferedImage loadWebTexture(URL url, File cacheFile) throws IOException {
         HttpURLConnection connection = null;
         try {
             connection = (HttpURLConnection) url.openConnection();
             connection.setInstanceFollowRedirects(true);
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36");
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
             connection.setRequestProperty("Accept", "image/webp,image/apng,image/*,*/*;q=0.8");
             connection.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(10000);
 
             int responseCode = connection.getResponseCode();
             if (responseCode != HttpURLConnection.HTTP_OK) {
@@ -305,12 +330,25 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
             }
 
             try (InputStream stream = connection.getInputStream()) {
-                BufferedImage image = ImageIO.read(stream);
-                if (image == null) {
-                    LOGGER.error("Failed to decode image from URL: {}. ImageIO.read returned null.", url);
-                    throw new IOException("ImageIO.read returned null");
+                byte[] imageBytes = stream.readAllBytes();
+
+                try {
+                    cacheFile.getParentFile().mkdirs();
+                    try (FileOutputStream fos = new FileOutputStream(cacheFile)) {
+                        fos.write(imageBytes);
+                    }
+                } catch (IOException e) {
+                    LOGGER.error("Failed to save web image to cache", e);
                 }
-                return image;
+
+                try (InputStream forDecode = new ByteArrayInputStream(imageBytes)) {
+                    BufferedImage image = decodeImageWithMultipleAttempts(forDecode, url.toString());
+                    if (image == null) {
+                        LOGGER.error("Failed to decode image from URL: {}. All decoding attempts failed.", url);
+                        throw new IOException("All image decoding attempts failed");
+                    }
+                    return image;
+                }
             }
         } catch (IOException e) {
             LOGGER.error("Failed to open, read, or process stream from URL [{}]: {}", url, e.getMessage());
@@ -322,7 +360,104 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         }
     }
 
+    private BufferedImage decodeImageWithMultipleAttempts(InputStream inputStream, String url) {
+        try {
+            byte[] imageBytes = inputStream.readAllBytes();
+
+            // Try ImageIO first
+            try (InputStream is = new ByteArrayInputStream(imageBytes)) {
+                BufferedImage image = ImageIO.read(is);
+                if (image != null) {
+                    LOGGER.debug("Successfully decoded image with ImageIO: {}", url);
+                    return image;
+                }
+            }
+
+            LOGGER.warn("ImageIO.read returned null for {}, attempting NativeImage", url);
+
+            // Try to use NativeImage for broader format support
+            try (InputStream is = new ByteArrayInputStream(imageBytes)) {
+                try (NativeImage nativeImage = NativeImage.read(is)) {
+                    if (nativeImage != null) {
+                        LOGGER.info("Successfully decoded image with NativeImage: {}", url);
+                        return convertNativeImageToBufferedImage(nativeImage);
+                    }
+                }
+            } catch (Exception e) {
+                LOGGER.debug("NativeImage decoding failed for {}: {}", url, e.getMessage());
+            }
+
+            LOGGER.error("Failed to decode image from URL: {}. Format may not be supported.", url);
+            return createFallbackImage();
+
+        } catch (Exception e) {
+            LOGGER.error("Exception during image decoding for {}: {}", url, e.getMessage());
+            return createFallbackImage();
+        }
+    }
+
+    private BufferedImage convertNativeImageToBufferedImage(NativeImage nativeImage) {
+        int width = nativeImage.getWidth();
+        int height = nativeImage.getHeight();
+        BufferedImage bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int rgba = nativeImage.getPixelRGBA(x, y);
+                // Convert ABGR to ARGB
+                int argb = ((rgba & 0xFF000000)) |           // Alpha
+                          ((rgba & 0x000000FF) << 16) |     // Red
+                          ((rgba & 0x0000FF00)) |           // Green
+                          ((rgba & 0x00FF0000) >> 16);      // Blue
+                bufferedImage.setRGB(x, y, argb);
+            }
+        }
+        
+        return bufferedImage;
+    }
+
+    private BufferedImage createFallbackImage() {
+        // Create a simple fallback image (red "X" on black background)
+        int size = 64;
+        BufferedImage fallback = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+        
+        // Fill with black
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                fallback.setRGB(x, y, 0xFF000000);
+            }
+        }
+        
+        // Draw red X
+        for (int i = 0; i < size; i++) {
+            fallback.setRGB(i, i, 0xFFFF0000);
+            fallback.setRGB(size - 1 - i, i, 0xFFFF0000);
+        }
+        
+        return fallback;
+    }
+
     private ResourceLocation loadLocalTexture(File file) throws IOException {
-        return ImageUtils.createTextureResource(ImageIO.read(file), file.getName());
+        try {
+            BufferedImage image = loadImageFromFile(file);
+            if (image == null) {
+                throw new IOException("Failed to decode local image file");
+            }
+            return ImageUtils.createTextureResource(image, file.getName());
+        } catch (Exception e) {
+            LOGGER.error("Failed to load local texture: {}", file.getAbsolutePath(), e);
+            // Return a fallback texture instead of throwing
+            return ImageUtils.createTextureResource(createFallbackImage(), "fallback");
+        }
+    }
+
+    private BufferedImage loadImageFromFile(File file) {
+        try {
+            byte[] imageBytes = java.nio.file.Files.readAllBytes(file.toPath());
+            return decodeImageWithMultipleAttempts(new ByteArrayInputStream(imageBytes), file.getAbsolutePath());
+        } catch (Exception e) {
+            LOGGER.error("Failed to load image from file: {}", file.getAbsolutePath(), e);
+            return createFallbackImage();
+        }
     }
 }

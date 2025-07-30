@@ -9,10 +9,12 @@ import dev.architectury.platform.forge.EventBuses;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 
 @Mod(SimplyScreens.MOD_ID)
 public class SimplyScreensImpl {
-    public SimplyScreensImpl(IEventBus modEventBus) {
+    public SimplyScreensImpl() {
+        IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         EventBuses.registerModEventBus(SimplyScreens.MOD_ID, modEventBus);
 
         CreativeTabRegistries.CREATIVE_TABS.register();

@@ -20,6 +20,9 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import org.jetbrains.annotations.NotNull;
 import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -85,12 +88,7 @@ public class ImageLoadScreen extends Screen {
         };
 
         // Create the "Load Image" button
-        uploadButton = Button.builder(Component.literal("Load Image"), button -> {
-                    String url = internetUrlField.getValue();
-                    if (!url.isBlank() && isHttpUrl(url)) {
-                        sendScreenInputsToServer();
-                    }
-                })
+        uploadButton = Button.builder(Component.literal("Load Image"), button -> loadImageFromUrl())
                 .pos(guiLeft + 21, guiTop + 93)
                 .size(120, 20)
                 .build();
@@ -178,6 +176,51 @@ public class ImageLoadScreen extends Screen {
 
         imageListWidget.setVisible(currentMode == DisplayMode.LOCAL);
 
+    }
+
+    private void loadImageFromUrl() {
+        String urlString = internetUrlField.getValue();
+        if (urlString.isBlank() || !isHttpUrl(urlString)) {
+            return;
+        }
+
+        uploadButton.active = false;
+        uploadButton.setMessage(Component.literal("Loading..."));
+
+        new Thread(() -> {
+            try {
+                URL url = new URL(urlString);
+                try (InputStream in = url.openStream()) {
+                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    byte[] buf = new byte[4096];
+                    int n;
+                    while (-1 != (n = in.read(buf))) {
+                        out.write(buf, 0, n);
+                    }
+                    out.close();
+                    byte[] response = out.toByteArray();
+
+                    String fileName = Paths.get(url.getPath()).getFileName().toString();
+                    if (fileName.isEmpty()) {
+                        fileName = "image.png";
+                    }
+
+                    ClientImageCache.sendImageToServer(fileName, response, blockEntityPos, maintainAspectCheckbox.selected(), DisplayMode.INTERNET, urlString, () -> {
+                        minecraft.execute(() -> {
+                            uploadButton.active = true;
+                            uploadButton.setMessage(Component.literal("Load Image"));
+                            sendScreenInputsToServer();
+                        });
+                    });
+                }
+            } catch (Exception e) {
+                SimplyScreens.LOGGER.error("Failed to load image from URL", e);
+                minecraft.execute(() -> {
+                    uploadButton.active = true;
+                    uploadButton.setMessage(Component.literal("Load Image"));
+                });
+            }
+        }).start();
     }
 
     private void openFileDialog() {

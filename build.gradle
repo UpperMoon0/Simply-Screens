@@ -33,6 +33,7 @@ subprojects {
         // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
         // See https://docs.gradle.org/current/userguide/declaring_repositories.html
         // for more information about repositories.
+        maven { url 'https://jitpack.io' }
     }
 
     loom {
@@ -45,8 +46,7 @@ subprojects {
         compileOnly "org.projectlombok:lombok:1.18.34"
         annotationProcessor "org.projectlombok:lombok:1.18.34"
 
-        // Add WebP support for ImageIO
-        implementation "org.sejda.imageio:webp-imageio:0.1.6"
+        // Add WebP support - removed for now, using built-in ImageIO
     }
 
     java {

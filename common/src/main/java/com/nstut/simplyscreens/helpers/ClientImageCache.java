@@ -1,6 +1,7 @@
 package com.nstut.simplyscreens.helpers;
 
 import com.google.common.hash.Hashing;
+import com.nstut.simplyscreens.DisplayMode;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simplyscreens.network.*;
@@ -27,20 +28,23 @@ public class ClientImageCache {
     public static void sendImageToServer(Path imagePath, BlockPos blockPos, boolean maintainAspectRatio, Runnable onComplete) {
         try {
             byte[] imageData = java.nio.file.Files.readAllBytes(imagePath);
-            String imageHash = Hashing.sha256().hashBytes(imageData).toString();
-            String fileName = imagePath.getFileName().toString();
-            String imageExtension = fileName.substring(fileName.lastIndexOf('.') + 1);
             String imageName = imagePath.getFileName().toString();
-
-            PacketRegistries.CHANNEL.sendToServer(new RequestImageUploadC2SPacket(imageName, imageHash, imageExtension, blockPos, maintainAspectRatio));
-
-            sendImageInChunks(imageHash, imageData);
-
-            if (onComplete != null) {
-                PENDING_DOWNLOADS.put(imageHash, onComplete);
-            }
+            sendImageToServer(imageName, imageData, blockPos, maintainAspectRatio, DisplayMode.LOCAL, null, onComplete);
         } catch (IOException e) {
-            SimplyScreens.LOGGER.error("Failed to read or send image", e);
+            SimplyScreens.LOGGER.error("Failed to read image", e);
+        }
+    }
+
+    public static void sendImageToServer(String imageName, byte[] imageData, BlockPos blockPos, boolean maintainAspectRatio, DisplayMode displayMode, String url, Runnable onComplete) {
+        String imageHash = Hashing.sha256().hashBytes(imageData).toString();
+        String imageExtension = imageName.substring(imageName.lastIndexOf('.') + 1);
+
+        PacketRegistries.CHANNEL.sendToServer(new RequestImageUploadC2SPacket(imageName, imageHash, imageExtension, blockPos, maintainAspectRatio, displayMode, url));
+
+        sendImageInChunks(imageHash, imageData);
+
+        if (onComplete != null) {
+            PENDING_DOWNLOADS.put(imageHash, onComplete);
         }
     }
 

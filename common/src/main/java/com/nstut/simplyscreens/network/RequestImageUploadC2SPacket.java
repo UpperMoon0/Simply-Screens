@@ -1,5 +1,6 @@
 package com.nstut.simplyscreens.network;
 
+import com.nstut.simplyscreens.DisplayMode;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.helpers.ServerImageCache;
 import dev.architectury.networking.NetworkManager;
@@ -18,13 +19,21 @@ public class RequestImageUploadC2SPacket {
     private final String imageExtension;
     private final BlockPos blockPos;
     private final boolean maintainAspectRatio;
+    private final DisplayMode displayMode;
+    private final String url;
 
-    public RequestImageUploadC2SPacket(String imageName, String imageHash, String imageExtension, BlockPos blockPos, boolean maintainAspectRatio) {
+    public RequestImageUploadC2SPacket(String imageName, String imageHash, String imageExtension, BlockPos blockPos, boolean maintainAspectRatio, DisplayMode displayMode, String url) {
         this.imageName = imageName;
         this.imageHash = imageHash;
         this.imageExtension = imageExtension;
         this.blockPos = blockPos;
         this.maintainAspectRatio = maintainAspectRatio;
+        this.displayMode = displayMode;
+        this.url = url;
+    }
+
+    public RequestImageUploadC2SPacket(String imageName, String imageHash, String imageExtension, BlockPos blockPos, boolean maintainAspectRatio) {
+        this(imageName, imageHash, imageExtension, blockPos, maintainAspectRatio, DisplayMode.LOCAL, null);
     }
 
     public void write(FriendlyByteBuf buf) {
@@ -33,10 +42,22 @@ public class RequestImageUploadC2SPacket {
         buf.writeUtf(imageExtension);
         buf.writeBlockPos(blockPos);
         buf.writeBoolean(maintainAspectRatio);
+        buf.writeEnum(displayMode);
+        buf.writeBoolean(url != null);
+        if (url != null) {
+            buf.writeUtf(url);
+        }
     }
 
     public static RequestImageUploadC2SPacket read(FriendlyByteBuf buf) {
-        return new RequestImageUploadC2SPacket(buf.readUtf(), buf.readUtf(), buf.readUtf(), buf.readBlockPos(), buf.readBoolean());
+        String imageName = buf.readUtf();
+        String imageHash = buf.readUtf();
+        String imageExtension = buf.readUtf();
+        BlockPos blockPos = buf.readBlockPos();
+        boolean maintainAspectRatio = buf.readBoolean();
+        DisplayMode displayMode = buf.readEnum(DisplayMode.class);
+        String url = buf.readBoolean() ? buf.readUtf() : null;
+        return new RequestImageUploadC2SPacket(imageName, imageHash, imageExtension, blockPos, maintainAspectRatio, displayMode, url);
     }
 
     public static void apply(RequestImageUploadC2SPacket msg, Supplier<NetworkManager.PacketContext> context) {
@@ -62,5 +83,13 @@ public class RequestImageUploadC2SPacket {
 
     public boolean isMaintainAspectRatio() {
         return maintainAspectRatio;
+    }
+
+    public DisplayMode getDisplayMode() {
+        return displayMode;
+    }
+
+    public String getUrl() {
+        return url;
     }
 }
