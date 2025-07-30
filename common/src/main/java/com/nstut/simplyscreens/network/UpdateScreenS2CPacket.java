@@ -14,18 +14,18 @@ public class UpdateScreenS2CPacket {
     private final BlockPos pos;
     private final DisplayMode displayMode;
     private final String internetUrl;
-    private final String localHash;
+    private final String localId;
     private final String localExtension;
     private final BlockPos anchorPos;
     private final int screenWidth;
     private final int screenHeight;
     private final boolean maintainAspectRatio;
 
-    public UpdateScreenS2CPacket(BlockPos pos, DisplayMode displayMode, String internetUrl, String localHash, String localExtension, BlockPos anchorPos, int screenWidth, int screenHeight, boolean maintainAspectRatio) {
+    public UpdateScreenS2CPacket(BlockPos pos, DisplayMode displayMode, String internetUrl, String localId, String localExtension, BlockPos anchorPos, int screenWidth, int screenHeight, boolean maintainAspectRatio) {
         this.pos = pos;
         this.displayMode = displayMode;
         this.internetUrl = internetUrl;
-        this.localHash = localHash;
+        this.localId = localId;
         this.localExtension = localExtension;
         this.anchorPos = anchorPos;
         this.screenWidth = screenWidth;
@@ -37,7 +37,7 @@ public class UpdateScreenS2CPacket {
         pos = buf.readBlockPos();
         displayMode = buf.readEnum(DisplayMode.class);
         internetUrl = buf.readUtf();
-        localHash = buf.readUtf();
+        localId = buf.readUtf();
         localExtension = buf.readUtf();
         if (buf.readBoolean()) {
             anchorPos = buf.readBlockPos();
@@ -53,7 +53,7 @@ public class UpdateScreenS2CPacket {
         buf.writeBlockPos(pos);
         buf.writeEnum(displayMode);
         buf.writeUtf(internetUrl);
-        buf.writeUtf(localHash);
+        buf.writeUtf(localId);
         buf.writeUtf(localExtension);
         buf.writeBoolean(anchorPos != null);
         if (anchorPos != null) {
@@ -72,7 +72,7 @@ public class UpdateScreenS2CPacket {
                 if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                     screenBlockEntity.setDisplayMode(displayMode);
                     screenBlockEntity.setInternetUrl(internetUrl);
-                    screenBlockEntity.setLocalHash(localHash);
+                    screenBlockEntity.setLocalId(localId);
                     screenBlockEntity.setLocalExtension(localExtension);
                     screenBlockEntity.setAnchorPos(anchorPos);
                     screenBlockEntity.setScreenWidth(screenWidth);

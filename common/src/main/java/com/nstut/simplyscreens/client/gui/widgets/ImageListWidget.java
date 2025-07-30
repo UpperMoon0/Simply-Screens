@@ -2,6 +2,7 @@ package com.nstut.simplyscreens.client.gui.widgets;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.nstut.simplyscreens.DisplayMode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -38,13 +39,13 @@ public class ImageListWidget extends AbstractWidget {
     public static class ImageEntry {
         private final File metadataFile;
         private final String displayName;
-        private final String imageHash;
+        private final String imageId;
         private final String extension;
 
-        public ImageEntry(File metadataFile, String displayName, String imageHash, String extension) {
+        public ImageEntry(File metadataFile, String displayName, String imageId, String extension) {
             this.metadataFile = metadataFile;
             this.displayName = displayName;
-            this.imageHash = imageHash;
+            this.imageId = imageId;
             this.extension = extension;
         }
 
@@ -56,8 +57,8 @@ public class ImageListWidget extends AbstractWidget {
             return displayName;
         }
 
-        public String getImageHash() {
-            return imageHash;
+        public String getImageId() {
+            return imageId;
         }
 
         public String getImageExtension() {
@@ -82,8 +83,11 @@ public class ImageListWidget extends AbstractWidget {
                             try {
                                 String content = Files.readString(path);
                                 com.nstut.simplyscreens.helpers.ImageMetadata metadata = new com.google.gson.Gson().fromJson(content, com.nstut.simplyscreens.helpers.ImageMetadata.class);
-                                String imageHash = path.getFileName().toString().replace(".json", "");
-                                return new ImageEntry(path.toFile(), metadata.getName(), imageHash, metadata.getExtension());
+                                if (metadata.getDisplayMode() != DisplayMode.LOCAL) {
+                                    return null;
+                                }
+                                String imageId = path.getFileName().toString().replace(".json", "");
+                                return new ImageEntry(path.toFile(), metadata.getName(), imageId, metadata.getExtension());
                             } catch (IOException e) {
                                 e.printStackTrace();
                                 return null;
@@ -139,7 +143,7 @@ public class ImageListWidget extends AbstractWidget {
             ImageEntry entry = filteredImageFiles.get(i);
             boolean isHovered = mouseX >= itemX && mouseX < itemX + ITEM_SIZE && mouseY >= itemY && mouseY < itemY + ITEM_SIZE;
             boolean isSelected = selected == entry;
-            boolean isDisplayed = displayedImage != null && displayedImage.equals(entry.getImageHash());
+            boolean isDisplayed = displayedImage != null && displayedImage.equals(entry.getImageId());
 
             int backgroundColor = isSelected ? 0xFF808080 : (isHovered ? 0xFF404040 : 0xFF202020);
             guiGraphics.fill(itemX, itemY, itemX + ITEM_SIZE, itemY + ITEM_SIZE, backgroundColor);
@@ -148,9 +152,9 @@ public class ImageListWidget extends AbstractWidget {
                 guiGraphics.renderOutline(itemX, itemY, ITEM_SIZE, ITEM_SIZE, 0xFF00FF00);
             }
 
-            ResourceLocation texture = textureCache.computeIfAbsent(entry.getImageHash(), hash -> {
+            ResourceLocation texture = textureCache.computeIfAbsent(entry.getImageId(), id -> {
                 try {
-                    File imageFile = new File(entry.getMetadataFile().getParentFile(), entry.getImageHash() + "." + entry.getImageExtension());
+                    File imageFile = new File(entry.getMetadataFile().getParentFile(), entry.getImageId() + "." + entry.getImageExtension());
                     try (FileInputStream stream = new FileInputStream(imageFile)) {
                         NativeImage nativeImage = NativeImage.read(stream);
                         DynamicTexture dynamicTexture = new DynamicTexture(nativeImage);

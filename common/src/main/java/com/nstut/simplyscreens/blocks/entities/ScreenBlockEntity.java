@@ -24,7 +24,7 @@ import java.util.stream.IntStream;
 public class ScreenBlockEntity extends BlockEntity {
     private DisplayMode displayMode = DisplayMode.INTERNET;
     private String internetUrl = "";
-    private String localHash = "";
+    private String localId = "";
     private String localExtension = "";
     private BlockPos anchorPos;
     private int screenWidth = 1;
@@ -53,7 +53,7 @@ public class ScreenBlockEntity extends BlockEntity {
     private void writePersistentData(CompoundTag tag) {
         tag.putString("displayMode", displayMode.name());
         tag.putString("internetUrl", internetUrl);
-        tag.putString("localHash", localHash);
+        tag.putString("localId", localId);
         tag.putString("localExtension", localExtension);
         tag.putBoolean("maintainAspectRatio", maintainAspectRatio);
         tag.putInt("screenWidth", screenWidth);
@@ -71,7 +71,7 @@ public class ScreenBlockEntity extends BlockEntity {
             displayMode = DisplayMode.valueOf(tag.getString("displayMode"));
         }
         internetUrl = tag.getString("internetUrl");
-        localHash = tag.getString("localHash");
+        localId = tag.getString("localId");
         localExtension = tag.getString("localExtension");
         maintainAspectRatio = tag.getBoolean("maintainAspectRatio");
         screenWidth = tag.getInt("screenWidth");
@@ -104,7 +104,7 @@ public class ScreenBlockEntity extends BlockEntity {
                     worldPosition,
                     displayMode,
                     internetUrl,
-                    localHash,
+                    localId,
                     localExtension,
                     anchorPos,
                     screenWidth,
@@ -119,16 +119,16 @@ public class ScreenBlockEntity extends BlockEntity {
         }
     }
 
-    public void setLocalImage(String localHash, String localExtension) {
-        this.localHash = localHash;
+    public void setLocalImage(String localId, String localExtension) {
+        this.localId = localId;
         this.localExtension = localExtension;
         updateClients();
         setChanged();
     }
 
-    public void updateFromCache(String localHash, String localExtension, boolean maintainAspectRatio) {
+    public void updateFromCache(String localId, String localExtension, boolean maintainAspectRatio) {
         this.displayMode = DisplayMode.LOCAL;
-        this.localHash = localHash;
+        this.localId = localId;
         this.localExtension = localExtension;
         this.maintainAspectRatio = maintainAspectRatio;
         this.internetUrl = "";
@@ -136,19 +136,19 @@ public class ScreenBlockEntity extends BlockEntity {
         setChanged();
     }
 
-    public String getLocalHash() {
-        return localHash;
+    public String getLocalId() {
+        return localId;
     }
 
     public String getImagePath() {
         return switch (displayMode) {
             case INTERNET -> internetUrl;
-            case LOCAL -> localHash + "." + localExtension;
+            case LOCAL -> localId + "." + localExtension;
             default -> "";
         };
     }
 
-    public void updateFromScreenInputs(DisplayMode displayMode, String internetUrl, String localHash, String localExtension, boolean maintainAspectRatio) {
+    public void updateFromScreenInputs(DisplayMode displayMode, String internetUrl, String localId, String localExtension, boolean maintainAspectRatio) {
         if (level == null || level.isClientSide || !isAnchor()) {
             return;
         }
@@ -158,11 +158,11 @@ public class ScreenBlockEntity extends BlockEntity {
 
         if (displayMode == DisplayMode.INTERNET) {
             this.internetUrl = internetUrl;
-            this.localHash = "";
+            this.localId = "";
             this.localExtension = "";
         } else {
             this.internetUrl = "";
-            this.localHash = localHash;
+            this.localId = localId;
             this.localExtension = localExtension;
         }
 
@@ -170,12 +170,12 @@ public class ScreenBlockEntity extends BlockEntity {
         setChanged();
     }
 
-    public void updateScreen(DisplayMode displayMode, String internetUrl, String localHash, String localExtension, int width, int height, BlockPos anchor, boolean maintainAspect) {
+    public void updateScreen(DisplayMode displayMode, String internetUrl, String localId, String localExtension, int width, int height, BlockPos anchor, boolean maintainAspect) {
         if (level == null || level.isClientSide) return;
 
         this.displayMode = displayMode;
         this.internetUrl = internetUrl;
-        this.localHash = localHash;
+        this.localId = localId;
         this.localExtension = localExtension;
         this.screenWidth = width;
         this.screenHeight = height;
@@ -214,7 +214,7 @@ public class ScreenBlockEntity extends BlockEntity {
             calculateScreenDimensions(facing, farCorner);
 
             // Add this line to force immediate client update
-            this.updateScreen(this.displayMode, this.internetUrl, this.localHash, this.localExtension, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
+            this.updateScreen(this.displayMode, this.internetUrl, this.localId, this.localExtension, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
 
             updateChildScreens(farCorner, facing);
         }
@@ -245,11 +245,11 @@ public class ScreenBlockEntity extends BlockEntity {
                     BlockEntity be = level.getBlockEntity(currentPos);
 
                     if (be instanceof ScreenBlockEntity childEntity && !currentPos.equals(worldPosition)) {
-                        if (childEntity.isAnchor() && !childEntity.localHash.isBlank()) {
-                            this.localHash = childEntity.localHash;
+                        if (childEntity.isAnchor() && !childEntity.localId.isBlank()) {
+                            this.localId = childEntity.localId;
                             this.localExtension = childEntity.localExtension;
                         }
-                        childEntity.updateScreen(this.displayMode, this.internetUrl, this.localHash, this.localExtension, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
+                        childEntity.updateScreen(this.displayMode, this.internetUrl, this.localId, this.localExtension, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
                     }
                 }
             }
@@ -290,11 +290,11 @@ public class ScreenBlockEntity extends BlockEntity {
 
         BlockEntity be = level.getBlockEntity(currentPos);
         if (be instanceof ScreenBlockEntity childEntity && !currentPos.equals(worldPosition)) {
-            if (childEntity.isAnchor() && !childEntity.localHash.isBlank()) {
-                this.localHash = childEntity.localHash;
+            if (childEntity.isAnchor() && !childEntity.localId.isBlank()) {
+                this.localId = childEntity.localId;
                 this.localExtension = childEntity.localExtension;
             }
-            childEntity.updateScreen(this.displayMode, this.internetUrl, this.localHash, this.localExtension, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
+            childEntity.updateScreen(this.displayMode, this.internetUrl, this.localId, this.localExtension, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
         }
     }
 
@@ -429,7 +429,7 @@ public class ScreenBlockEntity extends BlockEntity {
     private void switchToErrorState() {
         if (level == null) return;
 
-        localHash = "";
+        localId = "";
         localExtension = "";
         anchorPos = null;
         screenWidth = 1;
@@ -475,7 +475,7 @@ public class ScreenBlockEntity extends BlockEntity {
         if (newAnchorBe instanceof ScreenBlockEntity newAnchor) {
             // Force immediate update of new anchor
             newAnchor.updateScreenStructure();
-            newAnchor.updateScreen(this.displayMode, this.internetUrl, this.localHash, this.localExtension, this.screenWidth, this.screenHeight, newAnchorPos, this.maintainAspectRatio);
+            newAnchor.updateScreen(this.displayMode, this.internetUrl, this.localId, this.localExtension, this.screenWidth, this.screenHeight, newAnchorPos, this.maintainAspectRatio);
 
             // Update children immediately
             updateChildrenToNewAnchor(newAnchorPos, facing);
@@ -491,7 +491,7 @@ public class ScreenBlockEntity extends BlockEntity {
                         newAnchorPos,
                         displayMode,
                         internetUrl,
-                        localHash,
+                        localId,
                         localExtension,
                         newAnchorPos,
                         screenWidth,

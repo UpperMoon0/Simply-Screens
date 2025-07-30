@@ -13,24 +13,24 @@ public class UpdateScreenWithCachedImageS2CPacket {
     public static final ResourceLocation ID = new ResourceLocation(SimplyScreens.MOD_ID, "update_screen_with_cached_image");
 
     private final BlockPos blockPos;
-    private final String imageHash;
+    private final String imageId;
     private final boolean maintainAspectRatio;
 
-    public UpdateScreenWithCachedImageS2CPacket(BlockPos blockPos, String imageHash, boolean maintainAspectRatio) {
+    public UpdateScreenWithCachedImageS2CPacket(BlockPos blockPos, String imageId, boolean maintainAspectRatio) {
         this.blockPos = blockPos;
-        this.imageHash = imageHash;
+        this.imageId = imageId;
         this.maintainAspectRatio = maintainAspectRatio;
     }
 
     public UpdateScreenWithCachedImageS2CPacket(FriendlyByteBuf buf) {
         this.blockPos = buf.readBlockPos();
-        this.imageHash = buf.readUtf();
+        this.imageId = buf.readUtf();
         this.maintainAspectRatio = buf.readBoolean();
     }
 
     public void write(FriendlyByteBuf buf) {
         buf.writeBlockPos(blockPos);
-        buf.writeUtf(imageHash);
+        buf.writeUtf(imageId);
         buf.writeBoolean(maintainAspectRatio);
     }
 
@@ -42,8 +42,8 @@ public class UpdateScreenWithCachedImageS2CPacket {
         return blockPos;
     }
 
-    public String getImageHash() {
-        return imageHash;
+    public String getImageId() {
+        return imageId;
     }
 
     public boolean shouldMaintainAspectRatio() {

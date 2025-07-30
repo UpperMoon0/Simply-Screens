@@ -1,6 +1,5 @@
 package com.nstut.simplyscreens.helpers;
 
-import com.google.common.hash.Hashing;
 import com.nstut.simplyscreens.DisplayMode;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
@@ -17,6 +16,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ClientImageCache {
@@ -36,45 +36,45 @@ public class ClientImageCache {
     }
 
     public static void sendImageToServer(String imageName, byte[] imageData, BlockPos blockPos, boolean maintainAspectRatio, DisplayMode displayMode, String url, Runnable onComplete) {
-        String imageHash = Hashing.sha256().hashBytes(imageData).toString();
+        String imageId = UUID.randomUUID().toString();
         String imageExtension = com.google.common.io.Files.getFileExtension(imageName);
-        PacketRegistries.CHANNEL.sendToServer(new RequestImageUploadC2SPacket(imageName, imageHash, imageExtension, blockPos, maintainAspectRatio, displayMode, url));
+        PacketRegistries.CHANNEL.sendToServer(new RequestImageUploadC2SPacket(imageName, imageId, imageExtension, blockPos, maintainAspectRatio, displayMode, url));
 
-        sendImageInChunks(imageHash, imageData);
+        sendImageInChunks(imageId, imageData);
 
         if (onComplete != null) {
-            PENDING_DOWNLOADS.put(imageHash, onComplete);
+            PENDING_DOWNLOADS.put(imageId, onComplete);
         }
     }
 
-    private static void sendImageInChunks(String imageHash, byte[] imageData) {
+    private static void sendImageInChunks(String imageId, byte[] imageData) {
         int totalChunks = (int) Math.ceil((double) imageData.length / CHUNK_SIZE);
 
         for (int i = 0; i < totalChunks; i++) {
             int start = i * CHUNK_SIZE;
             int end = Math.min(imageData.length, start + CHUNK_SIZE);
             byte[] chunk = Arrays.copyOfRange(imageData, start, end);
-            PacketRegistries.CHANNEL.sendToServer(new ImageChunkC2SPacket(imageHash, i, totalChunks, chunk));
+            PacketRegistries.CHANNEL.sendToServer(new ImageChunkC2SPacket(imageId, i, totalChunks, chunk));
         }
     }
 
     public static void handleImageChunk(ImageChunkS2CPacket msg) {
-        CHUNK_CACHE.computeIfAbsent(msg.getImageHash(), k -> new byte[msg.getTotalChunks()][]);
-        CHUNK_CACHE.get(msg.getImageHash())[msg.getChunkIndex()] = msg.getData();
+        CHUNK_CACHE.computeIfAbsent(msg.getImageId(), k -> new byte[msg.getTotalChunks()][]);
+        CHUNK_CACHE.get(msg.getImageId())[msg.getChunkIndex()] = msg.getData();
 
-        int receivedCount = CHUNKS_RECEIVED.merge(msg.getImageHash(), 1, Integer::sum);
+        int receivedCount = CHUNKS_RECEIVED.merge(msg.getImageId(), 1, Integer::sum);
 
         if (receivedCount == msg.getTotalChunks()) {
-            reassembleAndSaveImage(msg.getImageHash());
+            reassembleAndSaveImage(msg.getImageId());
         }
     }
 
-    private static void reassembleAndSaveImage(String fullImageHash) {
-        byte[][] chunks = CHUNK_CACHE.get(fullImageHash);
+    private static void reassembleAndSaveImage(String fullImageId) {
+        byte[][] chunks = CHUNK_CACHE.get(fullImageId);
         if (chunks == null) return;
 
-        String imageHash = fullImageHash.substring(0, fullImageHash.lastIndexOf('.'));
-        String imageExtension = fullImageHash.substring(fullImageHash.lastIndexOf('.') + 1);
+        String imageId = fullImageId.substring(0, fullImageId.lastIndexOf('.'));
+        String imageExtension = fullImageId.substring(fullImageId.lastIndexOf('.') + 1);
 
         int totalSize = 0;
         for (byte[] chunk : chunks) {
@@ -88,20 +88,20 @@ public class ClientImageCache {
             offset += chunk.length;
         }
 
-        File imageFile = getImagePath(imageHash, imageExtension).toFile();
+        File imageFile = getImagePath(imageId, imageExtension).toFile();
         imageFile.getParentFile().mkdirs();
 
         try (FileOutputStream fos = new FileOutputStream(imageFile)) {
             fos.write(imageData);
-            if (PENDING_DOWNLOADS.containsKey(imageHash)) {
-                PENDING_DOWNLOADS.get(imageHash).run();
-                PENDING_DOWNLOADS.remove(imageHash);
+            if (PENDING_DOWNLOADS.containsKey(imageId)) {
+                PENDING_DOWNLOADS.get(imageId).run();
+                PENDING_DOWNLOADS.remove(imageId);
             }
         } catch (IOException e) {
-            SimplyScreens.LOGGER.error("Failed to save image " + imageHash, e);
+            SimplyScreens.LOGGER.error("Failed to save image " + imageId, e);
         } finally {
-            CHUNK_CACHE.remove(fullImageHash);
-            CHUNKS_RECEIVED.remove(fullImageHash);
+            CHUNK_CACHE.remove(fullImageId);
+            CHUNKS_RECEIVED.remove(fullImageId);
         }
     }
 
@@ -111,27 +111,27 @@ public class ClientImageCache {
 
         BlockEntity be = mc.level.getBlockEntity(msg.getBlockPos());
         if (be instanceof ScreenBlockEntity screen) {
-            String fullHash = msg.getImageHash();
-            String hash = "";
+            String fullId = msg.getImageId();
+            String id = "";
             String ext = "";
 
-            if (fullHash != null && fullHash.contains(".")) {
-                hash = fullHash.substring(0, fullHash.lastIndexOf('.'));
-                ext = fullHash.substring(fullHash.lastIndexOf('.') + 1);
+            if (fullId != null && fullId.contains(".")) {
+                id = fullId.substring(0, fullId.lastIndexOf('.'));
+                ext = fullId.substring(fullId.lastIndexOf('.') + 1);
             } else {
-                hash = fullHash;
+                id = fullId;
             }
 
-            screen.updateFromCache(hash, ext, msg.shouldMaintainAspectRatio());
+            screen.updateFromCache(id, ext, msg.shouldMaintainAspectRatio());
             mc.level.sendBlockUpdated(msg.getBlockPos(), be.getBlockState(), be.getBlockState(), 3);
         }
 
-        String fullHash = msg.getImageHash();
-        if (fullHash != null && fullHash.contains(".")) {
-            String hash = fullHash.substring(0, fullHash.lastIndexOf('.'));
-            if (PENDING_DOWNLOADS.containsKey(hash)) {
-                PENDING_DOWNLOADS.get(hash).run();
-                PENDING_DOWNLOADS.remove(hash);
+        String fullId = msg.getImageId();
+        if (fullId != null && fullId.contains(".")) {
+            String id = fullId.substring(0, fullId.lastIndexOf('.'));
+            if (PENDING_DOWNLOADS.containsKey(id)) {
+                PENDING_DOWNLOADS.get(id).run();
+                PENDING_DOWNLOADS.remove(id);
             }
         }
     }
@@ -147,8 +147,8 @@ public class ClientImageCache {
         return mc.gameDirectory.toPath().resolve("simply_screens_images");
     }
 
-    public static Path getImagePath(String imageHash, String extension) {
-        return getImagesDir().resolve(imageHash + "." + extension);
+    public static Path getImagePath(String imageId, String extension) {
+        return getImagesDir().resolve(imageId + "." + extension);
     }
 
     public static Path getImagePath(String fullImageName) {

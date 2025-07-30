@@ -100,7 +100,7 @@ public class ImageLoadScreen extends Screen {
                     ImageListWidget.ImageEntry selectedEntry = imageListWidget.getSelected();
                     if (selectedEntry != null) {
                         sendScreenInputsToServer();
-                        imageListWidget.setDisplayedImage(selectedEntry.getImageHash());
+                        imageListWidget.setDisplayedImage(selectedEntry.getImageId());
                     }
                 })
                 .pos(guiLeft + 21, guiTop + 108)
@@ -281,7 +281,7 @@ public class ImageLoadScreen extends Screen {
             if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                 initialDisplayMode = screenBlockEntity.getDisplayMode();
                 initialInternetUrl = screenBlockEntity.getInternetUrl();
-                initialLocalHash = screenBlockEntity.getLocalHash();
+                initialLocalHash = screenBlockEntity.getLocalId();
                 initialMaintainAspectRatio = screenBlockEntity.isMaintainAspectRatio();
             }
         }
@@ -289,19 +289,19 @@ public class ImageLoadScreen extends Screen {
 
     private void sendScreenInputsToServer() {
         String internetUrl = internetUrlField.getValue();
-        String localHash = "";
+        String localId = "";
         String localExtension = "";
         boolean maintainAspectRatio = maintainAspectCheckbox.selected();
 
         if (currentMode == DisplayMode.LOCAL) {
             ImageListWidget.ImageEntry selectedEntry = imageListWidget.getSelected();
             if (selectedEntry != null) {
-                localHash = selectedEntry.getImageHash();
+                localId = selectedEntry.getImageId();
                 localExtension = selectedEntry.getImageExtension();
             }
         }
 
-        PacketRegistries.CHANNEL.sendToServer(new UpdateScreenC2SPacket(blockEntityPos, currentMode, internetUrl, localHash, localExtension, maintainAspectRatio));
+        PacketRegistries.CHANNEL.sendToServer(new UpdateScreenC2SPacket(blockEntityPos, currentMode, internetUrl, localId, localExtension, maintainAspectRatio));
     }
 
     private boolean isHttpUrl(String url) {

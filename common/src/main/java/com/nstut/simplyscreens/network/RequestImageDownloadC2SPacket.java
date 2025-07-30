@@ -12,18 +12,18 @@ import java.util.function.Supplier;
 public class RequestImageDownloadC2SPacket {
     public static final ResourceLocation ID = new ResourceLocation(SimplyScreens.MOD_ID, "request_image_download");
 
-    private final String imageHash;
+    private final String imageId;
 
-    public RequestImageDownloadC2SPacket(String imageHash) {
-        this.imageHash = imageHash;
+    public RequestImageDownloadC2SPacket(String imageId) {
+        this.imageId = imageId;
     }
 
     public RequestImageDownloadC2SPacket(FriendlyByteBuf buf) {
-        this.imageHash = buf.readUtf();
+        this.imageId = buf.readUtf();
     }
 
     public void write(FriendlyByteBuf buf) {
-        buf.writeUtf(imageHash);
+        buf.writeUtf(imageId);
     }
 
     public static void apply(RequestImageDownloadC2SPacket msg, Supplier<NetworkManager.PacketContext> context) {
@@ -31,7 +31,7 @@ public class RequestImageDownloadC2SPacket {
         context.get().queue(() -> ServerImageCache.handleRequestImageDownload(msg, player));
     }
 
-    public String getImageHash() {
-        return imageHash;
+    public String getImageId() {
+        return imageId;
     }
 }
