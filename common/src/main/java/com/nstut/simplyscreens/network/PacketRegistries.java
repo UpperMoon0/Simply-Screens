@@ -11,14 +11,14 @@ public class PacketRegistries {
 
     public static void register() {
         CHANNEL.register(UpdateScreenC2SPacket.class,
-                UpdateScreenC2SPacket::encode,
+                UpdateScreenC2SPacket::write,
                 UpdateScreenC2SPacket::new,
-                UpdateScreenC2SPacket::handle
+                (packet, context) -> packet.handle(context)
         );
         CHANNEL.register(UpdateScreenS2CPacket.class,
-                UpdateScreenS2CPacket::encode,
+                UpdateScreenS2CPacket::write,
                 UpdateScreenS2CPacket::new,
-                UpdateScreenS2CPacket::handle
+                (packet, context) -> packet.handle(context)
         );
 
         CHANNEL.register(RequestImageUploadC2SPacket.class,
@@ -27,34 +27,40 @@ public class PacketRegistries {
                 RequestImageUploadC2SPacket::apply
         );
 
-        CHANNEL.register(ImageChunkC2SPacket.class,
-                ImageChunkC2SPacket::write,
-                ImageChunkC2SPacket::read,
-                ImageChunkC2SPacket::apply
-        );
-
-        CHANNEL.register(UpdateScreenWithCachedImageS2CPacket.class,
-                UpdateScreenWithCachedImageS2CPacket::write,
-                UpdateScreenWithCachedImageS2CPacket::new,
-                UpdateScreenWithCachedImageS2CPacket::handle
-        );
-
-        CHANNEL.register(ImageChunkS2CPacket.class,
-                ImageChunkS2CPacket::write,
-                ImageChunkS2CPacket::new,
-                ImageChunkS2CPacket::handle
-        );
-
         CHANNEL.register(RequestImageDownloadC2SPacket.class,
                 RequestImageDownloadC2SPacket::write,
                 RequestImageDownloadC2SPacket::new,
-                RequestImageDownloadC2SPacket::apply
+                (packet, context) -> packet.handle(context)
         );
 
-        CHANNEL.register(UploadCompleteS2CPacket.class,
-                UploadCompleteS2CPacket::write,
-                UploadCompleteS2CPacket::new,
-                UploadCompleteS2CPacket::handle
+        CHANNEL.register(ImageDownloadS2CPacket.class,
+                ImageDownloadS2CPacket::write,
+                ImageDownloadS2CPacket::new,
+                (packet, context) -> packet.handle(context)
+        );
+
+        CHANNEL.register(RequestImageListC2SPacket.class,
+                RequestImageListC2SPacket::write,
+                RequestImageListC2SPacket::read,
+                RequestImageListC2SPacket::apply
+        );
+
+        CHANNEL.register(UpdateImageListS2CPacket.class,
+                UpdateImageListS2CPacket::write,
+                UpdateImageListS2CPacket::new,
+                (packet, context) -> packet.handle(context)
+        );
+
+        CHANNEL.register(DownloadImageFromUrlC2SPacket.class,
+                DownloadImageFromUrlC2SPacket::write,
+                DownloadImageFromUrlC2SPacket::read,
+                DownloadImageFromUrlC2SPacket::apply
+        );
+
+        CHANNEL.register(UploadImageC2SPacket.class,
+                UploadImageC2SPacket::write,
+                UploadImageC2SPacket::read,
+                UploadImageC2SPacket::apply
         );
     }
 }

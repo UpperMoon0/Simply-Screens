@@ -1,13 +1,13 @@
 package com.nstut.simplyscreens.blocks.entities;
 
 import com.nstut.simplyscreens.Config;
-import com.nstut.simplyscreens.DisplayMode;
 import com.nstut.simplyscreens.blocks.ScreenBlock;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import com.nstut.simplyscreens.network.UpdateScreenS2CPacket;
 import net.minecraft.server.level.ServerPlayer;
 import lombok.Getter;
 import lombok.Setter;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -22,10 +22,7 @@ import java.util.stream.IntStream;
 @Setter
 @Getter
 public class ScreenBlockEntity extends BlockEntity {
-    private DisplayMode displayMode = DisplayMode.INTERNET;
-    private String internetUrl = "";
-    private String localId = "";
-    private String localExtension = "";
+    private UUID imageId;
     private BlockPos anchorPos;
     private int screenWidth = 1;
     private int screenHeight = 1;
@@ -51,10 +48,9 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     private void writePersistentData(CompoundTag tag) {
-        tag.putString("displayMode", displayMode.name());
-        tag.putString("internetUrl", internetUrl);
-        tag.putString("localId", localId);
-        tag.putString("localExtension", localExtension);
+        if (imageId != null) {
+            tag.putUUID("imageId", imageId);
+        }
         tag.putBoolean("maintainAspectRatio", maintainAspectRatio);
         tag.putInt("screenWidth", screenWidth);
         tag.putInt("screenHeight", screenHeight);
@@ -67,12 +63,9 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     private void readPersistentData(CompoundTag tag) {
-        if (tag.contains("displayMode")) {
-            displayMode = DisplayMode.valueOf(tag.getString("displayMode"));
+        if (tag.hasUUID("imageId")) {
+            imageId = tag.getUUID("imageId");
         }
-        internetUrl = tag.getString("internetUrl");
-        localId = tag.getString("localId");
-        localExtension = tag.getString("localExtension");
         maintainAspectRatio = tag.getBoolean("maintainAspectRatio");
         screenWidth = tag.getInt("screenWidth");
         screenHeight = tag.getInt("screenHeight");
@@ -100,17 +93,7 @@ public class ScreenBlockEntity extends BlockEntity {
 
     private void updateClients() {
         if (level != null && !level.isClientSide) {
-            UpdateScreenS2CPacket packet = new UpdateScreenS2CPacket(
-                    worldPosition,
-                    displayMode,
-                    internetUrl,
-                    localId,
-                    localExtension,
-                    anchorPos,
-                    screenWidth,
-                    screenHeight,
-                    maintainAspectRatio
-            );
+            UpdateScreenS2CPacket packet = new UpdateScreenS2CPacket(worldPosition, imageId);
             if (level.getServer() != null) {
                 for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
                     PacketRegistries.CHANNEL.sendToPlayer(player, packet);
@@ -119,63 +102,16 @@ public class ScreenBlockEntity extends BlockEntity {
         }
     }
 
-    public void setLocalImage(String localId, String localExtension) {
-        this.localId = localId;
-        this.localExtension = localExtension;
+    public void setImageId(UUID imageId) {
+        this.imageId = imageId;
+        setChanged();
         updateClients();
-        setChanged();
     }
 
-    public void updateFromCache(String localId, String localExtension, boolean maintainAspectRatio) {
-        this.displayMode = DisplayMode.LOCAL; // Always switch to local after caching
-        this.localId = localId;
-        this.localExtension = localExtension;
-        this.maintainAspectRatio = maintainAspectRatio;
-        // We keep the original URL for reference, but it's not used for rendering
-        updateClients();
-        setChanged();
-    }
-
-    public String getLocalId() {
-        return localId;
-    }
-
-    public String getImagePath() {
-        if (localId == null || localId.isEmpty() || localExtension == null || localExtension.isEmpty()) {
-            return "";
-        }
-        return localId + "." + localExtension;
-    }
-
-    public void updateFromScreenInputs(DisplayMode displayMode, String internetUrl, String localId, String localExtension, boolean maintainAspectRatio) {
-        if (level == null || level.isClientSide || !isAnchor()) {
-            return;
-        }
-
-        this.displayMode = displayMode;
-        this.maintainAspectRatio = maintainAspectRatio;
-
-        if (displayMode == DisplayMode.INTERNET) {
-            this.internetUrl = internetUrl;
-            this.localId = "";
-            this.localExtension = "";
-        } else {
-            this.internetUrl = "";
-            this.localId = localId;
-            this.localExtension = localExtension;
-        }
-
-        updateScreenStructure();
-        setChanged();
-    }
-
-    public void updateScreen(DisplayMode displayMode, String internetUrl, String localId, String localExtension, int width, int height, BlockPos anchor, boolean maintainAspect) {
+    public void updateScreen(UUID imageId, int width, int height, BlockPos anchor, boolean maintainAspect) {
         if (level == null || level.isClientSide) return;
 
-        this.displayMode = displayMode;
-        this.internetUrl = internetUrl;
-        this.localId = localId;
-        this.localExtension = localExtension;
+        this.imageId = imageId;
         this.screenWidth = width;
         this.screenHeight = height;
         this.anchorPos = anchor;
@@ -213,7 +149,7 @@ public class ScreenBlockEntity extends BlockEntity {
             calculateScreenDimensions(facing, farCorner);
 
             // Add this line to force immediate client update
-            this.updateScreen(this.displayMode, this.internetUrl, this.localId, this.localExtension, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
+            this.updateScreen(this.imageId, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
 
             updateChildScreens(farCorner, facing);
         }
@@ -244,11 +180,10 @@ public class ScreenBlockEntity extends BlockEntity {
                     BlockEntity be = level.getBlockEntity(currentPos);
 
                     if (be instanceof ScreenBlockEntity childEntity && !currentPos.equals(worldPosition)) {
-                        if (childEntity.isAnchor() && !childEntity.localId.isBlank()) {
-                            this.localId = childEntity.localId;
-                            this.localExtension = childEntity.localExtension;
+                        if (childEntity.isAnchor() && childEntity.imageId != null) {
+                            this.imageId = childEntity.imageId;
                         }
-                        childEntity.updateScreen(this.displayMode, this.internetUrl, this.localId, this.localExtension, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
+                        childEntity.updateScreen(this.imageId, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
                     }
                 }
             }
@@ -289,11 +224,10 @@ public class ScreenBlockEntity extends BlockEntity {
 
         BlockEntity be = level.getBlockEntity(currentPos);
         if (be instanceof ScreenBlockEntity childEntity && !currentPos.equals(worldPosition)) {
-            if (childEntity.isAnchor() && !childEntity.localId.isBlank()) {
-                this.localId = childEntity.localId;
-                this.localExtension = childEntity.localExtension;
+            if (childEntity.isAnchor() && childEntity.imageId != null) {
+                this.imageId = childEntity.imageId;
             }
-            childEntity.updateScreen(this.displayMode, this.internetUrl, this.localId, this.localExtension, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
+            childEntity.updateScreen(this.imageId, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
         }
     }
 
@@ -428,8 +362,7 @@ public class ScreenBlockEntity extends BlockEntity {
     private void switchToErrorState() {
         if (level == null) return;
 
-        localId = "";
-        localExtension = "";
+        imageId = null;
         anchorPos = null;
         screenWidth = 1;
         screenHeight = 1;
@@ -474,7 +407,7 @@ public class ScreenBlockEntity extends BlockEntity {
         if (newAnchorBe instanceof ScreenBlockEntity newAnchor) {
             // Force immediate update of new anchor
             newAnchor.updateScreenStructure();
-            newAnchor.updateScreen(this.displayMode, this.internetUrl, this.localId, this.localExtension, this.screenWidth, this.screenHeight, newAnchorPos, this.maintainAspectRatio);
+            newAnchor.updateScreen(this.imageId, this.screenWidth, this.screenHeight, newAnchorPos, this.maintainAspectRatio);
 
             // Update children immediately
             updateChildrenToNewAnchor(newAnchorPos, facing);
@@ -488,14 +421,7 @@ public class ScreenBlockEntity extends BlockEntity {
             for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
                 PacketRegistries.CHANNEL.sendToPlayer(player, new UpdateScreenS2CPacket(
                         newAnchorPos,
-                        displayMode,
-                        internetUrl,
-                        localId,
-                        localExtension,
-                        newAnchorPos,
-                        screenWidth,
-                        screenHeight,
-                        maintainAspectRatio
+                        imageId
                 ));
             }
         }

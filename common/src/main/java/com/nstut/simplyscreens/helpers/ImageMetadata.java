@@ -1,45 +1,31 @@
 package com.nstut.simplyscreens.helpers;
 
-import com.nstut.simplyscreens.DisplayMode;
-
 public class ImageMetadata {
-    private final String id;
     private final String name;
+    private final String id;
     private final String extension;
-    private final long uploadedAt;
-    private final DisplayMode displayMode;
-    private final String url;
+    private final String source;
 
-    public ImageMetadata(String id, String name, String extension, long uploadedAt, DisplayMode displayMode, String url) {
-        this.id = id;
+    public ImageMetadata(String name, String id, String extension, String source) {
         this.name = name;
+        this.id = id;
         this.extension = extension;
-        this.uploadedAt = uploadedAt;
-        this.displayMode = displayMode;
-        this.url = url;
-    }
-
-    public String getId() {
-        return id;
+        this.source = source;
     }
 
     public String getName() {
         return name;
     }
 
+    public String getId() {
+        return id;
+    }
+
     public String getExtension() {
         return extension;
     }
 
-    public long getUploadedAt() {
-        return uploadedAt;
-    }
-
-    public DisplayMode getDisplayMode() {
-        return displayMode;
-    }
-
-    public String getUrl() {
-        return url;
+    public String getSource() {
+        return source;
     }
 }

@@ -1,8 +1,7 @@
 package com.nstut.simplyscreens.network;
 
-import com.nstut.simplyscreens.DisplayMode;
 import com.nstut.simplyscreens.SimplyScreens;
-import com.nstut.simplyscreens.helpers.ServerImageCache;
+import com.nstut.simplyscreens.helpers.ServerImageManager;
 import dev.architectury.networking.NetworkManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
@@ -14,82 +13,56 @@ import java.util.function.Supplier;
 public class RequestImageUploadC2SPacket {
     public static final ResourceLocation ID = new ResourceLocation(SimplyScreens.MOD_ID, "request_image_upload");
 
-    private final String imageName;
-    private final String imageId;
-    private final String imageExtension;
+    private final String source;
+    private final byte[] data;
+    private final String originalName;
     private final BlockPos blockPos;
     private final boolean maintainAspectRatio;
-    private final DisplayMode displayMode;
-    private final String url;
 
-    public RequestImageUploadC2SPacket(String imageName, String imageId, String imageExtension, BlockPos blockPos, boolean maintainAspectRatio, DisplayMode displayMode, String url) {
-        this.imageName = imageName;
-        this.imageId = imageId;
-        this.imageExtension = imageExtension;
+    public RequestImageUploadC2SPacket(String source, byte[] data, String originalName, BlockPos blockPos, boolean maintainAspectRatio) {
+        this.source = source;
+        this.data = data;
+        this.originalName = originalName;
         this.blockPos = blockPos;
         this.maintainAspectRatio = maintainAspectRatio;
-        this.displayMode = displayMode;
-        this.url = url;
-    }
-
-    public RequestImageUploadC2SPacket(String imageName, String imageId, String imageExtension, BlockPos blockPos, boolean maintainAspectRatio) {
-        this(imageName, imageId, imageExtension, blockPos, maintainAspectRatio, DisplayMode.LOCAL, null);
     }
 
     public void write(FriendlyByteBuf buf) {
-        buf.writeUtf(imageName);
-        buf.writeUtf(imageId);
-        buf.writeUtf(imageExtension);
+        buf.writeUtf(source);
+        buf.writeByteArray(data);
+        buf.writeUtf(originalName);
         buf.writeBlockPos(blockPos);
         buf.writeBoolean(maintainAspectRatio);
-        buf.writeEnum(displayMode);
-        buf.writeBoolean(url != null);
-        if (url != null) {
-            buf.writeUtf(url);
-        }
     }
 
     public static RequestImageUploadC2SPacket read(FriendlyByteBuf buf) {
-        String imageName = buf.readUtf();
-        String imageId = buf.readUtf();
-        String imageExtension = buf.readUtf();
-        BlockPos blockPos = buf.readBlockPos();
-        boolean maintainAspectRatio = buf.readBoolean();
-        DisplayMode displayMode = buf.readEnum(DisplayMode.class);
-        String url = buf.readBoolean() ? buf.readUtf() : null;
-        return new RequestImageUploadC2SPacket(imageName, imageId, imageExtension, blockPos, maintainAspectRatio, displayMode, url);
+        return new RequestImageUploadC2SPacket(
+                buf.readUtf(),
+                buf.readByteArray(),
+                buf.readUtf(),
+                buf.readBlockPos(),
+                buf.readBoolean()
+        );
     }
 
     public static void apply(RequestImageUploadC2SPacket msg, Supplier<NetworkManager.PacketContext> context) {
         ServerPlayer player = (ServerPlayer) context.get().getPlayer();
-        context.get().queue(() -> ServerImageCache.handleRequestImageUpload(msg, player));
-    }
-
-    public String getImageName() {
-        return imageName;
-    }
-
-    public String getImageId() {
-        return imageId;
-    }
-
-    public String getImageExtension() {
-        return imageExtension;
-    }
-
-    public BlockPos getBlockPos() {
-        return blockPos;
-    }
-
-    public boolean isMaintainAspectRatio() {
-        return maintainAspectRatio;
-    }
-
-    public DisplayMode getDisplayMode() {
-        return displayMode;
-    }
-
-    public String getUrl() {
-        return url;
+        context.get().queue(() -> {
+            String imageId = ServerImageManager.saveImage(player.getServer(), msg.source, msg.data, msg.originalName);
+            if (imageId != null) {
+                player.getServer().execute(() -> {
+                    if (player.level().getBlockEntity(msg.blockPos) instanceof com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity screen) {
+                        String extension = msg.originalName.substring(msg.originalName.lastIndexOf('.') + 1);
+                        screen.setImage(imageId, extension, msg.maintainAspectRatio);
+                        UpdateScreenWithCachedImageS2CPacket packet = new UpdateScreenWithCachedImageS2CPacket(msg.blockPos, imageId + "." + extension, msg.maintainAspectRatio);
+                        for (ServerPlayer p : player.getServer().getPlayerList().getPlayers()) {
+                            if (p.level().isLoaded(msg.blockPos)) {
+                                PacketRegistries.CHANNEL.sendToPlayer(p, packet);
+                            }
+                        }
+                    }
+                });
+            }
+        });
     }
 }

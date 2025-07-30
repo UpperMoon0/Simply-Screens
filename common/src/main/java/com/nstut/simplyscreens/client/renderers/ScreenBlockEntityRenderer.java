@@ -5,37 +5,25 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import com.nstut.simplyscreens.Config;
-import com.nstut.simplyscreens.DisplayMode;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
-import com.nstut.simplyscreens.client.helpers.ImageUtils;
-import com.nstut.simplyscreens.helpers.ClientImageCache;
+import com.nstut.simplyscreens.helpers.ClientImageManager;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import org.jetbrains.annotations.NotNull;
-
-import java.awt.image.BufferedImage;
-import java.io.*;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.HashMap;
-import java.util.Map;
-import net.minecraft.client.Minecraft;
 import org.slf4j.Logger;
 
-import javax.imageio.ImageIO;
+import java.util.UUID;
 
 public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBlockEntity> {
     private static final Logger LOGGER = SimplyScreens.LOGGER;
-    private static final Map<String, ResourceLocation> TEXTURE_CACHE = new HashMap<>();
-    private static final Map<String, Boolean> PENDING_WEB_TEXTURES = new HashMap<>();
     private static final int FULL_BRIGHTNESS = 15728880;
     private static final float BASE_OFFSET = 0.501f;
 
@@ -49,11 +37,25 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
 
         BlockState blockState = blockEntity.getBlockState();
         Direction facing = blockState.getValue(BlockStateProperties.FACING);
-        String imagePath = blockEntity.getImagePath();
-        DisplayMode displayMode = blockEntity.getDisplayMode();
+        String imageIdString = blockEntity.getImageId();
 
-        ResourceLocation texture = getOrLoadTexture(imagePath, displayMode);
-        if (texture == null) return;
+        if (imageIdString.isEmpty()) {
+            return;
+        }
+
+        UUID imageId;
+        try {
+            imageId = UUID.fromString(imageIdString);
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Invalid UUID for screen at {}: {}", blockEntity.getBlockPos(), imageIdString);
+            return;
+        }
+
+        ResourceLocation texture = ClientImageManager.getTextureLocation(imageId);
+        if (texture == null) {
+            // Texture is loading, will be rendered next frame
+            return;
+        }
 
         prepareRenderingTransform(poseStack, blockEntity, facing);
         renderTextureQuad(texture, poseStack, bufferSource, packedOverlay);
@@ -116,7 +118,6 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
                 poseStack.mulPose(Axis.XP.rotationDegrees(90));
                 poseStack.scale(1, -1, 1);
                 break;
-            // NORTH: no rotation needed
         }
     }
 
@@ -139,32 +140,7 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
 
     private boolean shouldRender(ScreenBlockEntity blockEntity) {
         return blockEntity.isAnchor() &&
-                !blockEntity.getImagePath().isEmpty();
-    }
-
-    private ResourceLocation getOrLoadTexture(String imagePath, DisplayMode displayMode) {
-        if (imagePath.isEmpty()) {
-            return null;
-        }
-
-        if (TEXTURE_CACHE.containsKey(imagePath)) {
-            return TEXTURE_CACHE.get(imagePath);
-        }
-
-        try {
-            File imageFile = ClientImageCache.getImagePath(imagePath).toFile();
-            if (!imageFile.exists()) {
-                // This can happen if the image is still being downloaded from the server.
-                // The renderer will be triggered again once the image is available.
-                return null;
-            }
-            ResourceLocation resourceLocation = loadLocalTexture(imageFile);
-            TEXTURE_CACHE.put(imagePath, resourceLocation);
-            return resourceLocation;
-        } catch (Exception e) {
-            LOGGER.error("Failed to load texture: " + imagePath, e);
-            return null;
-        }
+                !blockEntity.getImageId().isEmpty();
     }
 
     private void applyAspectRatioScaling(PoseStack poseStack, ScreenBlockEntity blockEntity) {
@@ -173,19 +149,20 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         int height = blockEntity.getScreenHeight();
         boolean maintainAspect = blockEntity.isMaintainAspectRatio();
 
-        ResourceLocation texture = TEXTURE_CACHE.get(blockEntity.getImagePath());
+        UUID imageId = UUID.fromString(blockEntity.getImageId());
+        DynamicTexture texture = ClientImageManager.getImageTexture(imageId);
         if (texture == null) return;
 
         float[] scales = calculateScalingFactors(texture, width, height, maintainAspect);
         poseStack.scale(scales[0], scales[1], 1.0f);
     }
 
-    private float[] calculateScalingFactors(ResourceLocation texture, int width, int height, boolean keepAspect) {
+    private float[] calculateScalingFactors(DynamicTexture texture, int width, int height, boolean keepAspect) {
         if (!keepAspect) {
             return new float[]{width, height};
         }
 
-        NativeImage image = getTextureImage(texture);
+        NativeImage image = texture.getPixels();
         if (image == null) return new float[]{1, 1};
 
         float imageAspect = (float) image.getWidth() / image.getHeight();
@@ -194,14 +171,6 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         return imageAspect > screenAspect ?
                 new float[]{width, width / imageAspect} :
                 new float[]{height * imageAspect, height};
-    }
-
-    private NativeImage getTextureImage(ResourceLocation texture) {
-        DynamicTexture dynamicTexture = (DynamicTexture) Minecraft.getInstance()
-                .getTextureManager()
-                .getTexture(texture);
-
-        return dynamicTexture.getPixels();
     }
 
     private void renderTextureQuad(ResourceLocation texture, PoseStack poseStack,
@@ -251,162 +220,5 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
                 .uv2(FULL_BRIGHTNESS)
                 .normal(pose.normal(), 0, 0, 1)
                 .endVertex();
-    }
-
-    private BufferedImage loadWebTexture(URL url, File cacheFile) throws IOException {
-        HttpURLConnection connection = null;
-        try {
-            connection = (HttpURLConnection) url.openConnection();
-            connection.setInstanceFollowRedirects(true);
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
-            connection.setRequestProperty("Accept", "image/png,image/jpeg,image/gif,image/webp,image/*,*/*;q=0.8");
-            connection.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
-            connection.setConnectTimeout(10000);
-            connection.setReadTimeout(10000);
-
-            int responseCode = connection.getResponseCode();
-            if (responseCode != HttpURLConnection.HTTP_OK) {
-                LOGGER.error("Failed to download image from {}. Server responded with code: {}", url, responseCode);
-                throw new IOException("Server returned non-OK response code: " + responseCode);
-            }
-
-            String contentType = connection.getContentType();
-            LOGGER.info("Response from {}: Code={}, Content-Type={}", url, responseCode, contentType);
-
-            if (contentType == null || !contentType.startsWith("image/")) {
-                LOGGER.warn("Content-Type from {} is not an image type (was {}). Attempting to decode anyway.", url, contentType);
-            }
-
-            try (InputStream stream = connection.getInputStream()) {
-                byte[] imageBytes = stream.readAllBytes();
-
-                try {
-                    cacheFile.getParentFile().mkdirs();
-                    try (FileOutputStream fos = new FileOutputStream(cacheFile)) {
-                        fos.write(imageBytes);
-                    }
-                } catch (IOException e) {
-                    LOGGER.error("Failed to save web image to cache", e);
-                }
-
-                try (InputStream forDecode = new ByteArrayInputStream(imageBytes)) {
-                    BufferedImage image = decodeImageWithMultipleAttempts(forDecode, url.toString());
-                    if (image == null) {
-                        LOGGER.error("Failed to decode image from URL: {}. All decoding attempts failed.", url);
-                        throw new IOException("All image decoding attempts failed");
-                    }
-                    return image;
-                }
-            }
-        } catch (IOException e) {
-            LOGGER.error("Failed to open, read, or process stream from URL [{}]: {}", url, e.getMessage());
-            throw e;
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
-        }
-    }
-
-    private BufferedImage decodeImageWithMultipleAttempts(InputStream inputStream, String url) {
-        try {
-            byte[] imageBytes = inputStream.readAllBytes();
-
-            // Try ImageIO first
-            try (InputStream is = new ByteArrayInputStream(imageBytes)) {
-                BufferedImage image = ImageIO.read(is);
-                if (image != null) {
-                    LOGGER.debug("Successfully decoded image with ImageIO: {}", url);
-                    return image;
-                }
-            }
-
-            LOGGER.warn("ImageIO.read returned null for {}, attempting NativeImage", url);
-
-            // Try to use NativeImage for broader format support
-            try (InputStream is = new ByteArrayInputStream(imageBytes)) {
-                try (NativeImage nativeImage = NativeImage.read(is)) {
-                    if (nativeImage != null) {
-                        LOGGER.info("Successfully decoded image with NativeImage: {}", url);
-                        return convertNativeImageToBufferedImage(nativeImage);
-                    }
-                }
-            } catch (Exception e) {
-                LOGGER.debug("NativeImage decoding failed for {}: {}", url, e.getMessage());
-            }
-
-            LOGGER.error("Failed to decode image from URL: {}. Format may not be supported.", url);
-            return createFallbackImage();
-
-        } catch (Exception e) {
-            LOGGER.error("Exception during image decoding for {}: {}", url, e.getMessage());
-            return createFallbackImage();
-        }
-    }
-
-    private BufferedImage convertNativeImageToBufferedImage(NativeImage nativeImage) {
-        int width = nativeImage.getWidth();
-        int height = nativeImage.getHeight();
-        BufferedImage bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                int rgba = nativeImage.getPixelRGBA(x, y);
-                // Convert ABGR to ARGB
-                int argb = ((rgba & 0xFF000000)) |           // Alpha
-                          ((rgba & 0x000000FF) << 16) |     // Red
-                          ((rgba & 0x0000FF00)) |           // Green
-                          ((rgba & 0x00FF0000) >> 16);      // Blue
-                bufferedImage.setRGB(x, y, argb);
-            }
-        }
-        
-        return bufferedImage;
-    }
-
-    private BufferedImage createFallbackImage() {
-        // Create a simple fallback image (red "X" on black background)
-        int size = 64;
-        BufferedImage fallback = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
-        
-        // Fill with black
-        for (int y = 0; y < size; y++) {
-            for (int x = 0; x < size; x++) {
-                fallback.setRGB(x, y, 0xFF000000);
-            }
-        }
-        
-        // Draw red X
-        for (int i = 0; i < size; i++) {
-            fallback.setRGB(i, i, 0xFFFF0000);
-            fallback.setRGB(size - 1 - i, i, 0xFFFF0000);
-        }
-        
-        return fallback;
-    }
-
-    private ResourceLocation loadLocalTexture(File file) throws IOException {
-        try {
-            BufferedImage image = loadImageFromFile(file);
-            if (image == null) {
-                throw new IOException("Failed to decode local image file");
-            }
-            String imageId = com.google.common.io.Files.getNameWithoutExtension(file.getName());
-            return ImageUtils.createTextureResource(image, imageId);
-        } catch (Exception e) {
-            LOGGER.error("Failed to load local texture: {}", file.getAbsolutePath(), e);
-            // Return a fallback texture instead of throwing
-            return ImageUtils.createTextureResource(createFallbackImage(), "fallback");
-        }
-    }
-
-    private BufferedImage loadImageFromFile(File file) {
-        try {
-            byte[] imageBytes = java.nio.file.Files.readAllBytes(file.toPath());
-            return decodeImageWithMultipleAttempts(new ByteArrayInputStream(imageBytes), file.getAbsolutePath());
-        } catch (Exception e) {
-            LOGGER.error("Failed to load image from file: {}", file.getAbsolutePath(), e);
-            return createFallbackImage();
-        }
     }
 }

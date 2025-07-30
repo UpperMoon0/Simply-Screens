@@ -1,37 +1,41 @@
 package com.nstut.simplyscreens.network;
 
 import com.nstut.simplyscreens.SimplyScreens;
-import com.nstut.simplyscreens.helpers.ServerImageCache;
+import com.nstut.simplyscreens.helpers.ServerImageManager;
 import dev.architectury.networking.NetworkManager;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.function.Supplier;
+import java.util.UUID;
 
-public class RequestImageDownloadC2SPacket {
-    public static final ResourceLocation ID = new ResourceLocation(SimplyScreens.MOD_ID, "request_image_download");
+public class RequestImageDownloadC2SPacket implements IPacket {
+    private final UUID imageId;
 
-    private final String imageId;
-
-    public RequestImageDownloadC2SPacket(String imageId) {
+    public RequestImageDownloadC2SPacket(UUID imageId) {
         this.imageId = imageId;
     }
 
     public RequestImageDownloadC2SPacket(FriendlyByteBuf buf) {
-        this.imageId = buf.readUtf();
+        this.imageId = buf.readUUID();
     }
 
+    @Override
     public void write(FriendlyByteBuf buf) {
-        buf.writeUtf(imageId);
+        buf.writeUUID(imageId);
     }
 
-    public static void apply(RequestImageDownloadC2SPacket msg, Supplier<NetworkManager.PacketContext> context) {
-        ServerPlayer player = (ServerPlayer) context.get().getPlayer();
-        context.get().queue(() -> ServerImageCache.handleRequestImageDownload(msg, player));
-    }
+    @Override
+    public void handle(Supplier<NetworkManager.PacketContext> context) {
+        context.get().queue(() -> {
+            ServerPlayer player = (ServerPlayer) context.get().getPlayer();
+            byte[] imageData = ServerImageManager.getImageData(player.getServer(), imageId);
 
-    public String getImageId() {
-        return imageId;
+            if (imageData != null) {
+                PacketRegistries.CHANNEL.sendToPlayer(player, new ImageDownloadS2CPacket(imageId, imageData));
+            } else {
+                SimplyScreens.LOGGER.warn("Player {} requested non-existent image {}", player.getName().getString(), imageId);
+            }
+        });
     }
 }

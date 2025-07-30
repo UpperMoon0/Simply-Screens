@@ -2,7 +2,7 @@ package com.nstut.simplyscreens.client.gui.widgets;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.nstut.simplyscreens.DisplayMode;
+import com.nstut.simplyscreens.network.PacketRegistries;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -21,9 +21,12 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.io.ByteArrayInputStream;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import com.nstut.simplyscreens.helpers.ImageMetadata;
 
 public class ImageListWidget extends AbstractWidget {
     private static final int ITEM_SIZE = 40;
@@ -37,20 +40,14 @@ public class ImageListWidget extends AbstractWidget {
     private final Consumer<ImageEntry> onSelect;
 
     public static class ImageEntry {
-        private final File metadataFile;
         private final String displayName;
         private final String imageId;
         private final String extension;
 
-        public ImageEntry(File metadataFile, String displayName, String imageId, String extension) {
-            this.metadataFile = metadataFile;
+        public ImageEntry(String displayName, String imageId, String extension) {
             this.displayName = displayName;
             this.imageId = imageId;
             this.extension = extension;
-        }
-
-        public File getMetadataFile() {
-            return metadataFile;
         }
 
         public String getDisplayName() {
@@ -69,37 +66,14 @@ public class ImageListWidget extends AbstractWidget {
     public ImageListWidget(int x, int y, int width, int height, Component message, Consumer<ImageEntry> onSelect) {
         super(x, y, width, height, message);
         this.onSelect = onSelect;
-        loadImages();
     }
 
-    private void loadImages() {
-        if (Minecraft.getInstance().getSingleplayerServer() == null) return;
-        Path imagesDir = Minecraft.getInstance().getSingleplayerServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve("simply_screens_images");
-        if (Files.exists(imagesDir) && Files.isDirectory(imagesDir)) {
-            try {
-                this.imageFiles = Files.walk(imagesDir)
-                        .filter(path -> path.toString().endsWith(".json"))
-                        .map(path -> {
-                            try {
-                                String content = Files.readString(path);
-                                com.nstut.simplyscreens.helpers.ImageMetadata metadata = new com.google.gson.Gson().fromJson(content, com.nstut.simplyscreens.helpers.ImageMetadata.class);
-                                if (metadata.getDisplayMode() != DisplayMode.LOCAL) {
-                                    return null;
-                                }
-                                String imageId = path.getFileName().toString().replace(".json", "");
-                                return new ImageEntry(path.toFile(), metadata.getName(), imageId, metadata.getExtension());
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                                return null;
-                            }
-                        })
-                        .filter(java.util.Objects::nonNull)
-                        .collect(Collectors.toList());
-                this.filteredImageFiles = new ArrayList<>(this.imageFiles);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
+    public void updateList(List<ImageMetadata> imageMetadata) {
+        this.imageFiles = imageMetadata.stream()
+                .map(meta -> new ImageEntry(meta.getName(), meta.getId(), meta.getExtension()))
+                .collect(Collectors.toList());
+        this.filteredImageFiles = new ArrayList<>(this.imageFiles);
+        this.scrollAmount = 0;
     }
 
     @Override
@@ -153,17 +127,8 @@ public class ImageListWidget extends AbstractWidget {
             }
 
             ResourceLocation texture = textureCache.computeIfAbsent(entry.getImageId(), id -> {
-                try {
-                    File imageFile = new File(entry.getMetadataFile().getParentFile(), entry.getImageId() + "." + entry.getImageExtension());
-                    try (FileInputStream stream = new FileInputStream(imageFile)) {
-                        NativeImage nativeImage = NativeImage.read(stream);
-                        DynamicTexture dynamicTexture = new DynamicTexture(nativeImage);
-                        return Minecraft.getInstance().getTextureManager().register(imageFile.getName(), dynamicTexture);
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    return null;
-                }
+                PacketRegistries.CHANNEL.sendToServer(new com.nstut.simplyscreens.network.RequestImageDownloadC2SPacket(UUID.fromString(id)));
+                return null;
             });
 
             if (texture != null) {
@@ -248,9 +213,9 @@ public class ImageListWidget extends AbstractWidget {
     }
 
     public void refresh() {
-        this.imageFiles.clear();
-        this.filteredImageFiles.clear();
-        loadImages();
+        // This will be called when the list needs to be updated from the server.
+        // We will request a new list from the server.
+        PacketRegistries.CHANNEL.sendToServer(new com.nstut.simplyscreens.network.RequestImageListC2SPacket());
     }
     
     public void tick() {
@@ -259,5 +224,16 @@ public class ImageListWidget extends AbstractWidget {
 
     public void setDisplayedImage(String displayedImage) {
         this.displayedImage = displayedImage;
+    }
+
+    public void receiveImageData(String imageId, byte[] imageData) {
+        try {
+            NativeImage nativeImage = NativeImage.read(new ByteArrayInputStream(imageData));
+            DynamicTexture dynamicTexture = new DynamicTexture(nativeImage);
+            ResourceLocation texture = Minecraft.getInstance().getTextureManager().register("simplyscreens/" + imageId, dynamicTexture);
+            textureCache.put(imageId, texture);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
