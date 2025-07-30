@@ -1,7 +1,6 @@
 package com.nstut.simplyscreens.client.renderers;
 
 import com.mojang.blaze3d.platform.NativeImage;
-import com.google.common.hash.Hashing;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
@@ -17,7 +16,6 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.Util;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.core.Direction;
@@ -27,11 +25,8 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-
 import net.minecraft.client.Minecraft;
 import org.slf4j.Logger;
 
@@ -148,74 +143,27 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
     }
 
     private ResourceLocation getOrLoadTexture(String imagePath, DisplayMode displayMode) {
+        if (imagePath.isEmpty()) {
+            return null;
+        }
+
         if (TEXTURE_CACHE.containsKey(imagePath)) {
             return TEXTURE_CACHE.get(imagePath);
         }
 
-        if (displayMode == DisplayMode.INTERNET) {
-            String url = imagePath;
-            String urlHash = Hashing.sha256().hashString(url, StandardCharsets.UTF_8).toString();
-            String extension = "png";
-            try {
-                String pathPart = new URL(url).getPath();
-                if (pathPart.contains(".")) {
-                    extension = pathPart.substring(pathPart.lastIndexOf('.') + 1);
-                }
-            } catch (Exception ignored) {
-            }
-
-            File cachedFile = ClientImageCache.getImagePath(urlHash, extension).toFile();
-
-            if (cachedFile.exists()) {
-                try {
-                    ResourceLocation resourceLocation = loadLocalTexture(cachedFile);
-                    TEXTURE_CACHE.put(imagePath, resourceLocation);
-                    return resourceLocation;
-                } catch (IOException e) {
-                    LOGGER.error("Failed to load cached web image: " + imagePath, e);
-                }
-            }
-
-            if (PENDING_WEB_TEXTURES.getOrDefault(imagePath, false)) {
+        try {
+            File imageFile = ClientImageCache.getImagePath(imagePath).toFile();
+            if (!imageFile.exists()) {
+                // This can happen if the image is still being downloaded from the server.
+                // The renderer will be triggered again once the image is available.
                 return null;
             }
-
-            PENDING_WEB_TEXTURES.put(imagePath, true);
-            LOGGER.info("Initiating web texture download for: {}", imagePath);
-
-            CompletableFuture.supplyAsync(() -> {
-                try {
-                    return loadWebTexture(new URL(imagePath), cachedFile);
-                } catch (IOException e) {
-                    LOGGER.error("Failed to load web texture asynchronously: " + imagePath, e);
-                    return null;
-                }
-            }, Util.backgroundExecutor()).thenAcceptAsync(image -> {
-                if (image != null) {
-                    ResourceLocation resourceLocation = ImageUtils.createTextureResource(image, imagePath);
-                    if (resourceLocation != null) {
-                        TEXTURE_CACHE.put(imagePath, resourceLocation);
-                        LOGGER.info("Successfully loaded and cached web texture: {}", imagePath);
-                    }
-                }
-                PENDING_WEB_TEXTURES.remove(imagePath);
-            }, Minecraft.getInstance());
-
+            ResourceLocation resourceLocation = loadLocalTexture(imageFile);
+            TEXTURE_CACHE.put(imagePath, resourceLocation);
+            return resourceLocation;
+        } catch (Exception e) {
+            LOGGER.error("Failed to load texture: " + imagePath, e);
             return null;
-        } else {
-            try {
-                File imageFile = ClientImageCache.getImagePath(imagePath).toFile();
-                if (!imageFile.exists()) {
-                    LOGGER.error("Local image file not found: {}", imageFile.getAbsolutePath());
-                    return null;
-                }
-                ResourceLocation resourceLocation = loadLocalTexture(imageFile);
-                TEXTURE_CACHE.put(imagePath, resourceLocation);
-                return resourceLocation;
-            } catch (Exception e) {
-                LOGGER.error("Failed to load texture: " + imagePath, e);
-                return null;
-            }
         }
     }
 
@@ -443,7 +391,8 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
             if (image == null) {
                 throw new IOException("Failed to decode local image file");
             }
-            return ImageUtils.createTextureResource(image, file.getName());
+            String imageId = com.google.common.io.Files.getNameWithoutExtension(file.getName());
+            return ImageUtils.createTextureResource(image, imageId);
         } catch (Exception e) {
             LOGGER.error("Failed to load local texture: {}", file.getAbsolutePath(), e);
             // Return a fallback texture instead of throwing

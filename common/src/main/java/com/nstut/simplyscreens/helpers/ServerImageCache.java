@@ -100,9 +100,7 @@ public class ServerImageCache {
             offset += chunk.length;
         }
 
-        final String finalImageExtension = imageExtension;
-        final byte[] finalImageData = imageData;
-        final String fullImageId = imageId + "." + finalImageExtension;
+        final String fullImageId = imageId + "." + imageExtension;
 
         Path imagesDir = getImagesDir(server);
         imagesDir.toFile().mkdirs();
@@ -110,13 +108,13 @@ public class ServerImageCache {
         File metadataFile = imagesDir.resolve(imageId + ".json").toFile();
 
         try (FileOutputStream fos = new FileOutputStream(imageFile)) {
-            fos.write(finalImageData);
+            fos.write(imageData);
 
             String imageName = PENDING_IMAGE_NAMES.get(imageId);
             String imageNameWithoutExtension = Files.getNameWithoutExtension(imageName);
             DisplayMode displayMode = PENDING_DISPLAY_MODES.getOrDefault(imageId, DisplayMode.LOCAL);
             String url = PENDING_URLS.get(imageId);
-            ImageMetadata metadata = new ImageMetadata(imageId, imageNameWithoutExtension, finalImageExtension, System.currentTimeMillis(), displayMode, url);
+            ImageMetadata metadata = new ImageMetadata(imageId, imageNameWithoutExtension, imageExtension, System.currentTimeMillis(), displayMode, url);
             try (java.io.FileWriter writer = new java.io.FileWriter(metadataFile)) {
                 new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(metadata, writer);
             }
@@ -128,7 +126,7 @@ public class ServerImageCache {
                     for (var level : server.getAllLevels()) {
                         BlockEntity be = level.getBlockEntity(blockPos);
                         if (be instanceof ScreenBlockEntity screen) {
-                            screen.updateFromCache(imageId, finalImageExtension, maintainAspectRatio);
+                            screen.updateFromCache(imageId, imageExtension, maintainAspectRatio);
                             broadcastScreenUpdate(blockPos, fullImageId, maintainAspectRatio, server);
                             break;
                         }

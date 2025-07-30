@@ -1,5 +1,5 @@
 plugins {
-    id 'com.gradleup.shadow'
+    id 'com.gradleup.shadow' version '8.3.6'
 }
 
 architectury {
@@ -37,6 +37,7 @@ dependencies {
     shadowBundle project(path: ':common', configuration: 'transformProductionFabric')
 
     // Add WebP support for ImageIO
+    implementation "org.sejda.imageio:webp-imageio:0.1.6"
     shadowBundle "org.sejda.imageio:webp-imageio:0.1.6"
 }
 
@@ -51,6 +52,7 @@ processResources {
 shadowJar {
     configurations = [project.configurations.shadowBundle]
     archiveClassifier = 'dev-shadow'
+    relocate 'org.sejda', 'com.nstut.simplyscreens.libs.sejda'
 }
 
 remapJar {

@@ -127,11 +127,11 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     public void updateFromCache(String localId, String localExtension, boolean maintainAspectRatio) {
-        this.displayMode = DisplayMode.LOCAL;
+        this.displayMode = DisplayMode.LOCAL; // Always switch to local after caching
         this.localId = localId;
         this.localExtension = localExtension;
         this.maintainAspectRatio = maintainAspectRatio;
-        this.internetUrl = "";
+        // We keep the original URL for reference, but it's not used for rendering
         updateClients();
         setChanged();
     }
@@ -141,11 +141,10 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     public String getImagePath() {
-        return switch (displayMode) {
-            case INTERNET -> internetUrl;
-            case LOCAL -> localId + "." + localExtension;
-            default -> "";
-        };
+        if (localId == null || localId.isEmpty() || localExtension == null || localExtension.isEmpty()) {
+            return "";
+        }
+        return localId + "." + localExtension;
     }
 
     public void updateFromScreenInputs(DisplayMode displayMode, String internetUrl, String localId, String localExtension, boolean maintainAspectRatio) {

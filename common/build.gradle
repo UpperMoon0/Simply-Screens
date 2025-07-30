@@ -14,6 +14,4 @@ dependencies {
     // Gson for JSON serialization
     implementation "com.google.code.gson:gson:2.8.9"
 
-    // WebP to PNG conversion
-    compileOnly "org.sejda.imageio:webp-imageio:0.1.6"
 }
