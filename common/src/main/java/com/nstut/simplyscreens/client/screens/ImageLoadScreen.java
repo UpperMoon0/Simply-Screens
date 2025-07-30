@@ -18,10 +18,13 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.jetbrains.annotations.NotNull;
+import org.lwjgl.PointerBuffer;
+import org.lwjgl.system.MemoryStack;
 import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -188,9 +191,28 @@ public class ImageLoadScreen extends Screen {
         uploadButton.setMessage(Component.literal("Loading..."));
 
         new Thread(() -> {
+            HttpURLConnection connection = null;
             try {
                 URL url = new URL(urlString);
-                try (InputStream in = url.openStream()) {
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setInstanceFollowRedirects(true);
+                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+                connection.setRequestProperty("Accept", "image/png,image/jpeg,image/gif,image/webp,image/*,*/*;q=0.8");
+
+                String contentType = connection.getContentType();
+                String extension = getExtensionFromContentType(contentType);
+
+                String fileName;
+                if (extension != null) {
+                    fileName = "image" + extension;
+                } else {
+                    fileName = Paths.get(url.getPath()).getFileName().toString();
+                    if (fileName.isEmpty() || !isSupportedExtension(fileName)) {
+                        fileName = "image.png"; // Default to png if no extension or unsupported
+                    }
+                }
+
+                try (InputStream in = connection.getInputStream()) {
                     ByteArrayOutputStream out = new ByteArrayOutputStream();
                     byte[] buf = new byte[4096];
                     int n;
@@ -199,11 +221,6 @@ public class ImageLoadScreen extends Screen {
                     }
                     out.close();
                     byte[] response = out.toByteArray();
-
-                    String fileName = Paths.get(url.getPath()).getFileName().toString();
-                    if (fileName.isEmpty()) {
-                        fileName = "image.png";
-                    }
 
                     ClientImageCache.sendImageToServer(fileName, response, blockEntityPos, maintainAspectCheckbox.selected(), DisplayMode.INTERNET, urlString, () -> {
                         minecraft.execute(() -> {
@@ -219,22 +236,36 @@ public class ImageLoadScreen extends Screen {
                     uploadButton.active = true;
                     uploadButton.setMessage(Component.literal("Load Image"));
                 });
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
             }
         }).start();
     }
 
     private void openFileDialog() {
-        String selectedFile = TinyFileDialogs.tinyfd_openFileDialog(
-                "Select Image",
-                null,
-                null,
-                "Image Files",
-                false
-        );
-    
-        if (selectedFile != null) {
-            Path imagePath = Paths.get(selectedFile);
-            ClientImageCache.sendImageToServer(imagePath, blockEntityPos, maintainAspectCheckbox.selected(), imageListWidget::refresh);
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            PointerBuffer filters = stack.mallocPointer(5);
+            filters.put(stack.UTF8("*.png"));
+            filters.put(stack.UTF8("*.jpg"));
+            filters.put(stack.UTF8("*.jpeg"));
+            filters.put(stack.UTF8("*.gif"));
+            filters.put(stack.UTF8("*.webp"));
+            filters.flip();
+
+            String selectedFile = TinyFileDialogs.tinyfd_openFileDialog(
+                    "Select Image",
+                    null,
+                    filters,
+                    "Image Files",
+                    false
+            );
+
+            if (selectedFile != null) {
+                Path imagePath = Paths.get(selectedFile);
+                ClientImageCache.sendImageToServer(imagePath, blockEntityPos, maintainAspectCheckbox.selected(), imageListWidget::refresh);
+            }
         }
     }
     
@@ -275,6 +306,28 @@ public class ImageLoadScreen extends Screen {
 
     private boolean isHttpUrl(String url) {
         return url.startsWith("http://") || url.startsWith("https://");
+    }
+
+    private String getExtensionFromContentType(String contentType) {
+        if (contentType == null) {
+            return null;
+        }
+        return switch (contentType.toLowerCase()) {
+            case "image/png" -> ".png";
+            case "image/jpeg" -> ".jpeg";
+            case "image/gif" -> ".gif";
+            case "image/webp" -> ".webp";
+            default -> null;
+        };
+    }
+
+    private boolean isSupportedExtension(String fileName) {
+        String lowerCaseFileName = fileName.toLowerCase();
+        return lowerCaseFileName.endsWith(".png") ||
+               lowerCaseFileName.endsWith(".jpg") ||
+               lowerCaseFileName.endsWith(".jpeg") ||
+               lowerCaseFileName.endsWith(".gif") ||
+               lowerCaseFileName.endsWith(".webp");
     }
 
     @Override

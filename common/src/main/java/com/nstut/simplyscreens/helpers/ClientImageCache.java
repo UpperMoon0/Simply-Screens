@@ -37,8 +37,7 @@ public class ClientImageCache {
 
     public static void sendImageToServer(String imageName, byte[] imageData, BlockPos blockPos, boolean maintainAspectRatio, DisplayMode displayMode, String url, Runnable onComplete) {
         String imageHash = Hashing.sha256().hashBytes(imageData).toString();
-        String imageExtension = imageName.substring(imageName.lastIndexOf('.') + 1);
-
+        String imageExtension = com.google.common.io.Files.getFileExtension(imageName);
         PacketRegistries.CHANNEL.sendToServer(new RequestImageUploadC2SPacket(imageName, imageHash, imageExtension, blockPos, maintainAspectRatio, displayMode, url));
 
         sendImageInChunks(imageHash, imageData);

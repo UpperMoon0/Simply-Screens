@@ -9,10 +9,6 @@ public class ImageMetadata {
     private DisplayMode displayMode;
     private String url;
 
-    public ImageMetadata(String name, String extension, long uploadedAt) {
-        this(name, extension, uploadedAt, DisplayMode.LOCAL, null);
-    }
-
     public ImageMetadata(String name, String extension, long uploadedAt, DisplayMode displayMode, String url) {
         this.name = name;
         this.extension = extension;

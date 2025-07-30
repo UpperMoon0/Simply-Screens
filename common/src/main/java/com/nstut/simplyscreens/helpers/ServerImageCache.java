@@ -34,7 +34,7 @@ public class ServerImageCache {
         MinecraftServer server = player.getServer();
         if (server == null) return;
 
-        File imageFile = getImagePath(server, msg.getImageHash(), msg.getImageExtension()).toFile();
+        File imageFile = getImagePath(server, msg.getImageHash(), "png").toFile();
 
         if (imageFile.exists()) {
             if (player.level().getBlockEntity(msg.getBlockPos()) instanceof ScreenBlockEntity screen) {
@@ -88,20 +88,23 @@ public class ServerImageCache {
             offset += chunk.length;
         }
 
+        final String finalImageExtension = imageExtension;
+        final byte[] finalImageData = imageData;
+        final String fullImageHash = imageHash + "." + finalImageExtension;
+
         Path imagesDir = getImagesDir(server);
         imagesDir.toFile().mkdirs();
-        String fullImageHash = imageHash + "." + imageExtension;
         File imageFile = imagesDir.resolve(fullImageHash).toFile();
         File metadataFile = imagesDir.resolve(imageHash + ".json").toFile();
 
         try (FileOutputStream fos = new FileOutputStream(imageFile)) {
-            fos.write(imageData);
+            fos.write(finalImageData);
 
             String imageName = PENDING_IMAGE_NAMES.get(imageHash);
             String imageNameWithoutExtension = Files.getNameWithoutExtension(imageName);
             DisplayMode displayMode = PENDING_DISPLAY_MODES.getOrDefault(imageHash, DisplayMode.LOCAL);
             String url = PENDING_URLS.get(imageHash);
-            ImageMetadata metadata = new ImageMetadata(imageNameWithoutExtension, imageExtension, System.currentTimeMillis(), displayMode, url);
+            ImageMetadata metadata = new ImageMetadata(imageNameWithoutExtension, finalImageExtension, System.currentTimeMillis(), displayMode, url);
             try (java.io.FileWriter writer = new java.io.FileWriter(metadataFile)) {
                 new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(metadata, writer);
             }
@@ -113,7 +116,7 @@ public class ServerImageCache {
                     for (var level : server.getAllLevels()) {
                         BlockEntity be = level.getBlockEntity(blockPos);
                         if (be instanceof ScreenBlockEntity screen) {
-                            screen.updateFromCache(imageHash, imageExtension, maintainAspectRatio);
+                            screen.updateFromCache(imageHash, finalImageExtension, maintainAspectRatio);
                             broadcastScreenUpdate(blockPos, fullImageHash, maintainAspectRatio, server);
                             break;
                         }

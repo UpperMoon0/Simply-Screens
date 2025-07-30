@@ -311,7 +311,7 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
             connection = (HttpURLConnection) url.openConnection();
             connection.setInstanceFollowRedirects(true);
             connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
-            connection.setRequestProperty("Accept", "image/webp,image/apng,image/*,*/*;q=0.8");
+            connection.setRequestProperty("Accept", "image/png,image/jpeg,image/gif,image/webp,image/*,*/*;q=0.8");
             connection.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
             connection.setConnectTimeout(10000);
             connection.setReadTimeout(10000);
