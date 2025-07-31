@@ -9,10 +9,12 @@ import java.util.function.Supplier;
 public class UpdateScreenS2CPacket {
     private final BlockPos pos;
     private final UUID imageId;
+    private final boolean maintainAspectRatio;
 
-    public UpdateScreenS2CPacket(BlockPos pos, UUID imageId) {
+    public UpdateScreenS2CPacket(BlockPos pos, UUID imageId, boolean maintainAspectRatio) {
         this.pos = pos;
         this.imageId = imageId;
+        this.maintainAspectRatio = maintainAspectRatio;
     }
 
     public UpdateScreenS2CPacket(FriendlyByteBuf buf) {
@@ -22,6 +24,7 @@ public class UpdateScreenS2CPacket {
         } else {
             imageId = null;
         }
+        maintainAspectRatio = buf.readBoolean();
     }
 
     public void write(FriendlyByteBuf buf) {
@@ -30,9 +33,10 @@ public class UpdateScreenS2CPacket {
         if (imageId != null) {
             buf.writeUUID(imageId);
         }
+        buf.writeBoolean(maintainAspectRatio);
     }
 
     public void handle(Supplier<NetworkManager.PacketContext> context) {
-        context.get().queue(() -> ClientPacketHandler.handleUpdateScreen(pos, imageId));
+        context.get().queue(() -> ClientPacketHandler.handleUpdateScreen(pos, imageId, maintainAspectRatio));
     }
 }

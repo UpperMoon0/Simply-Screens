@@ -10,14 +10,20 @@ public class PacketRegistries {
     );
 
     public static void register() {
-        CHANNEL.register(UpdateScreenC2SPacket.class,
-                UpdateScreenC2SPacket::write,
-                UpdateScreenC2SPacket::new,
+        CHANNEL.register(UpdateScreenSelectedImageC2SPacket.class,
+                UpdateScreenSelectedImageC2SPacket::write,
+                UpdateScreenSelectedImageC2SPacket::new,
                 (packet, context) -> packet.handle(context)
         );
         CHANNEL.register(UpdateScreenS2CPacket.class,
                 UpdateScreenS2CPacket::write,
                 UpdateScreenS2CPacket::new,
+                (packet, context) -> packet.handle(context)
+        );
+
+        CHANNEL.register(UpdateScreenAspectRatioC2SPacket.class,
+                UpdateScreenAspectRatioC2SPacket::write,
+                UpdateScreenAspectRatioC2SPacket::new,
                 (packet, context) -> packet.handle(context)
         );
 

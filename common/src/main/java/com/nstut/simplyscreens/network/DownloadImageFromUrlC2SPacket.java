@@ -19,25 +19,21 @@ import java.util.function.Supplier;
 public class DownloadImageFromUrlC2SPacket {
     private final BlockPos blockPos;
     private final String url;
-    private final boolean maintainAspectRatio;
 
-    public DownloadImageFromUrlC2SPacket(BlockPos blockPos, String url, boolean maintainAspectRatio) {
+    public DownloadImageFromUrlC2SPacket(BlockPos blockPos, String url) {
         this.blockPos = blockPos;
         this.url = url;
-        this.maintainAspectRatio = maintainAspectRatio;
     }
 
     public void write(FriendlyByteBuf buf) {
         buf.writeBlockPos(blockPos);
         buf.writeUtf(url);
-        buf.writeBoolean(maintainAspectRatio);
     }
 
     public static DownloadImageFromUrlC2SPacket read(FriendlyByteBuf buf) {
         return new DownloadImageFromUrlC2SPacket(
                 buf.readBlockPos(),
-                buf.readUtf(),
-                buf.readBoolean()
+                buf.readUtf()
         );
     }
 

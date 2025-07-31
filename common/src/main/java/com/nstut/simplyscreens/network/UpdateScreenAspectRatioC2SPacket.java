@@ -1,32 +1,32 @@
 package com.nstut.simplyscreens.network;
 
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
+import dev.architectury.networking.NetworkManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
-import java.util.UUID;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.entity.BlockEntity;
+
 import java.util.function.Supplier;
-import dev.architectury.networking.NetworkManager;
 
-public class UpdateScreenC2SPacket {
+public class UpdateScreenAspectRatioC2SPacket {
     private final BlockPos pos;
-    private final UUID imageId;
+    private final boolean maintainAspectRatio;
 
-    public UpdateScreenC2SPacket(BlockPos pos, UUID imageId) {
+    public UpdateScreenAspectRatioC2SPacket(BlockPos pos, boolean maintainAspectRatio) {
         this.pos = pos;
-        this.imageId = imageId;
+        this.maintainAspectRatio = maintainAspectRatio;
     }
 
-    public UpdateScreenC2SPacket(FriendlyByteBuf buf) {
+    public UpdateScreenAspectRatioC2SPacket(FriendlyByteBuf buf) {
         pos = buf.readBlockPos();
-        imageId = buf.readUUID();
+        maintainAspectRatio = buf.readBoolean();
     }
 
     public void write(FriendlyByteBuf buf) {
         buf.writeBlockPos(pos);
-        buf.writeUUID(imageId);
+        buf.writeBoolean(maintainAspectRatio);
     }
 
     public void handle(Supplier<NetworkManager.PacketContext> context) {
@@ -41,7 +41,7 @@ public class UpdateScreenC2SPacket {
             if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                 ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
                 if (anchor != null) {
-                    anchor.setImageId(imageId);
+                    anchor.setMaintainAspectRatio(maintainAspectRatio);
                 }
             }
         });

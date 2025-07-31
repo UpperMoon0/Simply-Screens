@@ -15,28 +15,24 @@ public class UploadImageC2SPacket {
     private final BlockPos blockPos;
     private final String fileName;
     private final byte[] data;
-    private final boolean maintainAspectRatio;
 
-    public UploadImageC2SPacket(BlockPos blockPos, String fileName, byte[] data, boolean maintainAspectRatio) {
+    public UploadImageC2SPacket(BlockPos blockPos, String fileName, byte[] data) {
         this.blockPos = blockPos;
         this.fileName = fileName;
         this.data = data;
-        this.maintainAspectRatio = maintainAspectRatio;
     }
 
     public void write(FriendlyByteBuf buf) {
         buf.writeBlockPos(blockPos);
         buf.writeUtf(fileName);
         buf.writeByteArray(data);
-        buf.writeBoolean(maintainAspectRatio);
     }
 
     public static UploadImageC2SPacket read(FriendlyByteBuf buf) {
         return new UploadImageC2SPacket(
                 buf.readBlockPos(),
                 buf.readUtf(),
-                buf.readByteArray(),
-                buf.readBoolean()
+                buf.readByteArray()
         );
     }
 

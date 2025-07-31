@@ -94,7 +94,7 @@ public class ScreenBlockEntity extends BlockEntity {
 
     private void updateClients() {
         if (level != null && !level.isClientSide) {
-            UpdateScreenS2CPacket packet = new UpdateScreenS2CPacket(worldPosition, imageId);
+            UpdateScreenS2CPacket packet = new UpdateScreenS2CPacket(worldPosition, imageId, maintainAspectRatio);
             if (level.getServer() != null) {
                 for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
                     PacketRegistries.CHANNEL.sendToPlayer(player, packet);
@@ -117,6 +117,46 @@ public class ScreenBlockEntity extends BlockEntity {
             anchor.forceImageId(imageId);
         } else {
             switchToErrorState();
+        }
+    }
+
+    public void setMaintainAspectRatio(boolean maintainAspectRatio) {
+        if (level != null && level.isClientSide) {
+            this.maintainAspectRatio = maintainAspectRatio;
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+            return;
+        }
+
+        if (level == null) return;
+
+        ScreenBlockEntity anchor = getAnchorEntity();
+        if (anchor != null) {
+            anchor.forceMaintainAspectRatio(maintainAspectRatio);
+        } else {
+            switchToErrorState();
+        }
+    }
+
+    public void forceMaintainAspectRatio(boolean maintainAspectRatio) {
+        if (level == null || level.isClientSide || !isAnchor()) {
+            return;
+        }
+
+        this.maintainAspectRatio = maintainAspectRatio;
+        setChanged();
+
+        Direction facing = getBlockState().getValue(ScreenBlock.FACING);
+        Direction widthDirection = getWidthDirection(facing);
+        Direction heightDirection = getHeightDirection(facing);
+
+        for (int w = 0; w < screenWidth; w++) {
+            for (int h = 0; h < screenHeight; h++) {
+                BlockPos currentPos = worldPosition.relative(widthDirection, w).relative(heightDirection, h);
+                BlockEntity be = level.getBlockEntity(currentPos);
+                if (be instanceof ScreenBlockEntity screen) {
+                    screen.updateScreen(this.imageId, this.screenWidth, this.screenHeight, this.worldPosition, this.maintainAspectRatio);
+                }
+            }
         }
     }
 
@@ -470,7 +510,8 @@ public class ScreenBlockEntity extends BlockEntity {
             for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
                 PacketRegistries.CHANNEL.sendToPlayer(player, new UpdateScreenS2CPacket(
                         newAnchorPos,
-                        imageId
+                        imageId,
+                        maintainAspectRatio
                 ));
             }
         }

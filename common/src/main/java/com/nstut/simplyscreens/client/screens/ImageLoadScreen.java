@@ -6,7 +6,8 @@ import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simplyscreens.client.gui.widgets.ImageListWidget;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import com.nstut.simplyscreens.network.RequestImageDownloadC2SPacket;
-import com.nstut.simplyscreens.network.UpdateScreenC2SPacket;
+import com.nstut.simplyscreens.network.UpdateScreenAspectRatioC2SPacket;
+import com.nstut.simplyscreens.network.UpdateScreenSelectedImageC2SPacket;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.components.EditBox;
@@ -82,7 +83,21 @@ public class ImageLoadScreen extends Screen {
         imageListWidget = new ImageListWidget(guiLeft + 8, guiTop + 8, 160, 84, Component.literal(""), this::onImageSelected, initialLocalHash);
         addRenderableWidget(imageListWidget);
 
-        maintainAspectCheckbox = new Checkbox(guiLeft + 8, guiTop + 94, 160, 20, Component.literal("Maintain Aspect Ratio"), this.initialMaintainAspectRatio);
+        maintainAspectCheckbox = new Checkbox(guiLeft + 8, guiTop + 94, 160, 20, Component.literal("Maintain Aspect Ratio"), this.initialMaintainAspectRatio) {
+            @Override
+            public void onPress() {
+                super.onPress();
+                if (minecraft != null && minecraft.level != null) {
+                    BlockEntity blockEntity = minecraft.level.getBlockEntity(blockEntityPos);
+                    if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
+                        ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
+                        if (anchor != null) {
+                            PacketRegistries.CHANNEL.sendToServer(new UpdateScreenAspectRatioC2SPacket(anchor.getBlockPos(), this.selected()));
+                        }
+                    }
+                }
+            }
+        };
         addRenderableWidget(maintainAspectCheckbox);
 
         selectButton = Button.builder(Component.literal("Select"), button -> onSelect())
@@ -147,7 +162,7 @@ public class ImageLoadScreen extends Screen {
                     Path path = Paths.get(filePath);
                     byte[] data = java.nio.file.Files.readAllBytes(path);
                     String fileName = path.getFileName().toString();
-                    PacketRegistries.CHANNEL.sendToServer(new com.nstut.simplyscreens.network.UploadImageC2SPacket(blockEntityPos, fileName, data, maintainAspectCheckbox.selected()));
+                    PacketRegistries.CHANNEL.sendToServer(new com.nstut.simplyscreens.network.UploadImageC2SPacket(blockEntityPos, fileName, data));
                     imageListWidget.refresh();
                 } catch (java.io.IOException e) {
                     SimplyScreens.LOGGER.error("Failed to read image file", e);
@@ -159,7 +174,7 @@ public class ImageLoadScreen extends Screen {
     private void onDownload() {
         String url = urlInput.getValue();
         if (!url.isBlank()) {
-            PacketRegistries.CHANNEL.sendToServer(new com.nstut.simplyscreens.network.DownloadImageFromUrlC2SPacket(blockEntityPos, url, maintainAspectCheckbox.selected()));
+            PacketRegistries.CHANNEL.sendToServer(new com.nstut.simplyscreens.network.DownloadImageFromUrlC2SPacket(blockEntityPos, url));
             setPage(Page.MAIN);
             imageListWidget.refresh();
         }
@@ -203,7 +218,7 @@ public class ImageLoadScreen extends Screen {
                 if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                     ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
                     if (anchor != null) {
-                        PacketRegistries.CHANNEL.sendToServer(new UpdateScreenC2SPacket(anchor.getBlockPos(), selectedEntry.getImageId()));
+                        PacketRegistries.CHANNEL.sendToServer(new UpdateScreenSelectedImageC2SPacket(anchor.getBlockPos(), selectedEntry.getImageId()));
                     }
                 }
             }
