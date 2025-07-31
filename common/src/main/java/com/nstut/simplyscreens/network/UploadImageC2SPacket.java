@@ -1,7 +1,9 @@
 package com.nstut.simplyscreens.network;
 
+import com.nstut.simplyscreens.helpers.ImageMetadata;
 import com.nstut.simplyscreens.helpers.ServerImageManager;
 import dev.architectury.networking.NetworkManager;
+import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
@@ -48,6 +50,9 @@ public class UploadImageC2SPacket {
                         screen.setImageId(imageId);
                     }
                 });
+
+                List<ImageMetadata> images = ServerImageManager.getImageList(player.getServer());
+                PacketRegistries.CHANNEL.sendToPlayer(player, new UpdateImageListS2CPacket(images));
             }
         });
     }

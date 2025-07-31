@@ -38,7 +38,6 @@ public class ScreenBlockEntity extends BlockEntity {
     public void saveAdditional(@NotNull CompoundTag tag) {
         super.saveAdditional(tag);
         writePersistentData(tag);
-        updateClients();
     }
 
     @Override
@@ -48,7 +47,7 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     private void writePersistentData(CompoundTag tag) {
-        if (imageId != null) {
+        if (isAnchor() && imageId != null) {
             tag.putUUID("imageId", imageId);
         }
         tag.putBoolean("maintainAspectRatio", maintainAspectRatio);
@@ -65,6 +64,8 @@ public class ScreenBlockEntity extends BlockEntity {
     private void readPersistentData(CompoundTag tag) {
         if (tag.hasUUID("imageId")) {
             imageId = tag.getUUID("imageId");
+        } else {
+            imageId = null;
         }
         maintainAspectRatio = tag.getBoolean("maintainAspectRatio");
         screenWidth = tag.getInt("screenWidth");
@@ -103,9 +104,57 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     public void setImageId(UUID imageId) {
+        if (level != null && level.isClientSide) {
+            this.imageId = imageId;
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+            return;
+        }
+
+        if (level == null) return;
+
+        ScreenBlockEntity anchor = getAnchorEntity();
+        if (anchor != null) {
+            anchor.forceImageId(imageId);
+        } else {
+            switchToErrorState();
+        }
+    }
+
+    public ScreenBlockEntity getAnchorEntity() {
+        if (level == null) return null;
+        if (isAnchor()) {
+            return this;
+        }
+        if (anchorPos != null) {
+            BlockEntity be = level.getBlockEntity(anchorPos);
+            if (be instanceof ScreenBlockEntity) {
+                return (ScreenBlockEntity) be;
+            }
+        }
+        return null;
+    }
+
+    public void forceImageId(UUID imageId) {
+        if (level == null || level.isClientSide || !isAnchor()) {
+            return;
+        }
+
         this.imageId = imageId;
         setChanged();
-        updateClients();
+
+        Direction facing = getBlockState().getValue(ScreenBlock.FACING);
+        Direction widthDirection = getWidthDirection(facing);
+        Direction heightDirection = getHeightDirection(facing);
+
+        for (int w = 0; w < screenWidth; w++) {
+            for (int h = 0; h < screenHeight; h++) {
+                BlockPos currentPos = worldPosition.relative(widthDirection, w).relative(heightDirection, h);
+                BlockEntity be = level.getBlockEntity(currentPos);
+                if (be instanceof ScreenBlockEntity screen) {
+                    screen.updateScreen(this.imageId, this.screenWidth, this.screenHeight, this.worldPosition, this.maintainAspectRatio);
+                }
+            }
+        }
     }
 
     public void updateScreen(UUID imageId, int width, int height, BlockPos anchor, boolean maintainAspect) {

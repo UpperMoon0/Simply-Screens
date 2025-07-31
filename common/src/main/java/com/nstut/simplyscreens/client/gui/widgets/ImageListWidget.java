@@ -63,9 +63,10 @@ public class ImageListWidget extends AbstractWidget {
         }
     }
 
-    public ImageListWidget(int x, int y, int width, int height, Component message, Consumer<ImageEntry> onSelect) {
+    public ImageListWidget(int x, int y, int width, int height, Component message, Consumer<ImageEntry> onSelect, UUID displayedImage) {
         super(x, y, width, height, message);
         this.onSelect = onSelect;
+        this.displayedImage = displayedImage;
     }
 
     public void updateList(List<ImageMetadata> imageMetadata) {
@@ -74,6 +75,15 @@ public class ImageListWidget extends AbstractWidget {
                 .collect(Collectors.toList());
         this.filteredImageFiles = new ArrayList<>(this.imageFiles);
         this.scrollAmount = 0;
+        if (displayedImage != null) {
+            for (ImageEntry entry : imageFiles) {
+                if (entry.getImageId().equals(displayedImage)) {
+                    this.selected = entry;
+                    onSelect.accept(entry);
+                    break;
+                }
+            }
+        }
     }
 
     @Override

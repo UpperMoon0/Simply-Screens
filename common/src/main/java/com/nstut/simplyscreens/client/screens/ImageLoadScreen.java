@@ -79,7 +79,7 @@ public class ImageLoadScreen extends Screen {
     }
 
     private void initMainPage(int guiLeft, int guiTop) {
-        imageListWidget = new ImageListWidget(guiLeft + 8, guiTop + 8, 160, 84, Component.literal(""), this::onImageSelected);
+        imageListWidget = new ImageListWidget(guiLeft + 8, guiTop + 8, 160, 84, Component.literal(""), this::onImageSelected, initialLocalHash);
         addRenderableWidget(imageListWidget);
 
         maintainAspectCheckbox = new Checkbox(guiLeft + 8, guiTop + 94, 160, 20, Component.literal("Maintain Aspect Ratio"), this.initialMaintainAspectRatio);
@@ -87,20 +87,20 @@ public class ImageLoadScreen extends Screen {
 
         selectButton = Button.builder(Component.literal("Select"), button -> onSelect())
                 .pos(guiLeft + 8, guiTop + 116)
-                .size(78, 20)
+                .size(160, 20)
                 .build();
         selectButton.active = false;
         addRenderableWidget(selectButton);
 
         uploadFromComputerButton = Button.builder(Component.literal("Upload"), button -> onUploadFromComputer())
-                .pos(guiLeft + 90, guiTop + 116)
+                .pos(guiLeft + 8, guiTop + 140)
                 .size(78, 20)
                 .build();
         addRenderableWidget(uploadFromComputerButton);
 
-        downloadFromInternetButton = Button.builder(Component.literal("Download from Internet"), button -> setPage(Page.DOWNLOAD))
-                .pos(guiLeft + 8, guiTop + 140)
-                .size(160, 20)
+        downloadFromInternetButton = Button.builder(Component.literal("Download"), button -> setPage(Page.DOWNLOAD))
+                .pos(guiLeft + 90, guiTop + 140)
+                .size(78, 20)
                 .build();
         addRenderableWidget(downloadFromInternetButton);
     }
@@ -148,6 +148,7 @@ public class ImageLoadScreen extends Screen {
                     byte[] data = java.nio.file.Files.readAllBytes(path);
                     String fileName = path.getFileName().toString();
                     PacketRegistries.CHANNEL.sendToServer(new com.nstut.simplyscreens.network.UploadImageC2SPacket(blockEntityPos, fileName, data, maintainAspectCheckbox.selected()));
+                    imageListWidget.refresh();
                 } catch (java.io.IOException e) {
                     SimplyScreens.LOGGER.error("Failed to read image file", e);
                 }
@@ -160,6 +161,7 @@ public class ImageLoadScreen extends Screen {
         if (!url.isBlank()) {
             PacketRegistries.CHANNEL.sendToServer(new com.nstut.simplyscreens.network.DownloadImageFromUrlC2SPacket(blockEntityPos, url, maintainAspectCheckbox.selected()));
             setPage(Page.MAIN);
+            imageListWidget.refresh();
         }
     }
 
@@ -184,8 +186,11 @@ public class ImageLoadScreen extends Screen {
         if (this.minecraft != null && this.minecraft.level != null) {
             BlockEntity blockEntity = this.minecraft.level.getBlockEntity(blockEntityPos);
             if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
-                initialLocalHash = screenBlockEntity.getImageId();
-                initialMaintainAspectRatio = screenBlockEntity.isMaintainAspectRatio();
+                ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
+                if (anchor != null) {
+                    initialLocalHash = anchor.getImageId();
+                    initialMaintainAspectRatio = anchor.isMaintainAspectRatio();
+                }
             }
         }
     }
@@ -193,7 +198,15 @@ public class ImageLoadScreen extends Screen {
     private void sendScreenInputsToServer() {
         ImageListWidget.ImageEntry selectedEntry = imageListWidget.getSelected();
         if (selectedEntry != null) {
-            PacketRegistries.CHANNEL.sendToServer(new UpdateScreenC2SPacket(blockEntityPos, selectedEntry.getImageId()));
+            if (this.minecraft != null && this.minecraft.level != null) {
+                BlockEntity blockEntity = this.minecraft.level.getBlockEntity(blockEntityPos);
+                if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
+                    ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
+                    if (anchor != null) {
+                        PacketRegistries.CHANNEL.sendToServer(new UpdateScreenC2SPacket(anchor.getBlockPos(), selectedEntry.getImageId()));
+                    }
+                }
+            }
         }
     }
 

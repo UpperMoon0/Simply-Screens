@@ -39,7 +39,10 @@ public class UpdateScreenC2SPacket {
             BlockEntity blockEntity = level.getBlockEntity(pos);
 
             if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
-                screenBlockEntity.setImageId(imageId);
+                ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
+                if (anchor != null) {
+                    anchor.setImageId(imageId);
+                }
             }
         });
     }
