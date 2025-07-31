@@ -39,7 +39,7 @@ public class UploadImageC2SPacket {
     public static void apply(UploadImageC2SPacket msg, Supplier<NetworkManager.PacketContext> context) {
         ServerPlayer player = (ServerPlayer) context.get().getPlayer();
         context.get().queue(() -> {
-            UUID imageId = ServerImageManager.saveImage(player.getServer(), msg.fileName, msg.data);
+            UUID imageId = ServerImageManager.saveImage(player.getServer(), msg.fileName, msg.data, null);
             if (imageId != null) {
                 player.getServer().execute(() -> {
                     if (player.level().getBlockEntity(msg.blockPos) instanceof com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity screen) {

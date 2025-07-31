@@ -57,12 +57,6 @@ public class PacketRegistries {
                 (packet, context) -> packet.handle(context)
         );
 
-        CHANNEL.register(DownloadImageFromUrlC2SPacket.class,
-                DownloadImageFromUrlC2SPacket::write,
-                DownloadImageFromUrlC2SPacket::read,
-                DownloadImageFromUrlC2SPacket::apply
-        );
-
         CHANNEL.register(UploadImageC2SPacket.class,
                 UploadImageC2SPacket::write,
                 UploadImageC2SPacket::read,

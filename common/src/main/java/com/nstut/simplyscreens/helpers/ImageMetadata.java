@@ -1,5 +1,7 @@
 package com.nstut.simplyscreens.helpers;
 
+import net.minecraft.network.FriendlyByteBuf;
+
 public class ImageMetadata {
     private final String name;
     private final String id;
@@ -9,6 +11,18 @@ public class ImageMetadata {
         this.name = name;
         this.id = id;
         this.extension = extension;
+    }
+
+    public ImageMetadata(FriendlyByteBuf buf) {
+        this.name = buf.readUtf();
+        this.id = buf.readUtf();
+        this.extension = buf.readUtf();
+    }
+
+    public void write(FriendlyByteBuf buf) {
+        buf.writeUtf(name);
+        buf.writeUtf(id);
+        buf.writeUtf(extension);
     }
 
     public String getName() {

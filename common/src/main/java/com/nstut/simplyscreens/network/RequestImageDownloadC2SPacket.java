@@ -6,10 +6,13 @@ import dev.architectury.networking.NetworkManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 
-import java.util.function.Supplier;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 public class RequestImageDownloadC2SPacket implements IPacket {
+    private static final Set<UUID> loggedWarnings = ConcurrentHashMap.newKeySet();
     private final UUID imageId;
 
     public RequestImageDownloadC2SPacket(UUID imageId) {
@@ -29,12 +32,15 @@ public class RequestImageDownloadC2SPacket implements IPacket {
     public void handle(Supplier<NetworkManager.PacketContext> context) {
         context.get().queue(() -> {
             ServerPlayer player = (ServerPlayer) context.get().getPlayer();
+            com.nstut.simplyscreens.helpers.ImageMetadata metadata = ServerImageManager.getImageMetadata(player.getServer(), imageId);
             byte[] imageData = ServerImageManager.getImageData(player.getServer(), imageId);
 
-            if (imageData != null) {
-                PacketRegistries.CHANNEL.sendToPlayer(player, new ImageDownloadS2CPacket(imageId, imageData));
+            if (imageData != null && metadata != null) {
+                PacketRegistries.CHANNEL.sendToPlayer(player, new ImageDownloadS2CPacket(imageId, metadata.getExtension(), imageData));
             } else {
-                SimplyScreens.LOGGER.warn("Player {} requested non-existent image {}", player.getName().getString(), imageId);
+                if (loggedWarnings.add(imageId)) {
+                    SimplyScreens.LOGGER.warn("Player {} requested non-existent image {}. This warning will not be shown again.", player.getName().getString(), imageId);
+                }
             }
         });
     }

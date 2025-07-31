@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,6 +20,14 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ClientImageManager {
     private static final Path CACHE_DIR = Minecraft.getInstance().gameDirectory.toPath().resolve("simply_screens_cache");
     private static final Map<UUID, DynamicTexture> IN_MEMORY_CACHE = new ConcurrentHashMap<>();
+    private static final Map<UUID, ImageMetadata> METADATA_CACHE = new ConcurrentHashMap<>();
+
+    public static void updateImageCache(List<ImageMetadata> images) {
+        METADATA_CACHE.clear();
+        for (ImageMetadata image : images) {
+            METADATA_CACHE.put(UUID.fromString(image.getId()), image);
+        }
+    }
 
     public static void initialize() {
         try {
@@ -33,15 +42,18 @@ public class ClientImageManager {
             return IN_MEMORY_CACHE.get(imageId);
         }
 
-        Path imagePath = getImagePath(imageId);
-        if (Files.exists(imagePath)) {
-            try (InputStream inputStream = Files.newInputStream(imagePath)) {
-                NativeImage nativeImage = NativeImage.read(inputStream);
-                DynamicTexture texture = new DynamicTexture(nativeImage);
-                IN_MEMORY_CACHE.put(imageId, texture);
-                return texture;
-            } catch (IOException e) {
-                SimplyScreens.LOGGER.error("Failed to load image from disk cache", e);
+        ImageMetadata metadata = METADATA_CACHE.get(imageId);
+        if (metadata != null) {
+            Path imagePath = getImagePath(imageId, metadata.getExtension());
+            if (Files.exists(imagePath)) {
+                try (InputStream inputStream = Files.newInputStream(imagePath)) {
+                    NativeImage nativeImage = NativeImage.read(inputStream);
+                    DynamicTexture texture = new DynamicTexture(nativeImage);
+                    IN_MEMORY_CACHE.put(imageId, texture);
+                    return texture;
+                } catch (IOException e) {
+                    SimplyScreens.LOGGER.error("Failed to load image from disk cache", e);
+                }
             }
         }
 
@@ -49,20 +61,21 @@ public class ClientImageManager {
         return null;
     }
 
-    public static void saveImageToCache(UUID imageId, byte[] imageData) {
-        Path imagePath = getImagePath(imageId);
+    public static void saveImageToCache(UUID imageId, String extension, byte[] imageData) {
+        Path imagePath = getImagePath(imageId, extension);
         try {
             Files.write(imagePath, imageData);
+
+            try (InputStream inputStream = Files.newInputStream(imagePath)) {
+                NativeImage nativeImage = NativeImage.read(inputStream);
+                DynamicTexture texture = new DynamicTexture(nativeImage);
+                IN_MEMORY_CACHE.put(imageId, texture);
+            } catch (IOException e) {
+                SimplyScreens.LOGGER.error("Failed to load image from disk cache after saving", e);
+                Files.deleteIfExists(imagePath);
+            }
         } catch (IOException e) {
             SimplyScreens.LOGGER.error("Failed to save image to disk cache", e);
-        }
-
-        try (InputStream inputStream = Files.newInputStream(imagePath)) {
-            NativeImage nativeImage = NativeImage.read(inputStream);
-            DynamicTexture texture = new DynamicTexture(nativeImage);
-            IN_MEMORY_CACHE.put(imageId, texture);
-        } catch (IOException e) {
-            SimplyScreens.LOGGER.error("Failed to load image from disk cache after saving", e);
         }
     }
 
@@ -74,8 +87,8 @@ public class ClientImageManager {
         return null;
     }
 
-    private static Path getImagePath(UUID imageId) {
-        return CACHE_DIR.resolve(imageId.toString() + ".png");
+    private static Path getImagePath(UUID imageId, String extension) {
+        return CACHE_DIR.resolve(imageId + "." + extension);
     }
 
     public static void clearCache() {

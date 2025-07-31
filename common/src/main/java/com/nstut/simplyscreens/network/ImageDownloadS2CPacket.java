@@ -12,28 +12,32 @@ import java.util.function.Supplier;
 
 public class ImageDownloadS2CPacket implements IPacket {
     private final UUID imageId;
+    private final String extension;
     private final byte[] imageData;
 
-    public ImageDownloadS2CPacket(UUID imageId, byte[] imageData) {
+    public ImageDownloadS2CPacket(UUID imageId, String extension, byte[] imageData) {
         this.imageId = imageId;
+        this.extension = extension;
         this.imageData = imageData;
     }
 
     public ImageDownloadS2CPacket(FriendlyByteBuf buf) {
         this.imageId = buf.readUUID();
+        this.extension = buf.readUtf();
         this.imageData = buf.readByteArray();
     }
 
     @Override
     public void write(FriendlyByteBuf buf) {
         buf.writeUUID(imageId);
+        buf.writeUtf(extension);
         buf.writeByteArray(imageData);
     }
 
     @Override
     public void handle(Supplier<NetworkManager.PacketContext> context) {
         context.get().queue(() -> {
-            ClientImageManager.saveImageToCache(imageId, imageData);
+            ClientImageManager.saveImageToCache(imageId, extension, imageData);
 
             Minecraft mc = Minecraft.getInstance();
             if (mc.screen instanceof ImageLoadScreen imageLoadScreen) {

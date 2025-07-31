@@ -7,9 +7,6 @@
 
   "simplyscreens.screen.image_load_title": "Load Image",
   "simplyscreens.screen.upload_from_computer": "Upload from Computer",
-  "simplyscreens.screen.download_from_internet": "Download from Internet",
-  "simplyscreens.screen.image_url": "Image URL:",
-  "simplyscreens.screen.load_image": "Load Image",
   "simplyscreens.screen.select_image": "Select Image",
   "simplyscreens.screen.no_image_selected": "No image selected",
   "simplyscreens.screen.image_list": "Available Images",

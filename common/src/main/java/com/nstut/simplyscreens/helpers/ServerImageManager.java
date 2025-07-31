@@ -21,9 +21,17 @@ import java.util.stream.Stream;
 public class ServerImageManager {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    public static UUID saveImage(MinecraftServer server, String originalName, byte[] data) {
+    public static UUID saveImage(MinecraftServer server, String originalName, byte[] data, String contentType) {
         try {
-            String extension = "png";
+            String extension = getImageExtension(data);
+
+            if (extension == null) {
+                SimplyScreens.LOGGER.error("Could not determine a valid image type for '{}' based on its content. It might be corrupted or an unsupported format.", originalName);
+                return null;
+            }
+
+            SimplyScreens.LOGGER.info("Saving image. originalName: '{}', contentType: '{}', determined extension: '{}'", originalName, contentType, extension);
+
             UUID imageId = UUID.randomUUID();
             Path imagesDir = getImagesDir(server);
 
@@ -49,18 +57,61 @@ public class ServerImageManager {
             return null;
         }
     }
+    private static String getImageExtension(byte[] data) {
+        if (data == null || data.length < 4) {
+            return null;
+        }
+
+        // PNG: 89 50 4E 47
+        if (data[0] == (byte) 0x89 && data[1] == (byte) 0x50 && data[2] == (byte) 0x4E && data[3] == (byte) 0x47) {
+            return "png";
+        }
+
+        // JPEG: FF D8 FF
+        if (data[0] == (byte) 0xFF && data[1] == (byte) 0xD8 && data[2] == (byte) 0xFF) {
+            return "jpg";
+        }
+
+        // GIF: 47 49 46 38
+        if (data[0] == (byte) 0x47 && data[1] == (byte) 0x49 && data[2] == (byte) 0x46 && data[3] == (byte) 0x38) {
+            return "gif";
+        }
+
+        return null;
+    }
+
 
     private static Path getImagesDir(MinecraftServer server) {
         return server.getWorldPath(LevelResource.ROOT).resolve("simply_screens_images");
     }
 
-    public static byte[] getImageData(MinecraftServer server, UUID imageId) {
+    public static ImageMetadata getImageMetadata(MinecraftServer server, UUID imageId) {
         Path imagesDir = getImagesDir(server);
-        File[] imageFiles = imagesDir.toFile().listFiles((dir, name) -> name.startsWith(imageId.toString()) && !name.endsWith(".json"));
+        File metadataFile = imagesDir.resolve(imageId + ".json").toFile();
 
-        if (imageFiles != null && imageFiles.length > 0) {
+        if (metadataFile.exists()) {
+            try (FileReader reader = new FileReader(metadataFile)) {
+                return GSON.fromJson(reader, ImageMetadata.class);
+            } catch (IOException e) {
+                SimplyScreens.LOGGER.error("Failed to read image metadata for " + imageId, e);
+            }
+        }
+
+        return null;
+    }
+
+    public static byte[] getImageData(MinecraftServer server, UUID imageId) {
+        ImageMetadata metadata = getImageMetadata(server, imageId);
+        if (metadata == null) {
+            return null;
+        }
+
+        Path imagesDir = getImagesDir(server);
+        File imageFile = imagesDir.resolve(imageId + "." + metadata.getExtension()).toFile();
+
+        if (imageFile.exists()) {
             try {
-                return java.nio.file.Files.readAllBytes(imageFiles[0].toPath());
+                return Files.readAllBytes(imageFile.toPath());
             } catch (IOException e) {
                 SimplyScreens.LOGGER.error("Failed to read image data for " + imageId, e);
             }

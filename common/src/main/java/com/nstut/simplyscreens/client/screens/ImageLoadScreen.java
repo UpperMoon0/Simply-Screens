@@ -5,12 +5,10 @@ import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simplyscreens.client.gui.widgets.ImageListWidget;
 import com.nstut.simplyscreens.network.PacketRegistries;
-import com.nstut.simplyscreens.network.RequestImageDownloadC2SPacket;
 import com.nstut.simplyscreens.network.UpdateScreenAspectRatioC2SPacket;
 import com.nstut.simplyscreens.network.UpdateScreenSelectedImageC2SPacket;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
@@ -38,16 +36,11 @@ public class ImageLoadScreen extends Screen {
     private ImageListWidget imageListWidget;
     private Button selectButton;
     private Button uploadFromComputerButton;
-    private Button downloadFromInternetButton;
     private Checkbox maintainAspectCheckbox;
 
-    private EditBox urlInput;
-    private Button downloadButton;
-    private Button backButton;
 
     private enum Page {
-        MAIN,
-        DOWNLOAD
+        MAIN
     }
 
     private Page currentPage = Page.MAIN;
@@ -74,8 +67,6 @@ public class ImageLoadScreen extends Screen {
 
         if (page == Page.MAIN) {
             initMainPage(guiLeft, guiTop);
-        } else {
-            initDownloadPage(guiLeft, guiTop);
         }
     }
 
@@ -107,35 +98,13 @@ public class ImageLoadScreen extends Screen {
         selectButton.active = false;
         addRenderableWidget(selectButton);
 
-        uploadFromComputerButton = Button.builder(Component.literal("Upload"), button -> onUploadFromComputer())
+        uploadFromComputerButton = Button.builder(Component.literal("Upload from computer"), button -> onUploadFromComputer())
                 .pos(guiLeft + 8, guiTop + 140)
-                .size(78, 20)
+                .size(160, 20)
                 .build();
         addRenderableWidget(uploadFromComputerButton);
-
-        downloadFromInternetButton = Button.builder(Component.literal("Download"), button -> setPage(Page.DOWNLOAD))
-                .pos(guiLeft + 90, guiTop + 140)
-                .size(78, 20)
-                .build();
-        addRenderableWidget(downloadFromInternetButton);
     }
 
-    private void initDownloadPage(int guiLeft, int guiTop) {
-        urlInput = new EditBox(this.font, guiLeft + 8, guiTop + 28, 160, 20, Component.literal("Image URL"));
-        addRenderableWidget(urlInput);
-
-        downloadButton = Button.builder(Component.literal("Download"), button -> onDownload())
-                .pos(guiLeft + 8, guiTop + 52)
-                .size(160, 20)
-                .build();
-        addRenderableWidget(downloadButton);
-
-        backButton = Button.builder(Component.literal("Back"), button -> setPage(Page.MAIN))
-                .pos(guiLeft + 8, guiTop + 76)
-                .size(160, 20)
-                .build();
-        addRenderableWidget(backButton);
-    }
 
     private void onImageSelected(ImageListWidget.ImageEntry entry) {
         selectButton.active = entry != null;
@@ -171,14 +140,6 @@ public class ImageLoadScreen extends Screen {
         }
     }
 
-    private void onDownload() {
-        String url = urlInput.getValue();
-        if (!url.isBlank()) {
-            PacketRegistries.CHANNEL.sendToServer(new com.nstut.simplyscreens.network.DownloadImageFromUrlC2SPacket(blockEntityPos, url));
-            setPage(Page.MAIN);
-            imageListWidget.refresh();
-        }
-    }
 
     @Override
     public void render(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
@@ -186,9 +147,6 @@ public class ImageLoadScreen extends Screen {
         guiGraphics.blit(BACKGROUND_TEXTURE, (this.width - SCREEN_WIDTH) / 2, (this.height - SCREEN_HEIGHT) / 2, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
 
-        if (currentPage == Page.DOWNLOAD) {
-            guiGraphics.drawString(this.font, "Image URL:", (this.width - SCREEN_WIDTH) / 2 + 8, (this.height - SCREEN_HEIGHT) / 2 + 12, 4210752);
-        }
     }
 
     @Override
@@ -232,14 +190,8 @@ public class ImageLoadScreen extends Screen {
         }
 
         if (this.minecraft.options.keyInventory.matches(keyCode, scanCode)) {
-            if (currentPage == Page.MAIN) {
-                this.onClose();
-                return true;
-            }
-            if (currentPage == Page.DOWNLOAD && !urlInput.isFocused()) {
-                this.onClose();
-                return true;
-            }
+            this.onClose();
+            return true;
         }
 
         return super.keyPressed(keyCode, scanCode, modifiers);
