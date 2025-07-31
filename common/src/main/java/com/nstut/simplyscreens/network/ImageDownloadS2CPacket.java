@@ -1,7 +1,10 @@
 package com.nstut.simplyscreens.network;
 
+import com.nstut.simplyscreens.client.gui.widgets.ImageListWidget;
+import com.nstut.simplyscreens.client.screens.ImageLoadScreen;
 import com.nstut.simplyscreens.helpers.ClientImageManager;
 import dev.architectury.networking.NetworkManager;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 
 import java.util.UUID;
@@ -29,6 +32,16 @@ public class ImageDownloadS2CPacket implements IPacket {
 
     @Override
     public void handle(Supplier<NetworkManager.PacketContext> context) {
-        context.get().queue(() -> ClientImageManager.saveImageToCache(imageId, imageData));
+        context.get().queue(() -> {
+            ClientImageManager.saveImageToCache(imageId, imageData);
+
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.screen instanceof ImageLoadScreen imageLoadScreen) {
+                ImageListWidget imageListWidget = imageLoadScreen.getImageListWidget();
+                if (imageListWidget != null) {
+                    imageListWidget.receiveImageData(imageId.toString(), imageData);
+                }
+            }
+        });
     }
 }

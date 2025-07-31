@@ -24,7 +24,6 @@ public class UpdateImageListS2CPacket implements IPacket {
         imageList = buf.readList(friendlyByteBuf -> new ImageMetadata(
                 friendlyByteBuf.readUtf(),
                 friendlyByteBuf.readUtf(),
-                friendlyByteBuf.readUtf(),
                 friendlyByteBuf.readUtf()
         ));
     }
@@ -35,7 +34,6 @@ public class UpdateImageListS2CPacket implements IPacket {
             friendlyByteBuf.writeUtf(imageMetadata.getName());
             friendlyByteBuf.writeUtf(imageMetadata.getId());
             friendlyByteBuf.writeUtf(imageMetadata.getExtension());
-            friendlyByteBuf.writeUtf(imageMetadata.getSource());
         });
     }
 

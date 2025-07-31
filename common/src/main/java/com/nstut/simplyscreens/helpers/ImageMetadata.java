@@ -4,13 +4,11 @@ public class ImageMetadata {
     private final String name;
     private final String id;
     private final String extension;
-    private final String source;
 
-    public ImageMetadata(String name, String id, String extension, String source) {
+    public ImageMetadata(String name, String id, String extension) {
         this.name = name;
         this.id = id;
         this.extension = extension;
-        this.source = source;
     }
 
     public String getName() {
@@ -23,9 +21,5 @@ public class ImageMetadata {
 
     public String getExtension() {
         return extension;
-    }
-
-    public String getSource() {
-        return source;
     }
 }

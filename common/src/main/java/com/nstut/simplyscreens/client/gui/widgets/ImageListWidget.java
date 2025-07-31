@@ -42,12 +42,10 @@ public class ImageListWidget extends AbstractWidget {
     public static class ImageEntry {
         private final String displayName;
         private final UUID imageId;
-        private final String extension;
 
-        public ImageEntry(String displayName, String imageId, String extension) {
+        public ImageEntry(String displayName, String imageId) {
             this.displayName = displayName;
             this.imageId = UUID.fromString(imageId);
-            this.extension = extension;
         }
 
         public String getDisplayName() {
@@ -56,10 +54,6 @@ public class ImageListWidget extends AbstractWidget {
 
         public UUID getImageId() {
             return imageId;
-        }
-
-        public String getImageExtension() {
-            return extension;
         }
     }
 
@@ -71,7 +65,7 @@ public class ImageListWidget extends AbstractWidget {
 
     public void updateList(List<ImageMetadata> imageMetadata) {
         this.imageFiles = imageMetadata.stream()
-                .map(meta -> new ImageEntry(meta.getName(), meta.getId(), meta.getExtension()))
+                .map(meta -> new ImageEntry(meta.getName(), meta.getId()))
                 .collect(Collectors.toList());
         this.filteredImageFiles = new ArrayList<>(this.imageFiles);
         this.scrollAmount = 0;

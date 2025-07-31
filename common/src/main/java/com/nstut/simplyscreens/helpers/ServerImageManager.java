@@ -37,7 +37,8 @@ public class ServerImageManager {
             }
 
             File metadataFile = imagesDir.resolve(imageId + ".json").toFile();
-            ImageMetadata metadata = new ImageMetadata(originalName, imageId.toString(), extension, originalName);
+            String nameWithoutExtension = originalName.contains(".") ? originalName.substring(0, originalName.lastIndexOf('.')) : originalName;
+            ImageMetadata metadata = new ImageMetadata(nameWithoutExtension, imageId.toString(), extension);
             try (FileWriter writer = new FileWriter(metadataFile)) {
                 GSON.toJson(metadata, writer);
             }
