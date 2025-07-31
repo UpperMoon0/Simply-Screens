@@ -9,6 +9,7 @@ import com.nstut.simplyscreens.network.UpdateScreenAspectRatioC2SPacket;
 import com.nstut.simplyscreens.network.UpdateScreenSelectedImageC2SPacket;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
@@ -37,6 +38,7 @@ public class ImageLoadScreen extends Screen {
     private Button selectButton;
     private Button uploadFromComputerButton;
     private Checkbox maintainAspectCheckbox;
+    private EditBox searchBar;
 
 
     private enum Page {
@@ -71,10 +73,18 @@ public class ImageLoadScreen extends Screen {
     }
 
     private void initMainPage(int guiLeft, int guiTop) {
-        imageListWidget = new ImageListWidget(guiLeft + 8, guiTop + 8, 160, 84, Component.literal(""), this::onImageSelected, initialLocalHash);
+        searchBar = new EditBox(this.font, guiLeft + 8, guiTop + 8, 160, 20, Component.literal("Search"));
+        searchBar.setResponder(searchTerm -> {
+            if (this.imageListWidget != null) {
+                this.imageListWidget.filter(searchTerm);
+            }
+        });
+        addRenderableWidget(searchBar);
+
+        imageListWidget = new ImageListWidget(guiLeft + 8, guiTop + 32, 160, 60, Component.literal(""), this::onImageSelected, initialLocalHash);
         addRenderableWidget(imageListWidget);
 
-        maintainAspectCheckbox = new Checkbox(guiLeft + 8, guiTop + 94, 160, 20, Component.literal("Maintain Aspect Ratio"), this.initialMaintainAspectRatio) {
+        maintainAspectCheckbox = new Checkbox(guiLeft + 8, guiTop + 96, 160, 20, Component.literal("Maintain Aspect Ratio"), this.initialMaintainAspectRatio) {
             @Override
             public void onPress() {
                 super.onPress();
@@ -92,17 +102,19 @@ public class ImageLoadScreen extends Screen {
         addRenderableWidget(maintainAspectCheckbox);
 
         selectButton = Button.builder(Component.literal("Select"), button -> onSelect())
-                .pos(guiLeft + 8, guiTop + 116)
+                .pos(guiLeft + 8, guiTop + 118)
                 .size(160, 20)
                 .build();
         selectButton.active = false;
         addRenderableWidget(selectButton);
 
         uploadFromComputerButton = Button.builder(Component.literal("Upload from computer"), button -> onUploadFromComputer())
-                .pos(guiLeft + 8, guiTop + 140)
+                .pos(guiLeft + 8, guiTop + 142)
                 .size(160, 20)
                 .build();
         addRenderableWidget(uploadFromComputerButton);
+
+        setInitialFocus(searchBar);
     }
 
 
@@ -152,6 +164,7 @@ public class ImageLoadScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
+        searchBar.tick();
         imageListWidget.tick();
     }
 
@@ -187,6 +200,10 @@ public class ImageLoadScreen extends Screen {
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (this.minecraft == null) {
             return false;
+        }
+
+        if (this.searchBar.isFocused() && this.searchBar.keyPressed(keyCode, scanCode, modifiers)) {
+            return true;
         }
 
         if (this.minecraft.options.keyInventory.matches(keyCode, scanCode)) {

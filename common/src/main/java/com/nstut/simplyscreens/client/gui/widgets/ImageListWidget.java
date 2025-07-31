@@ -31,6 +31,8 @@ import com.nstut.simplyscreens.helpers.ImageMetadata;
 public class ImageListWidget extends AbstractWidget {
     private static final int ITEM_SIZE = 40;
     private static final int PADDING = 2;
+    private static final int TEXT_HEIGHT = 12;
+    private static final int ITEM_HEIGHT = ITEM_SIZE + TEXT_HEIGHT;
     private final Map<String, ResourceLocation> textureCache = new HashMap<>();
     private List<ImageEntry> imageFiles = new ArrayList<>();
     private List<ImageEntry> filteredImageFiles = new ArrayList<>();
@@ -94,7 +96,7 @@ public class ImageListWidget extends AbstractWidget {
         }
     
         int itemsPerRow = Math.max(1, (this.width - PADDING) / (ITEM_SIZE + PADDING));
-        int contentHeight = ((filteredImageFiles.size() + itemsPerRow - 1) / itemsPerRow) * (ITEM_SIZE + PADDING);
+        int contentHeight = ((filteredImageFiles.size() + itemsPerRow - 1) / itemsPerRow) * (ITEM_HEIGHT + PADDING);
         int maxScroll = Math.max(0, contentHeight - this.height);
     
         if (maxScroll > 0) {
@@ -112,22 +114,22 @@ public class ImageListWidget extends AbstractWidget {
             int col = i % itemsPerRow;
 
             int itemX = this.getX() + PADDING + col * (ITEM_SIZE + PADDING);
-            int itemY = this.getY() + PADDING + row * (ITEM_SIZE + PADDING) - (int) scrollAmount;
+            int itemY = this.getY() + PADDING + row * (ITEM_HEIGHT + PADDING) - (int) scrollAmount;
 
-            if (itemY + ITEM_SIZE < this.getY() || itemY > this.getY() + this.height) {
+            if (itemY + ITEM_HEIGHT < this.getY() || itemY > this.getY() + this.height) {
                 continue;
             }
 
             ImageEntry entry = filteredImageFiles.get(i);
-            boolean isHovered = mouseX >= itemX && mouseX < itemX + ITEM_SIZE && mouseY >= itemY && mouseY < itemY + ITEM_SIZE;
+            boolean isHovered = mouseX >= itemX && mouseX < itemX + ITEM_SIZE && mouseY >= itemY && mouseY < itemY + ITEM_HEIGHT;
             boolean isSelected = selected == entry;
             boolean isDisplayed = displayedImage != null && displayedImage.equals(entry.getImageId());
 
             int backgroundColor = isSelected ? 0xFF808080 : (isHovered ? 0xFF404040 : 0xFF202020);
-            guiGraphics.fill(itemX, itemY, itemX + ITEM_SIZE, itemY + ITEM_SIZE, backgroundColor);
+            guiGraphics.fill(itemX, itemY, itemX + ITEM_SIZE, itemY + ITEM_HEIGHT, backgroundColor);
 
             if (isDisplayed) {
-                guiGraphics.renderOutline(itemX, itemY, ITEM_SIZE, ITEM_SIZE, 0xFF00FF00);
+                guiGraphics.renderOutline(itemX, itemY, ITEM_SIZE, ITEM_HEIGHT, 0xFF00FF00);
             }
 
             ResourceLocation texture = textureCache.computeIfAbsent(entry.getImageId().toString(), id -> {
@@ -139,6 +141,16 @@ public class ImageListWidget extends AbstractWidget {
                 RenderSystem.setShaderTexture(0, texture);
                 guiGraphics.blit(texture, itemX + 2, itemY + 2, 0, 0, ITEM_SIZE - 4, ITEM_SIZE - 4, ITEM_SIZE - 4, ITEM_SIZE - 4);
             }
+
+            String displayName = entry.getDisplayName();
+            int textWidth = Minecraft.getInstance().font.width(displayName);
+            if (textWidth > ITEM_SIZE - 4) {
+                displayName = Minecraft.getInstance().font.plainSubstrToWidth(displayName, ITEM_SIZE - 4) + "...";
+            }
+            textWidth = Minecraft.getInstance().font.width(displayName);
+            int textX = itemX + (ITEM_SIZE - textWidth) / 2;
+            int textY = itemY + ITEM_SIZE + (TEXT_HEIGHT - 8) / 2;
+            guiGraphics.drawString(Minecraft.getInstance().font, displayName, textX, textY, 0xFFFFFFFF);
         }
     
         guiGraphics.disableScissor();
@@ -156,9 +168,9 @@ public class ImageListWidget extends AbstractWidget {
             int col = i % itemsPerRow;
 
             int itemX = this.getX() + PADDING + col * (ITEM_SIZE + PADDING);
-            int itemY = this.getY() + PADDING + row * (ITEM_SIZE + PADDING) - (int) scrollAmount;
+            int itemY = this.getY() + PADDING + row * (ITEM_HEIGHT + PADDING) - (int) scrollAmount;
 
-            if (mouseX >= itemX && mouseX < itemX + ITEM_SIZE && mouseY >= itemY && mouseY < itemY + ITEM_SIZE) {
+            if (mouseX >= itemX && mouseX < itemX + ITEM_SIZE && mouseY >= itemY && mouseY < itemY + ITEM_HEIGHT) {
                 this.selected = filteredImageFiles.get(i);
                 this.onSelect.accept(this.selected);
                 return true;
