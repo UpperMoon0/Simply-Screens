@@ -57,7 +57,7 @@ public class ImageLoadScreen extends Screen {
         int guiLeft = (this.width - SCREEN_WIDTH) / 2;
         int guiTop = (this.height - SCREEN_HEIGHT) / 2;
 
-        searchBar = new EditBox(this.font, guiLeft + 8, guiTop + 23, 150, 20, Component.literal("Search"));
+        searchBar = new EditBox(this.font, guiLeft + 8, guiTop + 23, 145, 20, Component.literal("Search"));
         searchBar.setResponder(searchTerm -> {
             if (this.imageListWidget != null) {
                 this.imageListWidget.filter(searchTerm);
@@ -65,10 +65,10 @@ public class ImageLoadScreen extends Screen {
         });
         addRenderableWidget(searchBar);
 
-        imageListWidget = new ImageListWidget(guiLeft + 8, guiTop + 47, 150, 60, Component.literal(""), this::onImageSelected, initialLocalHash);
+        imageListWidget = new ImageListWidget(guiLeft + 8, guiTop + 47, 145, 60, Component.literal(""), this::onImageSelected, initialLocalHash);
         addRenderableWidget(imageListWidget);
 
-        maintainAspectCheckbox = new Checkbox(guiLeft + 8, guiTop + 112, 150, 20, Component.literal("Maintain Aspect Ratio"), this.initialMaintainAspectRatio) {
+        maintainAspectCheckbox = new Checkbox(guiLeft + 8, guiTop + 112, 145, 20, Component.literal("Maintain Aspect Ratio"), this.initialMaintainAspectRatio) {
             @Override
             public void onPress() {
                 super.onPress();
@@ -87,14 +87,14 @@ public class ImageLoadScreen extends Screen {
 
         selectButton = Button.builder(Component.literal("Select"), button -> onSelect())
                 .pos(guiLeft + 8, guiTop + 137)
-                .size(150, 20)
+                .size(145, 20)
                 .build();
         selectButton.active = false;
         addRenderableWidget(selectButton);
 
         uploadFromComputerButton = Button.builder(Component.literal("Upload from computer"), button -> onUploadFromComputer())
                 .pos(guiLeft + 8, guiTop + 162)
-                .size(150, 20)
+                .size(145, 20)
                 .build();
         uploadFromComputerButton.visible = !Config.DISABLE_UPLOAD;
         addRenderableWidget(uploadFromComputerButton);
