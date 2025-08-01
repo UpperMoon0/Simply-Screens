@@ -29,6 +29,10 @@ jobs:
       - name: Build
         run: ./gradlew build
 
+      - name: Get version
+        id: get_version
+        run: echo "MOD_VERSION=$(grep 'mod_version' gradle.properties | cut -d'=' -f2 | xargs)" >> $GITHUB_ENV
+
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -44,8 +48,8 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./forge/build/libs/simply_screens-forge-1.0.0.jar
-          asset_name: simply_screens-forge-1.0.0.jar
+          asset_path: ./forge/build/libs/simply_screens-forge-${{ env.MOD_VERSION }}.jar
+          asset_name: simply_screens-forge-${{ env.MOD_VERSION }}.jar
           asset_content_type: application/java-archive
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -54,8 +58,8 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./fabric/build/libs/simply_screens-fabric-1.0.0.jar
-          asset_name: simply_screens-fabric-1.0.0.jar
+          asset_path: ./fabric/build/libs/simply_screens-fabric-${{ env.MOD_VERSION }}.jar
+          asset_name: simply_screens-fabric-${{ env.MOD_VERSION }}.jar
           asset_content_type: application/java-archive
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
