@@ -12,16 +12,16 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Setup Java
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
       - name: Setup Gradle
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/gradle-build-action@v3
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
@@ -31,7 +31,7 @@ jobs:
 
       - name: Get version
         id: get_version
-        run: echo "MOD_VERSION=$(grep 'mod_version' gradle.properties | cut -d'=' -f2 | xargs)" >> $GITHUB_ENV
+        run: echo "version=$(grep 'mod_version' gradle.properties | cut -d'=' -f2 | xargs)" >> $GITHUB_OUTPUT
 
       - name: Create Release
         id: create_release
@@ -39,8 +39,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.run_number }}
-          release_name: Release ${{ github.run_number }}
+          tag_name: v${{ steps.get_version.outputs.version }}
+          release_name: Simply Screens v${{ steps.get_version.outputs.version }}
           draft: false
           prerelease: false
 
@@ -48,8 +48,8 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./forge/build/libs/simply_screens-forge-${{ env.MOD_VERSION }}.jar
-          asset_name: simply_screens-forge-${{ env.MOD_VERSION }}.jar
+          asset_path: ./forge/build/libs/simply_screens-forge-${{ steps.get_version.outputs.version }}.jar
+          asset_name: simply_screens-forge-${{ steps.get_version.outputs.version }}.jar
           asset_content_type: application/java-archive
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -58,8 +58,8 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./fabric/build/libs/simply_screens-fabric-${{ env.MOD_VERSION }}.jar
-          asset_name: simply_screens-fabric-${{ env.MOD_VERSION }}.jar
+          asset_path: ./fabric/build/libs/simply_screens-fabric-${{ steps.get_version.outputs.version }}.jar
+          asset_name: simply_screens-fabric-${{ steps.get_version.outputs.version }}.jar
           asset_content_type: application/java-archive
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
