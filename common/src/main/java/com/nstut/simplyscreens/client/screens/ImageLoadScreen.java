@@ -27,8 +27,8 @@ import java.nio.file.Paths;
 public class ImageLoadScreen extends Screen {
     private static final ResourceLocation BACKGROUND_TEXTURE = new ResourceLocation(SimplyScreens.MOD_ID, "textures/gui/screen.png");
 
-    private static final int SCREEN_WIDTH = 176;
-    private static final int SCREEN_HEIGHT = 166;
+    private static final int SCREEN_WIDTH = 162;
+    private static final int SCREEN_HEIGHT = 188;
 
     private final BlockPos blockEntityPos;
     private java.util.UUID initialLocalHash;
@@ -41,14 +41,8 @@ public class ImageLoadScreen extends Screen {
     private EditBox searchBar;
 
 
-    private enum Page {
-        MAIN
-    }
-
-    private Page currentPage = Page.MAIN;
-
     public ImageLoadScreen(BlockPos blockEntityPos) {
-        super(Component.literal("Load Image"));
+        super(Component.literal("Screen"));
         this.blockEntityPos = blockEntityPos;
     }
 
@@ -56,24 +50,11 @@ public class ImageLoadScreen extends Screen {
     protected void init() {
         super.init();
         fetchDataFromBlockEntity();
-        setPage(Page.MAIN);
-        imageListWidget.refresh();
-    }
-
-    private void setPage(Page page) {
-        this.currentPage = page;
-        clearWidgets();
 
         int guiLeft = (this.width - SCREEN_WIDTH) / 2;
         int guiTop = (this.height - SCREEN_HEIGHT) / 2;
 
-        if (page == Page.MAIN) {
-            initMainPage(guiLeft, guiTop);
-        }
-    }
-
-    private void initMainPage(int guiLeft, int guiTop) {
-        searchBar = new EditBox(this.font, guiLeft + 8, guiTop + 8, 160, 20, Component.literal("Search"));
+        searchBar = new EditBox(this.font, guiLeft + 8, guiTop + 23, 150, 20, Component.literal("Search"));
         searchBar.setResponder(searchTerm -> {
             if (this.imageListWidget != null) {
                 this.imageListWidget.filter(searchTerm);
@@ -81,10 +62,10 @@ public class ImageLoadScreen extends Screen {
         });
         addRenderableWidget(searchBar);
 
-        imageListWidget = new ImageListWidget(guiLeft + 8, guiTop + 32, 160, 60, Component.literal(""), this::onImageSelected, initialLocalHash);
+        imageListWidget = new ImageListWidget(guiLeft + 8, guiTop + 47, 150, 60, Component.literal(""), this::onImageSelected, initialLocalHash);
         addRenderableWidget(imageListWidget);
 
-        maintainAspectCheckbox = new Checkbox(guiLeft + 8, guiTop + 96, 160, 20, Component.literal("Maintain Aspect Ratio"), this.initialMaintainAspectRatio) {
+        maintainAspectCheckbox = new Checkbox(guiLeft + 8, guiTop + 112, 150, 20, Component.literal("Maintain Aspect Ratio"), this.initialMaintainAspectRatio) {
             @Override
             public void onPress() {
                 super.onPress();
@@ -102,19 +83,20 @@ public class ImageLoadScreen extends Screen {
         addRenderableWidget(maintainAspectCheckbox);
 
         selectButton = Button.builder(Component.literal("Select"), button -> onSelect())
-                .pos(guiLeft + 8, guiTop + 118)
-                .size(160, 20)
+                .pos(guiLeft + 8, guiTop + 137)
+                .size(150, 20)
                 .build();
         selectButton.active = false;
         addRenderableWidget(selectButton);
 
         uploadFromComputerButton = Button.builder(Component.literal("Upload from computer"), button -> onUploadFromComputer())
-                .pos(guiLeft + 8, guiTop + 142)
-                .size(160, 20)
+                .pos(guiLeft + 8, guiTop + 162)
+                .size(150, 20)
                 .build();
         addRenderableWidget(uploadFromComputerButton);
 
         setInitialFocus(searchBar);
+        imageListWidget.refresh();
     }
 
 
@@ -156,9 +138,11 @@ public class ImageLoadScreen extends Screen {
     @Override
     public void render(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.renderBackground(guiGraphics);
-        guiGraphics.blit(BACKGROUND_TEXTURE, (this.width - SCREEN_WIDTH) / 2, (this.height - SCREEN_HEIGHT) / 2, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+        int guiLeft = (this.width - SCREEN_WIDTH) / 2;
+        int guiTop = (this.height - SCREEN_HEIGHT) / 2;
+        guiGraphics.blit(BACKGROUND_TEXTURE, guiLeft, guiTop, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+        guiGraphics.drawString(this.font, this.title, (this.width - this.font.width(this.title)) / 2, guiTop + 8, 0x404040, false);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
-
     }
 
     @Override

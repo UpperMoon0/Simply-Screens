@@ -19,7 +19,7 @@
       "com.nstut.simplyscreens.fabric.SimplyScreensImpl"
     ],
     "client": [
-      "com.nstut.simplyscreens.client.ClientSetup"
+      "com.nstut.simplyscreens.fabric.client.ClientSetup"
     ]
   },
   "mixins": [

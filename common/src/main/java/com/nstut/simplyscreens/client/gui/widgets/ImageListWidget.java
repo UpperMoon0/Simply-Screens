@@ -142,10 +142,10 @@ public class ImageListWidget extends AbstractWidget {
                 guiGraphics.blit(texture, itemX + 2, itemY + 2, 0, 0, ITEM_SIZE - 4, ITEM_SIZE - 4, ITEM_SIZE - 4, ITEM_SIZE - 4);
             }
 
-            String displayName = entry.getDisplayName();
+            Component displayName = Component.literal(entry.getDisplayName());
             int textWidth = Minecraft.getInstance().font.width(displayName);
             if (textWidth > ITEM_SIZE - 4) {
-                displayName = Minecraft.getInstance().font.plainSubstrToWidth(displayName, ITEM_SIZE - 4) + "...";
+                displayName = Component.literal(Minecraft.getInstance().font.substrByWidth(displayName, ITEM_SIZE - 4).getString() + "...");
             }
             textWidth = Minecraft.getInstance().font.width(displayName);
             int textX = itemX + (ITEM_SIZE - textWidth) / 2;
@@ -183,9 +183,9 @@ public class ImageListWidget extends AbstractWidget {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
         int itemsPerRow = Math.max(1, (this.width - PADDING) / (ITEM_SIZE + PADDING));
-        int contentHeight = ((filteredImageFiles.size() + itemsPerRow - 1) / itemsPerRow) * (ITEM_SIZE + PADDING);
+        int contentHeight = ((filteredImageFiles.size() + itemsPerRow - 1) / itemsPerRow) * (ITEM_HEIGHT + PADDING);
         int maxScroll = Math.max(0, contentHeight - this.height);
-        scrollAmount = Mth.clamp(scrollAmount - delta * (ITEM_SIZE + PADDING), 0, maxScroll);
+        scrollAmount = Mth.clamp(scrollAmount - delta * (ITEM_HEIGHT + PADDING), 0, maxScroll);
         return true;
     }
 
