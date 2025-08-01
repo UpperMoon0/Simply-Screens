@@ -5,9 +5,12 @@ import com.nstut.simplyscreens.blocks.BlockRegistries;
 import com.nstut.simplyscreens.blocks.entities.BlockEntityRegistries;
 import com.nstut.simplyscreens.creative_tabs.CreativeTabRegistries;
 import com.nstut.simplyscreens.items.ItemRegistries;
+import com.nstut.simplyscreens.forge.config.ForgeConfig;
 import dev.architectury.platform.forge.EventBuses;
 import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 
@@ -21,6 +24,8 @@ public class SimplyScreensImpl {
         BlockRegistries.BLOCKS.register();
         BlockEntityRegistries.BLOCK_ENTITIES.register();
         ItemRegistries.ITEMS.register();
+
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, ForgeConfig.SPEC);
 
         modEventBus.addListener(this::onCommonSetup);
     }

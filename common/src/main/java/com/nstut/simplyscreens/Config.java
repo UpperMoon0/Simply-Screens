@@ -9,11 +9,16 @@ import java.nio.file.Paths;
 import java.util.Properties;
 
 public class Config {
+    public static int VIEW_DISTANCE = 64;
+    public static int SCREEN_TICK_RATE = 100;
+    public static boolean DISABLE_UPLOAD = false;
+    public static int MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5MB
+
+    public static final int MIN_UPLOAD_SIZE = 1024; // 1KB
+    public static final int MAX_UPLOAD_SIZE_LIMIT = 100 * 1024 * 1024; // 100MB
+
     private static final Path CONFIG_PATH = Paths.get("config", SimplyScreens.MOD_ID + ".properties");
     private static final Properties properties = new Properties();
-
-    public static int VIEW_DISTANCE;
-    public static int SCREEN_TICK_RATE;
 
     public static void load() {
         try {
@@ -27,14 +32,18 @@ public class Config {
             SimplyScreens.LOGGER.error("Failed to load config file", e);
         }
 
-        VIEW_DISTANCE = getInt("viewDistance", 64);
-        SCREEN_TICK_RATE = getInt("screenTickRate", 100);
+        VIEW_DISTANCE = getInt("viewDistance", VIEW_DISTANCE);
+        SCREEN_TICK_RATE = getInt("screenTickRate", SCREEN_TICK_RATE);
+        DISABLE_UPLOAD = getBoolean("disableUpload", DISABLE_UPLOAD);
+        MAX_UPLOAD_SIZE = getInt("maxUploadSize", MAX_UPLOAD_SIZE);
     }
 
     private static void createDefaultConfig() throws IOException {
         Files.createDirectories(CONFIG_PATH.getParent());
-        properties.setProperty("viewDistance", "64");
-        properties.setProperty("screenTickRate", "100");
+        properties.setProperty("viewDistance", String.valueOf(VIEW_DISTANCE));
+        properties.setProperty("screenTickRate", String.valueOf(SCREEN_TICK_RATE));
+        properties.setProperty("disableUpload", String.valueOf(DISABLE_UPLOAD));
+        properties.setProperty("maxUploadSize", String.valueOf(MAX_UPLOAD_SIZE));
         try (FileOutputStream stream = new FileOutputStream(CONFIG_PATH.toFile())) {
             properties.store(stream, "Simply Screens Config");
         }
@@ -46,5 +55,9 @@ public class Config {
         } catch (NumberFormatException e) {
             return defaultValue;
         }
+    }
+
+    private static boolean getBoolean(String key, boolean defaultValue) {
+        return Boolean.parseBoolean(properties.getProperty(key, String.valueOf(defaultValue)));
     }
 }

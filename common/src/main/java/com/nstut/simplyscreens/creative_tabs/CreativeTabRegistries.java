@@ -13,7 +13,7 @@ public class CreativeTabRegistries {
     public static final DeferredRegister<CreativeModeTab> CREATIVE_TABS = DeferredRegister.create(SimplyScreens.MOD_ID, Registries.CREATIVE_MODE_TAB);
 
     public static final RegistrySupplier<CreativeModeTab> CREATIVE_TAB = CREATIVE_TABS.register("tab", () -> CreativeModeTab.builder(CreativeModeTab.Row.TOP, 0)
-            .title(Component.translatable("itemGroup." + SimplyScreens.MOD_ID + ".tab"))
+            .title(Component.translatable("itemGroup." + SimplyScreens.MOD_ID))
             .icon(() -> new ItemStack(ItemRegistries.SCREEN.get()))
             .displayItems((params, output) -> ItemRegistries.ITEM_LIST.forEach(item -> output.accept(item.get())))
             .build()

@@ -1,6 +1,7 @@
 package com.nstut.simplyscreens.client.screens;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.nstut.simplyscreens.Config;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simplyscreens.client.gui.widgets.ImageListWidget;
@@ -96,6 +97,7 @@ public class ImageLoadScreen extends Screen {
                 .pos(guiLeft + 8, guiTop + 162)
                 .size(150, 20)
                 .build();
+        uploadFromComputerButton.visible = !Config.DISABLE_UPLOAD;
         addRenderableWidget(uploadFromComputerButton);
 
         setInitialFocus(searchBar);
@@ -127,6 +129,12 @@ public class ImageLoadScreen extends Screen {
                 try {
                     Path path = Paths.get(filePath);
                     byte[] data = java.nio.file.Files.readAllBytes(path);
+
+                    if (data.length > Config.MAX_UPLOAD_SIZE) {
+                        TinyFileDialogs.tinyfd_messageBox("Upload Error", "File size exceeds the maximum allowed size of " + (Config.MAX_UPLOAD_SIZE / 1024 / 1024) + "MB.", "ok", "error", true);
+                        return;
+                    }
+
                     String fileName = path.getFileName().toString();
 
                     UUID transactionId = UUID.randomUUID();
