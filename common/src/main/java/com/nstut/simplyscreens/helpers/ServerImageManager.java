@@ -13,13 +13,65 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import com.nstut.simplyscreens.network.PacketRegistries;
+import com.nstut.simplyscreens.network.UpdateImageListS2CPacket;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerPlayer;
+
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public class ServerImageManager {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Map<UUID, byte[][]> CHUNK_MAP = new ConcurrentHashMap<>();
+    private static final Map<UUID, String> FILENAME_MAP = new ConcurrentHashMap<>();
+
+    public static void handleImageChunk(ServerPlayer player, BlockPos blockPos, UUID transactionId, int chunkIndex, int totalChunks, byte[] data, String fileName) {
+        CHUNK_MAP.computeIfAbsent(transactionId, k -> new byte[totalChunks][])[chunkIndex] = data;
+        if (fileName != null) {
+            FILENAME_MAP.put(transactionId, fileName);
+        }
+
+        boolean allChunksReceived = true;
+        for (int i = 0; i < totalChunks; i++) {
+            if (CHUNK_MAP.get(transactionId)[i] == null) {
+                allChunksReceived = false;
+                break;
+            }
+        }
+
+        if (allChunksReceived) {
+            try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+                for (int i = 0; i < totalChunks; i++) {
+                    outputStream.write(CHUNK_MAP.get(transactionId)[i]);
+                }
+                byte[] imageData = outputStream.toByteArray();
+                String originalName = FILENAME_MAP.get(transactionId);
+
+                UUID imageId = saveImage(player.getServer(), originalName, imageData, null);
+                if (imageId != null) {
+                    player.getServer().execute(() -> {
+                        if (player.level().getBlockEntity(blockPos) instanceof com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity screen) {
+                            screen.setImageId(imageId);
+                        }
+                    });
+
+                    List<ImageMetadata> images = getImageList(player.getServer());
+                    PacketRegistries.CHANNEL.sendToPlayer(player, new UpdateImageListS2CPacket(images));
+                }
+            } catch (IOException e) {
+                SimplyScreens.LOGGER.error("Failed to reassemble image from chunks", e);
+            } finally {
+                CHUNK_MAP.remove(transactionId);
+                FILENAME_MAP.remove(transactionId);
+            }
+        }
+    }
 
     public static UUID saveImage(MinecraftServer server, String originalName, byte[] data, String contentType) {
         try {

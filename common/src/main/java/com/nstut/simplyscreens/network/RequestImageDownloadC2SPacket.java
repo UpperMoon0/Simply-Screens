@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 public class RequestImageDownloadC2SPacket implements IPacket {
+    private static final int CHUNK_SIZE = 1024 * 30; // 30KB
     private static final Set<UUID> loggedWarnings = ConcurrentHashMap.newKeySet();
     private final UUID imageId;
 
@@ -36,7 +37,15 @@ public class RequestImageDownloadC2SPacket implements IPacket {
             byte[] imageData = ServerImageManager.getImageData(player.getServer(), imageId);
 
             if (imageData != null && metadata != null) {
-                PacketRegistries.CHANNEL.sendToPlayer(player, new ImageDownloadS2CPacket(imageId, metadata.getExtension(), imageData));
+                int totalChunks = (int) Math.ceil((double) imageData.length / CHUNK_SIZE);
+                for (int i = 0; i < totalChunks; i++) {
+                    int start = i * CHUNK_SIZE;
+                    int end = Math.min(imageData.length, start + CHUNK_SIZE);
+                    byte[] chunk = new byte[end - start];
+                    System.arraycopy(imageData, start, chunk, 0, chunk.length);
+
+                    PacketRegistries.CHANNEL.sendToPlayer(player, new ImageDownloadChunkS2CPacket(imageId, i, totalChunks, chunk, i == 0 ? metadata.getExtension() : null));
+                }
             } else {
                 if (loggedWarnings.add(imageId)) {
                     SimplyScreens.LOGGER.warn("Player {} requested non-existent image {}. This warning will not be shown again.", player.getName().getString(), imageId);

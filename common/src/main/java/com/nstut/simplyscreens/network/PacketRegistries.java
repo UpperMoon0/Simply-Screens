@@ -27,11 +27,6 @@ public class PacketRegistries {
                 (packet, context) -> packet.handle(context)
         );
 
-        CHANNEL.register(RequestImageUploadC2SPacket.class,
-                RequestImageUploadC2SPacket::write,
-                RequestImageUploadC2SPacket::read,
-                RequestImageUploadC2SPacket::apply
-        );
 
         CHANNEL.register(RequestImageDownloadC2SPacket.class,
                 RequestImageDownloadC2SPacket::write,
@@ -39,11 +34,6 @@ public class PacketRegistries {
                 (packet, context) -> packet.handle(context)
         );
 
-        CHANNEL.register(ImageDownloadS2CPacket.class,
-                ImageDownloadS2CPacket::write,
-                ImageDownloadS2CPacket::new,
-                (packet, context) -> packet.handle(context)
-        );
 
         CHANNEL.register(RequestImageListC2SPacket.class,
                 RequestImageListC2SPacket::write,
@@ -57,10 +47,17 @@ public class PacketRegistries {
                 (packet, context) -> packet.handle(context)
         );
 
-        CHANNEL.register(UploadImageC2SPacket.class,
-                UploadImageC2SPacket::write,
-                UploadImageC2SPacket::read,
-                UploadImageC2SPacket::apply
+
+        CHANNEL.register(UploadImageChunkC2SPacket.class,
+                UploadImageChunkC2SPacket::write,
+                UploadImageChunkC2SPacket::read,
+                UploadImageChunkC2SPacket::apply
+        );
+
+        CHANNEL.register(ImageDownloadChunkS2CPacket.class,
+                ImageDownloadChunkS2CPacket::write,
+                ImageDownloadChunkS2CPacket::new,
+                (packet, context) -> packet.handle(context)
         );
     }
 }

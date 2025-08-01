@@ -5,6 +5,7 @@ import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simplyscreens.client.gui.widgets.ImageListWidget;
 import com.nstut.simplyscreens.network.PacketRegistries;
+import com.nstut.simplyscreens.network.UploadImageChunkC2SPacket;
 import com.nstut.simplyscreens.network.UpdateScreenAspectRatioC2SPacket;
 import com.nstut.simplyscreens.network.UpdateScreenSelectedImageC2SPacket;
 import net.minecraft.client.gui.components.Button;
@@ -23,8 +24,10 @@ import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.UUID;
 
 public class ImageLoadScreen extends Screen {
+    private static final int CHUNK_SIZE = 1024 * 30; // 30KB
     private static final ResourceLocation BACKGROUND_TEXTURE = new ResourceLocation(SimplyScreens.MOD_ID, "textures/gui/screen.png");
 
     private static final int SCREEN_WIDTH = 162;
@@ -125,7 +128,18 @@ public class ImageLoadScreen extends Screen {
                     Path path = Paths.get(filePath);
                     byte[] data = java.nio.file.Files.readAllBytes(path);
                     String fileName = path.getFileName().toString();
-                    PacketRegistries.CHANNEL.sendToServer(new com.nstut.simplyscreens.network.UploadImageC2SPacket(blockEntityPos, fileName, data));
+
+                    UUID transactionId = UUID.randomUUID();
+                    int totalChunks = (int) Math.ceil((double) data.length / CHUNK_SIZE);
+
+                    for (int i = 0; i < totalChunks; i++) {
+                        int start = i * CHUNK_SIZE;
+                        int end = Math.min(data.length, start + CHUNK_SIZE);
+                        byte[] chunk = new byte[end - start];
+                        System.arraycopy(data, start, chunk, 0, chunk.length);
+
+                        PacketRegistries.CHANNEL.sendToServer(new UploadImageChunkC2SPacket(blockEntityPos, transactionId, i, totalChunks, chunk, i == 0 ? fileName : null));
+                    }
                     imageListWidget.refresh();
                 } catch (java.io.IOException e) {
                     SimplyScreens.LOGGER.error("Failed to read image file", e);
