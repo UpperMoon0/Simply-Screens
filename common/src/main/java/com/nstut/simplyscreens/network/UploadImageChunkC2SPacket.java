@@ -2,7 +2,6 @@ package com.nstut.simplyscreens.network;
 
 import com.nstut.simplyscreens.helpers.ServerImageManager;
 import dev.architectury.networking.NetworkManager;
-import io.netty.buffer.Unpooled;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;

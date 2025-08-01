@@ -1,8 +1,6 @@
 package com.nstut.simplyscreens.network;
 
 import com.nstut.simplyscreens.SimplyScreens;
-import com.nstut.simplyscreens.helpers.ImageMetadata;
-import com.nstut.simplyscreens.helpers.ServerImageManager;
 import com.nstut.simplyscreens.helpers.ServerImageManager;
 import dev.architectury.networking.NetworkManager;
 import net.minecraft.network.FriendlyByteBuf;

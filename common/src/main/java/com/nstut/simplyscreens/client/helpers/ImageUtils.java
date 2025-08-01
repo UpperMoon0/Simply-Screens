@@ -1,6 +1,5 @@
 package com.nstut.simplyscreens.client.helpers;
 
-import com.google.common.hash.Hashing;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.nstut.simplyscreens.SimplyScreens;
 import net.minecraft.client.Minecraft;
@@ -13,7 +12,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 
 public class ImageUtils {
 

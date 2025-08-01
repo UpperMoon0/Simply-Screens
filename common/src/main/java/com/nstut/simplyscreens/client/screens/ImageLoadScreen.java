@@ -1,6 +1,5 @@
 package com.nstut.simplyscreens.client.screens;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.nstut.simplyscreens.Config;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
