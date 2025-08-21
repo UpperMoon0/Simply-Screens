@@ -6,6 +6,9 @@ import dev.architectury.registry.registries.DeferredRegister;
 import dev.architectury.registry.registries.RegistrySupplier;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.entity.BlockEntityType.Builder;
+
+import java.util.function.Supplier;
 
 public class BlockEntityRegistries {
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =
@@ -13,7 +16,5 @@ public class BlockEntityRegistries {
 
     public static final RegistrySupplier<BlockEntityType<ScreenBlockEntity>> SCREEN =
             BLOCK_ENTITIES.register("screen", () ->
-                    BlockEntityType.Builder.of(ScreenBlockEntity::new, BlockRegistries.SCREEN.get())
-                            .build(null));
-
+                    Builder.of(ScreenBlockEntity::new, BlockRegistries.SCREEN.get()).build(null));
 }

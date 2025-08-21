@@ -6,7 +6,6 @@ import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simplyscreens.client.gui.widgets.ImageListWidget;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import com.nstut.simplyscreens.network.UploadImageChunkC2SPacket;
-import com.nstut.simplyscreens.network.UpdateScreenAspectRatioC2SPacket;
 import com.nstut.simplyscreens.network.UpdateScreenSelectedImageC2SPacket;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
@@ -68,21 +67,10 @@ public class ImageLoadScreen extends Screen {
         imageListWidget = new ImageListWidget(guiLeft + 8, guiTop + 47, 145, 60, Component.literal(""), this::onImageSelected, initialLocalHash);
         addRenderableWidget(imageListWidget);
 
-        maintainAspectCheckbox = new Checkbox(guiLeft + 8, guiTop + 112, 145, 20, Component.literal("Maintain Aspect Ratio"), this.initialMaintainAspectRatio) {
-            @Override
-            public void onPress() {
-                super.onPress();
-                if (minecraft != null && minecraft.level != null) {
-                    BlockEntity blockEntity = minecraft.level.getBlockEntity(blockEntityPos);
-                    if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
-                        ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
-                        if (anchor != null) {
-                            PacketRegistries.CHANNEL.sendToServer(new UpdateScreenAspectRatioC2SPacket(anchor.getBlockPos(), this.selected()));
-                        }
-                    }
-                }
-            }
-        };
+        maintainAspectCheckbox = Checkbox.builder(Component.literal("Maintain Aspect Ratio"), this.font)
+                .pos(guiLeft + 8, guiTop + 112)
+                .selected(this.initialMaintainAspectRatio)
+                .build();
         addRenderableWidget(maintainAspectCheckbox);
 
         selectButton = Button.builder(Component.literal("Select"), button -> onSelect())
@@ -158,18 +146,16 @@ public class ImageLoadScreen extends Screen {
 
     @Override
     public void render(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        this.renderBackground(guiGraphics);
+        super.render(guiGraphics, mouseX, mouseY, partialTick);
         int guiLeft = (this.width - SCREEN_WIDTH) / 2;
         int guiTop = (this.height - SCREEN_HEIGHT) / 2;
         guiGraphics.blit(BACKGROUND_TEXTURE, guiLeft, guiTop, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
         guiGraphics.drawString(this.font, this.title, (this.width - this.font.width(this.title)) / 2, guiTop + 8, 0x404040, false);
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
     }
 
     @Override
     public void tick() {
         super.tick();
-        searchBar.tick();
         imageListWidget.tick();
     }
 

@@ -7,6 +7,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -34,7 +35,7 @@ public class ScreenBlock extends Block implements EntityBlock {
     public static final int STATE_ERROR = 2;
 
     public ScreenBlock() {
-        super(BlockBehaviour.Properties.copy(Blocks.IRON_BLOCK).noOcclusion());
+        super(BlockBehaviour.Properties.of().mapColor(MapColor.METAL).noOcclusion());
         this.registerDefaultState(this.stateDefinition.any()
                 .setValue(FACING, Direction.NORTH)
                 .setValue(STATE, STATE_ANCHOR));

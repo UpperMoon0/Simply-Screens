@@ -177,11 +177,11 @@ public class ImageListWidget extends AbstractWidget {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         int itemsPerRow = Math.max(1, (this.width - PADDING) / (ITEM_SIZE + PADDING));
         int contentHeight = ((filteredImageFiles.size() + itemsPerRow - 1) / itemsPerRow) * (ITEM_HEIGHT + PADDING);
         int maxScroll = Math.max(0, contentHeight - this.height);
-        scrollAmount = Mth.clamp(scrollAmount - delta * (ITEM_HEIGHT + PADDING), 0, maxScroll);
+        scrollAmount = Mth.clamp(scrollAmount - scrollY * 10, 0, maxScroll);
         return true;
     }
 
