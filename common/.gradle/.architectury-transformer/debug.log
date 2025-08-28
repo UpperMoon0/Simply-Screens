@@ -878,3 +878,756 @@
 [Architectury Transformer DEBUG] Closed File Systems for D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-0.7.2-transformProductionNeoForge.jar
 [Architectury Transformer] Transformed jar with 5 transformer(s) in 3.262 s
 [Architectury Transformer DEBUG] Closed File Systems for D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-0.7.2.jar
+[Architectury Transformer DEBUG] 
+[Architectury Transformer DEBUG] ============================
+[Architectury Transformer DEBUG] Transforming from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-0.7.4-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-0.7.4-transformProductionFabric.jar
+[Architectury Transformer DEBUG] ============================
+[Architectury Transformer DEBUG] 
+[Architectury Transformer DEBUG] Transforming 5 transformer(s) from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-0.7.4-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-0.7.4-transformProductionFabric.jar: 
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapMixinVariables@6876272b
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformExpectPlatform@4882dfcd
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapInjectables@749e287f
+[Architectury Transformer DEBUG]  - AddRefmapName(enabled=() -> kotlin.Boolean)
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformPlatformOnly@32743f51
+[Architectury Transformer DEBUG] Transforming from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-0.7.4-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-0.7.4-transformProductionFabric.jar with 5 transformer(s) on dev.architectury.transformer.handler.SimpleTransformerHandler
+[Architectury Transformer DEBUG] Found class transformer
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/SimplyScreens with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UploadImageChunkC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenWithCachedImageS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenSelectedImageC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenAspectRatioC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateImageListS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/RequestImageListC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/RequestImageDownloadC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/PacketRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/IPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/ImageDownloadChunkS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/ClientPacketHandler with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/items/ItemRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ServerImageManager with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ImageMetadata with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ClientImageManager with maxs=true frames=true
+[Architectury Transformer DEBUG] Provided 58 classpath jar(s):
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\dev.architectury\architectury-injectables\1.0.10\62db2a366d662606d1b23ad02ccc3212ed37ec3\architectury-injectables-1.0.10.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.fabricmc\fabric-loader\0.17.2\647622ac4163aad5ed5f79ccb532e31225562aa\fabric-loader-0.17.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.jetbrains\annotations\25.0.0\c1e6b966db352094ac3bf7f88f3bdef332fe43f0\annotations-25.0.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.projectlombok\lombok\1.18.34\ec547ef414ab1d2c040118fb9c1c265ada63af14\lombok-1.18.34.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.google.code.gson\gson\2.10.1\b3add478d4382b78ea20b1671390a858002feb6c\gson-2.10.1.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm\9.8\dc19ecb3f7889b7860697215cae99c0f9b6f6b4b\asm-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-analysis\9.8\b9747a320844b6cb1eacd90d8ecfd260a16c01d3\asm-analysis-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-commons\9.8\36e4d212970388e5bd2c5180292012502df461bb\asm-commons-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-tree\9.8\18419ca5b77a2f81097c741e7872e6ab8d2f40d\asm-tree-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-util\9.8\395f1c1f035258511f27bc9b2583d76e4b143f59\asm-util-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.fabricmc\sponge-mixin\0.16.3+mixin.0.8.7\3e535042688d1265447e52ad86950b7d9678a5fa\sponge-mixin-0.16.3+mixin.0.8.7.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.github.llamalad7\mixinextras-fabric\0.5.0\91a83dfb7abd320f6236bd1fcf5c0ff143d59a13\mixinextras-fabric-0.5.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.github.oshi\oshi-core\6.4.5\943ba26de047eb6b28fff47f5ee939a34eb5fc8e\oshi-core-6.4.5.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.google.guava\failureaccess\1.0.1\1dcf1de382a0bf95a3d8b0849546c88bac1292c9\failureaccess-1.0.1.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.google.guava\guava\32.1.2-jre\5e64ec7e056456bef3a4bc4c6fdaef71e8ab6318\guava-32.1.2-jre.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.ibm.icu\icu4j\73.2\61ad4ef7f9131fcf6d25c34b817f90d6da06c9e9\icu4j-73.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\authlib\6.0.52\65085e2eb921c4a3ebdde3d248637f1776e6d80d\authlib-6.0.52.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\blocklist\1.0.10\5c685c5ffa94c4cd39496c7184c1d122e515ecef\blocklist-1.0.10.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\brigadier\1.2.9\73e324f2ee541493a5179abf367237faa782ed21\brigadier-1.2.9.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\datafixerupper\6.0.8\3ba4a30557a9b057760af4011f909ba619fc5125\datafixerupper-6.0.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\logging\1.1.1\832b8e6674a9b325a5175a3a6267dfaf34c85139\logging-1.1.1.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\patchy\2.2.10\da05971b07cbb379d002cf7eaec6a2048211fefc\patchy-2.2.10.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\text2speech\1.17.9\3cad216e3a7f0c19b4b394388bc9ffc446f13b14\text2speech-1.17.9.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\commons-codec\commons-codec\1.16.0\4e3eb3d79888d76b54e28b350915b5dc3919c9de\commons-codec-1.16.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\commons-io\commons-io\2.13.0\8bb2bc9b4df17e2411533a0708a69f983bf5e83b\commons-io-2.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\commons-logging\commons-logging\1.2\4bfc12adfe4842bf07b657f0369c4cb522955686\commons-logging-1.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-buffer\4.1.97.Final\f8f3d8644afa5e6e1a40a3a6aeb9d9aa970ecb4f\netty-buffer-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-codec\4.1.97.Final\384ba4d75670befbedb45c4d3b497a93639c206d\netty-codec-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-common\4.1.97.Final\7cceacaf11df8dc63f23d0fb58e9d4640fc88404\netty-common-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-handler\4.1.97.Final\abb86c6906bf512bf2b797a41cd7d2e8d3cd7c36\netty-handler-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-resolver\4.1.97.Final\cec8348108dc76c47cf87c669d514be52c922144\netty-resolver-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-classes-epoll\4.1.97.Final\795da37ded759e862457a82d9d92c4d39ce8ecee\netty-transport-classes-epoll-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-unix-common\4.1.97.Final\d469d84265ab70095b01b40886cabdd433b6e664\netty-transport-native-unix-common-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport\4.1.97.Final\f37380d23c9bb079bc702910833b2fd532c9abd0\netty-transport-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\it.unimi.dsi\fastutil\8.5.12\c24946d46824bd528054bface3231d2ecb7e95e8\fastutil-8.5.12.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.java.dev.jna\jna-platform\5.13.0\88e9a306715e9379f3122415ef4ae759a352640d\jna-platform-5.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.java.dev.jna\jna\5.13.0\1200e7ebeedbe0d10062093f32925a912020e747\jna-5.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.sf.jopt-simple\jopt-simple\5.0.4\4fdac2fbe92dfad86aa6e9301736f6b4342a3f5c\jopt-simple-5.0.4.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.commons\commons-compress\1.22\691a8b4e6cf4248c3bc72c8b719337d5cb7359fa\commons-compress-1.22.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.commons\commons-lang3\3.13.0\b7263237aa89c1f99b327197c41d0669707a462e\commons-lang3-3.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.httpcomponents\httpclient\4.5.13\e5f6cae5ca7ecaac1ec2827a9e2d65ae2869cada\httpclient-4.5.13.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.httpcomponents\httpcore\4.4.16\51cf043c87253c9f58b539c9f7e44c8894223850\httpcore-4.4.16.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-api\2.19.0\ea1b37f38c327596b216542bc636cfdc0b8036fa\log4j-api-2.19.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-core\2.19.0\3b6eeb4de4c49c0fe38a4ee27188ff5fee44d0bb\log4j-core-2.19.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-slf4j2-impl\2.19.0\5c04bfdd63ce9dceb2e284b81e96b6a70010ee10\log4j-slf4j2-impl-2.19.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.joml\joml\1.10.5\22566d58af70ad3d72308bab63b8339906deb649\joml-1.10.5.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-glfw\3.3.2\757920418805fb90bfebb3d46b1d9e7669fca2eb\lwjgl-glfw-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-jemalloc\3.3.2\877e17e39ebcd58a9c956dc3b5b777813de0873a\lwjgl-jemalloc-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-openal\3.3.2\ae5357ed6d934546d3533993ea84c0cfb75eed95\lwjgl-openal-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-opengl\3.3.2\ee8e95be0b438602038bc1f02dc5e3d011b1b216\lwjgl-opengl-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-stb\3.3.2\a2550795014d622b686e9caac50b14baa87d2c70\lwjgl-stb-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-tinyfd\3.3.2\9f65c248dd77934105274fcf8351abb75b34327c\lwjgl-tinyfd-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl\3.3.2\4421d94af68e35dcaa31737a6fc59136a1e61b94\lwjgl-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.slf4j\slf4j-api\2.0.7\41eb7184ea9d556f23e18b5cb99cad1f8581fc00\slf4j-api-2.0.7.jar
+[Architectury Transformer DEBUG]  - D:\Workspaces\MC Mods\Output Devices\Simply-Screens\.gradle\loom-cache\minecraftMaven\net\minecraft\minecraft-merged-6ce3c7e87b\1.20.4-loom.mappings.1_20_4.layered+hash.40359-v2\minecraft-merged-6ce3c7e87b-1.20.4-loom.mappings.1_20_4.layered+hash.40359-v2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.97.Final\54188f271e388e7f313aea995e82f58ce2cdb809\netty-transport-native-epoll-4.1.97.Final-linux-x86_64.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.97.Final\5514744c588190ffda076b35a9b8c9f24946a960\netty-transport-native-epoll-4.1.97.Final-linux-aarch_64.jar
+[Architectury Transformer DEBUG]  - D:\Workspaces\MC Mods\Output Devices\Simply-Screens\.gradle\loom-cache\remapped_mods\loom_mappings_1_20_4_layered_hash_40359_v2\dev\architectury\architectury\11.1.17\architectury-11.1.17.jar
+[Architectury Transformer] Read classpath in 4.010 s
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/creative_tabs/CreativeTabRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/Config with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/screens/ImageLoadScreen with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer$1 with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/helpers/ImageUtils with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/gui/widgets/ImageListWidget with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/gui/widgets/ImageListWidget$ImageEntry with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/ScreenBlock with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity$1 with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/BlockEntityRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/BlockRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Closed File Systems for D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-0.7.4-transformProductionFabric.jar
+[Architectury Transformer] Transformed jar with 5 transformer(s) in 4.123 s
+[Architectury Transformer DEBUG] 
+[Architectury Transformer DEBUG] ============================
+[Architectury Transformer DEBUG] Transforming from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-0.7.4-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-0.7.4-transformProductionNeoForge.jar
+[Architectury Transformer DEBUG] ============================
+[Architectury Transformer DEBUG] 
+[Architectury Transformer DEBUG] Transforming 5 transformer(s) from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-0.7.4-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-0.7.4-transformProductionNeoForge.jar: 
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformExpectPlatform@4bfd2a9
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapInjectables@672e3781
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformPlatformOnly@64d6eb9e
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformNeoForgeAnnotations@c7a9897
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformNeoForgeEnvironment@76aa292b
+[Architectury Transformer DEBUG] Transforming from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-0.7.4-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-0.7.4-transformProductionNeoForge.jar with 5 transformer(s) on dev.architectury.transformer.handler.SimpleTransformerHandler
+[Architectury Transformer DEBUG] Remapping with 1 mapping provider(s):
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformNeoForgeEnvironment$$Lambda/0x0000029a01f96d60@735156b8
+[Architectury Transformer DEBUG] Provided 58 classpath jar(s):
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\dev.architectury\architectury-injectables\1.0.10\62db2a366d662606d1b23ad02ccc3212ed37ec3\architectury-injectables-1.0.10.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.fabricmc\fabric-loader\0.17.2\647622ac4163aad5ed5f79ccb532e31225562aa\fabric-loader-0.17.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.jetbrains\annotations\25.0.0\c1e6b966db352094ac3bf7f88f3bdef332fe43f0\annotations-25.0.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.projectlombok\lombok\1.18.34\ec547ef414ab1d2c040118fb9c1c265ada63af14\lombok-1.18.34.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.google.code.gson\gson\2.10.1\b3add478d4382b78ea20b1671390a858002feb6c\gson-2.10.1.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm\9.8\dc19ecb3f7889b7860697215cae99c0f9b6f6b4b\asm-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-analysis\9.8\b9747a320844b6cb1eacd90d8ecfd260a16c01d3\asm-analysis-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-commons\9.8\36e4d212970388e5bd2c5180292012502df461bb\asm-commons-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-tree\9.8\18419ca5b77a2f81097c741e7872e6ab8d2f40d\asm-tree-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-util\9.8\395f1c1f035258511f27bc9b2583d76e4b143f59\asm-util-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.fabricmc\sponge-mixin\0.16.3+mixin.0.8.7\3e535042688d1265447e52ad86950b7d9678a5fa\sponge-mixin-0.16.3+mixin.0.8.7.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.github.llamalad7\mixinextras-fabric\0.5.0\91a83dfb7abd320f6236bd1fcf5c0ff143d59a13\mixinextras-fabric-0.5.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.github.oshi\oshi-core\6.4.5\943ba26de047eb6b28fff47f5ee939a34eb5fc8e\oshi-core-6.4.5.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.google.guava\failureaccess\1.0.1\1dcf1de382a0bf95a3d8b0849546c88bac1292c9\failureaccess-1.0.1.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.google.guava\guava\32.1.2-jre\5e64ec7e056456bef3a4bc4c6fdaef71e8ab6318\guava-32.1.2-jre.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.ibm.icu\icu4j\73.2\61ad4ef7f9131fcf6d25c34b817f90d6da06c9e9\icu4j-73.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\authlib\6.0.52\65085e2eb921c4a3ebdde3d248637f1776e6d80d\authlib-6.0.52.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\blocklist\1.0.10\5c685c5ffa94c4cd39496c7184c1d122e515ecef\blocklist-1.0.10.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\brigadier\1.2.9\73e324f2ee541493a5179abf367237faa782ed21\brigadier-1.2.9.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\datafixerupper\6.0.8\3ba4a30557a9b057760af4011f909ba619fc5125\datafixerupper-6.0.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\logging\1.1.1\832b8e6674a9b325a5175a3a6267dfaf34c85139\logging-1.1.1.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\patchy\2.2.10\da05971b07cbb379d002cf7eaec6a2048211fefc\patchy-2.2.10.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\text2speech\1.17.9\3cad216e3a7f0c19b4b394388bc9ffc446f13b14\text2speech-1.17.9.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\commons-codec\commons-codec\1.16.0\4e3eb3d79888d76b54e28b350915b5dc3919c9de\commons-codec-1.16.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\commons-io\commons-io\2.13.0\8bb2bc9b4df17e2411533a0708a69f983bf5e83b\commons-io-2.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\commons-logging\commons-logging\1.2\4bfc12adfe4842bf07b657f0369c4cb522955686\commons-logging-1.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-buffer\4.1.97.Final\f8f3d8644afa5e6e1a40a3a6aeb9d9aa970ecb4f\netty-buffer-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-codec\4.1.97.Final\384ba4d75670befbedb45c4d3b497a93639c206d\netty-codec-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-common\4.1.97.Final\7cceacaf11df8dc63f23d0fb58e9d4640fc88404\netty-common-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-handler\4.1.97.Final\abb86c6906bf512bf2b797a41cd7d2e8d3cd7c36\netty-handler-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-resolver\4.1.97.Final\cec8348108dc76c47cf87c669d514be52c922144\netty-resolver-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-classes-epoll\4.1.97.Final\795da37ded759e862457a82d9d92c4d39ce8ecee\netty-transport-classes-epoll-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-unix-common\4.1.97.Final\d469d84265ab70095b01b40886cabdd433b6e664\netty-transport-native-unix-common-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport\4.1.97.Final\f37380d23c9bb079bc702910833b2fd532c9abd0\netty-transport-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\it.unimi.dsi\fastutil\8.5.12\c24946d46824bd528054bface3231d2ecb7e95e8\fastutil-8.5.12.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.java.dev.jna\jna-platform\5.13.0\88e9a306715e9379f3122415ef4ae759a352640d\jna-platform-5.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.java.dev.jna\jna\5.13.0\1200e7ebeedbe0d10062093f32925a912020e747\jna-5.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.sf.jopt-simple\jopt-simple\5.0.4\4fdac2fbe92dfad86aa6e9301736f6b4342a3f5c\jopt-simple-5.0.4.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.commons\commons-compress\1.22\691a8b4e6cf4248c3bc72c8b719337d5cb7359fa\commons-compress-1.22.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.commons\commons-lang3\3.13.0\b7263237aa89c1f99b327197c41d0669707a462e\commons-lang3-3.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.httpcomponents\httpclient\4.5.13\e5f6cae5ca7ecaac1ec2827a9e2d65ae2869cada\httpclient-4.5.13.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.httpcomponents\httpcore\4.4.16\51cf043c87253c9f58b539c9f7e44c8894223850\httpcore-4.4.16.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-api\2.19.0\ea1b37f38c327596b216542bc636cfdc0b8036fa\log4j-api-2.19.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-core\2.19.0\3b6eeb4de4c49c0fe38a4ee27188ff5fee44d0bb\log4j-core-2.19.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-slf4j2-impl\2.19.0\5c04bfdd63ce9dceb2e284b81e96b6a70010ee10\log4j-slf4j2-impl-2.19.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.joml\joml\1.10.5\22566d58af70ad3d72308bab63b8339906deb649\joml-1.10.5.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-glfw\3.3.2\757920418805fb90bfebb3d46b1d9e7669fca2eb\lwjgl-glfw-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-jemalloc\3.3.2\877e17e39ebcd58a9c956dc3b5b777813de0873a\lwjgl-jemalloc-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-openal\3.3.2\ae5357ed6d934546d3533993ea84c0cfb75eed95\lwjgl-openal-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-opengl\3.3.2\ee8e95be0b438602038bc1f02dc5e3d011b1b216\lwjgl-opengl-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-stb\3.3.2\a2550795014d622b686e9caac50b14baa87d2c70\lwjgl-stb-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-tinyfd\3.3.2\9f65c248dd77934105274fcf8351abb75b34327c\lwjgl-tinyfd-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl\3.3.2\4421d94af68e35dcaa31737a6fc59136a1e61b94\lwjgl-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.slf4j\slf4j-api\2.0.7\41eb7184ea9d556f23e18b5cb99cad1f8581fc00\slf4j-api-2.0.7.jar
+[Architectury Transformer DEBUG]  - D:\Workspaces\MC Mods\Output Devices\Simply-Screens\.gradle\loom-cache\minecraftMaven\net\minecraft\minecraft-merged-6ce3c7e87b\1.20.4-loom.mappings.1_20_4.layered+hash.40359-v2\minecraft-merged-6ce3c7e87b-1.20.4-loom.mappings.1_20_4.layered+hash.40359-v2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.97.Final\54188f271e388e7f313aea995e82f58ce2cdb809\netty-transport-native-epoll-4.1.97.Final-linux-x86_64.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.97.Final\5514744c588190ffda076b35a9b8c9f24946a960\netty-transport-native-epoll-4.1.97.Final-linux-aarch_64.jar
+[Architectury Transformer DEBUG]  - D:\Workspaces\MC Mods\Output Devices\Simply-Screens\.gradle\loom-cache\remapped_mods\loom_mappings_1_20_4_layered_hash_40359_v2\dev\architectury\architectury\11.1.17\architectury-11.1.17.jar
+[Architectury Transformer] Read classpath in 3.326 s
+[Architectury Transformer DEBUG] Remapping Classes:
+[Architectury Transformer DEBUG] net/fabricmc/api/EnvType -> net/neoforged/api/distmarker/Dist
+[Architectury Transformer DEBUG] net/fabricmc/api/Environment -> net/neoforged/api/distmarker/OnlyIn
+[Architectury Transformer DEBUG] Found class transformer
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/Config with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/SimplyScreens with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/RequestImageListC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateImageListS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenWithCachedImageS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenSelectedImageC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/IPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/RequestImageDownloadC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenAspectRatioC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/ImageDownloadChunkS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UploadImageChunkC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/ClientPacketHandler with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/PacketRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/items/ItemRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ClientImageManager with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ImageMetadata with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ServerImageManager with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/creative_tabs/CreativeTabRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/screens/ImageLoadScreen with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer$1 with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/helpers/ImageUtils with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/gui/widgets/ImageListWidget$ImageEntry with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/gui/widgets/ImageListWidget with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/BlockRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/ScreenBlock with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/BlockEntityRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity$1 with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity with maxs=true frames=true
+[Architectury Transformer DEBUG] Closed File Systems for D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-0.7.4-transformProductionNeoForge.jar
+[Architectury Transformer] Transformed jar with 5 transformer(s) in 3.928 s
+[Architectury Transformer DEBUG] Closed File Systems for D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-0.7.4.jar
+[Architectury Transformer DEBUG] 
+[Architectury Transformer DEBUG] ============================
+[Architectury Transformer DEBUG] Transforming from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-0.7.4_mc1.20.4-0.7.4-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-0.7.4_mc1.20.4-0.7.4-transformProductionFabric.jar
+[Architectury Transformer DEBUG] ============================
+[Architectury Transformer DEBUG] 
+[Architectury Transformer DEBUG] Transforming 5 transformer(s) from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-0.7.4_mc1.20.4-0.7.4-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-0.7.4_mc1.20.4-0.7.4-transformProductionFabric.jar: 
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapMixinVariables@68dc9c1e
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformExpectPlatform@3690348
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapInjectables@2fcfe70f
+[Architectury Transformer DEBUG]  - AddRefmapName(enabled=() -> kotlin.Boolean)
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformPlatformOnly@6e7442cd
+[Architectury Transformer DEBUG] Transforming from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-0.7.4_mc1.20.4-0.7.4-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-0.7.4_mc1.20.4-0.7.4-transformProductionFabric.jar with 5 transformer(s) on dev.architectury.transformer.handler.SimpleTransformerHandler
+[Architectury Transformer DEBUG] Found class transformer
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/SimplyScreens with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UploadImageChunkC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenWithCachedImageS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenSelectedImageC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenAspectRatioC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateImageListS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/RequestImageListC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/RequestImageDownloadC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/PacketRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/IPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/ImageDownloadChunkS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/ClientPacketHandler with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/items/ItemRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ServerImageManager with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ImageMetadata with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ClientImageManager with maxs=true frames=true
+[Architectury Transformer DEBUG] Provided 58 classpath jar(s):
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\dev.architectury\architectury-injectables\1.0.10\62db2a366d662606d1b23ad02ccc3212ed37ec3\architectury-injectables-1.0.10.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.fabricmc\fabric-loader\0.17.2\647622ac4163aad5ed5f79ccb532e31225562aa\fabric-loader-0.17.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.jetbrains\annotations\25.0.0\c1e6b966db352094ac3bf7f88f3bdef332fe43f0\annotations-25.0.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.projectlombok\lombok\1.18.34\ec547ef414ab1d2c040118fb9c1c265ada63af14\lombok-1.18.34.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.google.code.gson\gson\2.10.1\b3add478d4382b78ea20b1671390a858002feb6c\gson-2.10.1.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm\9.8\dc19ecb3f7889b7860697215cae99c0f9b6f6b4b\asm-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-analysis\9.8\b9747a320844b6cb1eacd90d8ecfd260a16c01d3\asm-analysis-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-commons\9.8\36e4d212970388e5bd2c5180292012502df461bb\asm-commons-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-tree\9.8\18419ca5b77a2f81097c741e7872e6ab8d2f40d\asm-tree-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-util\9.8\395f1c1f035258511f27bc9b2583d76e4b143f59\asm-util-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.fabricmc\sponge-mixin\0.16.3+mixin.0.8.7\3e535042688d1265447e52ad86950b7d9678a5fa\sponge-mixin-0.16.3+mixin.0.8.7.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.github.llamalad7\mixinextras-fabric\0.5.0\91a83dfb7abd320f6236bd1fcf5c0ff143d59a13\mixinextras-fabric-0.5.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.github.oshi\oshi-core\6.4.5\943ba26de047eb6b28fff47f5ee939a34eb5fc8e\oshi-core-6.4.5.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.google.guava\failureaccess\1.0.1\1dcf1de382a0bf95a3d8b0849546c88bac1292c9\failureaccess-1.0.1.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.google.guava\guava\32.1.2-jre\5e64ec7e056456bef3a4bc4c6fdaef71e8ab6318\guava-32.1.2-jre.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.ibm.icu\icu4j\73.2\61ad4ef7f9131fcf6d25c34b817f90d6da06c9e9\icu4j-73.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\authlib\6.0.52\65085e2eb921c4a3ebdde3d248637f1776e6d80d\authlib-6.0.52.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\blocklist\1.0.10\5c685c5ffa94c4cd39496c7184c1d122e515ecef\blocklist-1.0.10.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\brigadier\1.2.9\73e324f2ee541493a5179abf367237faa782ed21\brigadier-1.2.9.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\datafixerupper\6.0.8\3ba4a30557a9b057760af4011f909ba619fc5125\datafixerupper-6.0.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\logging\1.1.1\832b8e6674a9b325a5175a3a6267dfaf34c85139\logging-1.1.1.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\patchy\2.2.10\da05971b07cbb379d002cf7eaec6a2048211fefc\patchy-2.2.10.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\text2speech\1.17.9\3cad216e3a7f0c19b4b394388bc9ffc446f13b14\text2speech-1.17.9.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\commons-codec\commons-codec\1.16.0\4e3eb3d79888d76b54e28b350915b5dc3919c9de\commons-codec-1.16.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\commons-io\commons-io\2.13.0\8bb2bc9b4df17e2411533a0708a69f983bf5e83b\commons-io-2.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\commons-logging\commons-logging\1.2\4bfc12adfe4842bf07b657f0369c4cb522955686\commons-logging-1.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-buffer\4.1.97.Final\f8f3d8644afa5e6e1a40a3a6aeb9d9aa970ecb4f\netty-buffer-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-codec\4.1.97.Final\384ba4d75670befbedb45c4d3b497a93639c206d\netty-codec-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-common\4.1.97.Final\7cceacaf11df8dc63f23d0fb58e9d4640fc88404\netty-common-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-handler\4.1.97.Final\abb86c6906bf512bf2b797a41cd7d2e8d3cd7c36\netty-handler-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-resolver\4.1.97.Final\cec8348108dc76c47cf87c669d514be52c922144\netty-resolver-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-classes-epoll\4.1.97.Final\795da37ded759e862457a82d9d92c4d39ce8ecee\netty-transport-classes-epoll-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-unix-common\4.1.97.Final\d469d84265ab70095b01b40886cabdd433b6e664\netty-transport-native-unix-common-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport\4.1.97.Final\f37380d23c9bb079bc702910833b2fd532c9abd0\netty-transport-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\it.unimi.dsi\fastutil\8.5.12\c24946d46824bd528054bface3231d2ecb7e95e8\fastutil-8.5.12.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.java.dev.jna\jna-platform\5.13.0\88e9a306715e9379f3122415ef4ae759a352640d\jna-platform-5.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.java.dev.jna\jna\5.13.0\1200e7ebeedbe0d10062093f32925a912020e747\jna-5.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.sf.jopt-simple\jopt-simple\5.0.4\4fdac2fbe92dfad86aa6e9301736f6b4342a3f5c\jopt-simple-5.0.4.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.commons\commons-compress\1.22\691a8b4e6cf4248c3bc72c8b719337d5cb7359fa\commons-compress-1.22.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.commons\commons-lang3\3.13.0\b7263237aa89c1f99b327197c41d0669707a462e\commons-lang3-3.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.httpcomponents\httpclient\4.5.13\e5f6cae5ca7ecaac1ec2827a9e2d65ae2869cada\httpclient-4.5.13.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.httpcomponents\httpcore\4.4.16\51cf043c87253c9f58b539c9f7e44c8894223850\httpcore-4.4.16.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-api\2.19.0\ea1b37f38c327596b216542bc636cfdc0b8036fa\log4j-api-2.19.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-core\2.19.0\3b6eeb4de4c49c0fe38a4ee27188ff5fee44d0bb\log4j-core-2.19.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-slf4j2-impl\2.19.0\5c04bfdd63ce9dceb2e284b81e96b6a70010ee10\log4j-slf4j2-impl-2.19.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.joml\joml\1.10.5\22566d58af70ad3d72308bab63b8339906deb649\joml-1.10.5.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-glfw\3.3.2\757920418805fb90bfebb3d46b1d9e7669fca2eb\lwjgl-glfw-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-jemalloc\3.3.2\877e17e39ebcd58a9c956dc3b5b777813de0873a\lwjgl-jemalloc-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-openal\3.3.2\ae5357ed6d934546d3533993ea84c0cfb75eed95\lwjgl-openal-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-opengl\3.3.2\ee8e95be0b438602038bc1f02dc5e3d011b1b216\lwjgl-opengl-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-stb\3.3.2\a2550795014d622b686e9caac50b14baa87d2c70\lwjgl-stb-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-tinyfd\3.3.2\9f65c248dd77934105274fcf8351abb75b34327c\lwjgl-tinyfd-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl\3.3.2\4421d94af68e35dcaa31737a6fc59136a1e61b94\lwjgl-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.slf4j\slf4j-api\2.0.7\41eb7184ea9d556f23e18b5cb99cad1f8581fc00\slf4j-api-2.0.7.jar
+[Architectury Transformer DEBUG]  - D:\Workspaces\MC Mods\Output Devices\Simply-Screens\.gradle\loom-cache\minecraftMaven\net\minecraft\minecraft-merged-6ce3c7e87b\1.20.4-loom.mappings.1_20_4.layered+hash.40359-v2\minecraft-merged-6ce3c7e87b-1.20.4-loom.mappings.1_20_4.layered+hash.40359-v2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.97.Final\54188f271e388e7f313aea995e82f58ce2cdb809\netty-transport-native-epoll-4.1.97.Final-linux-x86_64.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.97.Final\5514744c588190ffda076b35a9b8c9f24946a960\netty-transport-native-epoll-4.1.97.Final-linux-aarch_64.jar
+[Architectury Transformer DEBUG]  - D:\Workspaces\MC Mods\Output Devices\Simply-Screens\.gradle\loom-cache\remapped_mods\loom_mappings_1_20_4_layered_hash_40359_v2\dev\architectury\architectury\11.1.17\architectury-11.1.17.jar
+[Architectury Transformer] Read classpath in 7.680 s
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/creative_tabs/CreativeTabRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/Config with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/screens/ImageLoadScreen with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer$1 with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/helpers/ImageUtils with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/gui/widgets/ImageListWidget with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/gui/widgets/ImageListWidget$ImageEntry with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/ScreenBlock with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity$1 with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/BlockEntityRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/BlockRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Closed File Systems for D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-0.7.4_mc1.20.4-0.7.4-transformProductionFabric.jar
+[Architectury Transformer] Transformed jar with 5 transformer(s) in 8.412 s
+[Architectury Transformer DEBUG] 
+[Architectury Transformer DEBUG] ============================
+[Architectury Transformer DEBUG] Transforming from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-0.7.4_mc1.20.4-0.7.4-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-0.7.4_mc1.20.4-0.7.4-transformProductionNeoForge.jar
+[Architectury Transformer DEBUG] ============================
+[Architectury Transformer DEBUG] 
+[Architectury Transformer DEBUG] Transforming 5 transformer(s) from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-0.7.4_mc1.20.4-0.7.4-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-0.7.4_mc1.20.4-0.7.4-transformProductionNeoForge.jar: 
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformExpectPlatform@421754cb
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapInjectables@734c0abc
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformPlatformOnly@55e18955
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformNeoForgeAnnotations@335a2178
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformNeoForgeEnvironment@4b139ad4
+[Architectury Transformer DEBUG] Transforming from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common-0.7.4_mc1.20.4-0.7.4-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-0.7.4_mc1.20.4-0.7.4-transformProductionNeoForge.jar with 5 transformer(s) on dev.architectury.transformer.handler.SimpleTransformerHandler
+[Architectury Transformer DEBUG] Remapping with 1 mapping provider(s):
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformNeoForgeEnvironment$$Lambda/0x0000029a01f96d60@735156b8
+[Architectury Transformer DEBUG] Provided 58 classpath jar(s):
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\dev.architectury\architectury-injectables\1.0.10\62db2a366d662606d1b23ad02ccc3212ed37ec3\architectury-injectables-1.0.10.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.fabricmc\fabric-loader\0.17.2\647622ac4163aad5ed5f79ccb532e31225562aa\fabric-loader-0.17.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.jetbrains\annotations\25.0.0\c1e6b966db352094ac3bf7f88f3bdef332fe43f0\annotations-25.0.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.projectlombok\lombok\1.18.34\ec547ef414ab1d2c040118fb9c1c265ada63af14\lombok-1.18.34.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.google.code.gson\gson\2.10.1\b3add478d4382b78ea20b1671390a858002feb6c\gson-2.10.1.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm\9.8\dc19ecb3f7889b7860697215cae99c0f9b6f6b4b\asm-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-analysis\9.8\b9747a320844b6cb1eacd90d8ecfd260a16c01d3\asm-analysis-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-commons\9.8\36e4d212970388e5bd2c5180292012502df461bb\asm-commons-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-tree\9.8\18419ca5b77a2f81097c741e7872e6ab8d2f40d\asm-tree-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-util\9.8\395f1c1f035258511f27bc9b2583d76e4b143f59\asm-util-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.fabricmc\sponge-mixin\0.16.3+mixin.0.8.7\3e535042688d1265447e52ad86950b7d9678a5fa\sponge-mixin-0.16.3+mixin.0.8.7.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.github.llamalad7\mixinextras-fabric\0.5.0\91a83dfb7abd320f6236bd1fcf5c0ff143d59a13\mixinextras-fabric-0.5.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.github.oshi\oshi-core\6.4.5\943ba26de047eb6b28fff47f5ee939a34eb5fc8e\oshi-core-6.4.5.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.google.guava\failureaccess\1.0.1\1dcf1de382a0bf95a3d8b0849546c88bac1292c9\failureaccess-1.0.1.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.google.guava\guava\32.1.2-jre\5e64ec7e056456bef3a4bc4c6fdaef71e8ab6318\guava-32.1.2-jre.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.ibm.icu\icu4j\73.2\61ad4ef7f9131fcf6d25c34b817f90d6da06c9e9\icu4j-73.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\authlib\6.0.52\65085e2eb921c4a3ebdde3d248637f1776e6d80d\authlib-6.0.52.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\blocklist\1.0.10\5c685c5ffa94c4cd39496c7184c1d122e515ecef\blocklist-1.0.10.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\brigadier\1.2.9\73e324f2ee541493a5179abf367237faa782ed21\brigadier-1.2.9.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\datafixerupper\6.0.8\3ba4a30557a9b057760af4011f909ba619fc5125\datafixerupper-6.0.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\logging\1.1.1\832b8e6674a9b325a5175a3a6267dfaf34c85139\logging-1.1.1.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\patchy\2.2.10\da05971b07cbb379d002cf7eaec6a2048211fefc\patchy-2.2.10.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\text2speech\1.17.9\3cad216e3a7f0c19b4b394388bc9ffc446f13b14\text2speech-1.17.9.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\commons-codec\commons-codec\1.16.0\4e3eb3d79888d76b54e28b350915b5dc3919c9de\commons-codec-1.16.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\commons-io\commons-io\2.13.0\8bb2bc9b4df17e2411533a0708a69f983bf5e83b\commons-io-2.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\commons-logging\commons-logging\1.2\4bfc12adfe4842bf07b657f0369c4cb522955686\commons-logging-1.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-buffer\4.1.97.Final\f8f3d8644afa5e6e1a40a3a6aeb9d9aa970ecb4f\netty-buffer-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-codec\4.1.97.Final\384ba4d75670befbedb45c4d3b497a93639c206d\netty-codec-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-common\4.1.97.Final\7cceacaf11df8dc63f23d0fb58e9d4640fc88404\netty-common-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-handler\4.1.97.Final\abb86c6906bf512bf2b797a41cd7d2e8d3cd7c36\netty-handler-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-resolver\4.1.97.Final\cec8348108dc76c47cf87c669d514be52c922144\netty-resolver-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-classes-epoll\4.1.97.Final\795da37ded759e862457a82d9d92c4d39ce8ecee\netty-transport-classes-epoll-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-unix-common\4.1.97.Final\d469d84265ab70095b01b40886cabdd433b6e664\netty-transport-native-unix-common-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport\4.1.97.Final\f37380d23c9bb079bc702910833b2fd532c9abd0\netty-transport-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\it.unimi.dsi\fastutil\8.5.12\c24946d46824bd528054bface3231d2ecb7e95e8\fastutil-8.5.12.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.java.dev.jna\jna-platform\5.13.0\88e9a306715e9379f3122415ef4ae759a352640d\jna-platform-5.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.java.dev.jna\jna\5.13.0\1200e7ebeedbe0d10062093f32925a912020e747\jna-5.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.sf.jopt-simple\jopt-simple\5.0.4\4fdac2fbe92dfad86aa6e9301736f6b4342a3f5c\jopt-simple-5.0.4.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.commons\commons-compress\1.22\691a8b4e6cf4248c3bc72c8b719337d5cb7359fa\commons-compress-1.22.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.commons\commons-lang3\3.13.0\b7263237aa89c1f99b327197c41d0669707a462e\commons-lang3-3.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.httpcomponents\httpclient\4.5.13\e5f6cae5ca7ecaac1ec2827a9e2d65ae2869cada\httpclient-4.5.13.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.httpcomponents\httpcore\4.4.16\51cf043c87253c9f58b539c9f7e44c8894223850\httpcore-4.4.16.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-api\2.19.0\ea1b37f38c327596b216542bc636cfdc0b8036fa\log4j-api-2.19.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-core\2.19.0\3b6eeb4de4c49c0fe38a4ee27188ff5fee44d0bb\log4j-core-2.19.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-slf4j2-impl\2.19.0\5c04bfdd63ce9dceb2e284b81e96b6a70010ee10\log4j-slf4j2-impl-2.19.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.joml\joml\1.10.5\22566d58af70ad3d72308bab63b8339906deb649\joml-1.10.5.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-glfw\3.3.2\757920418805fb90bfebb3d46b1d9e7669fca2eb\lwjgl-glfw-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-jemalloc\3.3.2\877e17e39ebcd58a9c956dc3b5b777813de0873a\lwjgl-jemalloc-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-openal\3.3.2\ae5357ed6d934546d3533993ea84c0cfb75eed95\lwjgl-openal-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-opengl\3.3.2\ee8e95be0b438602038bc1f02dc5e3d011b1b216\lwjgl-opengl-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-stb\3.3.2\a2550795014d622b686e9caac50b14baa87d2c70\lwjgl-stb-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-tinyfd\3.3.2\9f65c248dd77934105274fcf8351abb75b34327c\lwjgl-tinyfd-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl\3.3.2\4421d94af68e35dcaa31737a6fc59136a1e61b94\lwjgl-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.slf4j\slf4j-api\2.0.7\41eb7184ea9d556f23e18b5cb99cad1f8581fc00\slf4j-api-2.0.7.jar
+[Architectury Transformer DEBUG]  - D:\Workspaces\MC Mods\Output Devices\Simply-Screens\.gradle\loom-cache\minecraftMaven\net\minecraft\minecraft-merged-6ce3c7e87b\1.20.4-loom.mappings.1_20_4.layered+hash.40359-v2\minecraft-merged-6ce3c7e87b-1.20.4-loom.mappings.1_20_4.layered+hash.40359-v2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.97.Final\54188f271e388e7f313aea995e82f58ce2cdb809\netty-transport-native-epoll-4.1.97.Final-linux-x86_64.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.97.Final\5514744c588190ffda076b35a9b8c9f24946a960\netty-transport-native-epoll-4.1.97.Final-linux-aarch_64.jar
+[Architectury Transformer DEBUG]  - D:\Workspaces\MC Mods\Output Devices\Simply-Screens\.gradle\loom-cache\remapped_mods\loom_mappings_1_20_4_layered_hash_40359_v2\dev\architectury\architectury\11.1.17\architectury-11.1.17.jar
+[Architectury Transformer] Read classpath in 7.141 s
+[Architectury Transformer DEBUG] Remapping Classes:
+[Architectury Transformer DEBUG] net/fabricmc/api/EnvType -> net/neoforged/api/distmarker/Dist
+[Architectury Transformer DEBUG] net/fabricmc/api/Environment -> net/neoforged/api/distmarker/OnlyIn
+[Architectury Transformer DEBUG] Found class transformer
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/Config with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/SimplyScreens with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/RequestImageListC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateImageListS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenWithCachedImageS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenSelectedImageC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/IPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/RequestImageDownloadC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenAspectRatioC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/ImageDownloadChunkS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UploadImageChunkC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/ClientPacketHandler with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/PacketRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/items/ItemRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ClientImageManager with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ImageMetadata with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ServerImageManager with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/creative_tabs/CreativeTabRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/screens/ImageLoadScreen with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer$1 with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/helpers/ImageUtils with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/gui/widgets/ImageListWidget$ImageEntry with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/gui/widgets/ImageListWidget with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/BlockRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/ScreenBlock with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/BlockEntityRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity$1 with maxs=true frames=true
+[Architectury Transformer DEBUG] Closed File Systems for D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-0.7.4_mc1.20.4-0.7.4-transformProductionNeoForge.jar
+[Architectury Transformer] Transformed jar with 5 transformer(s) in 8.098 s
+[Architectury Transformer DEBUG] Closed File Systems for D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common-0.7.4_mc1.20.4-0.7.4.jar
+[Architectury Transformer DEBUG] 
+[Architectury Transformer DEBUG] ============================
+[Architectury Transformer DEBUG] Transforming from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common_mc1.20.4-0.7.4-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common_mc1.20.4-0.7.4-transformProductionFabric.jar
+[Architectury Transformer DEBUG] ============================
+[Architectury Transformer DEBUG] 
+[Architectury Transformer DEBUG] Transforming 5 transformer(s) from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common_mc1.20.4-0.7.4-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common_mc1.20.4-0.7.4-transformProductionFabric.jar: 
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapMixinVariables@466c6f15
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformExpectPlatform@39003827
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapInjectables@7127c0c2
+[Architectury Transformer DEBUG]  - AddRefmapName(enabled=() -> kotlin.Boolean)
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformPlatformOnly@1340de47
+[Architectury Transformer DEBUG] Transforming from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common_mc1.20.4-0.7.4-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common_mc1.20.4-0.7.4-transformProductionFabric.jar with 5 transformer(s) on dev.architectury.transformer.handler.SimpleTransformerHandler
+[Architectury Transformer DEBUG] Found class transformer
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/SimplyScreens with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UploadImageChunkC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenWithCachedImageS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenSelectedImageC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenAspectRatioC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateImageListS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/RequestImageListC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/RequestImageDownloadC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/PacketRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/IPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/ImageDownloadChunkS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/ClientPacketHandler with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/items/ItemRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ServerImageManager with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ImageMetadata with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ClientImageManager with maxs=true frames=true
+[Architectury Transformer DEBUG] Provided 58 classpath jar(s):
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\dev.architectury\architectury-injectables\1.0.10\62db2a366d662606d1b23ad02ccc3212ed37ec3\architectury-injectables-1.0.10.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.fabricmc\fabric-loader\0.17.2\647622ac4163aad5ed5f79ccb532e31225562aa\fabric-loader-0.17.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.jetbrains\annotations\25.0.0\c1e6b966db352094ac3bf7f88f3bdef332fe43f0\annotations-25.0.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.projectlombok\lombok\1.18.34\ec547ef414ab1d2c040118fb9c1c265ada63af14\lombok-1.18.34.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.google.code.gson\gson\2.10.1\b3add478d4382b78ea20b1671390a858002feb6c\gson-2.10.1.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm\9.8\dc19ecb3f7889b7860697215cae99c0f9b6f6b4b\asm-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-analysis\9.8\b9747a320844b6cb1eacd90d8ecfd260a16c01d3\asm-analysis-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-commons\9.8\36e4d212970388e5bd2c5180292012502df461bb\asm-commons-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-tree\9.8\18419ca5b77a2f81097c741e7872e6ab8d2f40d\asm-tree-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-util\9.8\395f1c1f035258511f27bc9b2583d76e4b143f59\asm-util-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.fabricmc\sponge-mixin\0.16.3+mixin.0.8.7\3e535042688d1265447e52ad86950b7d9678a5fa\sponge-mixin-0.16.3+mixin.0.8.7.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.github.llamalad7\mixinextras-fabric\0.5.0\91a83dfb7abd320f6236bd1fcf5c0ff143d59a13\mixinextras-fabric-0.5.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.github.oshi\oshi-core\6.4.5\943ba26de047eb6b28fff47f5ee939a34eb5fc8e\oshi-core-6.4.5.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.google.guava\failureaccess\1.0.1\1dcf1de382a0bf95a3d8b0849546c88bac1292c9\failureaccess-1.0.1.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.google.guava\guava\32.1.2-jre\5e64ec7e056456bef3a4bc4c6fdaef71e8ab6318\guava-32.1.2-jre.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.ibm.icu\icu4j\73.2\61ad4ef7f9131fcf6d25c34b817f90d6da06c9e9\icu4j-73.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\authlib\6.0.52\65085e2eb921c4a3ebdde3d248637f1776e6d80d\authlib-6.0.52.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\blocklist\1.0.10\5c685c5ffa94c4cd39496c7184c1d122e515ecef\blocklist-1.0.10.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\brigadier\1.2.9\73e324f2ee541493a5179abf367237faa782ed21\brigadier-1.2.9.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\datafixerupper\6.0.8\3ba4a30557a9b057760af4011f909ba619fc5125\datafixerupper-6.0.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\logging\1.1.1\832b8e6674a9b325a5175a3a6267dfaf34c85139\logging-1.1.1.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\patchy\2.2.10\da05971b07cbb379d002cf7eaec6a2048211fefc\patchy-2.2.10.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\text2speech\1.17.9\3cad216e3a7f0c19b4b394388bc9ffc446f13b14\text2speech-1.17.9.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\commons-codec\commons-codec\1.16.0\4e3eb3d79888d76b54e28b350915b5dc3919c9de\commons-codec-1.16.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\commons-io\commons-io\2.13.0\8bb2bc9b4df17e2411533a0708a69f983bf5e83b\commons-io-2.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\commons-logging\commons-logging\1.2\4bfc12adfe4842bf07b657f0369c4cb522955686\commons-logging-1.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-buffer\4.1.97.Final\f8f3d8644afa5e6e1a40a3a6aeb9d9aa970ecb4f\netty-buffer-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-codec\4.1.97.Final\384ba4d75670befbedb45c4d3b497a93639c206d\netty-codec-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-common\4.1.97.Final\7cceacaf11df8dc63f23d0fb58e9d4640fc88404\netty-common-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-handler\4.1.97.Final\abb86c6906bf512bf2b797a41cd7d2e8d3cd7c36\netty-handler-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-resolver\4.1.97.Final\cec8348108dc76c47cf87c669d514be52c922144\netty-resolver-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-classes-epoll\4.1.97.Final\795da37ded759e862457a82d9d92c4d39ce8ecee\netty-transport-classes-epoll-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-unix-common\4.1.97.Final\d469d84265ab70095b01b40886cabdd433b6e664\netty-transport-native-unix-common-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport\4.1.97.Final\f37380d23c9bb079bc702910833b2fd532c9abd0\netty-transport-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\it.unimi.dsi\fastutil\8.5.12\c24946d46824bd528054bface3231d2ecb7e95e8\fastutil-8.5.12.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.java.dev.jna\jna-platform\5.13.0\88e9a306715e9379f3122415ef4ae759a352640d\jna-platform-5.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.java.dev.jna\jna\5.13.0\1200e7ebeedbe0d10062093f32925a912020e747\jna-5.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.sf.jopt-simple\jopt-simple\5.0.4\4fdac2fbe92dfad86aa6e9301736f6b4342a3f5c\jopt-simple-5.0.4.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.commons\commons-compress\1.22\691a8b4e6cf4248c3bc72c8b719337d5cb7359fa\commons-compress-1.22.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.commons\commons-lang3\3.13.0\b7263237aa89c1f99b327197c41d0669707a462e\commons-lang3-3.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.httpcomponents\httpclient\4.5.13\e5f6cae5ca7ecaac1ec2827a9e2d65ae2869cada\httpclient-4.5.13.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.httpcomponents\httpcore\4.4.16\51cf043c87253c9f58b539c9f7e44c8894223850\httpcore-4.4.16.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-api\2.19.0\ea1b37f38c327596b216542bc636cfdc0b8036fa\log4j-api-2.19.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-core\2.19.0\3b6eeb4de4c49c0fe38a4ee27188ff5fee44d0bb\log4j-core-2.19.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-slf4j2-impl\2.19.0\5c04bfdd63ce9dceb2e284b81e96b6a70010ee10\log4j-slf4j2-impl-2.19.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.joml\joml\1.10.5\22566d58af70ad3d72308bab63b8339906deb649\joml-1.10.5.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-glfw\3.3.2\757920418805fb90bfebb3d46b1d9e7669fca2eb\lwjgl-glfw-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-jemalloc\3.3.2\877e17e39ebcd58a9c956dc3b5b777813de0873a\lwjgl-jemalloc-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-openal\3.3.2\ae5357ed6d934546d3533993ea84c0cfb75eed95\lwjgl-openal-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-opengl\3.3.2\ee8e95be0b438602038bc1f02dc5e3d011b1b216\lwjgl-opengl-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-stb\3.3.2\a2550795014d622b686e9caac50b14baa87d2c70\lwjgl-stb-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-tinyfd\3.3.2\9f65c248dd77934105274fcf8351abb75b34327c\lwjgl-tinyfd-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl\3.3.2\4421d94af68e35dcaa31737a6fc59136a1e61b94\lwjgl-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.slf4j\slf4j-api\2.0.7\41eb7184ea9d556f23e18b5cb99cad1f8581fc00\slf4j-api-2.0.7.jar
+[Architectury Transformer DEBUG]  - D:\Workspaces\MC Mods\Output Devices\Simply-Screens\.gradle\loom-cache\minecraftMaven\net\minecraft\minecraft-merged-6ce3c7e87b\1.20.4-loom.mappings.1_20_4.layered+hash.40359-v2\minecraft-merged-6ce3c7e87b-1.20.4-loom.mappings.1_20_4.layered+hash.40359-v2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.97.Final\54188f271e388e7f313aea995e82f58ce2cdb809\netty-transport-native-epoll-4.1.97.Final-linux-x86_64.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.97.Final\5514744c588190ffda076b35a9b8c9f24946a960\netty-transport-native-epoll-4.1.97.Final-linux-aarch_64.jar
+[Architectury Transformer DEBUG]  - D:\Workspaces\MC Mods\Output Devices\Simply-Screens\.gradle\loom-cache\remapped_mods\loom_mappings_1_20_4_layered_hash_40359_v2\dev\architectury\architectury\11.1.17\architectury-11.1.17.jar
+[Architectury Transformer] Read classpath in 4.573 s
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/creative_tabs/CreativeTabRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/Config with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/screens/ImageLoadScreen with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer$1 with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/helpers/ImageUtils with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/gui/widgets/ImageListWidget with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/gui/widgets/ImageListWidget$ImageEntry with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/ScreenBlock with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity$1 with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/BlockEntityRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/BlockRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Closed File Systems for D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common_mc1.20.4-0.7.4-transformProductionFabric.jar
+[Architectury Transformer] Transformed jar with 5 transformer(s) in 4.626 s
+[Architectury Transformer DEBUG] 
+[Architectury Transformer DEBUG] ============================
+[Architectury Transformer DEBUG] Transforming from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common_mc1.20.4-0.7.4-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common_mc1.20.4-0.7.4-transformProductionNeoForge.jar
+[Architectury Transformer DEBUG] ============================
+[Architectury Transformer DEBUG] 
+[Architectury Transformer DEBUG] Transforming 5 transformer(s) from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common_mc1.20.4-0.7.4-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common_mc1.20.4-0.7.4-transformProductionNeoForge.jar: 
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformExpectPlatform@5df67888
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapInjectables@11c1273e
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformPlatformOnly@132c21e8
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformNeoForgeAnnotations@52a7867e
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformNeoForgeEnvironment@3c7b969a
+[Architectury Transformer DEBUG] Transforming from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common_mc1.20.4-0.7.4-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common_mc1.20.4-0.7.4-transformProductionNeoForge.jar with 5 transformer(s) on dev.architectury.transformer.handler.SimpleTransformerHandler
+[Architectury Transformer DEBUG] Remapping with 1 mapping provider(s):
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformNeoForgeEnvironment$$Lambda/0x0000029a01f96d60@735156b8
+[Architectury Transformer DEBUG] Provided 58 classpath jar(s):
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\dev.architectury\architectury-injectables\1.0.10\62db2a366d662606d1b23ad02ccc3212ed37ec3\architectury-injectables-1.0.10.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.fabricmc\fabric-loader\0.17.2\647622ac4163aad5ed5f79ccb532e31225562aa\fabric-loader-0.17.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.jetbrains\annotations\25.0.0\c1e6b966db352094ac3bf7f88f3bdef332fe43f0\annotations-25.0.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.projectlombok\lombok\1.18.34\ec547ef414ab1d2c040118fb9c1c265ada63af14\lombok-1.18.34.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.google.code.gson\gson\2.10.1\b3add478d4382b78ea20b1671390a858002feb6c\gson-2.10.1.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm\9.8\dc19ecb3f7889b7860697215cae99c0f9b6f6b4b\asm-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-analysis\9.8\b9747a320844b6cb1eacd90d8ecfd260a16c01d3\asm-analysis-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-commons\9.8\36e4d212970388e5bd2c5180292012502df461bb\asm-commons-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-tree\9.8\18419ca5b77a2f81097c741e7872e6ab8d2f40d\asm-tree-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-util\9.8\395f1c1f035258511f27bc9b2583d76e4b143f59\asm-util-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.fabricmc\sponge-mixin\0.16.3+mixin.0.8.7\3e535042688d1265447e52ad86950b7d9678a5fa\sponge-mixin-0.16.3+mixin.0.8.7.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.github.llamalad7\mixinextras-fabric\0.5.0\91a83dfb7abd320f6236bd1fcf5c0ff143d59a13\mixinextras-fabric-0.5.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.github.oshi\oshi-core\6.4.5\943ba26de047eb6b28fff47f5ee939a34eb5fc8e\oshi-core-6.4.5.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.google.guava\failureaccess\1.0.1\1dcf1de382a0bf95a3d8b0849546c88bac1292c9\failureaccess-1.0.1.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.google.guava\guava\32.1.2-jre\5e64ec7e056456bef3a4bc4c6fdaef71e8ab6318\guava-32.1.2-jre.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.ibm.icu\icu4j\73.2\61ad4ef7f9131fcf6d25c34b817f90d6da06c9e9\icu4j-73.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\authlib\6.0.52\65085e2eb921c4a3ebdde3d248637f1776e6d80d\authlib-6.0.52.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\blocklist\1.0.10\5c685c5ffa94c4cd39496c7184c1d122e515ecef\blocklist-1.0.10.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\brigadier\1.2.9\73e324f2ee541493a5179abf367237faa782ed21\brigadier-1.2.9.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\datafixerupper\6.0.8\3ba4a30557a9b057760af4011f909ba619fc5125\datafixerupper-6.0.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\logging\1.1.1\832b8e6674a9b325a5175a3a6267dfaf34c85139\logging-1.1.1.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\patchy\2.2.10\da05971b07cbb379d002cf7eaec6a2048211fefc\patchy-2.2.10.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\text2speech\1.17.9\3cad216e3a7f0c19b4b394388bc9ffc446f13b14\text2speech-1.17.9.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\commons-codec\commons-codec\1.16.0\4e3eb3d79888d76b54e28b350915b5dc3919c9de\commons-codec-1.16.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\commons-io\commons-io\2.13.0\8bb2bc9b4df17e2411533a0708a69f983bf5e83b\commons-io-2.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\commons-logging\commons-logging\1.2\4bfc12adfe4842bf07b657f0369c4cb522955686\commons-logging-1.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-buffer\4.1.97.Final\f8f3d8644afa5e6e1a40a3a6aeb9d9aa970ecb4f\netty-buffer-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-codec\4.1.97.Final\384ba4d75670befbedb45c4d3b497a93639c206d\netty-codec-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-common\4.1.97.Final\7cceacaf11df8dc63f23d0fb58e9d4640fc88404\netty-common-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-handler\4.1.97.Final\abb86c6906bf512bf2b797a41cd7d2e8d3cd7c36\netty-handler-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-resolver\4.1.97.Final\cec8348108dc76c47cf87c669d514be52c922144\netty-resolver-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-classes-epoll\4.1.97.Final\795da37ded759e862457a82d9d92c4d39ce8ecee\netty-transport-classes-epoll-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-unix-common\4.1.97.Final\d469d84265ab70095b01b40886cabdd433b6e664\netty-transport-native-unix-common-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport\4.1.97.Final\f37380d23c9bb079bc702910833b2fd532c9abd0\netty-transport-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\it.unimi.dsi\fastutil\8.5.12\c24946d46824bd528054bface3231d2ecb7e95e8\fastutil-8.5.12.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.java.dev.jna\jna-platform\5.13.0\88e9a306715e9379f3122415ef4ae759a352640d\jna-platform-5.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.java.dev.jna\jna\5.13.0\1200e7ebeedbe0d10062093f32925a912020e747\jna-5.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.sf.jopt-simple\jopt-simple\5.0.4\4fdac2fbe92dfad86aa6e9301736f6b4342a3f5c\jopt-simple-5.0.4.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.commons\commons-compress\1.22\691a8b4e6cf4248c3bc72c8b719337d5cb7359fa\commons-compress-1.22.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.commons\commons-lang3\3.13.0\b7263237aa89c1f99b327197c41d0669707a462e\commons-lang3-3.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.httpcomponents\httpclient\4.5.13\e5f6cae5ca7ecaac1ec2827a9e2d65ae2869cada\httpclient-4.5.13.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.httpcomponents\httpcore\4.4.16\51cf043c87253c9f58b539c9f7e44c8894223850\httpcore-4.4.16.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-api\2.19.0\ea1b37f38c327596b216542bc636cfdc0b8036fa\log4j-api-2.19.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-core\2.19.0\3b6eeb4de4c49c0fe38a4ee27188ff5fee44d0bb\log4j-core-2.19.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-slf4j2-impl\2.19.0\5c04bfdd63ce9dceb2e284b81e96b6a70010ee10\log4j-slf4j2-impl-2.19.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.joml\joml\1.10.5\22566d58af70ad3d72308bab63b8339906deb649\joml-1.10.5.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-glfw\3.3.2\757920418805fb90bfebb3d46b1d9e7669fca2eb\lwjgl-glfw-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-jemalloc\3.3.2\877e17e39ebcd58a9c956dc3b5b777813de0873a\lwjgl-jemalloc-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-openal\3.3.2\ae5357ed6d934546d3533993ea84c0cfb75eed95\lwjgl-openal-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-opengl\3.3.2\ee8e95be0b438602038bc1f02dc5e3d011b1b216\lwjgl-opengl-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-stb\3.3.2\a2550795014d622b686e9caac50b14baa87d2c70\lwjgl-stb-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-tinyfd\3.3.2\9f65c248dd77934105274fcf8351abb75b34327c\lwjgl-tinyfd-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl\3.3.2\4421d94af68e35dcaa31737a6fc59136a1e61b94\lwjgl-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.slf4j\slf4j-api\2.0.7\41eb7184ea9d556f23e18b5cb99cad1f8581fc00\slf4j-api-2.0.7.jar
+[Architectury Transformer DEBUG]  - D:\Workspaces\MC Mods\Output Devices\Simply-Screens\.gradle\loom-cache\minecraftMaven\net\minecraft\minecraft-merged-6ce3c7e87b\1.20.4-loom.mappings.1_20_4.layered+hash.40359-v2\minecraft-merged-6ce3c7e87b-1.20.4-loom.mappings.1_20_4.layered+hash.40359-v2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.97.Final\54188f271e388e7f313aea995e82f58ce2cdb809\netty-transport-native-epoll-4.1.97.Final-linux-x86_64.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.97.Final\5514744c588190ffda076b35a9b8c9f24946a960\netty-transport-native-epoll-4.1.97.Final-linux-aarch_64.jar
+[Architectury Transformer DEBUG]  - D:\Workspaces\MC Mods\Output Devices\Simply-Screens\.gradle\loom-cache\remapped_mods\loom_mappings_1_20_4_layered_hash_40359_v2\dev\architectury\architectury\11.1.17\architectury-11.1.17.jar
+[Architectury Transformer] Read classpath in 2.629 s
+[Architectury Transformer DEBUG] Remapping Classes:
+[Architectury Transformer DEBUG] net/fabricmc/api/EnvType -> net/neoforged/api/distmarker/Dist
+[Architectury Transformer DEBUG] net/fabricmc/api/Environment -> net/neoforged/api/distmarker/OnlyIn
+[Architectury Transformer DEBUG] Found class transformer
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/Config with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/SimplyScreens with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/RequestImageListC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateImageListS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenWithCachedImageS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenSelectedImageC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/IPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenAspectRatioC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/RequestImageDownloadC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/ImageDownloadChunkS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UploadImageChunkC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/ClientPacketHandler with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/PacketRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/items/ItemRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ClientImageManager with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ImageMetadata with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ServerImageManager with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/creative_tabs/CreativeTabRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/screens/ImageLoadScreen with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer$1 with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/helpers/ImageUtils with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/gui/widgets/ImageListWidget$ImageEntry with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/gui/widgets/ImageListWidget with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/BlockRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/ScreenBlock with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/BlockEntityRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity$1 with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity with maxs=true frames=true
+[Architectury Transformer DEBUG] Closed File Systems for D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common_mc1.20.4-0.7.4-transformProductionNeoForge.jar
+[Architectury Transformer] Transformed jar with 5 transformer(s) in 3.516 s
+[Architectury Transformer DEBUG] Closed File Systems for D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common_mc1.20.4-0.7.4.jar
+[Architectury Transformer DEBUG] 
+[Architectury Transformer DEBUG] ============================
+[Architectury Transformer DEBUG] Transforming from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common_mc1.20.4-0.7.4-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common_mc1.20.4-0.7.4-transformProductionFabric.jar
+[Architectury Transformer DEBUG] ============================
+[Architectury Transformer DEBUG] 
+[Architectury Transformer DEBUG] Transforming 5 transformer(s) from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common_mc1.20.4-0.7.4-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common_mc1.20.4-0.7.4-transformProductionFabric.jar: 
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapMixinVariables@8c9c9d2
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformExpectPlatform@32aa4b01
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.RemapInjectables@34fd2e03
+[Architectury Transformer DEBUG]  - AddRefmapName(enabled=() -> kotlin.Boolean)
+[Architectury Transformer DEBUG]  - dev.architectury.transformer.transformers.TransformPlatformOnly@5d8f00d
+[Architectury Transformer DEBUG] Transforming from D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\devlibs\simply_screens-common_mc1.20.4-0.7.4-dev.jar to D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common_mc1.20.4-0.7.4-transformProductionFabric.jar with 5 transformer(s) on dev.architectury.transformer.handler.SimpleTransformerHandler
+[Architectury Transformer DEBUG] Found class transformer
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/SimplyScreens with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UploadImageChunkC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenWithCachedImageS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenSelectedImageC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateScreenAspectRatioC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/UpdateImageListS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/RequestImageListC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/RequestImageDownloadC2SPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/PacketRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/IPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/ImageDownloadChunkS2CPacket with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/network/ClientPacketHandler with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/items/ItemRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ServerImageManager with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ImageMetadata with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/helpers/ClientImageManager with maxs=true frames=true
+[Architectury Transformer DEBUG] Provided 58 classpath jar(s):
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\dev.architectury\architectury-injectables\1.0.10\62db2a366d662606d1b23ad02ccc3212ed37ec3\architectury-injectables-1.0.10.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.fabricmc\fabric-loader\0.17.2\647622ac4163aad5ed5f79ccb532e31225562aa\fabric-loader-0.17.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.jetbrains\annotations\25.0.0\c1e6b966db352094ac3bf7f88f3bdef332fe43f0\annotations-25.0.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.projectlombok\lombok\1.18.34\ec547ef414ab1d2c040118fb9c1c265ada63af14\lombok-1.18.34.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.google.code.gson\gson\2.10.1\b3add478d4382b78ea20b1671390a858002feb6c\gson-2.10.1.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm\9.8\dc19ecb3f7889b7860697215cae99c0f9b6f6b4b\asm-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-analysis\9.8\b9747a320844b6cb1eacd90d8ecfd260a16c01d3\asm-analysis-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-commons\9.8\36e4d212970388e5bd2c5180292012502df461bb\asm-commons-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-tree\9.8\18419ca5b77a2f81097c741e7872e6ab8d2f40d\asm-tree-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.ow2.asm\asm-util\9.8\395f1c1f035258511f27bc9b2583d76e4b143f59\asm-util-9.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.fabricmc\sponge-mixin\0.16.3+mixin.0.8.7\3e535042688d1265447e52ad86950b7d9678a5fa\sponge-mixin-0.16.3+mixin.0.8.7.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.github.llamalad7\mixinextras-fabric\0.5.0\91a83dfb7abd320f6236bd1fcf5c0ff143d59a13\mixinextras-fabric-0.5.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.github.oshi\oshi-core\6.4.5\943ba26de047eb6b28fff47f5ee939a34eb5fc8e\oshi-core-6.4.5.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.google.guava\failureaccess\1.0.1\1dcf1de382a0bf95a3d8b0849546c88bac1292c9\failureaccess-1.0.1.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.google.guava\guava\32.1.2-jre\5e64ec7e056456bef3a4bc4c6fdaef71e8ab6318\guava-32.1.2-jre.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.ibm.icu\icu4j\73.2\61ad4ef7f9131fcf6d25c34b817f90d6da06c9e9\icu4j-73.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\authlib\6.0.52\65085e2eb921c4a3ebdde3d248637f1776e6d80d\authlib-6.0.52.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\blocklist\1.0.10\5c685c5ffa94c4cd39496c7184c1d122e515ecef\blocklist-1.0.10.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\brigadier\1.2.9\73e324f2ee541493a5179abf367237faa782ed21\brigadier-1.2.9.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\datafixerupper\6.0.8\3ba4a30557a9b057760af4011f909ba619fc5125\datafixerupper-6.0.8.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\logging\1.1.1\832b8e6674a9b325a5175a3a6267dfaf34c85139\logging-1.1.1.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\patchy\2.2.10\da05971b07cbb379d002cf7eaec6a2048211fefc\patchy-2.2.10.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\com.mojang\text2speech\1.17.9\3cad216e3a7f0c19b4b394388bc9ffc446f13b14\text2speech-1.17.9.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\commons-codec\commons-codec\1.16.0\4e3eb3d79888d76b54e28b350915b5dc3919c9de\commons-codec-1.16.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\commons-io\commons-io\2.13.0\8bb2bc9b4df17e2411533a0708a69f983bf5e83b\commons-io-2.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\commons-logging\commons-logging\1.2\4bfc12adfe4842bf07b657f0369c4cb522955686\commons-logging-1.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-buffer\4.1.97.Final\f8f3d8644afa5e6e1a40a3a6aeb9d9aa970ecb4f\netty-buffer-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-codec\4.1.97.Final\384ba4d75670befbedb45c4d3b497a93639c206d\netty-codec-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-common\4.1.97.Final\7cceacaf11df8dc63f23d0fb58e9d4640fc88404\netty-common-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-handler\4.1.97.Final\abb86c6906bf512bf2b797a41cd7d2e8d3cd7c36\netty-handler-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-resolver\4.1.97.Final\cec8348108dc76c47cf87c669d514be52c922144\netty-resolver-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-classes-epoll\4.1.97.Final\795da37ded759e862457a82d9d92c4d39ce8ecee\netty-transport-classes-epoll-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-unix-common\4.1.97.Final\d469d84265ab70095b01b40886cabdd433b6e664\netty-transport-native-unix-common-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport\4.1.97.Final\f37380d23c9bb079bc702910833b2fd532c9abd0\netty-transport-4.1.97.Final.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\it.unimi.dsi\fastutil\8.5.12\c24946d46824bd528054bface3231d2ecb7e95e8\fastutil-8.5.12.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.java.dev.jna\jna-platform\5.13.0\88e9a306715e9379f3122415ef4ae759a352640d\jna-platform-5.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.java.dev.jna\jna\5.13.0\1200e7ebeedbe0d10062093f32925a912020e747\jna-5.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\net.sf.jopt-simple\jopt-simple\5.0.4\4fdac2fbe92dfad86aa6e9301736f6b4342a3f5c\jopt-simple-5.0.4.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.commons\commons-compress\1.22\691a8b4e6cf4248c3bc72c8b719337d5cb7359fa\commons-compress-1.22.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.commons\commons-lang3\3.13.0\b7263237aa89c1f99b327197c41d0669707a462e\commons-lang3-3.13.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.httpcomponents\httpclient\4.5.13\e5f6cae5ca7ecaac1ec2827a9e2d65ae2869cada\httpclient-4.5.13.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.httpcomponents\httpcore\4.4.16\51cf043c87253c9f58b539c9f7e44c8894223850\httpcore-4.4.16.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-api\2.19.0\ea1b37f38c327596b216542bc636cfdc0b8036fa\log4j-api-2.19.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-core\2.19.0\3b6eeb4de4c49c0fe38a4ee27188ff5fee44d0bb\log4j-core-2.19.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.apache.logging.log4j\log4j-slf4j2-impl\2.19.0\5c04bfdd63ce9dceb2e284b81e96b6a70010ee10\log4j-slf4j2-impl-2.19.0.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.joml\joml\1.10.5\22566d58af70ad3d72308bab63b8339906deb649\joml-1.10.5.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-glfw\3.3.2\757920418805fb90bfebb3d46b1d9e7669fca2eb\lwjgl-glfw-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-jemalloc\3.3.2\877e17e39ebcd58a9c956dc3b5b777813de0873a\lwjgl-jemalloc-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-openal\3.3.2\ae5357ed6d934546d3533993ea84c0cfb75eed95\lwjgl-openal-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-opengl\3.3.2\ee8e95be0b438602038bc1f02dc5e3d011b1b216\lwjgl-opengl-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-stb\3.3.2\a2550795014d622b686e9caac50b14baa87d2c70\lwjgl-stb-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl-tinyfd\3.3.2\9f65c248dd77934105274fcf8351abb75b34327c\lwjgl-tinyfd-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.lwjgl\lwjgl\3.3.2\4421d94af68e35dcaa31737a6fc59136a1e61b94\lwjgl-3.3.2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\org.slf4j\slf4j-api\2.0.7\41eb7184ea9d556f23e18b5cb99cad1f8581fc00\slf4j-api-2.0.7.jar
+[Architectury Transformer DEBUG]  - D:\Workspaces\MC Mods\Output Devices\Simply-Screens\.gradle\loom-cache\minecraftMaven\net\minecraft\minecraft-merged-6ce3c7e87b\1.20.4-loom.mappings.1_20_4.layered+hash.40359-v2\minecraft-merged-6ce3c7e87b-1.20.4-loom.mappings.1_20_4.layered+hash.40359-v2.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.97.Final\54188f271e388e7f313aea995e82f58ce2cdb809\netty-transport-native-epoll-4.1.97.Final-linux-x86_64.jar
+[Architectury Transformer DEBUG]  - C:\Users\NsTut\.gradle\caches\modules-2\files-2.1\io.netty\netty-transport-native-epoll\4.1.97.Final\5514744c588190ffda076b35a9b8c9f24946a960\netty-transport-native-epoll-4.1.97.Final-linux-aarch_64.jar
+[Architectury Transformer DEBUG]  - D:\Workspaces\MC Mods\Output Devices\Simply-Screens\.gradle\loom-cache\remapped_mods\loom_mappings_1_20_4_layered_hash_40359_v2\dev\architectury\architectury\11.1.17\architectury-11.1.17.jar
+[Architectury Transformer] Read classpath in 4.329 s
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/creative_tabs/CreativeTabRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/Config with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/screens/ImageLoadScreen with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer$1 with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/helpers/ImageUtils with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/gui/widgets/ImageListWidget with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/client/gui/widgets/ImageListWidget$ImageEntry with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/ScreenBlock with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity$1 with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/entities/BlockEntityRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Writing com/nstut/simplyscreens/blocks/BlockRegistries with maxs=true frames=true
+[Architectury Transformer DEBUG] Closed File Systems for D:\Workspaces\MC Mods\Output Devices\Simply-Screens\common\build\libs\simply_screens-common_mc1.20.4-0.7.4-transformProductionFabric.jar
+[Architectury Transformer] Transformed jar with 5 transformer(s) in 4.385 s
