@@ -48,12 +48,12 @@ jobs:
           draft: false
           prerelease: false
 
-      - name: Upload NeoForge Release Asset
+      - name: Upload Forge Release Asset
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./neoforge/build/libs/simply_screens-neoforge_mc${{ steps.get_version.outputs.mc_version }}-${{ steps.get_version.outputs.version }}.jar
-          asset_name: simply_screens-neoforge_mc${{ steps.get_version.outputs.mc_version }}-${{ steps.get_version.outputs.version }}.jar
+          asset_path: ./forge/build/libs/simply_screens-forge_mc${{ steps.get_version.outputs.mc_version }}-${{ steps.get_version.outputs.version }}.jar
+          asset_name: simply_screens-forge_mc${{ steps.get_version.outputs.mc_version }}-${{ steps.get_version.outputs.version }}.jar
           asset_content_type: application/java-archive
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
