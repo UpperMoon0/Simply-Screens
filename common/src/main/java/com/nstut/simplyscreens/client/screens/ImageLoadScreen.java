@@ -121,7 +121,7 @@ public class ImageLoadScreen extends Screen {
     private void onUploadFromComputer() {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             PointerBuffer filters = stack.mallocPointer(1);
-            filters.put(stack.UTF8("*.png;*.jpg;*.jpeg;*.gif;*.webp"));
+            filters.put(stack.UTF8("*.png;*.jpg;*.jpeg"));
             filters.flip();
 
             String filePath = TinyFileDialogs.tinyfd_openFileDialog("Select Image", "", filters, "Image Files", false);
@@ -233,5 +233,13 @@ public class ImageLoadScreen extends Screen {
 
     public ImageListWidget getImageListWidget() {
         return imageListWidget;
+    }
+    private boolean isSupportedImageFormat(String filePath) {
+        if (filePath == null) return false;
+
+        String lowerFilePath = filePath.toLowerCase();
+        return lowerFilePath.endsWith(".png") ||
+               lowerFilePath.endsWith(".jpg") ||
+               lowerFilePath.endsWith(".jpeg");
     }
 }
