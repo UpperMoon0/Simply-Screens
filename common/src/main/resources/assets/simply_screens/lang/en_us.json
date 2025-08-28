@@ -1,0 +1,14 @@
+{
+  "block.simply_screens.screen": "Screen",
+
+  "item.simply_screens.screen": "Screen",
+
+  "itemGroup.simply_screens": "Simply Screens",
+
+  "simply_screens.screen.image_load_title": "Load Image",
+  "simply_screens.screen.upload_from_computer": "Upload from Computer",
+  "simply_screens.screen.select_image": "Select Image",
+  "simply_screens.screen.no_image_selected": "No image selected",
+  "simply_screens.screen.image_list": "Available Images",
+  "simply_screens.screen.image_name": "Image Name"
+}

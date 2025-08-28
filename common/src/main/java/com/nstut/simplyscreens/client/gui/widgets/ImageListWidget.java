@@ -242,7 +242,7 @@ public class ImageListWidget extends AbstractWidget {
         try {
             NativeImage nativeImage = NativeImage.read(new ByteArrayInputStream(imageData));
             DynamicTexture dynamicTexture = new DynamicTexture(nativeImage);
-            ResourceLocation texture = Minecraft.getInstance().getTextureManager().register("simplyscreens/" + imageId, dynamicTexture);
+            ResourceLocation texture = Minecraft.getInstance().getTextureManager().register("simply_screens/" + imageId, dynamicTexture);
             textureCache.put(imageId, texture);
         } catch (IOException e) {
             e.printStackTrace();

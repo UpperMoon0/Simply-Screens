@@ -11,11 +11,11 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "simplyscreens:screen"
+          "name": "simply_screens:screen"
         }
       ],
       "rolls": 1.0
     }
   ],
-  "random_sequence": "simplyscreens:blocks/screen"
+  "random_sequence": "simply_screens:blocks/screen"
 }

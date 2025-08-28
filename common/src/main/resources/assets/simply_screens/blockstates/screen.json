@@ -1,73 +1,73 @@
 {
   "variants": {
     "state=0,facing=north": {
-      "model": "simplyscreens:block/screen"
+      "model": "simply_screens:block/screen"
     },
     "state=0,facing=south": {
       "y": 180,
-      "model": "simplyscreens:block/screen"
+      "model": "simply_screens:block/screen"
     },
     "state=0,facing=west": {
       "y": 270,
-      "model": "simplyscreens:block/screen"
+      "model": "simply_screens:block/screen"
     },
     "state=0,facing=east": {
       "y": 90,
-      "model": "simplyscreens:block/screen"
+      "model": "simply_screens:block/screen"
     },
     "state=0,facing=up": {
       "x": 270,
-      "model": "simplyscreens:block/screen"
+      "model": "simply_screens:block/screen"
     },
     "state=0,facing=down": {
       "x": 90,
-      "model": "simplyscreens:block/screen"
+      "model": "simply_screens:block/screen"
     },
     "state=1,facing=north": {
-      "model": "simplyscreens:block/screen_anchor"
+      "model": "simply_screens:block/screen_anchor"
     },
     "state=1,facing=south": {
       "y": 180,
-      "model": "simplyscreens:block/screen_anchor"
+      "model": "simply_screens:block/screen_anchor"
     },
     "state=1,facing=west": {
       "y": 270,
-      "model": "simplyscreens:block/screen_anchor"
+      "model": "simply_screens:block/screen_anchor"
     },
     "state=1,facing=east": {
       "y": 90,
-      "model": "simplyscreens:block/screen_anchor"
+      "model": "simply_screens:block/screen_anchor"
     },
     "state=1,facing=up": {
       "x": 270,
-      "model": "simplyscreens:block/screen_anchor"
+      "model": "simply_screens:block/screen_anchor"
     },
     "state=1,facing=down": {
       "x": 90,
-      "model": "simplyscreens:block/screen_anchor"
+      "model": "simply_screens:block/screen_anchor"
     },
     "state=2,facing=north": {
-      "model": "simplyscreens:block/screen_error"
+      "model": "simply_screens:block/screen_error"
     },
     "state=2,facing=south": {
       "y": 180,
-      "model": "simplyscreens:block/screen_error"
+      "model": "simply_screens:block/screen_error"
     },
     "state=2,facing=west": {
       "y": 270,
-      "model": "simplyscreens:block/screen_error"
+      "model": "simply_screens:block/screen_error"
     },
     "state=2,facing=east": {
       "y": 90,
-      "model": "simplyscreens:block/screen_error"
+      "model": "simply_screens:block/screen_error"
     },
     "state=2,facing=up": {
       "x": 270,
-      "model": "simplyscreens:block/screen_error"
+      "model": "simply_screens:block/screen_error"
     },
     "state=2,facing=down": {
       "x": 90,
-      "model": "simplyscreens:block/screen_error"
+      "model": "simply_screens:block/screen_error"
     }
   }
 }

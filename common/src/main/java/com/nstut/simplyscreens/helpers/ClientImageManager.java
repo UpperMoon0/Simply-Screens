@@ -11,6 +11,8 @@ import net.minecraft.resources.ResourceLocation;
 import com.nstut.simplyscreens.client.gui.widgets.ImageListWidget;
 import com.nstut.simplyscreens.client.screens.ImageLoadScreen;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -94,7 +96,7 @@ public class ClientImageManager {
             Path imagePath = getImagePath(imageId, metadata.getExtension());
             if (Files.exists(imagePath)) {
                 try (InputStream inputStream = Files.newInputStream(imagePath)) {
-                    NativeImage nativeImage = NativeImage.read(inputStream);
+                    NativeImage nativeImage = loadImage(inputStream, metadata.getExtension());
                     DynamicTexture texture = new DynamicTexture(nativeImage);
                     IN_MEMORY_CACHE.put(imageId, texture);
                     return texture;
@@ -114,7 +116,7 @@ public class ClientImageManager {
             Files.write(imagePath, imageData);
 
             try (InputStream inputStream = Files.newInputStream(imagePath)) {
-                NativeImage nativeImage = NativeImage.read(inputStream);
+                NativeImage nativeImage = loadImage(inputStream, extension);
                 DynamicTexture texture = new DynamicTexture(nativeImage);
                 IN_MEMORY_CACHE.put(imageId, texture);
             } catch (IOException e) {
@@ -136,6 +138,32 @@ public class ClientImageManager {
 
     private static Path getImagePath(UUID imageId, String extension) {
         return CACHE_DIR.resolve(imageId + "." + extension);
+    }
+
+    private static NativeImage loadImage(InputStream inputStream, String extension) throws IOException {
+        if ("png".equals(extension)) {
+            return NativeImage.read(inputStream);
+        } else {
+            BufferedImage bi = ImageIO.read(inputStream);
+            if (bi == null) {
+                throw new IOException("Failed to decode image");
+            }
+            int width = bi.getWidth();
+            int height = bi.getHeight();
+            NativeImage ni = new NativeImage(width, height, false);
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    int rgb = bi.getRGB(x, y);
+                    int a = rgb >> 24 & 0xFF;
+                    int r = rgb >> 16 & 0xFF;
+                    int g = rgb >> 8 & 0xFF;
+                    int b = rgb & 0xFF;
+                    int color = (a << 24) | (b << 16) | (g << 8) | r;
+                    ni.setPixelRGBA(x, y, color);
+                }
+            }
+            return ni;
+        }
     }
 
     public static void clearCache() {

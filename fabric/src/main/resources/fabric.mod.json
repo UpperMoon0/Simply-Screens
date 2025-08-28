@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "simplyscreens",
+  "id": "simply_screens",
   "version": "${version}",
   "name": "Simply Screens",
   "description": "A simple mod that adds screens to display images from a URL.",
@@ -12,7 +12,7 @@
     "sources": "https://github.com/nstut/simply-screens"
   },
   "license": "CC0-1.0",
-  "icon": "assets/simplyscreens/icon.png",
+  "icon": "assets/simply_screens/icon.png",
   "environment": "*",
   "entrypoints": {
     "main": [
@@ -22,9 +22,6 @@
       "com.nstut.simplyscreens.fabric.client.ClientSetup"
     ]
   },
-  "mixins": [
-    "simplyscreens.mixins.json"
-  ],
   "depends": {
     "fabricloader": ">=0.16.14",
     "minecraft": "~1.20.1",

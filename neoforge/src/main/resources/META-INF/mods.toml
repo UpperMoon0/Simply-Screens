@@ -33,6 +33,3 @@ type = "required"
 versionRange = "[11.1.17,)"
 ordering = "AFTER"
 side = "BOTH"
-
-[[mixins]]
-config = "simply_screens.mixins.json"

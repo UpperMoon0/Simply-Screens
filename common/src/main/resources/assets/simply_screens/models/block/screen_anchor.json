@@ -1,0 +1,8 @@
+{
+  "textures": {
+    "front": "simply_screens:block/screen_front",
+    "top": "simply_screens:block/screen_top",
+    "side": "simply_screens:block/screen_side_anchor"
+  },
+  "parent": "minecraft:block/orientable"
+}
