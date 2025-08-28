@@ -43,8 +43,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ steps.get_version.outputs.version }}
-          release_name: Simply Screens v${{ steps.get_version.outputs.version }}
+          tag_name: v${{ steps.get_version.outputs.mc_version }}-${{ steps.get_version.outputs.version }}
+          release_name: Simply Screens v${{ steps.get_version.outputs.mc_version }}-${{ steps.get_version.outputs.version }}
           draft: false
           prerelease: false
 
