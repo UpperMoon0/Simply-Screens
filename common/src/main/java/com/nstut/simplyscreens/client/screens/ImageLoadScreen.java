@@ -119,7 +119,7 @@ public class ImageLoadScreen extends Screen {
     private void onUploadFromComputer() {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             PointerBuffer filters = stack.mallocPointer(1);
-            filters.put(stack.UTF8("*.png;*.jpg;*.jpeg;*.gif;*.webp"));
+            filters.put(stack.UTF8("*.png;*.jpg;*.jpeg"));
             filters.flip();
 
             String filePath = TinyFileDialogs.tinyfd_openFileDialog("Select Image", "", filters, "Image Files", false);
@@ -155,15 +155,20 @@ public class ImageLoadScreen extends Screen {
         }
     }
 
-
     @Override
     public void render(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        int guiTop = (this.height - SCREEN_HEIGHT) / 2;
         this.renderBackground(guiGraphics);
+        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        guiGraphics.drawString(this.font, this.title, (this.width - this.font.width(this.title)) / 2, guiTop + 8, 0x404040, false);
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics guiGraphics) {
+        super.renderBackground(guiGraphics);
         int guiLeft = (this.width - SCREEN_WIDTH) / 2;
         int guiTop = (this.height - SCREEN_HEIGHT) / 2;
         guiGraphics.blit(BACKGROUND_TEXTURE, guiLeft, guiTop, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-        guiGraphics.drawString(this.font, this.title, (this.width - this.font.width(this.title)) / 2, guiTop + 8, 0x404040, false);
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
     }
 
     @Override

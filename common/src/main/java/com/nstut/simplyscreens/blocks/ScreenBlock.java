@@ -14,6 +14,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.world.level.material.MapColor;
+
 import org.jetbrains.annotations.NotNull;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 
@@ -21,7 +23,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.BlockHitResult;
 
 public class ScreenBlock extends Block implements EntityBlock {
@@ -34,7 +35,12 @@ public class ScreenBlock extends Block implements EntityBlock {
     public static final int STATE_ERROR = 2;
 
     public ScreenBlock() {
-        super(BlockBehaviour.Properties.copy(Blocks.IRON_BLOCK).noOcclusion());
+        super(BlockBehaviour.Properties.of()
+                .mapColor(MapColor.METAL)
+                .noOcclusion()
+                .strength(3.5F, 6.0F) // Hardness 3.5 (like iron), resistance 6.0 (like iron)
+                .requiresCorrectToolForDrops() // Requires proper tool to drop
+                .sound(SoundType.METAL)); // Metal sound type
         this.registerDefaultState(this.stateDefinition.any()
                 .setValue(FACING, Direction.NORTH)
                 .setValue(STATE, STATE_ANCHOR));
