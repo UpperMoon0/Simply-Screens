@@ -51,8 +51,8 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./neoforge/build/libs/simply_screens-neoforge-${{ steps.get_version.outputs.version }}_mc${{ steps.get_version.outputs.mc_version }}.jar
-          asset_name: simply_screens-neoforge-${{ steps.get_version.outputs.version }}_mc${{ steps.get_version.outputs.mc_version }}.jar
+          asset_path: ./neoforge/build/libs/simply_screens-neoforge_mc${{ steps.get_version.outputs.mc_version }}-${{ steps.get_version.outputs.version }}.jar
+          asset_name: simply_screens-neoforge_mc${{ steps.get_version.outputs.mc_version }}-${{ steps.get_version.outputs.version }}.jar
           asset_content_type: application/java-archive
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -61,8 +61,8 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./fabric/build/libs/simply_screens-fabric-${{ steps.get_version.outputs.version }}_mc${{ steps.get_version.outputs.mc_version }}.jar
-          asset_name: simply_screens-fabric-${{ steps.get_version.outputs.version }}_mc${{ steps.get_version.outputs.mc_version }}.jar
+          asset_path: ./fabric/build/libs/simply_screens-fabric_mc${{ steps.get_version.outputs.mc_version }}-${{ steps.get_version.outputs.version }}.jar
+          asset_name: simply_screens-fabric_mc${{ steps.get_version.outputs.mc_version }}-${{ steps.get_version.outputs.version }}.jar
           asset_content_type: application/java-archive
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
