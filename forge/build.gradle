@@ -38,10 +38,6 @@ dependencies {
 
     common(project(path: ':common', configuration: 'namedElements')) { transitive false }
     shadowBundle project(path: ':common', configuration: 'transformProductionForge')
-
-    // Add WebP support for ImageIO
-    forgeRuntimeLibrary "org.sejda.imageio:webp-imageio:0.1.6"
-    shadowBundle "org.sejda.imageio:webp-imageio:0.1.6"
 }
 
 processResources {
@@ -55,7 +51,6 @@ processResources {
 shadowJar {
     configurations = [project.configurations.shadowBundle]
     archiveClassifier = 'dev-shadow'
-    relocate 'org.sejda', 'com.nstut.simplyscreens.libs.sejda'
 }
 
 remapJar {
