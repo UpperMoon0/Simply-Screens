@@ -6,6 +6,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import com.nstut.simplyscreens.Config;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
+import com.nstut.simplyscreens.blocks.ScreenBlock;
 import com.nstut.simplyscreens.helpers.ClientImageManager;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -15,7 +16,6 @@ import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import org.jetbrains.annotations.NotNull;
 import java.util.UUID;
 
@@ -32,7 +32,8 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         if (!shouldRender(blockEntity)) return;
 
         BlockState blockState = blockEntity.getBlockState();
-        Direction facing = blockState.getValue(BlockStateProperties.FACING);
+        Direction facing = blockState.hasProperty(ScreenBlock.FACING) ?
+            blockState.getValue(ScreenBlock.FACING) : Direction.NORTH;
         UUID imageId = blockEntity.getImageId();
 
         if (imageId == null) {
@@ -174,39 +175,35 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         // The UV coordinates are intentionally flipped horizontally (U is swapped)
         // to ensure the image displays correctly on the screen. This is not a bug.
         // Top-right vertex
-        consumer.vertex(pose.pose(), -0.5f, 0.5f, 0)
-                .color(255, 255, 255, 255)
-                .uv(1, 0)
-                .overlayCoords(overlay)
-                .uv2(FULL_BRIGHTNESS)
-                .normal(pose.normal(), 0, 0, 1)
-                .endVertex();
+        consumer.addVertex(pose.pose(), -0.5f, 0.5f, 0)
+                .setColor(255, 255, 255, 255)
+                .setUv(1, 0)
+                .setOverlay(overlay)
+                .setUv2(FULL_BRIGHTNESS & 0xFFFF, FULL_BRIGHTNESS >> 16)
+                .setNormal(0, 0, 1);
 
         // Top-left vertex
-        consumer.vertex(pose.pose(), 0.5f, 0.5f, 0)
-                .color(255, 255, 255, 255)
-                .uv(0, 0)
-                .overlayCoords(overlay)
-                .uv2(FULL_BRIGHTNESS)
-                .normal(pose.normal(), 0, 0, 1)
-                .endVertex();
+        consumer.addVertex(pose.pose(), 0.5f, 0.5f, 0)
+                .setColor(255, 255, 255, 255)
+                .setUv(0, 0)
+                .setOverlay(overlay)
+                .setUv2(FULL_BRIGHTNESS & 0xFFFF, FULL_BRIGHTNESS >> 16)
+                .setNormal(0, 0, 1);
 
         // Bottom-left vertex
-        consumer.vertex(pose.pose(), 0.5f, -0.5f, 0)
-                .color(255, 255, 255, 255)
-                .uv(0, 1)
-                .overlayCoords(overlay)
-                .uv2(FULL_BRIGHTNESS)
-                .normal(pose.normal(), 0, 0, 1)
-                .endVertex();
+        consumer.addVertex(pose.pose(), 0.5f, -0.5f, 0)
+                .setColor(255, 255, 255, 255)
+                .setUv(0, 1)
+                .setOverlay(overlay)
+                .setUv2(FULL_BRIGHTNESS & 0xFFFF, FULL_BRIGHTNESS >> 16)
+                .setNormal(0, 0, 1);
 
         // Bottom-right vertex
-        consumer.vertex(pose.pose(), -0.5f, -0.5f, 0)
-                .color(255, 255, 255, 255)
-                .uv(1, 1)
-                .overlayCoords(overlay)
-                .uv2(FULL_BRIGHTNESS)
-                .normal(pose.normal(), 0, 0, 1)
-                .endVertex();
+        consumer.addVertex(pose.pose(), -0.5f, -0.5f, 0)
+                .setColor(255, 255, 255, 255)
+                .setUv(1, 1)
+                .setOverlay(overlay)
+                .setUv2(FULL_BRIGHTNESS & 0xFFFF, FULL_BRIGHTNESS >> 16)
+                .setNormal(0, 0, 1);
     }
 }

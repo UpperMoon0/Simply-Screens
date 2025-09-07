@@ -131,7 +131,7 @@ public class ImageListWidget extends AbstractWidget {
             }
 
             ResourceLocation texture = textureCache.computeIfAbsent(entry.getImageId().toString(), id -> {
-                PacketRegistries.CHANNEL.sendToServer(new com.nstut.simplyscreens.network.RequestImageDownloadC2SPacket(UUID.fromString(id)));
+                PacketRegistries.sendToServer(new com.nstut.simplyscreens.network.RequestImageDownloadC2SPacket(UUID.fromString(id)));
                 return null;
             });
 
@@ -229,7 +229,7 @@ public class ImageListWidget extends AbstractWidget {
     public void refresh() {
         // This will be called when the list needs to be updated from the server.
         // We will request a new list from the server.
-        PacketRegistries.CHANNEL.sendToServer(new com.nstut.simplyscreens.network.RequestImageListC2SPacket());
+        PacketRegistries.sendToServer(new com.nstut.simplyscreens.network.RequestImageListC2SPacket());
     }
 
     public void tick() {

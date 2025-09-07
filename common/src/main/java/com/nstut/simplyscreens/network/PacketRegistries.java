@@ -1,63 +1,64 @@
 package com.nstut.simplyscreens.network;
 
-import com.nstut.simplyscreens.SimplyScreens;
-import dev.architectury.networking.NetworkChannel;
-import net.minecraft.resources.ResourceLocation;
+import dev.architectury.networking.NetworkManager;
+import net.minecraft.server.level.ServerPlayer;
 
 public class PacketRegistries {
-    public static final NetworkChannel CHANNEL = NetworkChannel.create(
-            new ResourceLocation(SimplyScreens.MOD_ID, "main")
-    );
-
     public static void register() {
-        CHANNEL.register(UpdateScreenSelectedImageC2SPacket.class,
-                UpdateScreenSelectedImageC2SPacket::write,
-                UpdateScreenSelectedImageC2SPacket::new,
-                (packet, context) -> packet.handle(context)
-        );
-        CHANNEL.register(UpdateScreenS2CPacket.class,
-                UpdateScreenS2CPacket::write,
-                UpdateScreenS2CPacket::new,
-                (packet, context) -> packet.handle(context)
-        );
+        // Register client to server packets
+        NetworkManager.registerReceiver(NetworkManager.c2s(), 
+            UpdateScreenSelectedImageC2SPacket.TYPE,
+            UpdateScreenSelectedImageC2SPacket.CODEC,
+            (packet, context) -> UpdateScreenSelectedImageC2SPacket.handle(packet, context));
+            
+        NetworkManager.registerReceiver(NetworkManager.c2s(), 
+            UpdateScreenAspectRatioC2SPacket.TYPE,
+            UpdateScreenAspectRatioC2SPacket.CODEC,
+            (packet, context) -> UpdateScreenAspectRatioC2SPacket.handle(packet, context));
+            
+        NetworkManager.registerReceiver(NetworkManager.c2s(), 
+            RequestImageDownloadC2SPacket.TYPE,
+            RequestImageDownloadC2SPacket.CODEC,
+            (packet, context) -> RequestImageDownloadC2SPacket.handle(packet, context));
+            
+        NetworkManager.registerReceiver(NetworkManager.c2s(), 
+            RequestImageListC2SPacket.TYPE,
+            RequestImageListC2SPacket.CODEC,
+            (packet, context) -> RequestImageListC2SPacket.handle(packet, context));
+            
+        NetworkManager.registerReceiver(NetworkManager.c2s(), 
+            UploadImageChunkC2SPacket.TYPE,
+            UploadImageChunkC2SPacket.CODEC,
+            (packet, context) -> UploadImageChunkC2SPacket.handle(packet, context));
 
-        CHANNEL.register(UpdateScreenAspectRatioC2SPacket.class,
-                UpdateScreenAspectRatioC2SPacket::write,
-                UpdateScreenAspectRatioC2SPacket::new,
-                (packet, context) -> packet.handle(context)
-        );
-
-
-        CHANNEL.register(RequestImageDownloadC2SPacket.class,
-                RequestImageDownloadC2SPacket::write,
-                RequestImageDownloadC2SPacket::new,
-                (packet, context) -> packet.handle(context)
-        );
-
-
-        CHANNEL.register(RequestImageListC2SPacket.class,
-                RequestImageListC2SPacket::write,
-                RequestImageListC2SPacket::read,
-                RequestImageListC2SPacket::apply
-        );
-
-        CHANNEL.register(UpdateImageListS2CPacket.class,
-                UpdateImageListS2CPacket::write,
-                UpdateImageListS2CPacket::new,
-                (packet, context) -> packet.handle(context)
-        );
-
-
-        CHANNEL.register(UploadImageChunkC2SPacket.class,
-                UploadImageChunkC2SPacket::write,
-                UploadImageChunkC2SPacket::read,
-                UploadImageChunkC2SPacket::apply
-        );
-
-        CHANNEL.register(ImageDownloadChunkS2CPacket.class,
-                ImageDownloadChunkS2CPacket::write,
-                ImageDownloadChunkS2CPacket::new,
-                (packet, context) -> packet.handle(context)
-        );
+        // Register server to client packets
+        NetworkManager.registerReceiver(NetworkManager.s2c(), 
+            UpdateScreenS2CPacket.TYPE,
+            UpdateScreenS2CPacket.CODEC,
+            (packet, context) -> UpdateScreenS2CPacket.handle(packet, context));
+            
+        NetworkManager.registerReceiver(NetworkManager.s2c(), 
+            UpdateImageListS2CPacket.TYPE,
+            UpdateImageListS2CPacket.CODEC,
+            (packet, context) -> UpdateImageListS2CPacket.handle(packet, context));
+            
+        NetworkManager.registerReceiver(NetworkManager.s2c(), 
+            ImageDownloadChunkS2CPacket.TYPE,
+            ImageDownloadChunkS2CPacket.CODEC,
+            (packet, context) -> ImageDownloadChunkS2CPacket.handle(packet, context));
+    }
+    
+    public static <T extends net.minecraft.network.protocol.common.custom.CustomPacketPayload> void sendToPlayer(ServerPlayer player, T message) {
+        NetworkManager.sendToPlayer(player, message);
+    }
+    
+    public static <T extends net.minecraft.network.protocol.common.custom.CustomPacketPayload> void sendToPlayers(Iterable<ServerPlayer> players, T message) {
+        for (ServerPlayer player : players) {
+            sendToPlayer(player, message);
+        }
+    }
+    
+    public static <T extends net.minecraft.network.protocol.common.custom.CustomPacketPayload> void sendToServer(T message) {
+        NetworkManager.sendToServer(message);
     }
 }

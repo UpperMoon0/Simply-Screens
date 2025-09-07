@@ -106,7 +106,7 @@ public class ClientImageManager {
             }
         }
 
-        PacketRegistries.CHANNEL.sendToServer(new RequestImageDownloadC2SPacket(imageId));
+        PacketRegistries.sendToServer(new RequestImageDownloadC2SPacket(imageId));
         return null;
     }
 

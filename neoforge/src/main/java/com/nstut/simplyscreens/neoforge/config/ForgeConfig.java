@@ -2,11 +2,11 @@ package com.nstut.simplyscreens.neoforge.config;
 
 import com.nstut.simplyscreens.Config;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
-@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber
 public class ForgeConfig {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 

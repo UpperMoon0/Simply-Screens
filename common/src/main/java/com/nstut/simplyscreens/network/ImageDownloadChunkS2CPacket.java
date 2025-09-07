@@ -1,13 +1,22 @@
 package com.nstut.simplyscreens.network;
 
+import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.helpers.ClientImageManager;
 import dev.architectury.networking.NetworkManager;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.UUID;
-import java.util.function.Supplier;
 
-public class ImageDownloadChunkS2CPacket implements IPacket {
+public class ImageDownloadChunkS2CPacket implements CustomPacketPayload {
+    public static final Type<ImageDownloadChunkS2CPacket> TYPE = new Type<>(
+            ResourceLocation.fromNamespaceAndPath(SimplyScreens.MOD_ID, "image_download_chunk_s2c"));
+    
+    public static final StreamCodec<RegistryFriendlyByteBuf, ImageDownloadChunkS2CPacket> CODEC = 
+            StreamCodec.ofMember(ImageDownloadChunkS2CPacket::write, ImageDownloadChunkS2CPacket::new);
+
     private final UUID imageId;
     private final int chunkIndex;
     private final int totalChunks;
@@ -22,7 +31,7 @@ public class ImageDownloadChunkS2CPacket implements IPacket {
         this.extension = extension;
     }
 
-    public ImageDownloadChunkS2CPacket(FriendlyByteBuf buf) {
+    public ImageDownloadChunkS2CPacket(RegistryFriendlyByteBuf buf) {
         this.imageId = buf.readUUID();
         this.chunkIndex = buf.readVarInt();
         this.totalChunks = buf.readVarInt();
@@ -34,8 +43,7 @@ public class ImageDownloadChunkS2CPacket implements IPacket {
         }
     }
 
-    @Override
-    public void write(FriendlyByteBuf buf) {
+    public void write(RegistryFriendlyByteBuf buf) {
         buf.writeUUID(imageId);
         buf.writeVarInt(chunkIndex);
         buf.writeVarInt(totalChunks);
@@ -46,9 +54,33 @@ public class ImageDownloadChunkS2CPacket implements IPacket {
     }
 
     @Override
-    public void handle(Supplier<NetworkManager.PacketContext> context) {
-        context.get().queue(() -> {
-            ClientImageManager.handleImageChunk(imageId, chunkIndex, totalChunks, data, extension);
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public UUID getImageId() {
+        return imageId;
+    }
+
+    public int getChunkIndex() {
+        return chunkIndex;
+    }
+
+    public int getTotalChunks() {
+        return totalChunks;
+    }
+
+    public byte[] getData() {
+        return data;
+    }
+
+    public String getExtension() {
+        return extension;
+    }
+
+    public static void handle(ImageDownloadChunkS2CPacket packet, NetworkManager.PacketContext context) {
+        context.queue(() -> {
+            ClientImageManager.handleImageChunk(packet.imageId, packet.chunkIndex, packet.totalChunks, packet.data, packet.extension);
         });
     }
 }

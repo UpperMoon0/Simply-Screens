@@ -11,7 +11,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 public class UpdateScreenWithCachedImageS2CPacket {
-    public static final ResourceLocation ID = new ResourceLocation(SimplyScreens.MOD_ID, "update_screen_with_cached_image");
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(SimplyScreens.MOD_ID, "update_screen_with_cached_image");
 
     private final BlockPos blockPos;
     private final UUID imageId;

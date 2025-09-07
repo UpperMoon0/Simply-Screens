@@ -1,6 +1,7 @@
 package com.nstut.simplyscreens.blocks.entities;
 
 import com.nstut.simplyscreens.Config;
+import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.ScreenBlock;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import com.nstut.simplyscreens.network.UpdateScreenS2CPacket;
@@ -10,6 +11,7 @@ import lombok.Setter;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.level.block.Block;
@@ -32,17 +34,23 @@ public class ScreenBlockEntity extends BlockEntity {
     public ScreenBlockEntity(BlockPos pos, BlockState state) {
         super(BlockEntityRegistries.SCREEN.get(), pos, state);
         this.anchorPos = pos;
+        
+        // Log the block type for debugging
+        if (state.getBlock() != null) {
+            System.out.println("ScreenBlockEntity created with block type: " + state.getBlock().getClass().getName());
+            SimplyScreens.LOGGER.info("ScreenBlockEntity created with block type: " + state.getBlock().getClass().getName());
+        }
     }
 
     @Override
-    public void saveAdditional(@NotNull CompoundTag tag) {
-        super.saveAdditional(tag);
+    protected void saveAdditional(@NotNull CompoundTag tag, HolderLookup.Provider provider) {
+        super.saveAdditional(tag, provider);
         writePersistentData(tag);
     }
 
     @Override
-    public void load(@NotNull CompoundTag tag) {
-        super.load(tag);
+    protected void loadAdditional(@NotNull CompoundTag tag, HolderLookup.Provider provider) {
+        super.loadAdditional(tag, provider);
         readPersistentData(tag);
     }
 
@@ -86,7 +94,7 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     @Override
-    public CompoundTag getUpdateTag() {
+    public CompoundTag getUpdateTag(HolderLookup.Provider provider) {
         CompoundTag tag = new CompoundTag();
         writePersistentData(tag);
         return tag;
@@ -97,7 +105,7 @@ public class ScreenBlockEntity extends BlockEntity {
             UpdateScreenS2CPacket packet = new UpdateScreenS2CPacket(worldPosition, imageId, maintainAspectRatio);
             if (level.getServer() != null) {
                 for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
-                    PacketRegistries.CHANNEL.sendToPlayer(player, packet);
+                    PacketRegistries.sendToPlayer(player, packet);
                 }
             }
         }
@@ -145,7 +153,8 @@ public class ScreenBlockEntity extends BlockEntity {
         this.maintainAspectRatio = maintainAspectRatio;
         setChanged();
 
-        Direction facing = getBlockState().getValue(ScreenBlock.FACING);
+        Direction facing = getBlockState().hasProperty(ScreenBlock.FACING) ?
+            getBlockState().getValue(ScreenBlock.FACING) : Direction.NORTH;
         Direction widthDirection = getWidthDirection(facing);
         Direction heightDirection = getHeightDirection(facing);
 
@@ -182,7 +191,8 @@ public class ScreenBlockEntity extends BlockEntity {
         this.imageId = imageId;
         setChanged();
 
-        Direction facing = getBlockState().getValue(ScreenBlock.FACING);
+        Direction facing = getBlockState().hasProperty(ScreenBlock.FACING) ?
+            getBlockState().getValue(ScreenBlock.FACING) : Direction.NORTH;
         Direction widthDirection = getWidthDirection(facing);
         Direction heightDirection = getHeightDirection(facing);
 
@@ -231,7 +241,8 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     public void updateScreenStructure() {
-        Direction facing = getBlockState().getValue(ScreenBlock.FACING);
+        Direction facing = getBlockState().hasProperty(ScreenBlock.FACING) ?
+            getBlockState().getValue(ScreenBlock.FACING) : Direction.NORTH;
         BlockPos farCorner = calculateStructureBounds(facing);
 
         if (farCorner != null) {
@@ -489,7 +500,8 @@ public class ScreenBlockEntity extends BlockEntity {
 
         if (screenWidth == 1 && screenHeight == 1) return;
 
-        Direction facing = getBlockState().getValue(ScreenBlock.FACING);
+        Direction facing = getBlockState().hasProperty(ScreenBlock.FACING) ?
+            getBlockState().getValue(ScreenBlock.FACING) : Direction.NORTH;
         BlockPos newAnchorPos = findNewAnchorPosition(facing);
 
         BlockEntity newAnchorBe = level.getBlockEntity(newAnchorPos);
@@ -508,7 +520,7 @@ public class ScreenBlockEntity extends BlockEntity {
         // Immediately update network sync
         if (level.getServer() != null) {
             for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
-                PacketRegistries.CHANNEL.sendToPlayer(player, new UpdateScreenS2CPacket(
+                PacketRegistries.sendToPlayer(player, new UpdateScreenS2CPacket(
                         newAnchorPos,
                         imageId,
                         maintainAspectRatio
@@ -570,7 +582,8 @@ public class ScreenBlockEntity extends BlockEntity {
     public void onNeighborPlaced(BlockPos neighborPos, Direction neighborDir) {
         if (level == null || level.isClientSide || anchorPos == null) return;
 
-        Direction facing = getBlockState().getValue(ScreenBlock.FACING);
+        Direction facing = getBlockState().hasProperty(ScreenBlock.FACING) ?
+            getBlockState().getValue(ScreenBlock.FACING) : Direction.NORTH;
 
         if (anchorPos.equals(neighborPos)) {
             Direction negativeHeightDir = getHeightDirection(facing).getOpposite();

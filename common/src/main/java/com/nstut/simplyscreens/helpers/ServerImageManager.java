@@ -62,7 +62,7 @@ public class ServerImageManager {
                     });
 
                     List<ImageMetadata> images = getImageList(player.getServer());
-                    PacketRegistries.CHANNEL.sendToPlayer(player, new UpdateImageListS2CPacket(images));
+                    PacketRegistries.sendToPlayer(player, new UpdateImageListS2CPacket(images));
                 }
             } catch (IOException e) {
                 SimplyScreens.LOGGER.error("Failed to reassemble image from chunks", e);

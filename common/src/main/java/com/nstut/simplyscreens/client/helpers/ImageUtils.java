@@ -28,7 +28,7 @@ public class ImageUtils {
             }
 
             String textureId = "screen_tex/" + imageId;
-            ResourceLocation resourceLocation = new ResourceLocation(SimplyScreens.MOD_ID, textureId);
+            ResourceLocation resourceLocation = ResourceLocation.fromNamespaceAndPath(SimplyScreens.MOD_ID, textureId);
 
             Minecraft.getInstance().getTextureManager().register(resourceLocation, new DynamicTexture(nativeImage));
             SimplyScreens.LOGGER.info("Registered new texture resource for {} at {}", imageId, resourceLocation);

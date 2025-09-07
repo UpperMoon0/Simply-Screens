@@ -11,7 +11,6 @@ import com.nstut.simplyscreens.network.UpdateScreenSelectedImageC2SPacket;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.components.Renderable;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
@@ -25,12 +24,11 @@ import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Iterator;
 import java.util.UUID;
 
 public class ImageLoadScreen extends Screen {
     private static final int CHUNK_SIZE = 1024 * 30; // 30KB
-    private static final ResourceLocation BACKGROUND_TEXTURE = new ResourceLocation(SimplyScreens.MOD_ID, "textures/gui/screen.png");
+    private static final ResourceLocation BACKGROUND_TEXTURE = ResourceLocation.fromNamespaceAndPath(SimplyScreens.MOD_ID, "textures/gui/screen.png");
 
     private static final int SCREEN_WIDTH = 162;
     private static final int SCREEN_HEIGHT = 188;
@@ -79,7 +77,7 @@ public class ImageLoadScreen extends Screen {
                         if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                             ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
                             if (anchor != null) {
-                                PacketRegistries.CHANNEL.sendToServer(new UpdateScreenAspectRatioC2SPacket(anchor.getBlockPos(), selected));
+                                PacketRegistries.sendToServer(new UpdateScreenAspectRatioC2SPacket(anchor.getBlockPos(), selected));
                             }
                         }
                     }
@@ -147,7 +145,7 @@ public class ImageLoadScreen extends Screen {
                         byte[] chunk = new byte[end - start];
                         System.arraycopy(data, start, chunk, 0, chunk.length);
 
-                        PacketRegistries.CHANNEL.sendToServer(new UploadImageChunkC2SPacket(blockEntityPos, transactionId, i, totalChunks, chunk, i == 0 ? fileName : null));
+                        PacketRegistries.sendToServer(new UploadImageChunkC2SPacket(blockEntityPos, transactionId, i, totalChunks, chunk, i == 0 ? fileName : null));
                     }
                     imageListWidget.refresh();
                 } catch (java.io.IOException e) {
@@ -200,7 +198,7 @@ public class ImageLoadScreen extends Screen {
                 if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                     ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
                     if (anchor != null) {
-                        PacketRegistries.CHANNEL.sendToServer(new UpdateScreenSelectedImageC2SPacket(anchor.getBlockPos(), selectedEntry.getImageId()));
+                        PacketRegistries.sendToServer(new UpdateScreenSelectedImageC2SPacket(anchor.getBlockPos(), selectedEntry.getImageId()));
                     }
                 }
             }
@@ -234,6 +232,7 @@ public class ImageLoadScreen extends Screen {
     public ImageListWidget getImageListWidget() {
         return imageListWidget;
     }
+    
     private boolean isSupportedImageFormat(String filePath) {
         if (filePath == null) return false;
 

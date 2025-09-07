@@ -1,6 +1,6 @@
 package com.nstut.simplyscreens.helpers;
 
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 
 public class ImageMetadata {
     private final String name;
@@ -13,13 +13,13 @@ public class ImageMetadata {
         this.extension = extension;
     }
 
-    public ImageMetadata(FriendlyByteBuf buf) {
+    public ImageMetadata(RegistryFriendlyByteBuf buf) {
         this.name = buf.readUtf();
         this.id = buf.readUtf();
         this.extension = buf.readUtf();
     }
 
-    public void write(FriendlyByteBuf buf) {
+    public void write(RegistryFriendlyByteBuf buf) {
         buf.writeUtf(name);
         buf.writeUtf(id);
         buf.writeUtf(extension);
