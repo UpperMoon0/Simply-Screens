@@ -63,15 +63,8 @@ public class ScreenBlock extends Block implements EntityBlock {
                 .setValue(STATE, STATE_ANCHOR);
     }
     
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
-        SimplyScreens.LOGGER.info("ScreenBlock.use called at pos: " + pos + " on side: " + (level.isClientSide ? "client" : "server"));
-        System.out.println("ScreenBlock.use called at pos: " + pos + " on side: " + (level.isClientSide ? "client" : "server"));
-        SimplyScreens.LOGGER.info("ScreenBlock.use - player: " + player + ", hand: " + hand + ", hit: " + hit);
-        System.out.println("ScreenBlock.use - player: " + player + ", hand: " + hand + ", hit: " + hit);
-        SimplyScreens.LOGGER.info("ScreenBlock.use - state: " + state);
-        System.out.println("ScreenBlock.use - state: " + state);
-        SimplyScreens.LOGGER.info("ScreenBlock.use returning InteractionResult.PASS");
-        System.out.println("ScreenBlock.use returning InteractionResult.PASS");
+    @Override
+    protected InteractionResult useWithoutItem(BlockState blockState, Level level, BlockPos blockPos, Player player, BlockHitResult blockHitResult) {
         return InteractionResult.PASS;
     }
 

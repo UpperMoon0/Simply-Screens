@@ -3,6 +3,7 @@ package com.nstut.simplyscreens.network;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.helpers.ImageMetadata;
 import dev.architectury.networking.NetworkManager;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -49,7 +50,10 @@ public class UpdateImageListS2CPacket implements CustomPacketPayload {
 
     public static void handle(UpdateImageListS2CPacket packet, NetworkManager.PacketContext context) {
         context.queue(() -> {
-            // This will be handled on the client side
+            com.nstut.simplyscreens.helpers.ClientImageManager.updateImageCache(packet.getImageList());
+            if (Minecraft.getInstance().screen instanceof com.nstut.simplyscreens.client.screens.ImageLoadScreen imageLoadScreen) {
+                imageLoadScreen.getImageListWidget().updateList(packet.getImageList());
+            }
         });
     }
 }
