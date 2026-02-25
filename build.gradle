@@ -4,8 +4,16 @@ plugins {
     id 'com.gradleup.shadow' version '8.3.6' apply false
 }
 
+// Set default version-specific properties
+rootProject.ext.minecraft_version = '1.21.1'
+rootProject.ext.architectury_api_version = '13.0.8'
+rootProject.ext.fabric_loader_version = '0.17.2'
+rootProject.ext.fabric_api_version = '0.116.5+1.21.1'
+rootProject.ext.neoforge_version = '21.1.201'
+rootProject.ext.forge_version = '1.20.1-47.4.0'
+
 architectury {
-    minecraft = project.minecraft_version
+    minecraft = rootProject.ext.minecraft_version
 }
 
 allprojects {
@@ -24,12 +32,12 @@ subprojects {
 
     base {
         // Set up a suffixed format for the mod jar names, e.g. `example-fabric`.
-        archivesName = "$rootProject.archives_name-$project.name" + "_mc$rootProject.minecraft_version"
+        archivesName = "$rootProject.archives_name-$project.name"
     }
 
     repositories {
         // Add repositories to retrieve artifacts from in here.
-        // You should only use this when depending on other mods because
+        // You should only use other mods because
         // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
         // See https://docs.gradle.org/current/userguide/declaring_repositories.html
         // for more information about repositories.
@@ -41,7 +49,11 @@ subprojects {
     }
 
     dependencies {
-        minecraft "net.minecraft:minecraft:$rootProject.minecraft_version"
+        // Determine the Minecraft version based on project name
+        def mcVersion = project.name.contains('1.20.1') ? '1.20.1' : 
+                       (project.name.contains('1.21.1') ? '1.21.1' : rootProject.ext.minecraft_version)
+        
+        minecraft "net.minecraft:minecraft:$mcVersion"
         mappings loom.officialMojangMappings()
         compileOnly "org.projectlombok:lombok:1.18.34"
         annotationProcessor "org.projectlombok:lombok:1.18.34"
@@ -54,12 +66,15 @@ subprojects {
         // If you remove this line, sources will not be generated.
         withSourcesJar()
 
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+        // Determine Java version based on project name
+        def javaVersion = project.name.contains('1.21.1') ? JavaVersion.VERSION_21 : JavaVersion.VERSION_17
+        sourceCompatibility = javaVersion
+        targetCompatibility = javaVersion
     }
 
     tasks.withType(JavaCompile).configureEach {
-        it.options.release = 21
+        def javaRelease = project.name.contains('1.21.1') ? 21 : 17
+        it.options.release = javaRelease
     }
 
     // Configure Maven publishing.

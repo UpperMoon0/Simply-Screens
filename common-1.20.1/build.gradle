@@ -101,7 +101,10 @@ processResources {
     dependsOn transformRecipes
     from(layout.buildDirectory.dir('transformed-resources')) {
         exclude 'data/simply_screens/recipe/'  // Exclude original singular folder
+        exclude 'simplyscreens.mixins.json'   // Use version-specific mixin JSON
     }
+    // Include version-specific mixin JSON
+    from('src/main/resources')
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
