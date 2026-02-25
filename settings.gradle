@@ -9,6 +9,9 @@ pluginManagement {
 
 rootProject.name = 'simply_screens'
 
+// Shared common module (version-independent)
+include 'common'
+
 // 1.20.1 modules (Forge)
 include 'common-1.20.1'
 include 'fabric-1.20.1'
