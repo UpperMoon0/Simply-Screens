@@ -12,7 +12,9 @@ public class Config {
     public static int VIEW_DISTANCE = 64;
     public static int SCREEN_TICK_RATE = 100;
     public static boolean DISABLE_UPLOAD = false;
+    public static boolean DISABLE_URL_DOWNLOAD = false;
     public static int MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5MB
+    public static int MAX_URL_DOWNLOAD_SIZE = 10 * 1024 * 1024; // 10MB for URL downloads
 
     public static final int MIN_UPLOAD_SIZE = 1024; // 1KB
     public static final int MAX_UPLOAD_SIZE_LIMIT = 100 * 1024 * 1024; // 100MB
@@ -35,7 +37,9 @@ public class Config {
         VIEW_DISTANCE = getInt("viewDistance", VIEW_DISTANCE);
         SCREEN_TICK_RATE = getInt("screenTickRate", SCREEN_TICK_RATE);
         DISABLE_UPLOAD = getBoolean("disableUpload", DISABLE_UPLOAD);
+        DISABLE_URL_DOWNLOAD = getBoolean("disableUrlDownload", DISABLE_URL_DOWNLOAD);
         MAX_UPLOAD_SIZE = getInt("maxUploadSize", MAX_UPLOAD_SIZE);
+        MAX_URL_DOWNLOAD_SIZE = getInt("maxUrlDownloadSize", MAX_URL_DOWNLOAD_SIZE);
     }
 
     private static void createDefaultConfig() throws IOException {
@@ -43,7 +47,9 @@ public class Config {
         properties.setProperty("viewDistance", String.valueOf(VIEW_DISTANCE));
         properties.setProperty("screenTickRate", String.valueOf(SCREEN_TICK_RATE));
         properties.setProperty("disableUpload", String.valueOf(DISABLE_UPLOAD));
+        properties.setProperty("disableUrlDownload", String.valueOf(DISABLE_URL_DOWNLOAD));
         properties.setProperty("maxUploadSize", String.valueOf(MAX_UPLOAD_SIZE));
+        properties.setProperty("maxUrlDownloadSize", String.valueOf(MAX_URL_DOWNLOAD_SIZE));
         try (FileOutputStream stream = new FileOutputStream(CONFIG_PATH.toFile())) {
             properties.store(stream, "Simply Screens Config");
         }

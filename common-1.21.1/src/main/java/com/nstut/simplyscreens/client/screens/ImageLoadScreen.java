@@ -9,6 +9,7 @@ import com.nstut.simplyscreens.network.UpdateScreenAspectRatioC2SPacket;
 import com.nstut.simplyscreens.network.UpdateScreenIdC2SPacket;
 import com.nstut.simplyscreens.network.UpdateScreenSelectedImageC2SPacket;
 import com.nstut.simplyscreens.network.UploadImageChunkC2SPacket;
+import com.nstut.simplyscreens.network.DownloadImageFromUrlC2SPacket;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.components.EditBox;
@@ -43,9 +44,11 @@ public class ImageLoadScreen extends Screen {
     private ImageListWidget imageListWidget;
     private Button selectButton;
     private Button uploadFromComputerButton;
+    private Button downloadFromUrlButton;
     private Checkbox maintainAspectCheckbox;
     private EditBox searchBar;
     private EditBox screenIdField;
+    private EditBox urlField;
     private Button linkScreenIdButton;
 
 
@@ -103,8 +106,21 @@ public class ImageLoadScreen extends Screen {
                 .build();
         addRenderableWidget(linkScreenIdButton);
 
+        // URL field for downloading from internet
+        urlField = new EditBox(this.font, guiLeft + 8, guiTop + 131, 115, 20, Component.translatable("gui.simplyscreens.screen.url.placeholder"));
+        urlField.setTooltip(Tooltip.create(Component.translatable("gui.simplyscreens.screen.url.tooltip")));
+        addRenderableWidget(urlField);
+
+        // Download from URL button
+        downloadFromUrlButton = Button.builder(Component.translatable("gui.simplyscreens.screen.download"), button -> onDownloadFromUrl())
+                .pos(guiLeft + 125, guiTop + 131)
+                .size(28, 20)
+                .build();
+        downloadFromUrlButton.visible = !Config.DISABLE_URL_DOWNLOAD;
+        addRenderableWidget(downloadFromUrlButton);
+
         selectButton = Button.builder(Component.translatable("gui.simplyscreens.screen.select"), button -> onSelect())
-                .pos(guiLeft + 8, guiTop + 131)
+                .pos(guiLeft + 8, guiTop + 156)
                 .size(145, 20)
                 .build();
         selectButton.active = false;
@@ -206,6 +222,50 @@ public class ImageLoadScreen extends Screen {
                 }
             }
         }
+    }
+
+    private void onDownloadFromUrl() {
+        String url = urlField.getValue();
+
+        if (url == null || url.isEmpty()) {
+            return;
+        }
+
+        // Basic validation
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            TinyFileDialogs.tinyfd_messageBox(
+                Component.translatable("gui.simplyscreens.screen.dialog.upload_error").getString(),
+                Component.translatable("gui.simplyscreens.screen.url.error.invalid").getString(),
+                "ok", "error", true);
+            return;
+        }
+
+        // Extract filename from URL or use default
+        String fileName = null;
+        try {
+            java.net.URI uri = new java.net.URI(url);
+            String path = uri.getPath();
+            if (path != null && path.contains(".")) {
+                fileName = path.substring(path.lastIndexOf('/') + 1);
+            }
+        } catch (Exception e) {
+            // Ignore and use default
+        }
+
+        // Send download request to server
+        PacketRegistries.sendToServer(new DownloadImageFromUrlC2SPacket(blockEntityPos, url, fileName));
+
+        // Refresh image list after a delay (server will send updated list)
+        new Thread(() -> {
+            try {
+                Thread.sleep(2000); // Wait for download to complete
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            if (minecraft != null && minecraft.execute(() -> imageListWidget.refresh()) != null) {
+                // Refresh triggered
+            }
+        }).start();
     }
 
 

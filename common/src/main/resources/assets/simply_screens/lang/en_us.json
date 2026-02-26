@@ -24,5 +24,9 @@
   "gui.simplyscreens.screen.dialog.upload_error": "Upload Error",
   "gui.simplyscreens.screen.id.placeholder": "Screen ID...",
   "gui.simplyscreens.screen.id.tooltip": "Enter a screen ID to link multiple screens to the same image",
-  "gui.simplyscreens.screen.link": "Link"
+  "gui.simplyscreens.screen.link": "Link",
+  "gui.simplyscreens.screen.url.placeholder": "Image URL...",
+  "gui.simplyscreens.screen.url.tooltip": "Enter an image URL to download from the internet",
+  "gui.simplyscreens.screen.download": "Go",
+  "gui.simplyscreens.screen.url.error.invalid": "Invalid URL. Must start with http:// or https://"
 }

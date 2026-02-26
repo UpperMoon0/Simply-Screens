@@ -22,6 +22,11 @@ public class PacketRegistries {
             (packet, context) -> UpdateScreenIdC2SPacket.handle(packet, context));
 
         NetworkManager.registerReceiver(NetworkManager.c2s(),
+            DownloadImageFromUrlC2SPacket.TYPE,
+            DownloadImageFromUrlC2SPacket.CODEC,
+            (packet, context) -> DownloadImageFromUrlC2SPacket.handle(packet, context));
+
+        NetworkManager.registerReceiver(NetworkManager.c2s(),
             RequestImageDownloadC2SPacket.TYPE,
             RequestImageDownloadC2SPacket.CODEC,
             (packet, context) -> RequestImageDownloadC2SPacket.handle(packet, context));
