@@ -4,6 +4,7 @@ import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.BlockEntityRegistries;
 import com.nstut.simplyscreens.client.renderers.ScreenBlockEntityRenderer;
 import com.nstut.simplyscreens.helpers.ClientImageManager;
+import com.nstut.simplyscreens.network.PacketRegistries;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -30,6 +31,11 @@ public class ClientSetup {
             BlockEntityRenderers.register(BlockEntityRegistries.SCREEN.get(), ScreenBlockEntityRenderer::new);
             SimplyScreens.LOGGER.info("BlockEntityRenderer registered");
             System.out.println("BlockEntityRenderer registered");
+            
+            // Register S2C packets for receiving on client
+            PacketRegistries.registerS2CPackets();
+            SimplyScreens.LOGGER.info("S2C Packets registered");
+            System.out.println("S2C Packets registered");
             
             NeoForge.EVENT_BUS.addListener(ClientSetup::onClientDisconnect);
             SimplyScreens.LOGGER.info("Client disconnect listener added");
