@@ -1,7 +1,5 @@
 package com.nstut.simplyscreens.client;
 
-import com.nstut.simplyscreens.SimplyScreens;
-
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,7 +25,6 @@ public class ClientScreenRegistry {
         } else {
             screenIdToImageId.put(screenId, imageId);
         }
-        SimplyScreens.LOGGER.debug("Client: Set screen ID '{}' to image {}", screenId, imageId);
     }
 
     /**
@@ -59,7 +56,6 @@ public class ClientScreenRegistry {
         if (screenIds != null) {
             screenIdToImageId.putAll(screenIds);
         }
-        SimplyScreens.LOGGER.info("Client: Updated screen registry with {} entries", screenIdToImageId.size());
     }
 
     /**

@@ -14,6 +14,7 @@ public class SimplyScreens {
         LOGGER.info("Initializing Simply Screens Common");
 
         // WebP support will be handled by the library automatically
+        Config.setModId(MOD_ID);
         Config.load();
         PacketRegistries.register();
     }

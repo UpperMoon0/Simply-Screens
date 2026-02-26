@@ -19,19 +19,32 @@ public class Config {
     public static final int MIN_UPLOAD_SIZE = 1024; // 1KB
     public static final int MAX_UPLOAD_SIZE_LIMIT = 100 * 1024 * 1024; // 100MB
 
-    private static final Path CONFIG_PATH = Paths.get("config", SimplyScreens.MOD_ID + ".properties");
+    private static String modId = "simply_screens"; // default
     private static final Properties properties = new Properties();
+
+    /**
+     * Sets the mod ID for config file naming.
+     * Must be called before load().
+     */
+    public static void setModId(String id) {
+        modId = id;
+    }
+    
+    private static Path getConfigPath() {
+        return Paths.get("config", modId + ".properties");
+    }
 
     public static void load() {
         try {
-            if (Files.notExists(CONFIG_PATH)) {
-                createDefaultConfig();
+            Path path = getConfigPath();
+            if (Files.notExists(path)) {
+                createDefaultConfig(path);
             }
-            try (FileInputStream stream = new FileInputStream(CONFIG_PATH.toFile())) {
+            try (FileInputStream stream = new FileInputStream(path.toFile())) {
                 properties.load(stream);
             }
         } catch (IOException e) {
-            SimplyScreens.LOGGER.error("Failed to load config file", e);
+            System.err.println("Failed to load config file: " + e.getMessage());
         }
 
         VIEW_DISTANCE = getInt("viewDistance", VIEW_DISTANCE);
@@ -42,15 +55,15 @@ public class Config {
         MAX_URL_DOWNLOAD_SIZE = getInt("maxUrlDownloadSize", MAX_URL_DOWNLOAD_SIZE);
     }
 
-    private static void createDefaultConfig() throws IOException {
-        Files.createDirectories(CONFIG_PATH.getParent());
+    private static void createDefaultConfig(Path path) throws IOException {
+        Files.createDirectories(path.getParent());
         properties.setProperty("viewDistance", String.valueOf(VIEW_DISTANCE));
         properties.setProperty("screenTickRate", String.valueOf(SCREEN_TICK_RATE));
         properties.setProperty("disableUpload", String.valueOf(DISABLE_UPLOAD));
         properties.setProperty("disableUrlDownload", String.valueOf(DISABLE_URL_DOWNLOAD));
         properties.setProperty("maxUploadSize", String.valueOf(MAX_UPLOAD_SIZE));
         properties.setProperty("maxUrlDownloadSize", String.valueOf(MAX_URL_DOWNLOAD_SIZE));
-        try (FileOutputStream stream = new FileOutputStream(CONFIG_PATH.toFile())) {
+        try (FileOutputStream stream = new FileOutputStream(path.toFile())) {
             properties.store(stream, "Simply Screens Config");
         }
     }

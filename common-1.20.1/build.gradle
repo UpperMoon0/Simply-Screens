@@ -27,6 +27,10 @@ dependencies {
     annotationProcessor "org.projectlombok:lombok:1.18.34"
 }
 
+// Include common module classes in compile classpath
+sourceSets.main.compileClasspath += project(':common').sourceSets.main.output
+sourceSets.main.runtimeClasspath += project(':common').sourceSets.main.output
+
 import groovy.json.JsonSlurper
 import groovy.json.JsonBuilder
 

@@ -1,42 +1,25 @@
 package com.nstut.simplyscreens;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.lang.reflect.Type;
-import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Registry system for tracking screens by their IDs and managing their image associations.
  * This allows multiple separate screen structures to share the same image by using the same screen ID.
+ * 
+ * This implementation uses ScreenRegistryHelper for shared logic.
  */
 public class ScreenRegistry {
-    // Map of screen ID to image UUID
-    private static final Map<String, UUID> screenIdToImageId = new ConcurrentHashMap<>();
-
+    
+    // Helper instance for shared logic
+    private static final ScreenRegistryHelper HELPER = new ScreenRegistryHelper(SimplyScreens.LOGGER);
+    
     // Map of level to map of position to screen ID
     private static final Map<Level, Map<BlockPos, String>> levelScreenIds = new ConcurrentHashMap<>();
-
-    // Gson instance for serialization
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-
-    // Registry file path
-    private static Path registryFilePath;
-
-    // Flag to track if registry has been initialized
-    private static boolean initialized = false;
 
     /**
      * Initializes the screen registry with the world save path.
@@ -44,12 +27,8 @@ public class ScreenRegistry {
      *
      * @param worldSavePath The path to the world save directory
      */
-    public static void init(Path worldSavePath) {
-        if (initialized) return;
-
-        registryFilePath = worldSavePath.resolve("screen_registry.json");
-        loadRegistry();
-        initialized = true;
+    public static void init(java.nio.file.Path worldSavePath) {
+        HELPER.init(worldSavePath);
     }
 
     /**
@@ -58,58 +37,21 @@ public class ScreenRegistry {
      * @return true if initialized, false otherwise
      */
     public static boolean isInitialized() {
-        return initialized;
+        return HELPER.isInitialized();
     }
 
     /**
      * Saves the screen registry to disk.
      */
     public static void saveRegistry() {
-        if (registryFilePath == null) return;
-
-        try {
-            String json = GSON.toJson(screenIdToImageId);
-            File file = registryFilePath.toFile();
-            file.getParentFile().mkdirs();
-            try (FileWriter writer = new FileWriter(file)) {
-                writer.write(json);
-            }
-            SimplyScreens.LOGGER.info("Saved screen registry to {}", registryFilePath);
-        } catch (IOException e) {
-            SimplyScreens.LOGGER.error("Failed to save screen registry", e);
-        }
+        HELPER.saveRegistry();
     }
 
     /**
      * Loads the screen registry from disk.
      */
     public static void loadRegistry() {
-        if (registryFilePath == null) return;
-
-        try {
-            File file = registryFilePath.toFile();
-            if (file.exists()) {
-                try (FileReader reader = new FileReader(file)) {
-                    Type type = new TypeToken<Map<String, String>>(){}.getType();
-                    Map<String, String> loadedStates = GSON.fromJson(reader, type);
-                    if (loadedStates != null) {
-                        screenIdToImageId.clear();
-                        for (Map.Entry<String, String> entry : loadedStates.entrySet()) {
-                            try {
-                                screenIdToImageId.put(entry.getKey(), UUID.fromString(entry.getValue()));
-                            } catch (IllegalArgumentException e) {
-                                SimplyScreens.LOGGER.warn("Invalid UUID in screen registry: {}", entry.getValue());
-                            }
-                        }
-                        SimplyScreens.LOGGER.info("Loaded screen registry with {} entries", screenIdToImageId.size());
-                    }
-                }
-            } else {
-                SimplyScreens.LOGGER.info("No existing screen registry file found, starting with empty registry");
-            }
-        } catch (Exception e) {
-            SimplyScreens.LOGGER.error("Failed to load screen registry", e);
-        }
+        HELPER.loadRegistry();
     }
 
     /**
@@ -119,7 +61,7 @@ public class ScreenRegistry {
      * @return The image UUID, or null if not found
      */
     public static UUID getImageId(String screenId) {
-        return screenIdToImageId.get(screenId);
+        return HELPER.getImageId(screenId);
     }
 
     /**
@@ -129,12 +71,7 @@ public class ScreenRegistry {
      * @param imageId The image UUID
      */
     public static void setImageId(String screenId, UUID imageId) {
-        if (screenId == null || screenId.isEmpty()) return;
-        if (imageId == null) {
-            screenIdToImageId.remove(screenId);
-        } else {
-            screenIdToImageId.put(screenId, imageId);
-        }
+        HELPER.setImageId(screenId, imageId);
     }
 
     /**
@@ -143,7 +80,7 @@ public class ScreenRegistry {
      * @param screenId The screen ID to remove
      */
     public static void removeScreenId(String screenId) {
-        screenIdToImageId.remove(screenId);
+        HELPER.removeScreenId(screenId);
     }
 
     /**
@@ -151,8 +88,8 @@ public class ScreenRegistry {
      *
      * @return Set of all screen IDs
      */
-    public static Set<String> getAllScreenIds() {
-        return Set.copyOf(screenIdToImageId.keySet());
+    public static java.util.Set<String> getAllScreenIds() {
+        return HELPER.getAllScreenIds();
     }
 
     /**
