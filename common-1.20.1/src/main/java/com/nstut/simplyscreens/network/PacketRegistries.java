@@ -59,5 +59,17 @@ public class PacketRegistries {
                 ImageDownloadChunkS2CPacket::new,
                 (packet, context) -> packet.handle(context)
         );
+
+        CHANNEL.register(UpdateScreenIdC2SPacket.class,
+                UpdateScreenIdC2SPacket::write,
+                UpdateScreenIdC2SPacket::new,
+                (packet, context) -> packet.handle(context)
+        );
+
+        CHANNEL.register(DownloadImageFromUrlC2SPacket.class,
+                DownloadImageFromUrlC2SPacket::write,
+                DownloadImageFromUrlC2SPacket::new,
+                (packet, context) -> packet.handle(context)
+        );
     }
 }

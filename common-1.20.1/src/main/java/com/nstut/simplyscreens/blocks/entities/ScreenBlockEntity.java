@@ -1,6 +1,7 @@
 package com.nstut.simplyscreens.blocks.entities;
 
 import com.nstut.simplyscreens.Config;
+import com.nstut.simplyscreens.ScreenRegistry;
 import com.nstut.simplyscreens.blocks.ScreenBlock;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import com.nstut.simplyscreens.network.UpdateScreenS2CPacket;
@@ -23,6 +24,7 @@ import java.util.stream.IntStream;
 @Getter
 public class ScreenBlockEntity extends BlockEntity {
     private UUID imageId;
+    private String screenId; // ID for linking screens together
     private BlockPos anchorPos;
     private int screenWidth = 1;
     private int screenHeight = 1;
@@ -50,6 +52,9 @@ public class ScreenBlockEntity extends BlockEntity {
         if (isAnchor() && imageId != null) {
             tag.putUUID("imageId", imageId);
         }
+        if (isAnchor() && screenId != null && !screenId.isEmpty()) {
+            tag.putString("screenId", screenId);
+        }
         tag.putBoolean("maintainAspectRatio", maintainAspectRatio);
         tag.putInt("screenWidth", screenWidth);
         tag.putInt("screenHeight", screenHeight);
@@ -66,6 +71,11 @@ public class ScreenBlockEntity extends BlockEntity {
             imageId = tag.getUUID("imageId");
         } else {
             imageId = null;
+        }
+        if (tag.contains("screenId")) {
+            screenId = tag.getString("screenId");
+        } else {
+            screenId = null;
         }
         maintainAspectRatio = tag.getBoolean("maintainAspectRatio");
         screenWidth = tag.getInt("screenWidth");
@@ -118,6 +128,75 @@ public class ScreenBlockEntity extends BlockEntity {
         } else {
             switchToErrorState();
         }
+    }
+
+    public void setScreenId(String screenId) {
+        if (level != null && level.isClientSide) {
+            this.screenId = screenId;
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+            return;
+        }
+
+        if (level == null) return;
+
+        ScreenBlockEntity anchor = getAnchorEntity();
+        if (anchor != null) {
+            anchor.forceScreenId(screenId);
+        } else {
+            switchToErrorState();
+        }
+    }
+
+    /**
+     * Resolves the actual image ID to use.
+     * First checks if screenId is set and looks up the corresponding image UUID from registry.
+     * Falls back to direct imageId if no screenId is set.
+     */
+    public UUID getResolvedImageId() {
+        if (screenId != null && !screenId.isEmpty() && level != null && !level.isClientSide) {
+            // Initialize registry if needed
+            if (!ScreenRegistry.isInitialized() && level.getServer() != null) {
+                // Try to initialize with world save path - this may not work in all cases
+                // The registry should be initialized when world loads
+            }
+            UUID resolvedId = ScreenRegistry.getImageId(screenId);
+            if (resolvedId != null) {
+                return resolvedId;
+            }
+        }
+        return imageId;
+    }
+
+    public void forceScreenId(String screenId) {
+        if (level == null || level.isClientSide || !isAnchor()) {
+            return;
+        }
+
+        this.screenId = screenId;
+        setChanged();
+
+        Direction facing = getBlockState().getValue(ScreenBlock.FACING);
+        Direction widthDirection = getWidthDirection(facing);
+        Direction heightDirection = getHeightDirection(facing);
+
+        for (int w = 0; w < screenWidth; w++) {
+            for (int h = 0; h < screenHeight; h++) {
+                BlockPos currentPos = worldPosition.relative(widthDirection, w).relative(heightDirection, h);
+                BlockEntity be = level.getBlockEntity(currentPos);
+                if (be instanceof ScreenBlockEntity screen) {
+                    screen.updateScreen(this.imageId, this.screenWidth, this.screenHeight, this.worldPosition, this.maintainAspectRatio);
+                    screen.setScreenIdInternal(screenId);
+                }
+            }
+        }
+
+        // Update clients with the screen ID
+        updateClients();
+    }
+
+    // Internal setter that doesn't trigger update (for child blocks)
+    public void setScreenIdInternal(String screenId) {
+        this.screenId = screenId;
     }
 
     public void setMaintainAspectRatio(boolean maintainAspectRatio) {

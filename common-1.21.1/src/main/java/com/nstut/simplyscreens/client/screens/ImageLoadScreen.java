@@ -262,8 +262,8 @@ public class ImageLoadScreen extends Screen {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-            if (minecraft != null && minecraft.execute(() -> imageListWidget.refresh()) != null) {
-                // Refresh triggered
+            if (minecraft != null) {
+                minecraft.execute(() -> imageListWidget.refresh());
             }
         }).start();
     }

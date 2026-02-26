@@ -33,7 +33,7 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
 
         BlockState blockState = blockEntity.getBlockState();
         Direction facing = blockState.getValue(BlockStateProperties.FACING);
-        UUID imageId = blockEntity.getImageId();
+        UUID imageId = blockEntity.getResolvedImageId();
 
         if (imageId == null) {
             return;
@@ -128,7 +128,7 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
 
     private boolean shouldRender(ScreenBlockEntity blockEntity) {
         return blockEntity.isAnchor() &&
-                blockEntity.getImageId() != null;
+                blockEntity.getResolvedImageId() != null;
     }
 
     private void applyAspectRatioScaling(PoseStack poseStack, ScreenBlockEntity blockEntity) {
@@ -137,7 +137,7 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         int height = blockEntity.getScreenHeight();
         boolean maintainAspect = blockEntity.isMaintainAspectRatio();
 
-        UUID imageId = blockEntity.getImageId();
+        UUID imageId = blockEntity.getResolvedImageId();
         DynamicTexture texture = ClientImageManager.getImageTexture(imageId);
         if (texture == null) return;
 

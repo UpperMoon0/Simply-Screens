@@ -15,4 +15,9 @@ public class SimplyScreens {
         Config.load();
         PacketRegistries.register();
     }
+
+    public static void initializeScreens() {
+        LOGGER.info("Initializing Screen Registry");
+        // ScreenRegistry will be lazily initialized when first accessed
+    }
 }
