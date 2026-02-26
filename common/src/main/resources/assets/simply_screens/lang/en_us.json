@@ -10,5 +10,16 @@
   "simply_screens.screen.select_image": "Select Image",
   "simply_screens.screen.no_image_selected": "No image selected",
   "simply_screens.screen.image_list": "Available Images",
-  "simply_screens.screen.image_name": "Image Name"
+  "simply_screens.screen.image_name": "Image Name",
+
+  "gui.simplyscreens.screen.title": "Screen",
+  "gui.simplyscreens.screen.search": "Search",
+  "gui.simplyscreens.screen.search.placeholder": "Search...",
+  "gui.simplyscreens.screen.maintain_aspect": "Maintain Aspect Ratio",
+  "gui.simplyscreens.screen.select": "Select",
+  "gui.simplyscreens.screen.upload": "Upload from Computer",
+  "gui.simplyscreens.screen.upload.error.size": "File size exceeds the maximum allowed size of %sMB.",
+  "gui.simplyscreens.screen.dialog.select_image": "Select Image",
+  "gui.simplyscreens.screen.dialog.image_files": "Image Files",
+  "gui.simplyscreens.screen.dialog.upload_error": "Upload Error"
 }

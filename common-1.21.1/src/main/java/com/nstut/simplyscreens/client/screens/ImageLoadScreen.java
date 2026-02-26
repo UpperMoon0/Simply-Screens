@@ -45,7 +45,7 @@ public class ImageLoadScreen extends Screen {
 
 
     public ImageLoadScreen(BlockPos blockEntityPos) {
-        super(Component.literal("Screen"));
+        super(Component.translatable("gui.simplyscreens.screen.title"));
         this.blockEntityPos = blockEntityPos;
     }
 
@@ -57,7 +57,7 @@ public class ImageLoadScreen extends Screen {
         int guiLeft = (this.width - SCREEN_WIDTH) / 2;
         int guiTop = (this.height - SCREEN_HEIGHT) / 2;
 
-        searchBar = new EditBox(this.font, guiLeft + 8, guiTop + 23, 145, 20, Component.literal("Search"));
+        searchBar = new EditBox(this.font, guiLeft + 8, guiTop + 23, 145, 20, Component.translatable("gui.simplyscreens.screen.search.placeholder"));
         searchBar.setResponder(searchTerm -> {
             if (this.imageListWidget != null) {
                 this.imageListWidget.filter(searchTerm);
@@ -68,7 +68,7 @@ public class ImageLoadScreen extends Screen {
         imageListWidget = new ImageListWidget(guiLeft + 8, guiTop + 47, 145, 60, Component.literal(""), this::onImageSelected, initialLocalHash);
         addRenderableWidget(imageListWidget);
 
-        maintainAspectCheckbox = Checkbox.builder(Component.literal("Maintain Aspect Ratio"), this.font)
+        maintainAspectCheckbox = Checkbox.builder(Component.translatable("gui.simplyscreens.screen.maintain_aspect"), this.font)
                 .pos(guiLeft + 8, guiTop + 112)
                 .selected(this.initialMaintainAspectRatio)
                 .onValueChange((checkbox, selected) -> {
@@ -85,14 +85,14 @@ public class ImageLoadScreen extends Screen {
                 .build();
         addRenderableWidget(maintainAspectCheckbox);
 
-        selectButton = Button.builder(Component.literal("Select"), button -> onSelect())
+        selectButton = Button.builder(Component.translatable("gui.simplyscreens.screen.select"), button -> onSelect())
                 .pos(guiLeft + 8, guiTop + 137)
                 .size(145, 20)
                 .build();
         selectButton.active = false;
         addRenderableWidget(selectButton);
 
-        uploadFromComputerButton = Button.builder(Component.literal("Upload from computer"), button -> onUploadFromComputer())
+        uploadFromComputerButton = Button.builder(Component.translatable("gui.simplyscreens.screen.upload"), button -> onUploadFromComputer())
                 .pos(guiLeft + 8, guiTop + 162)
                 .size(145, 20)
                 .build();
@@ -122,7 +122,7 @@ public class ImageLoadScreen extends Screen {
             filters.put(stack.UTF8("*.png;*.jpg;*.jpeg"));
             filters.flip();
 
-            String filePath = TinyFileDialogs.tinyfd_openFileDialog("Select Image", "", filters, "Image Files", false);
+            String filePath = TinyFileDialogs.tinyfd_openFileDialog(Component.translatable("gui.simplyscreens.screen.dialog.select_image").getString(), "", filters, Component.translatable("gui.simplyscreens.screen.dialog.image_files").getString(), false);
 
             if (filePath != null) {
                 try {
@@ -130,7 +130,7 @@ public class ImageLoadScreen extends Screen {
                     byte[] data = java.nio.file.Files.readAllBytes(path);
 
                     if (data.length > Config.MAX_UPLOAD_SIZE) {
-                        TinyFileDialogs.tinyfd_messageBox("Upload Error", "File size exceeds the maximum allowed size of " + (Config.MAX_UPLOAD_SIZE / 1024 / 1024) + "MB.", "ok", "error", true);
+                        TinyFileDialogs.tinyfd_messageBox(Component.translatable("gui.simplyscreens.screen.dialog.upload_error").getString(), Component.translatable("gui.simplyscreens.screen.upload.error.size", Config.MAX_UPLOAD_SIZE / 1024 / 1024).getString(), "ok", "error", true);
                         return;
                     }
 
