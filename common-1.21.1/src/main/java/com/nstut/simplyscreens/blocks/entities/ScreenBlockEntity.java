@@ -1,6 +1,7 @@
 package com.nstut.simplyscreens.blocks.entities;
 
 import com.nstut.simplyscreens.Config;
+import com.nstut.simplyscreens.ScreenRegistry;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.ScreenBlock;
 import com.nstut.simplyscreens.network.PacketRegistries;
@@ -25,6 +26,7 @@ import java.util.stream.IntStream;
 @Getter
 public class ScreenBlockEntity extends BlockEntity {
     private UUID imageId;
+    private String screenId = ""; // User-defined ID for linking multiple screens to the same image
     private BlockPos anchorPos;
     private int screenWidth = 1;
     private int screenHeight = 1;
@@ -58,6 +60,9 @@ public class ScreenBlockEntity extends BlockEntity {
         if (isAnchor() && imageId != null) {
             tag.putUUID("imageId", imageId);
         }
+        if (isAnchor() && screenId != null && !screenId.isEmpty()) {
+            tag.putString("screenId", screenId);
+        }
         tag.putBoolean("maintainAspectRatio", maintainAspectRatio);
         tag.putInt("screenWidth", screenWidth);
         tag.putInt("screenHeight", screenHeight);
@@ -75,6 +80,7 @@ public class ScreenBlockEntity extends BlockEntity {
         } else {
             imageId = null;
         }
+        screenId = tag.contains("screenId") ? tag.getString("screenId") : "";
         maintainAspectRatio = tag.getBoolean("maintainAspectRatio");
         screenWidth = tag.getInt("screenWidth");
         screenHeight = tag.getInt("screenHeight");
@@ -126,6 +132,38 @@ public class ScreenBlockEntity extends BlockEntity {
         } else {
             switchToErrorState();
         }
+    }
+
+    public void setScreenId(String screenId) {
+        if (level != null && level.isClientSide) {
+            this.screenId = screenId != null ? screenId : "";
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+            return;
+        }
+
+        if (level == null) return;
+
+        ScreenBlockEntity anchor = getAnchorEntity();
+        if (anchor != null) {
+            anchor.forceScreenId(screenId);
+        } else {
+            switchToErrorState();
+        }
+    }
+
+    /**
+     * Gets the resolved image ID - if screenId is set, look it up from registry,
+     * otherwise return the direct imageId.
+     * @return The resolved image UUID
+     */
+    public UUID getResolvedImageId() {
+        if (screenId != null && !screenId.isEmpty()) {
+            UUID registryImageId = ScreenRegistry.getImageId(screenId);
+            if (registryImageId != null) {
+                return registryImageId;
+            }
+        }
+        return imageId;
     }
 
     public void setMaintainAspectRatio(boolean maintainAspectRatio) {
@@ -190,6 +228,38 @@ public class ScreenBlockEntity extends BlockEntity {
 
         this.imageId = imageId;
         setChanged();
+
+        Direction facing = getBlockState().hasProperty(ScreenBlock.FACING) ?
+            getBlockState().getValue(ScreenBlock.FACING) : Direction.NORTH;
+        Direction widthDirection = getWidthDirection(facing);
+        Direction heightDirection = getHeightDirection(facing);
+
+        for (int w = 0; w < screenWidth; w++) {
+            for (int h = 0; h < screenHeight; h++) {
+                BlockPos currentPos = worldPosition.relative(widthDirection, w).relative(heightDirection, h);
+                BlockEntity be = level.getBlockEntity(currentPos);
+                if (be instanceof ScreenBlockEntity screen) {
+                    screen.updateScreen(this.imageId, this.screenWidth, this.screenHeight, this.worldPosition, this.maintainAspectRatio);
+                }
+            }
+        }
+    }
+
+    public void forceScreenId(String screenId) {
+        if (level == null || level.isClientSide || !isAnchor()) {
+            return;
+        }
+
+        String oldScreenId = this.screenId;
+        this.screenId = screenId != null ? screenId : "";
+        setChanged();
+
+        // Update registry
+        if (oldScreenId != null && !oldScreenId.isEmpty()) {
+            ScreenRegistry.updateScreenId(level, worldPosition, oldScreenId, this.screenId);
+        } else if (!this.screenId.isEmpty()) {
+            ScreenRegistry.registerScreen(level, worldPosition, this.screenId);
+        }
 
         Direction facing = getBlockState().hasProperty(ScreenBlock.FACING) ?
             getBlockState().getValue(ScreenBlock.FACING) : Direction.NORTH;

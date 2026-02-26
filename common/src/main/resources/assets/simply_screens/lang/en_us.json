@@ -21,5 +21,8 @@
   "gui.simplyscreens.screen.upload.error.size": "File size exceeds the maximum allowed size of %sMB.",
   "gui.simplyscreens.screen.dialog.select_image": "Select Image",
   "gui.simplyscreens.screen.dialog.image_files": "Image Files",
-  "gui.simplyscreens.screen.dialog.upload_error": "Upload Error"
+  "gui.simplyscreens.screen.dialog.upload_error": "Upload Error",
+  "gui.simplyscreens.screen.id.placeholder": "Screen ID...",
+  "gui.simplyscreens.screen.id.tooltip": "Enter a screen ID to link multiple screens to the same image",
+  "gui.simplyscreens.screen.link": "Link"
 }

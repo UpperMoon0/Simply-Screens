@@ -10,12 +10,17 @@ public class PacketRegistries {
             UpdateScreenSelectedImageC2SPacket.TYPE,
             UpdateScreenSelectedImageC2SPacket.CODEC,
             (packet, context) -> UpdateScreenSelectedImageC2SPacket.handle(packet, context));
-            
+
         NetworkManager.registerReceiver(NetworkManager.c2s(),
             UpdateScreenAspectRatioC2SPacket.TYPE,
             UpdateScreenAspectRatioC2SPacket.CODEC,
             (packet, context) -> UpdateScreenAspectRatioC2SPacket.handle(packet, context));
-            
+
+        NetworkManager.registerReceiver(NetworkManager.c2s(),
+            UpdateScreenIdC2SPacket.TYPE,
+            UpdateScreenIdC2SPacket.CODEC,
+            (packet, context) -> UpdateScreenIdC2SPacket.handle(packet, context));
+
         NetworkManager.registerReceiver(NetworkManager.c2s(),
             RequestImageDownloadC2SPacket.TYPE,
             RequestImageDownloadC2SPacket.CODEC,

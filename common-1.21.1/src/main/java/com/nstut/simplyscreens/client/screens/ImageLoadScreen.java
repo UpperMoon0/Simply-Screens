@@ -5,12 +5,14 @@ import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simplyscreens.client.gui.widgets.ImageListWidget;
 import com.nstut.simplyscreens.network.PacketRegistries;
-import com.nstut.simplyscreens.network.UploadImageChunkC2SPacket;
 import com.nstut.simplyscreens.network.UpdateScreenAspectRatioC2SPacket;
+import com.nstut.simplyscreens.network.UpdateScreenIdC2SPacket;
 import com.nstut.simplyscreens.network.UpdateScreenSelectedImageC2SPacket;
+import com.nstut.simplyscreens.network.UploadImageChunkC2SPacket;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
@@ -34,14 +36,17 @@ public class ImageLoadScreen extends Screen {
     private static final int SCREEN_HEIGHT = 188;
 
     private final BlockPos blockEntityPos;
-    private java.util.UUID initialLocalHash;
+    private UUID initialLocalHash;
     private boolean initialMaintainAspectRatio = true;
+    private String initialScreenId = "";
 
     private ImageListWidget imageListWidget;
     private Button selectButton;
     private Button uploadFromComputerButton;
     private Checkbox maintainAspectCheckbox;
     private EditBox searchBar;
+    private EditBox screenIdField;
+    private Button linkScreenIdButton;
 
 
     public ImageLoadScreen(BlockPos blockEntityPos) {
@@ -65,11 +70,11 @@ public class ImageLoadScreen extends Screen {
         });
         addRenderableWidget(searchBar);
 
-        imageListWidget = new ImageListWidget(guiLeft + 8, guiTop + 47, 145, 60, Component.literal(""), this::onImageSelected, initialLocalHash);
+        imageListWidget = new ImageListWidget(guiLeft + 8, guiTop + 47, 145, 40, Component.literal(""), this::onImageSelected, initialLocalHash);
         addRenderableWidget(imageListWidget);
 
         maintainAspectCheckbox = Checkbox.builder(Component.translatable("gui.simplyscreens.screen.maintain_aspect"), this.font)
-                .pos(guiLeft + 8, guiTop + 112)
+                .pos(guiLeft + 8, guiTop + 91)
                 .selected(this.initialMaintainAspectRatio)
                 .onValueChange((checkbox, selected) -> {
                     if (minecraft != null && minecraft.level != null) {
@@ -85,15 +90,28 @@ public class ImageLoadScreen extends Screen {
                 .build();
         addRenderableWidget(maintainAspectCheckbox);
 
+        // Screen ID field
+        screenIdField = new EditBox(this.font, guiLeft + 8, guiTop + 106, 100, 20, Component.translatable("gui.simplyscreens.screen.id.placeholder"));
+        screenIdField.setValue(initialScreenId);
+        screenIdField.setTooltip(Tooltip.create(Component.translatable("gui.simplyscreens.screen.id.tooltip")));
+        addRenderableWidget(screenIdField);
+
+        // Link button
+        linkScreenIdButton = Button.builder(Component.translatable("gui.simplyscreens.screen.link"), button -> onLinkScreenId())
+                .pos(guiLeft + 110, guiTop + 106)
+                .size(43, 20)
+                .build();
+        addRenderableWidget(linkScreenIdButton);
+
         selectButton = Button.builder(Component.translatable("gui.simplyscreens.screen.select"), button -> onSelect())
-                .pos(guiLeft + 8, guiTop + 137)
+                .pos(guiLeft + 8, guiTop + 131)
                 .size(145, 20)
                 .build();
         selectButton.active = false;
         addRenderableWidget(selectButton);
 
         uploadFromComputerButton = Button.builder(Component.translatable("gui.simplyscreens.screen.upload"), button -> onUploadFromComputer())
-                .pos(guiLeft + 8, guiTop + 162)
+                .pos(guiLeft + 8, guiTop + 156)
                 .size(145, 20)
                 .build();
         uploadFromComputerButton.visible = !Config.DISABLE_UPLOAD;
@@ -113,6 +131,41 @@ public class ImageLoadScreen extends Screen {
         if (selectedEntry != null) {
             sendScreenInputsToServer();
             imageListWidget.setDisplayedImage(selectedEntry.getImageId());
+        }
+    }
+
+    private void onLinkScreenId() {
+        String screenId = screenIdField.getValue();
+        ImageListWidget.ImageEntry selectedEntry = imageListWidget.getSelected();
+
+        if (screenId == null || screenId.isEmpty()) {
+            return;
+        }
+
+        if (selectedEntry == null) {
+            // Just update the screen ID without changing the image
+            if (this.minecraft != null && this.minecraft.level != null) {
+                BlockEntity blockEntity = this.minecraft.level.getBlockEntity(blockEntityPos);
+                if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
+                    ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
+                    if (anchor != null) {
+                        PacketRegistries.sendToServer(new UpdateScreenIdC2SPacket(anchor.getBlockPos(), screenId));
+                    }
+                }
+            }
+        } else {
+            // Update both screen ID and image
+            if (this.minecraft != null && this.minecraft.level != null) {
+                BlockEntity blockEntity = this.minecraft.level.getBlockEntity(blockEntityPos);
+                if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
+                    ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
+                    if (anchor != null) {
+                        // First set the image, then set the screen ID (which will register the mapping)
+                        PacketRegistries.sendToServer(new UpdateScreenSelectedImageC2SPacket(anchor.getBlockPos(), selectedEntry.getImageId()));
+                        PacketRegistries.sendToServer(new UpdateScreenIdC2SPacket(anchor.getBlockPos(), screenId));
+                    }
+                }
+            }
         }
     }
 
@@ -185,6 +238,7 @@ public class ImageLoadScreen extends Screen {
                 if (anchor != null) {
                     initialLocalHash = anchor.getImageId();
                     initialMaintainAspectRatio = anchor.isMaintainAspectRatio();
+                    initialScreenId = anchor.getScreenId() != null ? anchor.getScreenId() : "";
                 }
             }
         }

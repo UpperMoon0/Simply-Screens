@@ -34,7 +34,8 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         BlockState blockState = blockEntity.getBlockState();
         Direction facing = blockState.hasProperty(ScreenBlock.FACING) ?
             blockState.getValue(ScreenBlock.FACING) : Direction.NORTH;
-        UUID imageId = blockEntity.getImageId();
+        // Use resolved image ID - checks screenId registry first, falls back to direct imageId
+        UUID imageId = blockEntity.getResolvedImageId();
 
         if (imageId == null) {
             return;
@@ -129,7 +130,7 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
 
     private boolean shouldRender(ScreenBlockEntity blockEntity) {
         return blockEntity.isAnchor() &&
-                blockEntity.getImageId() != null;
+                blockEntity.getResolvedImageId() != null;
     }
 
     private void applyAspectRatioScaling(PoseStack poseStack, ScreenBlockEntity blockEntity) {
