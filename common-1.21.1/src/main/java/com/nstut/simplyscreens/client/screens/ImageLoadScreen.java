@@ -34,7 +34,7 @@ public class ImageLoadScreen extends Screen {
     private static final ResourceLocation BACKGROUND_TEXTURE = ResourceLocation.fromNamespaceAndPath(SimplyScreens.MOD_ID, "textures/gui/screen.png");
 
     private static final int SCREEN_WIDTH = 176;
-    private static final int SCREEN_HEIGHT = 200;
+    private static final int SCREEN_HEIGHT = 220;
 
     private final BlockPos blockEntityPos;
     private UUID initialLocalHash;
@@ -85,9 +85,9 @@ public class ImageLoadScreen extends Screen {
                 .build();
         addRenderableWidget(settingsTabButton);
 
-        // Add Image button (only visible in Gallery tab)
+        // Add Image button (only visible in Gallery tab, same height as search bar)
         addImageButton = Button.builder(Component.literal("+"), button -> switchTab(Tab.IMPORT))
-                .pos(guiLeft + 150, guiTop + 45)
+                .pos(guiLeft + 150, guiTop + 66)
                 .size(18, 18)
                 .build();
         addRenderableWidget(addImageButton);
@@ -148,7 +148,7 @@ public class ImageLoadScreen extends Screen {
         addRenderableWidget(maintainAspectCheckbox);
 
         // Import Tab Components - Upload from Computer Section
-        uploadFromComputerButton = Button.builder(Component.translatable("gui.simplyscreens.screen.upload"), button -> onUploadFromComputer())
+        uploadFromComputerButton = Button.builder(Component.literal("Upload"), button -> onUploadFromComputer())
                 .pos(guiLeft + 8, guiTop + 80)
                 .size(160, 24)
                 .build();
@@ -160,7 +160,7 @@ public class ImageLoadScreen extends Screen {
         urlField.setTooltip(Tooltip.create(Component.translatable("gui.simplyscreens.screen.url.tooltip")));
         addRenderableWidget(urlField);
 
-        downloadFromUrlButton = Button.builder(Component.literal("Go"), button -> onDownloadFromUrl())
+        downloadFromUrlButton = Button.builder(Component.literal("Load"), button -> onDownloadFromUrl())
                 .pos(guiLeft + 130, guiTop + 130)
                 .size(38, 18)
                 .build();
@@ -311,15 +311,18 @@ public class ImageLoadScreen extends Screen {
         }
 
         // Extract filename from URL or use default
-        String fileName = null;
+        String fileName = "downloaded_image.png";
         try {
             java.net.URI uri = new java.net.URI(url);
             String path = uri.getPath();
             if (path != null && path.contains(".")) {
-                fileName = path.substring(path.lastIndexOf('/') + 1);
+                int lastSlash = path.lastIndexOf('/');
+                if (lastSlash >= 0 && lastSlash < path.length() - 1) {
+                    fileName = path.substring(lastSlash + 1);
+                }
             }
         } catch (Exception e) {
-            // Ignore and use default
+            // Use default filename
         }
 
         // Send download request to server
