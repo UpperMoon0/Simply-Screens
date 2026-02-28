@@ -32,9 +32,8 @@ public class ImageLoadScreen extends Screen {
     private static final int CHUNK_SIZE = 1024 * 30; // 30KB
     private static final ResourceLocation BACKGROUND_TEXTURE = new ResourceLocation(SimplyScreens.MOD_ID, "textures/gui/screen.png");
 
-    private static final int SCREEN_WIDTH = 162;
-    private static final int SCREEN_HEIGHT_BASE = 240;
-    private int screenHeight = SCREEN_HEIGHT_BASE;
+    private static final int SCREEN_WIDTH = 176;
+    private static final int SCREEN_HEIGHT = 200;
 
     private final BlockPos blockEntityPos;
     private java.util.UUID initialLocalHash;
@@ -44,12 +43,18 @@ public class ImageLoadScreen extends Screen {
     private ImageListWidget imageListWidget;
     private Button selectButton;
     private Button uploadFromComputerButton;
-    private Button linkButton;
+    private Button downloadUrlButton;
     private Button goButton;
+    private Button galleryTabButton;
+    private Button settingsTabButton;
+    private Button uploadTabButton;
     private Checkbox maintainAspectCheckbox;
     private EditBox searchBar;
     private EditBox screenIdField;
     private EditBox urlField;
+
+    private enum Tab { GALLERY, SETTINGS, UPLOAD }
+    private Tab currentTab = Tab.GALLERY;
 
 
     public ImageLoadScreen(BlockPos blockEntityPos) {
@@ -63,9 +68,29 @@ public class ImageLoadScreen extends Screen {
         fetchDataFromBlockEntity();
 
         int guiLeft = (this.width - SCREEN_WIDTH) / 2;
-        int guiTop = (this.height - screenHeight) / 2;
+        int guiTop = (this.height - SCREEN_HEIGHT) / 2;
 
-        searchBar = new EditBox(this.font, guiLeft + 8, guiTop + 23, 145, 20, Component.translatable("gui.simplyscreens.screen.search.placeholder"));
+        // Tab buttons at the top
+        galleryTabButton = Button.builder(Component.literal("Gallery"), button -> switchTab(Tab.GALLERY))
+                .pos(guiLeft + 8, guiTop + 20)
+                .size(50, 18)
+                .build();
+        addRenderableWidget(galleryTabButton);
+
+        settingsTabButton = Button.builder(Component.literal("Settings"), button -> switchTab(Tab.SETTINGS))
+                .pos(guiLeft + 59, guiTop + 20)
+                .size(50, 18)
+                .build();
+        addRenderableWidget(settingsTabButton);
+
+        uploadTabButton = Button.builder(Component.literal("Upload"), button -> switchTab(Tab.UPLOAD))
+                .pos(guiLeft + 110, guiTop + 20)
+                .size(50, 18)
+                .build();
+        addRenderableWidget(uploadTabButton);
+
+        // Gallery Tab Components (y starts at 45)
+        searchBar = new EditBox(this.font, guiLeft + 8, guiTop + 45, 160, 18, Component.translatable("gui.simplyscreens.screen.search.placeholder"));
         searchBar.setResponder(searchTerm -> {
             if (this.imageListWidget != null) {
                 this.imageListWidget.filter(searchTerm);
@@ -73,10 +98,22 @@ public class ImageLoadScreen extends Screen {
         });
         addRenderableWidget(searchBar);
 
-        imageListWidget = new ImageListWidget(guiLeft + 8, guiTop + 47, 145, 60, Component.literal(""), this::onImageSelected, initialLocalHash);
+        imageListWidget = new ImageListWidget(guiLeft + 8, guiTop + 66, 160, 90, Component.literal(""), this::onImageSelected, initialLocalHash);
         addRenderableWidget(imageListWidget);
 
-        maintainAspectCheckbox = new Checkbox(guiLeft + 8, guiTop + 112, 145, 20, Component.translatable("gui.simplyscreens.screen.maintain_aspect"), this.initialMaintainAspectRatio) {
+        selectButton = Button.builder(Component.translatable("gui.simplyscreens.screen.select"), button -> onSelect())
+                .pos(guiLeft + 8, guiTop + 160)
+                .size(160, 20)
+                .build();
+        selectButton.active = false;
+        addRenderableWidget(selectButton);
+
+        // Settings Tab Components
+        screenIdField = new EditBox(this.font, guiLeft + 8, guiTop + 55, 160, 18, Component.translatable("gui.simplyscreens.screen.id.placeholder"));
+        screenIdField.setValue(initialScreenId != null ? initialScreenId : "");
+        addRenderableWidget(screenIdField);
+
+        maintainAspectCheckbox = new Checkbox(guiLeft + 8, guiTop + 80, 160, 20, Component.translatable("gui.simplyscreens.screen.maintain_aspect"), this.initialMaintainAspectRatio) {
             @Override
             public void onPress() {
                 super.onPress();
@@ -93,35 +130,57 @@ public class ImageLoadScreen extends Screen {
         };
         addRenderableWidget(maintainAspectCheckbox);
 
-        // Screen ID field
-        screenIdField = new EditBox(this.font, guiLeft + 8, guiTop + 137, 145, 20, Component.translatable("gui.simplyscreens.screen.id.placeholder"));
-        screenIdField.setValue(initialScreenId != null ? initialScreenId : "");
-        addRenderableWidget(screenIdField);
-
-        selectButton = Button.builder(Component.translatable("gui.simplyscreens.screen.select"), button -> onSelect())
-                .pos(guiLeft + 8, guiTop + 162)
-                .size(145, 20)
-                .build();
-        selectButton.active = false;
-        addRenderableWidget(selectButton);
-
+        // Upload Tab Components
         uploadFromComputerButton = Button.builder(Component.translatable("gui.simplyscreens.screen.upload"), button -> onUploadFromComputer())
-                .pos(guiLeft + 8, guiTop + 187)
-                .size(145, 20)
+                .pos(guiLeft + 8, guiTop + 55)
+                .size(160, 20)
                 .build();
         uploadFromComputerButton.visible = !Config.DISABLE_UPLOAD;
         addRenderableWidget(uploadFromComputerButton);
 
-        // Link button for URL download
-        linkButton = Button.builder(Component.translatable("gui.simplyscreens.screen.link"), button -> onToggleLink())
-                .pos(guiLeft + 8, guiTop + 212)
-                .size(145, 20)
-                .build();
-        linkButton.visible = !Config.DISABLE_URL_DOWNLOAD;
-        addRenderableWidget(linkButton);
+        urlField = new EditBox(this.font, guiLeft + 8, guiTop + 85, 120, 18, Component.translatable("gui.simplyscreens.screen.url.placeholder"));
+        addRenderableWidget(urlField);
 
+        downloadUrlButton = Button.builder(Component.literal("Go"), button -> onDownloadFromUrl())
+                .pos(guiLeft + 130, guiTop + 85)
+                .size(38, 18)
+                .build();
+        downloadUrlButton.visible = !Config.DISABLE_URL_DOWNLOAD;
+        addRenderableWidget(downloadUrlButton);
+
+        updateTabVisibility();
         setInitialFocus(searchBar);
         imageListWidget.refresh();
+    }
+
+    private void switchTab(Tab tab) {
+        this.currentTab = tab;
+        updateTabVisibility();
+    }
+
+    private void updateTabVisibility() {
+        boolean isGallery = currentTab == Tab.GALLERY;
+        boolean isSettings = currentTab == Tab.SETTINGS;
+        boolean isUpload = currentTab == Tab.UPLOAD;
+
+        // Gallery tab
+        searchBar.visible = isGallery;
+        imageListWidget.visible = isGallery;
+        selectButton.visible = isGallery;
+
+        // Settings tab
+        screenIdField.visible = isSettings;
+        maintainAspectCheckbox.visible = isSettings;
+
+        // Upload tab
+        uploadFromComputerButton.visible = isUpload && !Config.DISABLE_UPLOAD;
+        urlField.visible = isUpload && !Config.DISABLE_URL_DOWNLOAD;
+        downloadUrlButton.visible = isUpload && !Config.DISABLE_URL_DOWNLOAD;
+
+        // Update tab button states (visual feedback)
+        galleryTabButton.active = !isGallery;
+        settingsTabButton.active = !isSettings;
+        uploadTabButton.active = !isUpload;
     }
 
 
@@ -179,33 +238,35 @@ public class ImageLoadScreen extends Screen {
     @Override
     public void render(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         int guiLeft = (this.width - SCREEN_WIDTH) / 2;
-        int guiTop = (this.height - screenHeight) / 2;
+        int guiTop = (this.height - SCREEN_HEIGHT) / 2;
         this.renderBackground(guiGraphics);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
-        guiGraphics.drawString(this.font, this.title, (this.width - this.font.width(this.title)) / 2, guiTop + 8, 0x404040, false);
 
-        // Draw screen ID label
-        guiGraphics.drawString(this.font, Component.translatable("gui.simplyscreens.screen.id.label"), guiLeft + 8, guiTop + 127, 0x404040, false);
+        // Title
+        guiGraphics.drawString(this.font, this.title, (this.width - this.font.width(this.title)) / 2, guiTop + 6, 0x404040, false);
+
+        // Tab labels based on current tab
+        if (currentTab == Tab.SETTINGS) {
+            guiGraphics.drawString(this.font, Component.translatable("gui.simplyscreens.screen.id.label"), guiLeft + 8, guiTop + 45, 0x404040, false);
+        } else if (currentTab == Tab.UPLOAD) {
+            guiGraphics.drawString(this.font, Component.translatable("gui.simplyscreens.screen.url.label"), guiLeft + 8, guiTop + 75, 0x404040, false);
+        }
     }
 
     @Override
     public void renderBackground(GuiGraphics guiGraphics) {
         super.renderBackground(guiGraphics);
         int guiLeft = (this.width - SCREEN_WIDTH) / 2;
-        int guiTop = (this.height - screenHeight) / 2;
-        guiGraphics.blit(BACKGROUND_TEXTURE, guiLeft, guiTop, 0, 0, SCREEN_WIDTH, screenHeight);
+        int guiTop = (this.height - SCREEN_HEIGHT) / 2;
+        guiGraphics.blit(BACKGROUND_TEXTURE, guiLeft, guiTop, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     }
 
     @Override
     public void tick() {
         super.tick();
         searchBar.tick();
-        if (screenIdField != null) {
-            screenIdField.tick();
-        }
-        if (urlField != null) {
-            urlField.tick();
-        }
+        screenIdField.tick();
+        urlField.tick();
         imageListWidget.tick();
     }
 
@@ -252,31 +313,8 @@ public class ImageLoadScreen extends Screen {
         }
     }
 
-    private void onToggleLink() {
-        // Toggle URL input field visibility
-        if (urlField == null) {
-            int guiLeft = (this.width - SCREEN_WIDTH) / 2;
-            int guiTop = (this.height - screenHeight) / 2;
-
-            urlField = new EditBox(this.font, guiLeft + 8, guiTop + 237, 115, 20, Component.translatable("gui.simplyscreens.screen.url.placeholder"));
-            addRenderableWidget(urlField);
-
-            goButton = Button.builder(Component.translatable("gui.simplyscreens.screen.go"), button -> onDownloadFromUrl())
-                    .pos(guiLeft + 125, guiTop + 237)
-                    .size(28, 20)
-                    .build();
-            addRenderableWidget(goButton);
-
-            // Adjust screen height to accommodate URL field
-            screenHeight = 260;
-        } else {
-            urlField.visible = !urlField.visible;
-            goButton.visible = !goButton.visible;
-        }
-    }
-
     private void onDownloadFromUrl() {
-        if (urlField == null || urlField.getValue().isEmpty()) {
+        if (urlField.getValue().isEmpty()) {
             return;
         }
 
