@@ -3,6 +3,8 @@ package com.nstut.simplyscreens;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -171,5 +173,21 @@ public class ScreenRegistry {
     public static void clearLevel(Level level) {
         if (level.isClientSide()) return;
         levelScreenIds.remove(level);
+    }
+
+    public static List<BlockPos> getPositionsForScreenId(Level level, String screenId) {
+        if (level.isClientSide() || screenId == null || screenId.isEmpty()) {
+            return List.of();
+        }
+        Map<BlockPos, String> levelMap = levelScreenIds.get(level);
+        if (levelMap == null) return List.of();
+
+        List<BlockPos> positions = new ArrayList<>();
+        for (Map.Entry<BlockPos, String> entry : levelMap.entrySet()) {
+            if (screenId.equals(entry.getValue())) {
+                positions.add(entry.getKey());
+            }
+        }
+        return positions;
     }
 }

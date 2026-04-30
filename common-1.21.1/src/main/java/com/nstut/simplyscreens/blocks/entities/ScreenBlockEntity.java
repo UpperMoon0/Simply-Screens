@@ -108,7 +108,8 @@ public class ScreenBlockEntity extends BlockEntity {
 
     private void updateClients() {
         if (level != null && !level.isClientSide) {
-            UpdateScreenS2CPacket packet = new UpdateScreenS2CPacket(worldPosition, imageId, maintainAspectRatio, screenId);
+            UUID resolvedImageId = getResolvedImageId();
+            UpdateScreenS2CPacket packet = new UpdateScreenS2CPacket(worldPosition, resolvedImageId, maintainAspectRatio, screenId);
             if (level.getServer() != null) {
                 for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
                     PacketRegistries.sendToPlayer(player, packet);
@@ -241,6 +242,26 @@ public class ScreenBlockEntity extends BlockEntity {
                 if (be instanceof ScreenBlockEntity screen) {
                     screen.updateScreen(this.imageId, this.screenWidth, this.screenHeight, this.worldPosition, this.maintainAspectRatio);
                 }
+            }
+        }
+
+        if (screenId != null && !screenId.isEmpty()) {
+            ScreenRegistry.setImageId(screenId, imageId);
+            ScreenRegistry.saveRegistry();
+            broadcastImageIdToLinkedScreens(imageId);
+        }
+    }
+
+    private void broadcastImageIdToLinkedScreens(UUID imageId) {
+        if (level == null || screenId == null || screenId.isEmpty()) return;
+
+        for (BlockPos pos : ScreenRegistry.getPositionsForScreenId(level, screenId)) {
+            if (pos.equals(worldPosition)) continue;
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof ScreenBlockEntity linkedScreen && linkedScreen.isAnchor()) {
+                linkedScreen.setImageId(imageId);
+                linkedScreen.setChanged();
+                linkedScreen.updateClients();
             }
         }
     }
