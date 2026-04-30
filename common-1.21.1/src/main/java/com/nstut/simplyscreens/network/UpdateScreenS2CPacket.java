@@ -20,11 +20,13 @@ public class UpdateScreenS2CPacket implements CustomPacketPayload {
     private final BlockPos pos;
     private final UUID imageId;
     private final boolean maintainAspectRatio;
+    private final String screenId;
 
-    public UpdateScreenS2CPacket(BlockPos pos, UUID imageId, boolean maintainAspectRatio) {
+    public UpdateScreenS2CPacket(BlockPos pos, UUID imageId, boolean maintainAspectRatio, String screenId) {
         this.pos = pos;
         this.imageId = imageId;
         this.maintainAspectRatio = maintainAspectRatio;
+        this.screenId = screenId;
     }
 
     public UpdateScreenS2CPacket(RegistryFriendlyByteBuf buf) {
@@ -35,6 +37,7 @@ public class UpdateScreenS2CPacket implements CustomPacketPayload {
             imageId = null;
         }
         maintainAspectRatio = buf.readBoolean();
+        screenId = buf.readBoolean() ? buf.readUtf() : "";
     }
 
     public void write(RegistryFriendlyByteBuf buf) {
@@ -44,6 +47,10 @@ public class UpdateScreenS2CPacket implements CustomPacketPayload {
             buf.writeUUID(imageId);
         }
         buf.writeBoolean(maintainAspectRatio);
+        buf.writeBoolean(screenId != null && !screenId.isEmpty());
+        if (screenId != null && !screenId.isEmpty()) {
+            buf.writeUtf(screenId);
+        }
     }
 
     @Override
@@ -63,7 +70,11 @@ public class UpdateScreenS2CPacket implements CustomPacketPayload {
         return maintainAspectRatio;
     }
 
+    public String getScreenId() {
+        return screenId;
+    }
+
     public static void handle(UpdateScreenS2CPacket packet, NetworkManager.PacketContext context) {
-        context.queue(() -> ClientPacketHandler.handleUpdateScreen(packet.pos, packet.imageId, packet.maintainAspectRatio));
+        context.queue(() -> ClientPacketHandler.handleUpdateScreen(packet.pos, packet.imageId, packet.maintainAspectRatio, packet.screenId));
     }
 }
