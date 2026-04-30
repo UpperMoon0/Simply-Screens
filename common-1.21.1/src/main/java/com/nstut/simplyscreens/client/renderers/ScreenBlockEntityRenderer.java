@@ -139,7 +139,8 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         int height = blockEntity.getScreenHeight();
         boolean maintainAspect = blockEntity.isMaintainAspectRatio();
 
-        UUID imageId = blockEntity.getImageId();
+        UUID imageId = blockEntity.getResolvedImageId();
+        if (imageId == null) return;
         DynamicTexture texture = ClientImageManager.getImageTexture(imageId);
         if (texture == null) return;
 
