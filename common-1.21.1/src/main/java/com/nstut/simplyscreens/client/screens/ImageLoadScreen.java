@@ -157,6 +157,7 @@ public class ImageLoadScreen extends Screen {
 
         // Import Tab Components - Download from URL Section
         urlField = new EditBox(this.font, guiLeft + 8, guiTop + 130, 120, 18, Component.translatable("gui.simplyscreens.screen.url.placeholder"));
+        urlField.setMaxLength(2048); // URLs can be very long
         urlField.setTooltip(Tooltip.create(Component.translatable("gui.simplyscreens.screen.url.tooltip")));
         addRenderableWidget(urlField);
 

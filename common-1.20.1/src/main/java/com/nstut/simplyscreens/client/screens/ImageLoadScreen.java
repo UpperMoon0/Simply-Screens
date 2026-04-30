@@ -139,6 +139,7 @@ public class ImageLoadScreen extends Screen {
         addRenderableWidget(uploadFromComputerButton);
 
         urlField = new EditBox(this.font, guiLeft + 8, guiTop + 85, 120, 18, Component.translatable("gui.simplyscreens.screen.url.placeholder"));
+        urlField.setMaxLength(2048); // URLs can be very long
         addRenderableWidget(urlField);
 
         downloadUrlButton = Button.builder(Component.literal("Go"), button -> onDownloadFromUrl())

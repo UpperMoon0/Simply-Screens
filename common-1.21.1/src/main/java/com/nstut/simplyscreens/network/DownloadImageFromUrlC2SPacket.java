@@ -87,10 +87,17 @@ public class DownloadImageFromUrlC2SPacket implements CustomPacketPayload {
             // Download image asynchronously
             CompletableFuture.runAsync(() -> {
                 try {
-                    HttpClient client = HttpClient.newHttpClient();
+                    HttpClient client = HttpClient.newBuilder()
+                            .followRedirects(HttpClient.Redirect.NORMAL)
+                            .build();
                     HttpRequest request = HttpRequest.newBuilder()
                             .uri(URI.create(url))
                             .timeout(java.time.Duration.ofSeconds(30))
+                            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                            .header("Accept", "image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")
+                            .header("Accept-Language", "en-US,en;q=0.9")
+                            .header("Referer", "https://www.google.com/")
+                            .GET()
                             .build();
 
                     HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
@@ -134,6 +141,10 @@ public class DownloadImageFromUrlC2SPacket implements CustomPacketPayload {
                                 PacketRegistries.sendToPlayer(player, new UpdateImageListS2CPacket(images));
                             });
                         }
+                    } else if (response.statusCode() == 403) {
+                        SimplyScreens.LOGGER.warn("Access forbidden (403) for URL: {} - The server is blocking this request. Try a different image host like Imgur or direct image links.", url);
+                    } else if (response.statusCode() == 404) {
+                        SimplyScreens.LOGGER.warn("Image not found (404) for URL: {} - The image may have been removed or the URL is incorrect.", url);
                     } else {
                         SimplyScreens.LOGGER.warn("Failed to download image from URL: {} - HTTP {}", url, response.statusCode());
                     }

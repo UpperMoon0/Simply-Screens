@@ -111,8 +111,16 @@ public class ServerImageManager {
     }
     private static String getImageExtension(byte[] data) {
         if (data == null || data.length < 4) {
+            SimplyScreens.LOGGER.warn("Image data is null or too small (size: {})", data == null ? 0 : data.length);
             return null;
         }
+
+        // Log first bytes for debugging
+        StringBuilder hexBuilder = new StringBuilder("First bytes: ");
+        for (int i = 0; i < Math.min(16, data.length); i++) {
+            hexBuilder.append(String.format("%02X ", data[i]));
+        }
+        SimplyScreens.LOGGER.info(hexBuilder.toString());
 
         // PNG: 89 50 4E 47
         if (data[0] == (byte) 0x89 && data[1] == (byte) 0x50 && data[2] == (byte) 0x4E && data[3] == (byte) 0x47) {
@@ -129,6 +137,30 @@ public class ServerImageManager {
             return "gif";
         }
 
+        // WebP: 52 49 46 46 ... 57 45 42 50
+        // RIFF....WEBP
+        if (data.length >= 12 && data[0] == (byte) 0x52 && data[1] == (byte) 0x49 &&
+            data[2] == (byte) 0x46 && data[3] == (byte) 0x46 &&
+            data[8] == (byte) 0x57 && data[9] == (byte) 0x45 &&
+            data[10] == (byte) 0x42 && data[11] == (byte) 0x50) {
+            return "webp";
+        }
+
+        // BMP: 42 4D
+        if (data[0] == (byte) 0x42 && data[1] == (byte) 0x4D) {
+            return "bmp";
+        }
+
+        // Check if it's HTML (common error case - server returned an error page)
+        String start = new String(data, 0, Math.min(100, data.length)).trim().toLowerCase();
+        if (start.startsWith("<!doctype") || start.startsWith("<html") || start.startsWith("<body")) {
+            SimplyScreens.LOGGER.warn("Downloaded content appears to be HTML, not an image. The URL may be incorrect or require authentication.");
+            return null;
+        }
+
+        SimplyScreens.LOGGER.warn("Unknown image format. First4 bytes: {} {} {} {}",
+            String.format("%02X", data[0]), String.format("%02X", data[1]),
+            String.format("%02X", data[2]), String.format("%02X", data[3]));
         return null;
     }
 
