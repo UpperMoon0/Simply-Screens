@@ -1,8 +1,21 @@
 {
   "textures": {
     "front": "simply_screens:block/screen_front",
-    "top": "simply_screens:block/screen_top",
     "side": "simply_screens:block/screen_side"
   },
-  "parent": "minecraft:block/orientable"
+  "parent": "minecraft:block/orientable",
+  "elements": [
+    {
+      "from": [ 0, 0, 0 ],
+      "to": [ 16, 16, 16 ],
+      "faces": {
+        "north": { "texture": "#front", "cullface": "north" },
+        "south": { "texture": "#side", "cullface": "south" },
+        "east":  { "texture": "#side", "cullface": "east" },
+        "west":  { "texture": "#side", "cullface": "west" },
+        "up":    { "texture": "#side", "cullface": "up" },
+        "down":  { "texture": "#side", "cullface": "down" }
+      }
+    }
+  ]
 }
