@@ -7,9 +7,9 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 public class UpdateScreenS2CPacket {
-    private final BlockPos pos;
-    private final UUID imageId;
-    private final boolean maintainAspectRatio;
+    public final BlockPos pos;
+    public final UUID imageId;
+    public final boolean maintainAspectRatio;
 
     public UpdateScreenS2CPacket(BlockPos pos, UUID imageId, boolean maintainAspectRatio) {
         this.pos = pos;

@@ -12,8 +12,8 @@ import java.util.function.Supplier;
 import dev.architectury.networking.NetworkManager;
 
 public class UpdateScreenIdC2SPacket {
-    private final BlockPos pos;
-    private final String screenId;
+    public final BlockPos pos;
+    public final String screenId;
 
     public UpdateScreenIdC2SPacket(BlockPos pos, String screenId) {
         this.pos = pos;
@@ -22,12 +22,13 @@ public class UpdateScreenIdC2SPacket {
 
     public UpdateScreenIdC2SPacket(FriendlyByteBuf buf) {
         pos = buf.readBlockPos();
-        screenId = buf.readUtf();
+        String readScreenId = buf.readUtf();
+        screenId = readScreenId.isEmpty() ? null : readScreenId;
     }
 
     public void write(FriendlyByteBuf buf) {
         buf.writeBlockPos(pos);
-        buf.writeUtf(screenId);
+        buf.writeUtf(screenId != null ? screenId : "");
     }
 
     public void handle(Supplier<NetworkManager.PacketContext> context) {

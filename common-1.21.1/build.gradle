@@ -25,6 +25,20 @@ dependencies {
     // Lombok
     compileOnly "org.projectlombok:lombok:1.18.34"
     annotationProcessor "org.projectlombok:lombok:1.18.34"
+    
+    // Test dependencies
+    testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+    testImplementation "org.mockito:mockito-core:5.14.2"
+    testImplementation "org.mockito:mockito-junit-jupiter:5.14.2"
+    testImplementation "org.slf4j:slf4j-simple:2.0.9"
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+        showStandardStreams = true
+    }
 }
 
 // Configure processResources to include common resources directly

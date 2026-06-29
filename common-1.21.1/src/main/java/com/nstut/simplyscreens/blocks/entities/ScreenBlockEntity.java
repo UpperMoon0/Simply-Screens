@@ -38,7 +38,7 @@ public class ScreenBlockEntity extends BlockEntity {
         this.anchorPos = pos;
         
         // Log the block type for debugging
-        if (state.getBlock() != null) {
+        if (state != null && state.getBlock() != null) {
             System.out.println("ScreenBlockEntity created with block type: " + state.getBlock().getClass().getName());
             SimplyScreens.LOGGER.info("ScreenBlockEntity created with block type: " + state.getBlock().getClass().getName());
         }
