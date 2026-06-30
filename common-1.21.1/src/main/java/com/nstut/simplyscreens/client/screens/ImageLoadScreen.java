@@ -3,6 +3,7 @@ package com.nstut.simplyscreens.client.screens;
 import com.nstut.simplyscreens.Config;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
+import com.nstut.simplyscreens.client.ScreenGuiConstants;
 import com.nstut.simplyscreens.client.gui.widgets.ImageListWidget;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import com.nstut.simplyscreens.network.UpdateScreenAspectRatioC2SPacket;
@@ -30,11 +31,11 @@ import java.nio.file.Paths;
 import java.util.UUID;
 
 public class ImageLoadScreen extends Screen {
-    private static final int CHUNK_SIZE = 1024 * 30; // 30KB
     private static final ResourceLocation BACKGROUND_TEXTURE = ResourceLocation.fromNamespaceAndPath(SimplyScreens.MOD_ID, "textures/gui/screen.png");
 
-    private static final int SCREEN_WIDTH = 176;
-    private static final int SCREEN_HEIGHT = 220;
+    private static final int CHUNK_SIZE = 1024 * 30; // 30KB
+    private static final int SCREEN_WIDTH = ScreenGuiConstants.SCREEN_WIDTH;
+    private static final int SCREEN_HEIGHT = ScreenGuiConstants.SCREEN_HEIGHT;
 
     private final BlockPos blockEntityPos;
     private UUID initialLocalHash;
@@ -74,21 +75,22 @@ public class ImageLoadScreen extends Screen {
 
         // Tab buttons at the top (only Gallery and Settings)
         galleryTabButton = Button.builder(Component.literal("Gallery"), button -> switchTab(Tab.GALLERY))
-                .pos(guiLeft + 8, guiTop + 20)
-                .size(78, 18)
+                .pos(guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.TAB_BUTTON_Y)
+                .size(78, ScreenGuiConstants.BUTTON_HEIGHT)
                 .build();
         addRenderableWidget(galleryTabButton);
 
         settingsTabButton = Button.builder(Component.literal("Settings"), button -> switchTab(Tab.SETTINGS))
-                .pos(guiLeft + 89, guiTop + 20)
-                .size(78, 18)
+                .pos(guiLeft + 89, guiTop + ScreenGuiConstants.TAB_BUTTON_Y)
+                .size(78, ScreenGuiConstants.BUTTON_HEIGHT)
                 .build();
         addRenderableWidget(settingsTabButton);
 
         // Add Image button (only visible in Gallery tab, same height as search bar)
         addImageButton = Button.builder(Component.literal("+"), button -> switchTab(Tab.IMPORT))
-                .pos(guiLeft + 150, guiTop + 66)
-                .size(18, 18)
+                .pos(guiLeft + 150, guiTop + ScreenGuiConstants.SEARCH_BAR_Y)
+                .size(18, ScreenGuiConstants.BUTTON_HEIGHT)
+                .tooltip(Tooltip.create(Component.translatable("gui.simplyscreens.screen.add_image.tooltip")))
                 .build();
         addRenderableWidget(addImageButton);
 
@@ -100,26 +102,27 @@ public class ImageLoadScreen extends Screen {
         addRenderableWidget(backButton);
 
         // Gallery Tab Components
-        searchBar = new EditBox(this.font, guiLeft + 8, guiTop + 66, 138, 18, Component.translatable("gui.simplyscreens.screen.search.placeholder"));
+        searchBar = new EditBox(this.font, guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.SEARCH_BAR_Y, 138, ScreenGuiConstants.BUTTON_HEIGHT, Component.translatable("gui.simplyscreens.screen.search.placeholder"));
         searchBar.setResponder(searchTerm -> {
             if (this.imageListWidget != null) {
                 this.imageListWidget.filter(searchTerm);
             }
         });
+        searchBar.setTooltip(Tooltip.create(Component.translatable("gui.simplyscreens.screen.search.tooltip")));
         addRenderableWidget(searchBar);
 
-        imageListWidget = new ImageListWidget(guiLeft + 8, guiTop + 88, 160, 90, Component.literal(""), this::onImageSelected, initialLocalHash);
+        imageListWidget = new ImageListWidget(guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.IMAGE_LIST_WIDGET_Y, ScreenGuiConstants.IMAGE_LIST_WIDTH, ScreenGuiConstants.IMAGE_LIST_HEIGHT, Component.literal(""), this::onImageSelected, initialLocalHash);
         addRenderableWidget(imageListWidget);
 
         selectButton = Button.builder(Component.translatable("gui.simplyscreens.screen.select"), button -> onSelect())
-                .pos(guiLeft + 8, guiTop + 182)
-                .size(160, 20)
+                .pos(guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.SELECT_BUTTON_Y)
+                .size(ScreenGuiConstants.SELECT_BUTTON_WIDTH, ScreenGuiConstants.SELECT_BUTTON_HEIGHT)
                 .build();
         selectButton.active = false;
         addRenderableWidget(selectButton);
 
         // Settings Tab Components
-        screenIdField = new EditBox(this.font, guiLeft + 8, guiTop + 55, 100, 18, Component.translatable("gui.simplyscreens.screen.id.placeholder"));
+        screenIdField = new EditBox(this.font, guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.SCREEN_ID_FIELD_Y, 100, ScreenGuiConstants.BUTTON_HEIGHT, Component.translatable("gui.simplyscreens.screen.id.placeholder"));
         screenIdField.setValue(initialScreenId);
         screenIdField.setTooltip(Tooltip.create(Component.translatable("gui.simplyscreens.screen.id.tooltip")));
         addRenderableWidget(screenIdField);
@@ -130,8 +133,8 @@ public class ImageLoadScreen extends Screen {
                 .build();
         addRenderableWidget(linkScreenIdButton);
 
-        maintainAspectCheckbox = Checkbox.builder(Component.translatable("gui.simplyscreens.screen.maintain_aspect"), this.font)
-                .pos(guiLeft + 8, guiTop + 80)
+        maintainAspectCheckbox = Checkbox.builder(Component.empty(), this.font)
+                .pos(guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.MAINTAIN_ASPECT_CHECKBOX_Y)
                 .selected(this.initialMaintainAspectRatio)
                 .onValueChange((checkbox, selected) -> {
                     if (minecraft != null && minecraft.level != null) {
@@ -145,25 +148,26 @@ public class ImageLoadScreen extends Screen {
                     }
                 })
                 .build();
+        maintainAspectCheckbox.setTooltip(Tooltip.create(Component.translatable("gui.simplyscreens.screen.maintain_aspect.tooltip")));
         addRenderableWidget(maintainAspectCheckbox);
 
         // Import Tab Components - Upload from Computer Section
         uploadFromComputerButton = Button.builder(Component.literal("Upload"), button -> onUploadFromComputer())
-                .pos(guiLeft + 8, guiTop + 80)
-                .size(160, 24)
+                .pos(guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + 80)
+                .size(160, ScreenGuiConstants.SELECT_BUTTON_HEIGHT + 4)
                 .build();
         uploadFromComputerButton.visible = !Config.DISABLE_UPLOAD;
         addRenderableWidget(uploadFromComputerButton);
 
         // Import Tab Components - Download from URL Section
-        urlField = new EditBox(this.font, guiLeft + 8, guiTop + 130, 120, 18, Component.translatable("gui.simplyscreens.screen.url.placeholder"));
+        urlField = new EditBox(this.font, guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + 130, 120, ScreenGuiConstants.URL_FIELD_HEIGHT, Component.translatable("gui.simplyscreens.screen.url.placeholder"));
         urlField.setMaxLength(2048); // URLs can be very long
         urlField.setTooltip(Tooltip.create(Component.translatable("gui.simplyscreens.screen.url.tooltip")));
         addRenderableWidget(urlField);
 
         downloadFromUrlButton = Button.builder(Component.literal("Load"), button -> onDownloadFromUrl())
-                .pos(guiLeft + 130, guiTop + 130)
-                .size(38, 18)
+                .pos(guiLeft + ScreenGuiConstants.DOWNLOAD_BUTTON_X, guiTop + 130)
+                .size(ScreenGuiConstants.DOWNLOAD_BUTTON_WIDTH, ScreenGuiConstants.URL_FIELD_HEIGHT)
                 .build();
         downloadFromUrlButton.visible = !Config.DISABLE_URL_DOWNLOAD;
         addRenderableWidget(downloadFromUrlButton);
@@ -357,7 +361,8 @@ public class ImageLoadScreen extends Screen {
 
         // Tab labels based on current tab
         if (currentTab == Tab.SETTINGS) {
-            guiGraphics.drawString(this.font, Component.translatable("gui.simplyscreens.screen.id.label"), guiLeft + 8, guiTop + 55, 0x404040, false);
+            guiGraphics.drawString(this.font, Component.translatable("gui.simplyscreens.screen.id.label"), guiLeft + 8, guiTop + ScreenGuiConstants.SCREEN_ID_LABEL_Y, 0x404040, false);
+            guiGraphics.drawString(this.font, Component.translatable("gui.simplyscreens.screen.maintain_aspect"), guiLeft + ScreenGuiConstants.MAINTAIN_ASPECT_LABEL_X, guiTop + 82, 0x404040, false);
         } else if (currentTab == Tab.IMPORT) {
             // Upload from Computer section label
             guiGraphics.drawString(this.font, Component.literal("From Computer:"), guiLeft + 8, guiTop + 68, 0x404040, false);

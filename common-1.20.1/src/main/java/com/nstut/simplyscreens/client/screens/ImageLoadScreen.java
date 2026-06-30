@@ -3,6 +3,7 @@ package com.nstut.simplyscreens.client.screens;
 import com.nstut.simplyscreens.Config;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
+import com.nstut.simplyscreens.client.ScreenGuiConstants;
 import com.nstut.simplyscreens.client.gui.widgets.ImageListWidget;
 import com.nstut.simplyscreens.network.DownloadImageFromUrlC2SPacket;
 import com.nstut.simplyscreens.network.PacketRegistries;
@@ -13,6 +14,7 @@ import com.nstut.simplyscreens.network.UpdateScreenSelectedImageC2SPacket;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
@@ -29,11 +31,11 @@ import java.nio.file.Paths;
 import java.util.UUID;
 
 public class ImageLoadScreen extends Screen {
-    private static final int CHUNK_SIZE = 1024 * 30; // 30KB
     private static final ResourceLocation BACKGROUND_TEXTURE = new ResourceLocation(SimplyScreens.MOD_ID, "textures/gui/screen.png");
 
-    private static final int SCREEN_WIDTH = 176;
-    private static final int SCREEN_HEIGHT = 200;
+    private static final int CHUNK_SIZE = 1024 * 30; // 30KB
+    private static final int SCREEN_WIDTH = ScreenGuiConstants.SCREEN_WIDTH;
+    private static final int SCREEN_HEIGHT = ScreenGuiConstants.SCREEN_HEIGHT;
 
     private final BlockPos blockEntityPos;
     private java.util.UUID initialLocalHash;
@@ -72,48 +74,50 @@ public class ImageLoadScreen extends Screen {
 
         // Tab buttons at the top
         galleryTabButton = Button.builder(Component.literal("Gallery"), button -> switchTab(Tab.GALLERY))
-                .pos(guiLeft + 8, guiTop + 20)
-                .size(50, 18)
+                .pos(guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.TAB_BUTTON_Y)
+                .size(50, ScreenGuiConstants.BUTTON_HEIGHT)
                 .build();
         addRenderableWidget(galleryTabButton);
 
         settingsTabButton = Button.builder(Component.literal("Settings"), button -> switchTab(Tab.SETTINGS))
-                .pos(guiLeft + 59, guiTop + 20)
-                .size(50, 18)
+                .pos(guiLeft + 59, guiTop + ScreenGuiConstants.TAB_BUTTON_Y)
+                .size(50, ScreenGuiConstants.BUTTON_HEIGHT)
                 .build();
         addRenderableWidget(settingsTabButton);
 
         uploadTabButton = Button.builder(Component.literal("Upload"), button -> switchTab(Tab.UPLOAD))
-                .pos(guiLeft + 110, guiTop + 20)
-                .size(50, 18)
+                .pos(guiLeft + 110, guiTop + ScreenGuiConstants.TAB_BUTTON_Y)
+                .size(50, ScreenGuiConstants.BUTTON_HEIGHT)
+                .tooltip(Tooltip.create(Component.translatable("gui.simplyscreens.screen.add_image.tooltip")))
                 .build();
         addRenderableWidget(uploadTabButton);
 
-        // Gallery Tab Components (y starts at 45)
-        searchBar = new EditBox(this.font, guiLeft + 8, guiTop + 45, 160, 18, Component.translatable("gui.simplyscreens.screen.search.placeholder"));
+        // Gallery Tab Components (y starts at 25)
+        searchBar = new EditBox(this.font, guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.SEARCH_BAR_Y, 160, ScreenGuiConstants.BUTTON_HEIGHT, Component.translatable("gui.simplyscreens.screen.search.placeholder"));
         searchBar.setResponder(searchTerm -> {
             if (this.imageListWidget != null) {
                 this.imageListWidget.filter(searchTerm);
             }
         });
+        searchBar.setTooltip(Tooltip.create(Component.translatable("gui.simplyscreens.screen.search.tooltip")));
         addRenderableWidget(searchBar);
 
-        imageListWidget = new ImageListWidget(guiLeft + 8, guiTop + 66, 160, 90, Component.literal(""), this::onImageSelected, initialLocalHash);
+        imageListWidget = new ImageListWidget(guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.IMAGE_LIST_WIDGET_Y, ScreenGuiConstants.IMAGE_LIST_WIDTH, ScreenGuiConstants.IMAGE_LIST_HEIGHT, Component.literal(""), this::onImageSelected, initialLocalHash);
         addRenderableWidget(imageListWidget);
 
         selectButton = Button.builder(Component.translatable("gui.simplyscreens.screen.select"), button -> onSelect())
-                .pos(guiLeft + 8, guiTop + 160)
-                .size(160, 20)
+                .pos(guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.SELECT_BUTTON_Y)
+                .size(ScreenGuiConstants.SELECT_BUTTON_WIDTH, ScreenGuiConstants.SELECT_BUTTON_HEIGHT)
                 .build();
         selectButton.active = false;
         addRenderableWidget(selectButton);
 
         // Settings Tab Components
-        screenIdField = new EditBox(this.font, guiLeft + 8, guiTop + 55, 160, 18, Component.translatable("gui.simplyscreens.screen.id.placeholder"));
+        screenIdField = new EditBox(this.font, guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.SCREEN_ID_FIELD_Y, 160, ScreenGuiConstants.BUTTON_HEIGHT, Component.translatable("gui.simplyscreens.screen.id.placeholder"));
         screenIdField.setValue(initialScreenId != null ? initialScreenId : "");
         addRenderableWidget(screenIdField);
 
-        maintainAspectCheckbox = new Checkbox(guiLeft + 8, guiTop + 80, 160, 20, Component.translatable("gui.simplyscreens.screen.maintain_aspect"), this.initialMaintainAspectRatio) {
+        maintainAspectCheckbox = new Checkbox(guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.MAINTAIN_ASPECT_CHECKBOX_Y, 20, 20, Component.empty(), this.initialMaintainAspectRatio) {
             @Override
             public void onPress() {
                 super.onPress();
@@ -128,6 +132,7 @@ public class ImageLoadScreen extends Screen {
                 }
             }
         };
+        maintainAspectCheckbox.setTooltip(Tooltip.create(Component.translatable("gui.simplyscreens.screen.maintain_aspect.tooltip")));
         addRenderableWidget(maintainAspectCheckbox);
 
         // Upload Tab Components
@@ -248,7 +253,8 @@ public class ImageLoadScreen extends Screen {
 
         // Tab labels based on current tab
         if (currentTab == Tab.SETTINGS) {
-            guiGraphics.drawString(this.font, Component.translatable("gui.simplyscreens.screen.id.label"), guiLeft + 8, guiTop + 45, 0x404040, false);
+            guiGraphics.drawString(this.font, Component.translatable("gui.simplyscreens.screen.id.label"), guiLeft + 8, guiTop + ScreenGuiConstants.SCREEN_ID_LABEL_Y, 0x404040, false);
+            guiGraphics.drawString(this.font, Component.translatable("gui.simplyscreens.screen.maintain_aspect"), guiLeft + ScreenGuiConstants.MAINTAIN_ASPECT_LABEL_X, guiTop + 82, 0x404040, false);
         } else if (currentTab == Tab.UPLOAD) {
             guiGraphics.drawString(this.font, Component.translatable("gui.simplyscreens.screen.url.label"), guiLeft + 8, guiTop + 75, 0x404040, false);
         }
