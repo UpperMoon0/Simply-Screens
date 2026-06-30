@@ -8,6 +8,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -115,13 +116,9 @@ public class DownloadImageFromUrlC2SPacket implements CustomPacketPayload {
                             return;
                         }
 
-                        // Determine file extension from content type or URL
-                        String contentType = response.headers().firstValue("Content-Type").orElse("image/png");
-                        String extension = getExtensionFromContentType(contentType, url);
-                        String fileName = packet.getFileName() != null ? packet.getFileName() : "url_image." + extension;
-
                         // Save the image using ServerImageManager
-                        var imageId = ServerImageManager.saveImage(player.getServer(), fileName, imageData, contentType, player.getUUID().toString());
+                        String fileName = packet.getFileName() != null ? packet.getFileName() : "url_image";
+                        var imageId = ServerImageManager.saveImage(player.getServer(), fileName, imageData, null, player.getUUID().toString());
                         if (imageId != null) {
                             SimplyScreens.LOGGER.info("Successfully downloaded image from URL: {} (ID: {})", url, imageId);
 
@@ -140,6 +137,10 @@ public class DownloadImageFromUrlC2SPacket implements CustomPacketPayload {
                                 var images = ServerImageManager.getImageListForPlayer(player.getServer(), player.getUUID().toString());
                                 PacketRegistries.sendToPlayer(player, new UpdateImageListS2CPacket(images));
                             });
+                        } else {
+                            player.getServer().execute(() -> {
+                                player.sendSystemMessage(Component.literal("§c[Simply Screens] Failed to load image from URL: the content is not a valid image or is in an unsupported format."));
+                            });
                         }
                     } else if (response.statusCode() == 403) {
                         SimplyScreens.LOGGER.warn("Access forbidden (403) for URL: {} - The server is blocking this request. Try a different image host like Imgur or direct image links.", url);
@@ -155,25 +156,4 @@ public class DownloadImageFromUrlC2SPacket implements CustomPacketPayload {
         });
     }
 
-    private static String getExtensionFromContentType(String contentType, String url) {
-        if (contentType != null) {
-            if (contentType.contains("png")) return "png";
-            if (contentType.contains("jpeg") || contentType.contains("jpg")) return "jpg";
-            if (contentType.contains("gif")) return "gif";
-            if (contentType.contains("webp")) return "webp";
-        }
-
-        // Fallback to URL extension
-        if (url != null) {
-            int lastDot = url.lastIndexOf('.');
-            if (lastDot > 0 && lastDot < url.length() - 1) {
-                String ext = url.substring(lastDot + 1).toLowerCase();
-                if (ext.equals("png") || ext.equals("jpg") || ext.equals("jpeg") || ext.equals("gif") || ext.equals("webp")) {
-                    return ext;
-                }
-            }
-        }
-
-        return "png"; // Default
-    }
 }

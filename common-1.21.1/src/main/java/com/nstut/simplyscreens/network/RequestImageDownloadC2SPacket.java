@@ -10,6 +10,11 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.UUID;
 
 public class RequestImageDownloadC2SPacket implements CustomPacketPayload {
@@ -49,8 +54,22 @@ public class RequestImageDownloadC2SPacket implements CustomPacketPayload {
             if (imageData != null) {
                 ImageMetadata metadata = ServerImageManager.getImageMetadata(player.getServer(), packet.imageId);
                 if (metadata != null) {
-                    // Send the image data in chunks
-                    int chunkSize = 32768; // 32KB chunks
+                    String ext = metadata.getExtension();
+                    if (!"png".equals(ext)) {
+                        try {
+                            BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageData));
+                            if (image != null) {
+                                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                                ImageIO.write(image, "png", baos);
+                                imageData = baos.toByteArray();
+                                ext = "png";
+                            }
+                        } catch (IOException e) {
+                            SimplyScreens.LOGGER.warn("Could not convert image {} to PNG, sending original format", packet.imageId);
+                        }
+                    }
+
+                    int chunkSize = 32768;
                     int totalChunks = (int) Math.ceil((double) imageData.length / chunkSize);
                     
                     for (int i = 0; i < totalChunks; i++) {
@@ -61,7 +80,7 @@ public class RequestImageDownloadC2SPacket implements CustomPacketPayload {
                         
                         PacketRegistries.sendToPlayer(player, new ImageDownloadChunkS2CPacket(
                                 packet.imageId, i, totalChunks, chunk, 
-                                i == 0 ? metadata.getExtension() : null));
+                                i == 0 ? ext : null));
                     }
                 }
             }

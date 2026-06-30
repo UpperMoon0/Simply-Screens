@@ -22,9 +22,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import com.nstut.simplyscreens.helpers.ImageMetadata;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import com.nstut.simplyscreens.helpers.ImageMetadata;
 
 public class ImageListWidget extends AbstractWidget {
     private static final int ITEM_SIZE = 40;
@@ -240,60 +240,28 @@ public class ImageListWidget extends AbstractWidget {
         this.displayedImage = displayedImage;
     }
 
-    private String detectImageExtension(byte[] data) {
-        if (data == null || data.length < 4) {
-            return null;
-        }
-
-        // PNG: 89 50 4E 47
-        if (data[0] == (byte) 0x89 && data[1] == (byte) 0x50 && data[2] == (byte) 0x4E && data[3] == (byte) 0x47) {
-            return "png";
-        }
-
-        // JPEG: FF D8 FF
-        if (data[0] == (byte) 0xFF && data[1] == (byte) 0xD8 && data[2] == (byte) 0xFF) {
-            return "jpg";
-        }
-
-        return null;
-    }
-
-    private NativeImage loadImage(byte[] imageData, String extension) throws IOException {
-        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(imageData)) {
-            if ("png".equals(extension)) {
-                return NativeImage.read(inputStream);
-            } else {
-                BufferedImage bufferedImage = ImageIO.read(inputStream);
-                if (bufferedImage == null) {
-                    throw new IOException("Failed to decode image");
+    public void receiveImageData(String imageId, byte[] imageData) {
+        try {
+            NativeImage nativeImage;
+            try {
+                nativeImage = NativeImage.read(new ByteArrayInputStream(imageData));
+            } catch (IOException e) {
+                BufferedImage bi = ImageIO.read(new ByteArrayInputStream(imageData));
+                if (bi == null) {
+                    return;
                 }
-                int width = bufferedImage.getWidth();
-                int height = bufferedImage.getHeight();
-                NativeImage nativeImage = new NativeImage(width, height, false);
-                for (int y = 0; y < height; y++) {
-                    for (int x = 0; x < width; x++) {
-                        int rgb = bufferedImage.getRGB(x, y);
+                nativeImage = new NativeImage(bi.getWidth(), bi.getHeight(), false);
+                for (int y = 0; y < bi.getHeight(); y++) {
+                    for (int x = 0; x < bi.getWidth(); x++) {
+                        int rgb = bi.getRGB(x, y);
                         int a = rgb >> 24 & 0xFF;
                         int r = rgb >> 16 & 0xFF;
                         int g = rgb >> 8 & 0xFF;
                         int b = rgb & 0xFF;
-                        int color = (a << 24) | (b << 16) | (g << 8) | r;
-                        nativeImage.setPixelRGBA(x, y, color);
+                        nativeImage.setPixelRGBA(x, y, (a << 24) | (b << 16) | (g << 8) | r);
                     }
                 }
-                return nativeImage;
             }
-        }
-    }
-
-    public void receiveImageData(String imageId, byte[] imageData) {
-        try {
-            String extension = detectImageExtension(imageData);
-            if (extension == null) {
-                extension = "png"; // default fallback
-            }
-
-            NativeImage nativeImage = loadImage(imageData, extension);
             DynamicTexture dynamicTexture = new DynamicTexture(nativeImage);
             ResourceLocation texture = Minecraft.getInstance().getTextureManager().register("simply_screens/" + imageId, dynamicTexture);
             textureCache.put(imageId, texture);

@@ -6,6 +6,9 @@ import com.nstut.simplyscreens.SimplyScreens;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
@@ -87,6 +90,21 @@ public class ServerImageManager {
             }
 
             SimplyScreens.LOGGER.info("Saving image. originalName: '{}', contentType: '{}', determined extension: '{}'", originalName, contentType, extension);
+
+            if (!"png".equals(extension)) {
+                try {
+                    BufferedImage image = ImageIO.read(new ByteArrayInputStream(data));
+                    if (image != null) {
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        ImageIO.write(image, "png", baos);
+                        data = baos.toByteArray();
+                        extension = "png";
+                    }
+                } catch (IOException e) {
+                    SimplyScreens.LOGGER.error("Failed to convert image to PNG", e);
+                    return null;
+                }
+            }
 
             UUID imageId = UUID.randomUUID();
             Path imagesDir = getImagesDir(server);

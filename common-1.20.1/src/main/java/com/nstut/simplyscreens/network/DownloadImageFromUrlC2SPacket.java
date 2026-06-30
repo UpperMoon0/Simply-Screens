@@ -5,6 +5,7 @@ import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.helpers.ServerImageManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -83,13 +84,9 @@ public class DownloadImageFromUrlC2SPacket {
                             return;
                         }
 
-                        // Determine file extension from content type or URL
-                        String contentType = response.headers().firstValue("Content-Type").orElse("image/png");
-                        String extension = getExtensionFromContentType(contentType, url);
-                        String fname = fileName != null ? fileName : "url_image." + extension;
-
                         // Save the image using ServerImageManager
-                        var imageId = ServerImageManager.saveImage(player.getServer(), fname, imageData, contentType, player.getUUID().toString());
+                        String fname = fileName != null ? fileName : "url_image";
+                        var imageId = ServerImageManager.saveImage(player.getServer(), fname, imageData, null, player.getUUID().toString());
                         if (imageId != null) {
                             SimplyScreens.LOGGER.info("Successfully downloaded image from URL: {} (ID: {})", url, imageId);
 
@@ -108,6 +105,10 @@ public class DownloadImageFromUrlC2SPacket {
                             var images = ServerImageManager.getImageListForPlayer(player.getServer(), player.getUUID().toString());
                             PacketRegistries.CHANNEL.sendToPlayer(player, new UpdateImageListS2CPacket(images));
                             });
+                        } else {
+                            player.getServer().execute(() -> {
+                                player.displayClientMessage(Component.literal("§c[Simply Screens] Failed to load image from URL: the content is not a valid image or is in an unsupported format."), false);
+                            });
                         }
                     } else {
                         SimplyScreens.LOGGER.warn("Failed to download image from URL: {} - HTTP {}", url, response.statusCode());
@@ -119,25 +120,4 @@ public class DownloadImageFromUrlC2SPacket {
         });
     }
 
-    private static String getExtensionFromContentType(String contentType, String url) {
-        if (contentType != null) {
-            if (contentType.contains("png")) return "png";
-            if (contentType.contains("jpeg") || contentType.contains("jpg")) return "jpg";
-            if (contentType.contains("gif")) return "gif";
-            if (contentType.contains("webp")) return "webp";
-        }
-
-        // Fallback to URL extension
-        if (url != null) {
-            int lastDot = url.lastIndexOf('.');
-            if (lastDot > 0 && lastDot < url.length() - 1) {
-                String ext = url.substring(lastDot + 1).toLowerCase();
-                if (ext.equals("png") || ext.equals("jpg") || ext.equals("jpeg") || ext.equals("gif") || ext.equals("webp")) {
-                    return ext;
-                }
-            }
-        }
-
-        return "png"; // Default
-    }
 }
