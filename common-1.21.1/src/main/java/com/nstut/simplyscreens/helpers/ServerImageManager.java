@@ -33,6 +33,7 @@ public class ServerImageManager {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Map<UUID, byte[][]> CHUNK_MAP = new ConcurrentHashMap<>();
     private static final Map<UUID, String> FILENAME_MAP = new ConcurrentHashMap<>();
+    private static List<ImageMetadata> cachedImageList;
 
     public static void handleImageChunk(ServerPlayer player, BlockPos blockPos, UUID transactionId, int chunkIndex, int totalChunks, byte[] data, String fileName) {
         CHUNK_MAP.computeIfAbsent(transactionId, k -> new byte[totalChunks][])[chunkIndex] = data;
@@ -125,6 +126,8 @@ public class ServerImageManager {
                 GSON.toJson(metadata, writer);
             }
 
+            cachedImageList = null;
+
             return imageId;
         } catch (IOException e) {
             SimplyScreens.LOGGER.error("Failed to save image", e);
@@ -147,6 +150,7 @@ public class ServerImageManager {
         try {
             Files.deleteIfExists(imagesDir.resolve(imageId + "." + metadata.getExtension()));
             Files.deleteIfExists(imagesDir.resolve(imageId + ".json"));
+            cachedImageList = null;
             return true;
         } catch (IOException e) {
             SimplyScreens.LOGGER.error("Failed to delete image {}", imageId, e);
@@ -250,6 +254,10 @@ public class ServerImageManager {
     }
 
     public static List<ImageMetadata> getImageList(MinecraftServer server) {
+        if (cachedImageList != null) {
+            return cachedImageList;
+        }
+
         List<ImageMetadata> imageList = new ArrayList<>();
         Path imagesDir = getImagesDir(server);
 
@@ -268,6 +276,7 @@ public class ServerImageManager {
             }
         }
 
+        cachedImageList = imageList;
         return imageList;
     }
 
