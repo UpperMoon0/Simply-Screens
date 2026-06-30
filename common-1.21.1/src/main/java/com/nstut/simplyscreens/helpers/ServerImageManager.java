@@ -53,7 +53,7 @@ public class ServerImageManager {
                 byte[] imageData = outputStream.toByteArray();
                 String originalName = FILENAME_MAP.get(transactionId);
 
-                UUID imageId = saveImage(player.getServer(), originalName, imageData, null);
+                UUID imageId = saveImage(player.getServer(), originalName, imageData, null, player.getUUID().toString());
                 if (imageId != null) {
                     player.getServer().execute(() -> {
                         if (player.level().getBlockEntity(blockPos) instanceof com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity screen) {
@@ -61,7 +61,7 @@ public class ServerImageManager {
                         }
                     });
 
-                    List<ImageMetadata> images = getImageList(player.getServer());
+                    List<ImageMetadata> images = getImageListForPlayer(player.getServer(), player.getUUID().toString());
                     PacketRegistries.sendToPlayer(player, new UpdateImageListS2CPacket(images));
                 }
             } catch (IOException e) {
@@ -74,6 +74,10 @@ public class ServerImageManager {
     }
 
     public static UUID saveImage(MinecraftServer server, String originalName, byte[] data, String contentType) {
+        return saveImage(server, originalName, data, contentType, null);
+    }
+
+    public static UUID saveImage(MinecraftServer server, String originalName, byte[] data, String contentType, String ownerUUID) {
         try {
             String extension = getImageExtension(data);
 
@@ -98,7 +102,7 @@ public class ServerImageManager {
 
             File metadataFile = imagesDir.resolve(imageId + ".json").toFile();
             String nameWithoutExtension = originalName.contains(".") ? originalName.substring(0, originalName.lastIndexOf('.')) : originalName;
-            ImageMetadata metadata = new ImageMetadata(nameWithoutExtension, imageId.toString(), extension);
+            ImageMetadata metadata = new ImageMetadata(nameWithoutExtension, imageId.toString(), extension, ownerUUID);
             try (FileWriter writer = new FileWriter(metadataFile)) {
                 GSON.toJson(metadata, writer);
             }
@@ -109,6 +113,29 @@ public class ServerImageManager {
             return null;
         }
     }
+
+    public static boolean deleteImage(MinecraftServer server, UUID imageId, String requesterUUID) {
+        ImageMetadata metadata = getImageMetadata(server, imageId);
+        if (metadata == null) {
+            return false;
+        }
+
+        if (metadata.getOwnerUUID() != null && !metadata.getOwnerUUID().equals(requesterUUID)) {
+            SimplyScreens.LOGGER.warn("Player {} tried to delete image {} owned by {}", requesterUUID, imageId, metadata.getOwnerUUID());
+            return false;
+        }
+
+        Path imagesDir = getImagesDir(server);
+        try {
+            Files.deleteIfExists(imagesDir.resolve(imageId + "." + metadata.getExtension()));
+            Files.deleteIfExists(imagesDir.resolve(imageId + ".json"));
+            return true;
+        } catch (IOException e) {
+            SimplyScreens.LOGGER.error("Failed to delete image {}", imageId, e);
+            return false;
+        }
+    }
+
     private static String getImageExtension(byte[] data) {
         if (data == null || data.length < 4) {
             SimplyScreens.LOGGER.warn("Image data is null or too small (size: {})", data == null ? 0 : data.length);
@@ -224,5 +251,16 @@ public class ServerImageManager {
         }
 
         return imageList;
+    }
+
+    public static List<ImageMetadata> getImageListForPlayer(MinecraftServer server, String playerUUID) {
+        List<ImageMetadata> allImages = getImageList(server);
+        List<ImageMetadata> playerImages = new ArrayList<>();
+        for (ImageMetadata image : allImages) {
+            if (image.getOwnerUUID() == null || image.getOwnerUUID().equals(playerUUID)) {
+                playerImages.add(image);
+            }
+        }
+        return playerImages;
     }
 }

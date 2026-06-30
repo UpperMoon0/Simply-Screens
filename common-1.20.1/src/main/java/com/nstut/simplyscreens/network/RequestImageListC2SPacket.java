@@ -25,7 +25,7 @@ public class RequestImageListC2SPacket {
     public static void apply(RequestImageListC2SPacket msg, Supplier<NetworkManager.PacketContext> context) {
         ServerPlayer player = (ServerPlayer) context.get().getPlayer();
         context.get().queue(() -> {
-            var imageList = ServerImageManager.getImageList(player.getServer());
+            var imageList = ServerImageManager.getImageListForPlayer(player.getServer(), player.getUUID().toString());
             PacketRegistries.CHANNEL.sendToPlayer(player, new UpdateImageListS2CPacket(imageList));
         });
     }

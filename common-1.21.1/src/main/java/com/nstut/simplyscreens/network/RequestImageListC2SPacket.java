@@ -33,7 +33,7 @@ public class RequestImageListC2SPacket implements CustomPacketPayload {
     public static void handle(RequestImageListC2SPacket packet, NetworkManager.PacketContext context) {
         ServerPlayer player = (ServerPlayer) context.getPlayer();
         context.queue(() -> {
-            var imageList = ServerImageManager.getImageList(player.getServer());
+            var imageList = ServerImageManager.getImageListForPlayer(player.getServer(), player.getUUID().toString());
             PacketRegistries.sendToPlayer(player, new UpdateImageListS2CPacket(imageList));
         });
     }

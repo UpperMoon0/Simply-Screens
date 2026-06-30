@@ -33,5 +33,7 @@
   "gui.simplyscreens.screen.url.placeholder": "Image URL...",
   "gui.simplyscreens.screen.url.tooltip": "Enter an image URL to download from the internet",
   "gui.simplyscreens.screen.go": "Go",
-  "gui.simplyscreens.screen.url.error.invalid": "Invalid URL. Must start with http:// or https://"
+  "gui.simplyscreens.screen.url.error.invalid": "Invalid URL. Must start with http:// or https://",
+  "gui.simplyscreens.screen.remove": "Remove",
+  "gui.simplyscreens.screen.remove.tooltip": "Remove this image from your library"
 }

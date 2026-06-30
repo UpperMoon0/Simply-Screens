@@ -5,7 +5,7 @@ public class ScreenGuiConstants {
     public static final int SCREEN_HEIGHT = 220;
 
     public static final int SCREEN_ID_LABEL_Y = 45;
-    public static final int IMAGE_LIST_WIDGET_Y = 64;
+    public static final int IMAGE_LIST_WIDGET_Y = 66;
 
     public static final int MARGIN_X = 8;
     public static final int TAB_BUTTON_Y = 20;
@@ -17,12 +17,13 @@ public class ScreenGuiConstants {
     public static final int IMAGE_LIST_HEIGHT = 90;
 
     public static final int SELECT_BUTTON_Y = 162;
-    public static final int SELECT_BUTTON_WIDTH = 160;
+    public static final int SELECT_BUTTON_WIDTH = 106;
     public static final int SELECT_BUTTON_HEIGHT = 20;
+    public static final int REMOVE_BUTTON_WIDTH = 50;
 
     public static final int SCREEN_ID_FIELD_Y = 55;
 
-    public static final int MAINTAIN_ASPECT_CHECKBOX_Y = 82;
+    public static final int MAINTAIN_ASPECT_CHECKBOX_Y = 76;
     public static final int MAINTAIN_ASPECT_LABEL_X = 28;
 
     public static final int URL_FIELD_HEIGHT = 18;

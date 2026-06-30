@@ -121,7 +121,7 @@ public class DownloadImageFromUrlC2SPacket implements CustomPacketPayload {
                         String fileName = packet.getFileName() != null ? packet.getFileName() : "url_image." + extension;
 
                         // Save the image using ServerImageManager
-                        var imageId = ServerImageManager.saveImage(player.getServer(), fileName, imageData, contentType);
+                        var imageId = ServerImageManager.saveImage(player.getServer(), fileName, imageData, contentType, player.getUUID().toString());
                         if (imageId != null) {
                             SimplyScreens.LOGGER.info("Successfully downloaded image from URL: {} (ID: {})", url, imageId);
 
@@ -137,7 +137,7 @@ public class DownloadImageFromUrlC2SPacket implements CustomPacketPayload {
                                 }
 
                                 // Send updated image list to player
-                                var images = ServerImageManager.getImageList(player.getServer());
+                                var images = ServerImageManager.getImageListForPlayer(player.getServer(), player.getUUID().toString());
                                 PacketRegistries.sendToPlayer(player, new UpdateImageListS2CPacket(images));
                             });
                         }

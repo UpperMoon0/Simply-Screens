@@ -89,7 +89,7 @@ public class DownloadImageFromUrlC2SPacket {
                         String fname = fileName != null ? fileName : "url_image." + extension;
 
                         // Save the image using ServerImageManager
-                        var imageId = ServerImageManager.saveImage(player.getServer(), fname, imageData, contentType);
+                        var imageId = ServerImageManager.saveImage(player.getServer(), fname, imageData, contentType, player.getUUID().toString());
                         if (imageId != null) {
                             SimplyScreens.LOGGER.info("Successfully downloaded image from URL: {} (ID: {})", url, imageId);
 
@@ -104,9 +104,9 @@ public class DownloadImageFromUrlC2SPacket {
                                     }
                                 }
 
-                                // Send updated image list to player
-                                var images = ServerImageManager.getImageList(player.getServer());
-                                PacketRegistries.CHANNEL.sendToPlayer(player, new UpdateImageListS2CPacket(images));
+                            // Send updated image list to player
+                            var images = ServerImageManager.getImageListForPlayer(player.getServer(), player.getUUID().toString());
+                            PacketRegistries.CHANNEL.sendToPlayer(player, new UpdateImageListS2CPacket(images));
                             });
                         }
                     } else {

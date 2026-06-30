@@ -71,5 +71,11 @@ public class PacketRegistries {
                 DownloadImageFromUrlC2SPacket::new,
                 (packet, context) -> packet.handle(context)
         );
+
+        CHANNEL.register(RemoveImageC2SPacket.class,
+                RemoveImageC2SPacket::write,
+                RemoveImageC2SPacket::read,
+                RemoveImageC2SPacket::apply
+        );
     }
 }

@@ -11,6 +11,7 @@ import com.nstut.simplyscreens.network.UpdateScreenIdC2SPacket;
 import com.nstut.simplyscreens.network.UploadImageChunkC2SPacket;
 import com.nstut.simplyscreens.network.UpdateScreenAspectRatioC2SPacket;
 import com.nstut.simplyscreens.network.UpdateScreenSelectedImageC2SPacket;
+import com.nstut.simplyscreens.network.RemoveImageC2SPacket;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.components.EditBox;
@@ -44,6 +45,7 @@ public class ImageLoadScreen extends Screen {
 
     private ImageListWidget imageListWidget;
     private Button selectButton;
+    private Button removeButton;
     private Button uploadFromComputerButton;
     private Button downloadUrlButton;
     private Button goButton;
@@ -112,6 +114,14 @@ public class ImageLoadScreen extends Screen {
         selectButton.active = false;
         addRenderableWidget(selectButton);
 
+        removeButton = Button.builder(Component.translatable("gui.simplyscreens.screen.remove"), button -> onRemove())
+                .pos(guiLeft + ScreenGuiConstants.MARGIN_X + ScreenGuiConstants.SELECT_BUTTON_WIDTH + 4, guiTop + ScreenGuiConstants.SELECT_BUTTON_Y)
+                .size(ScreenGuiConstants.REMOVE_BUTTON_WIDTH, ScreenGuiConstants.SELECT_BUTTON_HEIGHT)
+                .tooltip(Tooltip.create(Component.translatable("gui.simplyscreens.screen.remove.tooltip")))
+                .build();
+        removeButton.active = false;
+        addRenderableWidget(removeButton);
+
         // Settings Tab Components
         screenIdField = new EditBox(this.font, guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.SCREEN_ID_FIELD_Y, 160, ScreenGuiConstants.BUTTON_HEIGHT, Component.translatable("gui.simplyscreens.screen.id.placeholder"));
         screenIdField.setValue(initialScreenId != null ? initialScreenId : "");
@@ -159,6 +169,13 @@ public class ImageLoadScreen extends Screen {
         imageListWidget.refresh();
     }
 
+    private void onRemove() {
+        ImageListWidget.ImageEntry selectedEntry = imageListWidget.getSelected();
+        if (selectedEntry != null) {
+            PacketRegistries.CHANNEL.sendToServer(new RemoveImageC2SPacket(selectedEntry.getImageId()));
+        }
+    }
+
     private void switchTab(Tab tab) {
         this.currentTab = tab;
         updateTabVisibility();
@@ -173,6 +190,7 @@ public class ImageLoadScreen extends Screen {
         searchBar.visible = isGallery;
         imageListWidget.visible = isGallery;
         selectButton.visible = isGallery;
+        removeButton.visible = isGallery;
 
         // Settings tab
         screenIdField.visible = isSettings;
@@ -192,6 +210,7 @@ public class ImageLoadScreen extends Screen {
 
     private void onImageSelected(ImageListWidget.ImageEntry entry) {
         selectButton.active = entry != null;
+        removeButton.active = entry != null;
     }
 
     private void onSelect() {

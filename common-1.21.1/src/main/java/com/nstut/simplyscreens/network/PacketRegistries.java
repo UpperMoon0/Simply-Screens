@@ -40,6 +40,11 @@ public class PacketRegistries {
             UploadImageChunkC2SPacket.TYPE,
             UploadImageChunkC2SPacket.CODEC,
             (packet, context) -> UploadImageChunkC2SPacket.handle(packet, context));
+
+        NetworkManager.registerReceiver(NetworkManager.c2s(),
+            RemoveImageC2SPacket.TYPE,
+            RemoveImageC2SPacket.CODEC,
+            (packet, context) -> RemoveImageC2SPacket.handle(packet, context));
     }
     
     public static void registerS2CPackets() {
