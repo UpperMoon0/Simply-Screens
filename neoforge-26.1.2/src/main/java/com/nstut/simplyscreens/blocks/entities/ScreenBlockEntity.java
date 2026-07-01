@@ -331,11 +331,14 @@ public class ScreenBlockEntity extends BlockEntity {
         updateClients();
 
         if (getBlockState().getBlock() instanceof ScreenBlock) {
-            BlockState newState = getBlockState().setValue(
+            BlockState currentState = getBlockState();
+            BlockState newState = currentState.setValue(
                     ScreenBlock.STATE,
                     isAnchor() ? ScreenBlock.STATE_ANCHOR : ScreenBlock.STATE_CHILD
             );
-            level.setBlock(worldPosition, newState, Block.UPDATE_ALL);
+            if (!currentState.equals(newState)) {
+                level.setBlock(worldPosition, newState, Block.UPDATE_ALL);
+            }
         }
     }
 
@@ -457,8 +460,6 @@ public class ScreenBlockEntity extends BlockEntity {
             screenWidth = Math.abs(farCorner.getX() - worldPosition.getX()) + 1;
             screenHeight = Math.abs(farCorner.getZ() - worldPosition.getZ()) + 1;
         }
-
-        markForRenderUpdate();
     }
 
     private BlockPos calculateStructureBounds(Direction facing) {

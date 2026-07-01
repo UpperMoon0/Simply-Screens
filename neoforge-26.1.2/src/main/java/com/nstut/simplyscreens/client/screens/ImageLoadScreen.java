@@ -364,7 +364,6 @@ public class ImageLoadScreen extends Screen {
     public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         int guiLeft = (this.width - SCREEN_WIDTH) / 2;
         int guiTop = (this.height - SCREEN_HEIGHT) / 2;
-        extractBackground(guiGraphics, mouseX, mouseY, partialTick);
         super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 
         // Title
@@ -387,7 +386,7 @@ public class ImageLoadScreen extends Screen {
         super.extractBackground(guiGraphics, i, j, f);
         int guiLeft = (this.width - SCREEN_WIDTH) / 2;
         int guiTop = (this.height - SCREEN_HEIGHT) / 2;
-        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, BACKGROUND_TEXTURE, guiLeft, guiTop, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, BACKGROUND_TEXTURE, guiLeft, guiTop, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 256, 256);
     }
 
     @Override
