@@ -3,11 +3,8 @@ package com.nstut.simplyscreens;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Registry system for tracking screens by their IDs and managing their image associations.
@@ -20,8 +17,7 @@ public class ScreenRegistry {
     // Helper instance for shared logic
     private static final ScreenRegistryHelper HELPER = new ScreenRegistryHelper(SimplyScreens.LOGGER);
     
-    // Map of level to map of position to screen ID
-    private static final Map<Level, Map<BlockPos, String>> levelScreenIds = new ConcurrentHashMap<>();
+    private static final ScreenLinkIndex<Level, BlockPos> LINK_INDEX = new ScreenLinkIndex<>();
 
     /**
      * Initializes the screen registry with the world save path.
@@ -105,7 +101,7 @@ public class ScreenRegistry {
         if (level.isClientSide()) return;
         if (screenId == null || screenId.isEmpty()) return;
 
-        levelScreenIds.computeIfAbsent(level, k -> new ConcurrentHashMap<>()).put(pos, screenId);
+        LINK_INDEX.register(level, pos, screenId);
         SimplyScreens.LOGGER.debug("Registered screen at {} with ID {}", pos, screenId);
     }
 
@@ -119,13 +115,7 @@ public class ScreenRegistry {
     public static void unregisterScreen(Level level, BlockPos pos, String screenId) {
         if (level.isClientSide()) return;
 
-        Map<BlockPos, String> levelMap = levelScreenIds.get(level);
-        if (levelMap != null) {
-            levelMap.remove(pos);
-            if (levelMap.isEmpty()) {
-                levelScreenIds.remove(level);
-            }
-        }
+        LINK_INDEX.unregister(level, pos);
 
         SimplyScreens.LOGGER.debug("Unregistered screen at {} with ID {}", pos, screenId);
     }
@@ -141,11 +131,7 @@ public class ScreenRegistry {
     public static void updateScreenId(Level level, BlockPos pos, String oldScreenId, String newScreenId) {
         if (level.isClientSide()) return;
 
-        // Unregister with old ID
-        unregisterScreen(level, pos, oldScreenId);
-
-        // Register with new ID
-        registerScreen(level, pos, newScreenId);
+        LINK_INDEX.update(level, pos, newScreenId);
 
         SimplyScreens.LOGGER.debug("Updated screen ID at {} from {} to {}", pos, oldScreenId, newScreenId);
     }
@@ -158,11 +144,7 @@ public class ScreenRegistry {
      * @return The screen ID, or null if not found
      */
     public static String getScreenIdAt(Level level, BlockPos pos) {
-        Map<BlockPos, String> levelMap = levelScreenIds.get(level);
-        if (levelMap != null) {
-            return levelMap.get(pos);
-        }
-        return null;
+        return LINK_INDEX.getScreenId(level, pos);
     }
 
     /**
@@ -172,22 +154,11 @@ public class ScreenRegistry {
      */
     public static void clearLevel(Level level) {
         if (level.isClientSide()) return;
-        levelScreenIds.remove(level);
+        LINK_INDEX.clear(level);
     }
 
     public static List<BlockPos> getPositionsForScreenId(Level level, String screenId) {
-        if (level.isClientSide() || screenId == null || screenId.isEmpty()) {
-            return List.of();
-        }
-        Map<BlockPos, String> levelMap = levelScreenIds.get(level);
-        if (levelMap == null) return List.of();
-
-        List<BlockPos> positions = new ArrayList<>();
-        for (Map.Entry<BlockPos, String> entry : levelMap.entrySet()) {
-            if (screenId.equals(entry.getValue())) {
-                positions.add(entry.getKey());
-            }
-        }
-        return positions;
+        if (level.isClientSide()) return List.of();
+        return LINK_INDEX.getPositions(level, screenId);
     }
 }

@@ -32,6 +32,7 @@ public class ScreenBlockEntity extends BlockEntity {
     private int screenHeight = 1;
     private boolean maintainAspectRatio = true;
     private int tickSinceLastUpdate = 0;
+    private boolean screenLinkRegistered;
 
     public ScreenBlockEntity(BlockPos pos, BlockState state) {
         super(BlockEntityRegistries.SCREEN.get(), pos, state);
@@ -259,11 +260,27 @@ public class ScreenBlockEntity extends BlockEntity {
             if (pos.equals(worldPosition)) continue;
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof ScreenBlockEntity linkedScreen && linkedScreen.isAnchor()) {
-                linkedScreen.setImageId(imageId);
-                linkedScreen.setChanged();
-                linkedScreen.updateClients();
+                linkedScreen.applyLinkedImageId(imageId);
             }
         }
+    }
+
+    private void applyLinkedImageId(UUID linkedImageId) {
+        this.imageId = linkedImageId;
+        setChanged();
+        Direction facing = getBlockState().hasProperty(ScreenBlock.FACING)
+                ? getBlockState().getValue(ScreenBlock.FACING) : Direction.NORTH;
+        Direction widthDirection = getWidthDirection(facing);
+        Direction heightDirection = getHeightDirection(facing);
+        for (int w = 0; w < screenWidth; w++) {
+            for (int h = 0; h < screenHeight; h++) {
+                BlockEntity blockEntity = level.getBlockEntity(worldPosition.relative(widthDirection, w).relative(heightDirection, h));
+                if (blockEntity instanceof ScreenBlockEntity screen) {
+                    screen.updateScreen(linkedImageId, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
+                }
+            }
+        }
+        updateClients();
     }
 
     public void forceScreenId(String screenId) {
@@ -281,6 +298,7 @@ public class ScreenBlockEntity extends BlockEntity {
         } else if (!this.screenId.isEmpty()) {
             ScreenRegistry.registerScreen(level, worldPosition, this.screenId);
         }
+        screenLinkRegistered = !this.screenId.isEmpty();
 
         Direction facing = getBlockState().hasProperty(ScreenBlock.FACING) ?
             getBlockState().getValue(ScreenBlock.FACING) : Direction.NORTH;
@@ -293,9 +311,14 @@ public class ScreenBlockEntity extends BlockEntity {
                 BlockEntity be = level.getBlockEntity(currentPos);
                 if (be instanceof ScreenBlockEntity screen) {
                     screen.updateScreen(this.imageId, this.screenWidth, this.screenHeight, this.worldPosition, this.maintainAspectRatio);
+                    screen.setScreenIdInternal(this.screenId);
                 }
             }
         }
+    }
+
+    private void setScreenIdInternal(String screenId) {
+        this.screenId = screenId != null ? screenId : "";
     }
 
     public void updateScreen(UUID imageId, int width, int height, BlockPos anchor, boolean maintainAspect) {
@@ -322,6 +345,10 @@ public class ScreenBlockEntity extends BlockEntity {
         if (level == null || level.isClientSide) return;
 
         if (isAnchor()) {
+            if (!screenLinkRegistered && screenId != null && !screenId.isEmpty()) {
+                ScreenRegistry.registerScreen(level, worldPosition, screenId);
+                screenLinkRegistered = true;
+            }
             if (tickSinceLastUpdate++ >= Config.SCREEN_TICK_RATE) {
                 updateScreenStructure();
                 tickSinceLastUpdate = 0;

@@ -22,8 +22,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import com.nstut.simplyscreens.ImageImportSupport;
 import com.nstut.simplyscreens.helpers.ImageMetadata;
 
 public class ImageListWidget extends AbstractWidget {
@@ -242,31 +242,28 @@ public class ImageListWidget extends AbstractWidget {
 
     public void receiveImageData(String imageId, byte[] imageData) {
         try {
-            NativeImage nativeImage;
-            try {
-                nativeImage = NativeImage.read(new ByteArrayInputStream(imageData));
-            } catch (IOException e) {
-                BufferedImage bi = ImageIO.read(new ByteArrayInputStream(imageData));
-                if (bi == null) {
-                    return;
-                }
-                nativeImage = new NativeImage(bi.getWidth(), bi.getHeight(), false);
-                for (int y = 0; y < bi.getHeight(); y++) {
-                    for (int x = 0; x < bi.getWidth(); x++) {
-                        int rgb = bi.getRGB(x, y);
-                        int a = rgb >> 24 & 0xFF;
-                        int r = rgb >> 16 & 0xFF;
-                        int g = rgb >> 8 & 0xFF;
-                        int b = rgb & 0xFF;
-                        nativeImage.setPixelRGBA(x, y, (a << 24) | (b << 16) | (g << 8) | r);
-                    }
-                }
-            }
+            BufferedImage bufferedImage = ImageImportSupport.decode(imageData);
+            NativeImage nativeImage = toNativeImage(bufferedImage);
             DynamicTexture dynamicTexture = new DynamicTexture(nativeImage);
             ResourceLocation texture = Minecraft.getInstance().getTextureManager().register("simply_screens/" + imageId, dynamicTexture);
             textureCache.put(imageId, texture);
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static NativeImage toNativeImage(BufferedImage image) {
+        NativeImage nativeImage = new NativeImage(image.getWidth(), image.getHeight(), false);
+        for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) {
+                int argb = image.getRGB(x, y);
+                int a = argb >>> 24;
+                int r = argb >>> 16 & 0xFF;
+                int g = argb >>> 8 & 0xFF;
+                int b = argb & 0xFF;
+                nativeImage.setPixelRGBA(x, y, a << 24 | b << 16 | g << 8 | r);
+            }
+        }
+        return nativeImage;
     }
 }

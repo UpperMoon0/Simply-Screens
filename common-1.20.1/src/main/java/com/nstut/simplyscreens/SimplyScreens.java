@@ -5,7 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class SimplyScreens {
-    public static final String MOD_ID = "simplyscreens";
+    public static final String MOD_ID = "simply_screens";
     public static final Logger LOGGER = LoggerFactory.getLogger("Simply Screens");
 
     public static void initCommon() {

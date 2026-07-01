@@ -5,7 +5,7 @@ issueTrackerURL = "https://github.com/nstut/simply-screens/issues"
 license = "MIT"
 
 [[mods]]
-modId = "simplyscreens"
+modId = "simply_screens"
 version = "${version}"
 displayName = "Simply Screens"
 displayURL="https://www.curseforge.com/minecraft/mc-mods/simply-screens"
@@ -15,21 +15,21 @@ A simple mod that adds screens to display images from a URL.
 '''
 #logoFile = ""
 
-[[dependencies.simplyscreens]]
+[[dependencies.simply_screens]]
 modId = "forge"
 mandatory = true
 versionRange = "[47,)"
 ordering = "NONE"
 side = "BOTH"
 
-[[dependencies.simplyscreens]]
+[[dependencies.simply_screens]]
 modId = "minecraft"
 mandatory = true
 versionRange = "[1.20.1,)"
 ordering = "NONE"
 side = "BOTH"
 
-[[dependencies.simplyscreens]]
+[[dependencies.simply_screens]]
 modId = "architectury"
 mandatory = true
 versionRange = "[9.2.14,)"

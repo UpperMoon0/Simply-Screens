@@ -12,13 +12,14 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import java.util.UUID;
 
 public class ClientPacketHandler {
-    public static void handleUpdateScreen(BlockPos pos, UUID imageId, boolean maintainAspectRatio) {
+    public static void handleUpdateScreen(BlockPos pos, UUID imageId, boolean maintainAspectRatio, String screenId) {
         Level level = Minecraft.getInstance().level;
         if (level != null) {
             BlockEntity blockEntity = level.getBlockEntity(pos);
             if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                 screenBlockEntity.setImageId(imageId);
                 screenBlockEntity.setMaintainAspectRatio(maintainAspectRatio);
+                screenBlockEntity.setScreenId(screenId);
             }
         }
     }

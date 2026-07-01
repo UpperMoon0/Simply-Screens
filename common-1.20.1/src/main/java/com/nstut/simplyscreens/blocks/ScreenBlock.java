@@ -18,6 +18,9 @@ import org.jetbrains.annotations.NotNull;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class ScreenBlock extends Block implements EntityBlock {
 
@@ -69,5 +72,20 @@ public class ScreenBlock extends Block implements EntityBlock {
                 screenBlockEntity.tick();
             }
         };
+    }
+
+    @Override
+    public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        return Block.box(0, 0, 0, 16, 16, 16);
+    }
+
+    @Override
+    public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        return Block.box(0, 0, 0, 16, 16, 16);
+    }
+
+    @Override
+    public VoxelShape getInteractionShape(BlockState state, BlockGetter level, BlockPos pos) {
+        return Block.box(0, 0, 0, 16, 16, 16);
     }
 }

@@ -2,6 +2,7 @@ package com.nstut.simplyscreens.client.screens;
 
 import com.nstut.simplyscreens.Config;
 import com.nstut.simplyscreens.SimplyScreens;
+import com.nstut.simplyscreens.ImageImportSupport;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simplyscreens.client.ScreenGuiConstants;
 import com.nstut.simplyscreens.client.gui.widgets.ImageListWidget;
@@ -326,7 +327,7 @@ public class ImageLoadScreen extends Screen {
         }
 
         // Basic validation
-        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+        if (!ImageImportSupport.isHttpUrl(url)) {
             TinyFileDialogs.tinyfd_messageBox(
                 Component.translatable("gui.simplyscreens.screen.dialog.upload_error").getString(),
                 Component.translatable("gui.simplyscreens.screen.url.error.invalid").getString(),
@@ -335,19 +336,7 @@ public class ImageLoadScreen extends Screen {
         }
 
         // Extract filename from URL or use default
-        String fileName = "downloaded_image.png";
-        try {
-            java.net.URI uri = new java.net.URI(url);
-            String path = uri.getPath();
-            if (path != null && path.contains(".")) {
-                int lastSlash = path.lastIndexOf('/');
-                if (lastSlash >= 0 && lastSlash < path.length() - 1) {
-                    fileName = path.substring(lastSlash + 1);
-                }
-            }
-        } catch (Exception e) {
-            // Use default filename
-        }
+        String fileName = ImageImportSupport.fileNameFromUrl(url);
 
         // Send download request to server
         PacketRegistries.sendToServer(new DownloadImageFromUrlC2SPacket(blockEntityPos, url, fileName));
@@ -461,12 +450,4 @@ public class ImageLoadScreen extends Screen {
         return imageListWidget;
     }
     
-    private boolean isSupportedImageFormat(String filePath) {
-        if (filePath == null) return false;
-
-        String lowerFilePath = filePath.toLowerCase();
-        return lowerFilePath.endsWith(".png") ||
-               lowerFilePath.endsWith(".jpg") ||
-               lowerFilePath.endsWith(".jpeg");
-    }
 }

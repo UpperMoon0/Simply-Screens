@@ -6,6 +6,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import com.nstut.simplyscreens.Config;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
+import com.nstut.simplyscreens.blocks.ScreenBlock;
 import com.nstut.simplyscreens.helpers.ClientImageManager;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -15,7 +16,6 @@ import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import org.jetbrains.annotations.NotNull;
 import java.util.UUID;
 
@@ -32,7 +32,8 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         if (!shouldRender(blockEntity)) return;
 
         BlockState blockState = blockEntity.getBlockState();
-        Direction facing = blockState.getValue(BlockStateProperties.FACING);
+        Direction facing = blockState.hasProperty(ScreenBlock.FACING)
+                ? blockState.getValue(ScreenBlock.FACING) : Direction.NORTH;
         UUID imageId = blockEntity.getResolvedImageId();
 
         if (imageId == null) {
@@ -138,6 +139,7 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         boolean maintainAspect = blockEntity.isMaintainAspectRatio();
 
         UUID imageId = blockEntity.getResolvedImageId();
+        if (imageId == null) return;
         DynamicTexture texture = ClientImageManager.getImageTexture(imageId);
         if (texture == null) return;
 

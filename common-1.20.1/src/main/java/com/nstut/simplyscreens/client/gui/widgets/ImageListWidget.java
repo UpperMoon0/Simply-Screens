@@ -23,6 +23,8 @@ import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import com.nstut.simplyscreens.helpers.ImageMetadata;
+import com.nstut.simplyscreens.ImageImportSupport;
+import java.awt.image.BufferedImage;
 
 public class ImageListWidget extends AbstractWidget {
     private static final int ITEM_SIZE = 40;
@@ -240,12 +242,28 @@ public class ImageListWidget extends AbstractWidget {
 
     public void receiveImageData(String imageId, byte[] imageData) {
         try {
-            NativeImage nativeImage = NativeImage.read(new ByteArrayInputStream(imageData));
+            BufferedImage bufferedImage = ImageImportSupport.decode(imageData);
+            NativeImage nativeImage = toNativeImage(bufferedImage);
             DynamicTexture dynamicTexture = new DynamicTexture(nativeImage);
-            ResourceLocation texture = Minecraft.getInstance().getTextureManager().register("simplyscreens/" + imageId, dynamicTexture);
+            ResourceLocation texture = Minecraft.getInstance().getTextureManager().register("simply_screens/" + imageId, dynamicTexture);
             textureCache.put(imageId, texture);
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static NativeImage toNativeImage(BufferedImage image) {
+        NativeImage nativeImage = new NativeImage(image.getWidth(), image.getHeight(), false);
+        for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) {
+                int argb = image.getRGB(x, y);
+                int a = argb >>> 24;
+                int r = argb >>> 16 & 0xFF;
+                int g = argb >>> 8 & 0xFF;
+                int b = argb & 0xFF;
+                nativeImage.setPixelRGBA(x, y, a << 24 | b << 16 | g << 8 | r);
+            }
+        }
+        return nativeImage;
     }
 }
