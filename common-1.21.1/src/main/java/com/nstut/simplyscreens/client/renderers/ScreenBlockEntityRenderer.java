@@ -13,6 +13,7 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.state.BlockState;
@@ -29,26 +30,34 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
     @Override
     public void render(@NotNull ScreenBlockEntity blockEntity, float partialTicks, @NotNull PoseStack poseStack,
                        @NotNull MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
-        if (!shouldRender(blockEntity)) return;
+        ScreenBlockEntity anchor = blockEntity.isAnchor() ? blockEntity : blockEntity.getAnchorEntity();
+        if (anchor == null || anchor.getResolvedImageId() == null) return;
 
-        BlockState blockState = blockEntity.getBlockState();
+        UUID imageId = anchor.getResolvedImageId();
+        ResourceLocation texture = ClientImageManager.getTextureLocation(imageId);
+        if (texture == null) return;
+
+        if (!blockEntity.isAnchor()) {
+            BlockPos anchorPos = anchor.getBlockPos();
+            BlockPos currentPos = blockEntity.getBlockPos();
+            poseStack.translate(
+                    anchorPos.getX() - currentPos.getX(),
+                    anchorPos.getY() - currentPos.getY(),
+                    anchorPos.getZ() - currentPos.getZ()
+            );
+        }
+
+        BlockState blockState = anchor.getBlockState();
         Direction facing = blockState.hasProperty(ScreenBlock.FACING) ?
             blockState.getValue(ScreenBlock.FACING) : Direction.NORTH;
-        // Use resolved image ID - checks screenId registry first, falls back to direct imageId
-        UUID imageId = blockEntity.getResolvedImageId();
 
-        if (imageId == null) {
-            return;
-        }
-
-        ResourceLocation texture = ClientImageManager.getTextureLocation(imageId);
-        if (texture == null) {
-            // Texture is loading, will be rendered next frame
-            return;
-        }
-
-        prepareRenderingTransform(poseStack, blockEntity, facing);
+        prepareRenderingTransform(poseStack, anchor, facing);
         renderTextureQuad(texture, poseStack, bufferSource, packedOverlay);
+    }
+
+    @Override
+    public boolean shouldRenderOffScreen(ScreenBlockEntity blockEntity) {
+        return true;
     }
 
     @Override
@@ -126,11 +135,6 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         }
 
         poseStack.translate(centerX, centerY, 0);
-    }
-
-    private boolean shouldRender(ScreenBlockEntity blockEntity) {
-        return blockEntity.isAnchor() &&
-                blockEntity.getResolvedImageId() != null;
     }
 
     private void applyAspectRatioScaling(PoseStack poseStack, ScreenBlockEntity blockEntity) {

@@ -35,17 +35,23 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
     @Override
     public void extractRenderState(ScreenBlockEntity entity, ScreenBlockEntityRenderState state, float partialTicks,
                                    Vec3 cameraPosition, ModelFeatureRenderer.CrumblingOverlay breakProgress) {
-        BlockEntityRenderer.super.extractRenderState(entity, state, partialTicks, cameraPosition, breakProgress);
-        UUID imageId = entity.getResolvedImageId();
-        state.visible = entity.isAnchor() && imageId != null;
-        state.facing = entity.getBlockState().hasProperty(ScreenBlock.FACING)
-                ? entity.getBlockState().getValue(ScreenBlock.FACING) : Direction.NORTH;
-        state.width = entity.getScreenWidth();
-        state.height = entity.getScreenHeight();
+        ScreenBlockEntity anchor = entity.isAnchor() ? entity : entity.getAnchorEntity();
+        if (anchor == null) {
+            BlockEntityRenderer.super.extractRenderState(entity, state, partialTicks, cameraPosition, breakProgress);
+            state.visible = false;
+            return;
+        }
+        BlockEntityRenderer.super.extractRenderState(anchor, state, partialTicks, cameraPosition, breakProgress);
+        UUID imageId = anchor.getResolvedImageId();
+        state.visible = imageId != null;
+        state.facing = anchor.getBlockState().hasProperty(ScreenBlock.FACING)
+                ? anchor.getBlockState().getValue(ScreenBlock.FACING) : Direction.NORTH;
+        state.width = anchor.getScreenWidth();
+        state.height = anchor.getScreenHeight();
         state.texture = imageId == null ? null : ClientImageManager.getTextureLocation(imageId);
         state.scaleX = state.width;
         state.scaleY = state.height;
-        if (imageId != null && entity.isMaintainAspectRatio()) {
+        if (imageId != null && anchor.isMaintainAspectRatio()) {
             DynamicTexture texture = ClientImageManager.getImageTexture(imageId);
             NativeImage image = texture == null ? null : texture.getPixels();
             if (image != null) {
