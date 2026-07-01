@@ -4,16 +4,8 @@ plugins {
     id 'com.gradleup.shadow' version '8.3.6' apply false
 }
 
-// Set default version-specific properties
-rootProject.ext.minecraft_version = '1.21.1'
-rootProject.ext.architectury_api_version = '13.0.8'
-rootProject.ext.fabric_loader_version = '0.17.2'
-rootProject.ext.fabric_api_version = '0.116.5+1.21.1'
-rootProject.ext.neoforge_version = '21.1.201'
-rootProject.ext.forge_version = '1.20.1-47.4.0'
-
 architectury {
-    minecraft = rootProject.ext.minecraft_version
+    minecraft = rootProject.findProperty('minecraft_version')
 }
 
 allprojects {
@@ -25,22 +17,44 @@ allprojects {
     }
 }
 
+def versionGroupFor(String projectName) {
+    return settings.ext.mcVersionMapping.get(projectName, rootProject.findProperty('minecraft_version'))
+}
+
+def depVersionsFor(String mcVer) {
+    def prefix = mcVer.replace('.', '_')
+    def versions = [:]
+    versions.minecraft_version = rootProject.findProperty("minecraft_version_${prefix}")
+    versions.architectury_api_version = rootProject.findProperty("architectury_version_${prefix}")
+    versions.fabric_loader_version = rootProject.findProperty("fabric_loader_version_${prefix}")
+    versions.fabric_api_version = rootProject.findProperty("fabric_api_version_${prefix}")
+    versions.forge_version = rootProject.findProperty("forge_version_${prefix}")
+    versions.neoforge_version = rootProject.findProperty("neoforge_version_${prefix}")
+    versions.enabled_platforms = rootProject.findProperty("enabled_platforms_${prefix}")
+    return versions
+}
+
 subprojects {
     apply plugin: 'dev.architectury.loom'
     apply plugin: 'architectury-plugin'
     apply plugin: 'maven-publish'
 
+    def mcVer = versionGroupFor(":${project.name}")
+    def deps = depVersionsFor(mcVer)
+
+    project.ext.minecraft_version = deps.minecraft_version
+    project.ext.architectury_api_version = deps.architectury_api_version
+    project.ext.fabric_loader_version = deps.fabric_loader_version
+    project.ext.fabric_api_version = deps.fabric_api_version
+    project.ext.forge_version = deps.forge_version
+    project.ext.neoforge_version = deps.neoforge_version
+    project.ext.enabled_platforms = deps.enabled_platforms
+
     base {
-        // Set up a suffixed format for the mod jar names, e.g. `example-fabric`.
         archivesName = "$rootProject.archives_name-$project.name"
     }
 
     repositories {
-        // Add repositories to retrieve artifacts from in here.
-        // You should only use other mods because
-        // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
-        // See https://docs.gradle.org/current/userguide/declaring_repositories.html
-        // for more information about repositories.
         maven { url 'https://jitpack.io' }
     }
 
@@ -49,35 +63,24 @@ subprojects {
     }
 
     dependencies {
-        // Determine the Minecraft version based on project name
-        def mcVersion = project.name.contains('1.20.1') ? '1.20.1' : 
-                       (project.name.contains('1.21.1') ? '1.21.1' : rootProject.ext.minecraft_version)
-        
-        minecraft "net.minecraft:minecraft:$mcVersion"
+        minecraft "net.minecraft:minecraft:${deps.minecraft_version}"
         mappings loom.officialMojangMappings()
         compileOnly "org.projectlombok:lombok:1.18.34"
         annotationProcessor "org.projectlombok:lombok:1.18.34"
-
     }
 
     java {
-        // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
-        // if it is present.
-        // If you remove this line, sources will not be generated.
         withSourcesJar()
-
-        // Determine Java version based on project name
-        def javaVersion = project.name.contains('1.21.1') ? JavaVersion.VERSION_21 : JavaVersion.VERSION_17
+        def javaVersion = mcVer == '1.20.1' ? JavaVersion.VERSION_17 : JavaVersion.VERSION_21
         sourceCompatibility = javaVersion
         targetCompatibility = javaVersion
     }
 
     tasks.withType(JavaCompile).configureEach {
-        def javaRelease = project.name.contains('1.21.1') ? 21 : 17
+        def javaRelease = mcVer == '1.20.1' ? 17 : 21
         it.options.release = javaRelease
     }
 
-    // Configure Maven publishing.
     publishing {
         publications {
             mavenJava(MavenPublication) {
@@ -86,9 +89,8 @@ subprojects {
             }
         }
 
-        // See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
         repositories {
-            // Add repositories to publish to here.
+            // See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
             // Notice: This block does NOT have the same function as the block in the top level.
             // The repositories here will be used for publishing your artifact, not for
             // retrieving dependencies.
