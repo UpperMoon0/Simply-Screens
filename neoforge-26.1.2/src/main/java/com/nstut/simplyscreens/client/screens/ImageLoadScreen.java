@@ -364,6 +364,7 @@ public class ImageLoadScreen extends Screen {
     public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         int guiLeft = (this.width - SCREEN_WIDTH) / 2;
         int guiTop = (this.height - SCREEN_HEIGHT) / 2;
+        extractBackground(guiGraphics, mouseX, mouseY, partialTick);
         super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 
         // Title

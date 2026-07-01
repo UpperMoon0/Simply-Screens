@@ -18,7 +18,7 @@ allprojects {
 }
 
 def versionGroupFor(String projectName) {
-    return settings.ext.mcVersionMapping.get(projectName, rootProject.findProperty('minecraft_version'))
+    return gradle.ext.mcVersionMapping.get(projectName, rootProject.findProperty('minecraft_version'))
 }
 
 def depVersionsFor(String mcVer) {
