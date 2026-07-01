@@ -45,7 +45,7 @@ class PacketSerializationTest {
         UUID imageId = UUID.randomUUID();
         String screenId = "screen-123";
 
-        UpdateScreenS2CPacket original = new UpdateScreenS2CPacket(pos, imageId, true, screenId);
+        UpdateScreenS2CPacket original = new UpdateScreenS2CPacket(pos, imageId, true, screenId, 3, 2);
 
         ByteBuf raw = Unpooled.buffer();
         RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(raw, registryAccess);
@@ -57,13 +57,15 @@ class PacketSerializationTest {
         assertEquals(imageId, decoded.getImageId());
         assertTrue(decoded.isMaintainAspectRatio());
         assertEquals(screenId, decoded.getScreenId());
+        assertEquals(3, decoded.getScreenWidth());
+        assertEquals(2, decoded.getScreenHeight());
     }
 
     @Test
     void updateScreenS2CPacket_roundTrip_nullImageId() {
         String screenId = "screen-null-img";
 
-        UpdateScreenS2CPacket original = new UpdateScreenS2CPacket(pos, null, false, screenId);
+        UpdateScreenS2CPacket original = new UpdateScreenS2CPacket(pos, null, false, screenId, 1, 1);
 
         ByteBuf raw = Unpooled.buffer();
         RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(raw, registryAccess);
@@ -75,13 +77,15 @@ class PacketSerializationTest {
         assertNull(decoded.getImageId());
         assertFalse(decoded.isMaintainAspectRatio());
         assertEquals(screenId, decoded.getScreenId());
+        assertEquals(1, decoded.getScreenWidth());
+        assertEquals(1, decoded.getScreenHeight());
     }
 
     @Test
     void updateScreenS2CPacket_roundTrip_emptyScreenId() {
         UUID imageId = UUID.randomUUID();
 
-        UpdateScreenS2CPacket original = new UpdateScreenS2CPacket(pos, imageId, true, "");
+        UpdateScreenS2CPacket original = new UpdateScreenS2CPacket(pos, imageId, true, "", 1, 1);
 
         ByteBuf raw = Unpooled.buffer();
         RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(raw, registryAccess);
@@ -93,6 +97,8 @@ class PacketSerializationTest {
         assertEquals(imageId, decoded.getImageId());
         assertTrue(decoded.isMaintainAspectRatio());
         assertEquals("", decoded.getScreenId());
+        assertEquals(1, decoded.getScreenWidth());
+        assertEquals(1, decoded.getScreenHeight());
     }
 
     @Test

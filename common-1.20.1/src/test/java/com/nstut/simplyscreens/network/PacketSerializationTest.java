@@ -66,7 +66,7 @@ class PacketSerializationTest {
         UUID imageId = UUID.randomUUID();
         String screenId = "screen-123";
 
-        UpdateScreenS2CPacket original = new UpdateScreenS2CPacket(pos, imageId, true, screenId);
+        UpdateScreenS2CPacket original = new UpdateScreenS2CPacket(pos, imageId, true, screenId, 3, 2);
 
         ByteBuf raw = Unpooled.buffer();
         FriendlyByteBuf buf = new FriendlyByteBuf(raw);
@@ -78,11 +78,13 @@ class PacketSerializationTest {
         assertEquals(imageId, decoded.imageId);
         assertTrue(decoded.maintainAspectRatio);
         assertEquals(screenId, decoded.screenId);
+        assertEquals(3, decoded.screenWidth);
+        assertEquals(2, decoded.screenHeight);
     }
 
     @Test
     void updateScreenS2CPacket_roundTrip_nullImageId() {
-        UpdateScreenS2CPacket original = new UpdateScreenS2CPacket(pos, null, false, "screen-null-img");
+        UpdateScreenS2CPacket original = new UpdateScreenS2CPacket(pos, null, false, "screen-null-img", 1, 1);
 
         ByteBuf raw = Unpooled.buffer();
         FriendlyByteBuf buf = new FriendlyByteBuf(raw);
@@ -94,5 +96,7 @@ class PacketSerializationTest {
         assertNull(decoded.imageId);
         assertFalse(decoded.maintainAspectRatio);
         assertEquals("screen-null-img", decoded.screenId);
+        assertEquals(1, decoded.screenWidth);
+        assertEquals(1, decoded.screenHeight);
     }
 }

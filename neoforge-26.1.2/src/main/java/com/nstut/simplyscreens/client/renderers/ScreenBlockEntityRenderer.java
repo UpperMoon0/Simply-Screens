@@ -95,6 +95,11 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
     }
 
     @Override
+    public boolean shouldRenderOffScreen() {
+        return true;
+    }
+
+    @Override
     public int getViewDistance() {
         return Config.VIEW_DISTANCE;
     }

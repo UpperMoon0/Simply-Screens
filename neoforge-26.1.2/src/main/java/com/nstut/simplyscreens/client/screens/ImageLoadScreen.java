@@ -364,21 +364,22 @@ public class ImageLoadScreen extends Screen {
     public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         int guiLeft = (this.width - SCREEN_WIDTH) / 2;
         int guiTop = (this.height - SCREEN_HEIGHT) / 2;
-        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 
         // Title
-        guiGraphics.text(this.font, this.title, (this.width - this.font.width(this.title)) / 2, guiTop + 6, 0x404040, false);
+        guiGraphics.text(this.font, this.title, (this.width - this.font.width(this.title)) / 2, guiTop + 6, 0xFF404040, false);
 
         // Tab labels based on current tab
         if (currentTab == Tab.SETTINGS) {
-            guiGraphics.text(this.font, Component.translatable("gui.simplyscreens.screen.id.label"), guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.SCREEN_ID_LABEL_Y, 0x404040, false);
-            guiGraphics.text(this.font, Component.translatable("gui.simplyscreens.screen.maintain_aspect"), guiLeft + ScreenGuiConstants.MAINTAIN_ASPECT_LABEL_X, guiTop + 82, 0x404040, false);
+            guiGraphics.text(this.font, Component.translatable("gui.simplyscreens.screen.id.label"), guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.SCREEN_ID_LABEL_Y, 0xFF404040, false);
+            guiGraphics.text(this.font, Component.translatable("gui.simplyscreens.screen.maintain_aspect"), guiLeft + ScreenGuiConstants.MAINTAIN_ASPECT_LABEL_X, guiTop + 82, 0xFF404040, false);
         } else if (currentTab == Tab.IMPORT) {
             // Upload from Computer section label
-            guiGraphics.text(this.font, Component.literal("From Computer:"), guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + 68, 0x404040, false);
+            guiGraphics.text(this.font, Component.literal("From Computer:"), guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + 68, 0xFF404040, false);
             // Download from URL section label
-            guiGraphics.text(this.font, Component.literal("From URL:"), guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + 118, 0x404040, false);
+            guiGraphics.text(this.font, Component.literal("From URL:"), guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + 118, 0xFF404040, false);
         }
+
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
     }
 
     @Override

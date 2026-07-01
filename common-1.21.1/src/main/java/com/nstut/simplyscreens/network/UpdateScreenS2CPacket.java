@@ -21,12 +21,16 @@ public class UpdateScreenS2CPacket implements CustomPacketPayload {
     private final UUID imageId;
     private final boolean maintainAspectRatio;
     private final String screenId;
+    private final int screenWidth;
+    private final int screenHeight;
 
-    public UpdateScreenS2CPacket(BlockPos pos, UUID imageId, boolean maintainAspectRatio, String screenId) {
+    public UpdateScreenS2CPacket(BlockPos pos, UUID imageId, boolean maintainAspectRatio, String screenId, int screenWidth, int screenHeight) {
         this.pos = pos;
         this.imageId = imageId;
         this.maintainAspectRatio = maintainAspectRatio;
         this.screenId = screenId;
+        this.screenWidth = screenWidth;
+        this.screenHeight = screenHeight;
     }
 
     public UpdateScreenS2CPacket(RegistryFriendlyByteBuf buf) {
@@ -38,6 +42,8 @@ public class UpdateScreenS2CPacket implements CustomPacketPayload {
         }
         maintainAspectRatio = buf.readBoolean();
         screenId = buf.readBoolean() ? buf.readUtf() : "";
+        screenWidth = buf.readVarInt();
+        screenHeight = buf.readVarInt();
     }
 
     public void write(RegistryFriendlyByteBuf buf) {
@@ -51,6 +57,8 @@ public class UpdateScreenS2CPacket implements CustomPacketPayload {
         if (screenId != null && !screenId.isEmpty()) {
             buf.writeUtf(screenId);
         }
+        buf.writeVarInt(screenWidth);
+        buf.writeVarInt(screenHeight);
     }
 
     @Override
@@ -74,7 +82,15 @@ public class UpdateScreenS2CPacket implements CustomPacketPayload {
         return screenId;
     }
 
+    public int getScreenWidth() {
+        return screenWidth;
+    }
+
+    public int getScreenHeight() {
+        return screenHeight;
+    }
+
     public static void handle(UpdateScreenS2CPacket packet, NetworkManager.PacketContext context) {
-        context.queue(() -> ClientPacketHandler.handleUpdateScreen(packet.pos, packet.imageId, packet.maintainAspectRatio, packet.screenId));
+        context.queue(() -> ClientPacketHandler.handleUpdateScreen(packet.pos, packet.imageId, packet.maintainAspectRatio, packet.screenId, packet.screenWidth, packet.screenHeight));
     }
 }
