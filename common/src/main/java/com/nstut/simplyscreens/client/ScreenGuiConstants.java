@@ -24,7 +24,7 @@ public class ScreenGuiConstants {
     public static final int SCREEN_ID_FIELD_Y = 55;
 
     public static final int MAINTAIN_ASPECT_CHECKBOX_Y = 76;
-    public static final int MAINTAIN_ASPECT_LABEL_X = 28;
+    public static final int MAINTAIN_ASPECT_LABEL_X = 32;
 
     public static final int URL_FIELD_HEIGHT = 18;
     public static final int DOWNLOAD_BUTTON_WIDTH = 38;

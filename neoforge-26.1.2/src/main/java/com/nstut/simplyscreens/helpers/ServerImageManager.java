@@ -1,0 +1,295 @@
+package com.nstut.simplyscreens.helpers;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.nstut.simplyscreens.SimplyScreens;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.storage.LevelResource;
+
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import com.nstut.simplyscreens.network.PacketRegistries;
+import com.nstut.simplyscreens.network.UpdateImageListS2CPacket;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerPlayer;
+
+import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
+
+public class ServerImageManager {
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Map<UUID, byte[][]> CHUNK_MAP = new ConcurrentHashMap<>();
+    private static final Map<UUID, String> FILENAME_MAP = new ConcurrentHashMap<>();
+    private static List<ImageMetadata> cachedImageList;
+
+    public static void handleImageChunk(ServerPlayer player, BlockPos blockPos, UUID transactionId, int chunkIndex, int totalChunks, byte[] data, String fileName) {
+        CHUNK_MAP.computeIfAbsent(transactionId, k -> new byte[totalChunks][])[chunkIndex] = data;
+        if (fileName != null) {
+            FILENAME_MAP.put(transactionId, fileName);
+        }
+
+        boolean allChunksReceived = true;
+        for (int i = 0; i < totalChunks; i++) {
+            if (CHUNK_MAP.get(transactionId)[i] == null) {
+                allChunksReceived = false;
+                break;
+            }
+        }
+
+        if (allChunksReceived) {
+            try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+                for (int i = 0; i < totalChunks; i++) {
+                    outputStream.write(CHUNK_MAP.get(transactionId)[i]);
+                }
+                byte[] imageData = outputStream.toByteArray();
+                String originalName = FILENAME_MAP.get(transactionId);
+
+                UUID imageId = saveImage(player.level().getServer(), originalName, imageData, null, player.getUUID().toString());
+                if (imageId != null) {
+                    player.level().getServer().execute(() -> {
+                        if (player.level().getBlockEntity(blockPos) instanceof com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity screen) {
+                            screen.setImageId(imageId);
+                        }
+                    });
+
+                    List<ImageMetadata> images = getImageListForPlayer(player.level().getServer(), player.getUUID().toString());
+                    PacketRegistries.sendToPlayer(player, new UpdateImageListS2CPacket(images));
+                }
+            } catch (IOException e) {
+                SimplyScreens.LOGGER.error("Failed to reassemble image from chunks", e);
+            } finally {
+                CHUNK_MAP.remove(transactionId);
+                FILENAME_MAP.remove(transactionId);
+            }
+        }
+    }
+
+    public static UUID saveImage(MinecraftServer server, String originalName, byte[] data, String contentType) {
+        return saveImage(server, originalName, data, contentType, null);
+    }
+
+    public static UUID saveImage(MinecraftServer server, String originalName, byte[] data, String contentType, String ownerUUID) {
+        try {
+            String extension = getImageExtension(data);
+
+            if (extension == null) {
+                SimplyScreens.LOGGER.error("Could not determine a valid image type for '{}' based on its content. It might be corrupted or an unsupported format.", originalName);
+                return null;
+            }
+
+            SimplyScreens.LOGGER.info("Saving image. originalName: '{}', contentType: '{}', determined extension: '{}'", originalName, contentType, extension);
+
+            if (!"png".equals(extension)) {
+                try {
+                    BufferedImage image = ImageIO.read(new ByteArrayInputStream(data));
+                    if (image != null) {
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        ImageIO.write(image, "png", baos);
+                        data = baos.toByteArray();
+                        extension = "png";
+                    }
+                } catch (IOException e) {
+                    SimplyScreens.LOGGER.error("Failed to convert image to PNG", e);
+                    return null;
+                }
+            }
+
+            UUID imageId = UUID.randomUUID();
+            Path imagesDir = getImagesDir(server);
+
+            if (!imagesDir.toFile().exists()) {
+                imagesDir.toFile().mkdirs();
+            }
+
+            File imageFile = imagesDir.resolve(imageId + "." + extension).toFile();
+            try (FileOutputStream fos = new FileOutputStream(imageFile)) {
+                fos.write(data);
+            }
+
+            File metadataFile = imagesDir.resolve(imageId + ".json").toFile();
+            String nameWithoutExtension = originalName.contains(".") ? originalName.substring(0, originalName.lastIndexOf('.')) : originalName;
+            ImageMetadata metadata = new ImageMetadata(nameWithoutExtension, imageId.toString(), extension, ownerUUID);
+            try (FileWriter writer = new FileWriter(metadataFile)) {
+                GSON.toJson(metadata, writer);
+            }
+
+            cachedImageList = null;
+
+            return imageId;
+        } catch (IOException e) {
+            SimplyScreens.LOGGER.error("Failed to save image", e);
+            return null;
+        }
+    }
+
+    public static boolean deleteImage(MinecraftServer server, UUID imageId, String requesterUUID) {
+        ImageMetadata metadata = getImageMetadata(server, imageId);
+        if (metadata == null) {
+            return false;
+        }
+
+        if (metadata.getOwnerUUID() != null && !metadata.getOwnerUUID().equals(requesterUUID)) {
+            SimplyScreens.LOGGER.warn("Player {} tried to delete image {} owned by {}", requesterUUID, imageId, metadata.getOwnerUUID());
+            return false;
+        }
+
+        Path imagesDir = getImagesDir(server);
+        try {
+            Files.deleteIfExists(imagesDir.resolve(imageId + "." + metadata.getExtension()));
+            Files.deleteIfExists(imagesDir.resolve(imageId + ".json"));
+            cachedImageList = null;
+            return true;
+        } catch (IOException e) {
+            SimplyScreens.LOGGER.error("Failed to delete image {}", imageId, e);
+            return false;
+        }
+    }
+
+    private static String getImageExtension(byte[] data) {
+        if (data == null || data.length < 4) {
+            SimplyScreens.LOGGER.warn("Image data is null or too small (size: {})", data == null ? 0 : data.length);
+            return null;
+        }
+
+        // Log first bytes for debugging
+        StringBuilder hexBuilder = new StringBuilder("First bytes: ");
+        for (int i = 0; i < Math.min(16, data.length); i++) {
+            hexBuilder.append(String.format("%02X ", data[i]));
+        }
+        SimplyScreens.LOGGER.info(hexBuilder.toString());
+
+        // PNG: 89 50 4E 47
+        if (data[0] == (byte) 0x89 && data[1] == (byte) 0x50 && data[2] == (byte) 0x4E && data[3] == (byte) 0x47) {
+            return "png";
+        }
+
+        // JPEG: FF D8 FF
+        if (data[0] == (byte) 0xFF && data[1] == (byte) 0xD8 && data[2] == (byte) 0xFF) {
+            return "jpg";
+        }
+
+        // GIF: 47 49 46 38
+        if (data[0] == (byte) 0x47 && data[1] == (byte) 0x49 && data[2] == (byte) 0x46 && data[3] == (byte) 0x38) {
+            return "gif";
+        }
+
+        // WebP: 52 49 46 46 ... 57 45 42 50
+        // RIFF....WEBP
+        if (data.length >= 12 && data[0] == (byte) 0x52 && data[1] == (byte) 0x49 &&
+            data[2] == (byte) 0x46 && data[3] == (byte) 0x46 &&
+            data[8] == (byte) 0x57 && data[9] == (byte) 0x45 &&
+            data[10] == (byte) 0x42 && data[11] == (byte) 0x50) {
+            return "webp";
+        }
+
+        // BMP: 42 4D
+        if (data[0] == (byte) 0x42 && data[1] == (byte) 0x4D) {
+            return "bmp";
+        }
+
+        // Check if it's HTML (common error case - server returned an error page)
+        String start = new String(data, 0, Math.min(100, data.length)).trim().toLowerCase();
+        if (start.startsWith("<!doctype") || start.startsWith("<html") || start.startsWith("<body")) {
+            SimplyScreens.LOGGER.warn("Downloaded content appears to be HTML, not an image. The URL may be incorrect or require authentication.");
+            return null;
+        }
+
+        SimplyScreens.LOGGER.warn("Unknown image format. First4 bytes: {} {} {} {}",
+            String.format("%02X", data[0]), String.format("%02X", data[1]),
+            String.format("%02X", data[2]), String.format("%02X", data[3]));
+        return null;
+    }
+
+
+    private static Path getImagesDir(MinecraftServer server) {
+        return server.getWorldPath(LevelResource.ROOT).resolve("simply_screens_images");
+    }
+
+    public static ImageMetadata getImageMetadata(MinecraftServer server, UUID imageId) {
+        Path imagesDir = getImagesDir(server);
+        File metadataFile = imagesDir.resolve(imageId + ".json").toFile();
+
+        if (metadataFile.exists()) {
+            try (FileReader reader = new FileReader(metadataFile)) {
+                return GSON.fromJson(reader, ImageMetadata.class);
+            } catch (IOException e) {
+                SimplyScreens.LOGGER.error("Failed to read image metadata for " + imageId, e);
+            }
+        }
+
+        return null;
+    }
+
+    public static byte[] getImageData(MinecraftServer server, UUID imageId) {
+        ImageMetadata metadata = getImageMetadata(server, imageId);
+        if (metadata == null) {
+            return null;
+        }
+
+        Path imagesDir = getImagesDir(server);
+        File imageFile = imagesDir.resolve(imageId + "." + metadata.getExtension()).toFile();
+
+        if (imageFile.exists()) {
+            try {
+                return Files.readAllBytes(imageFile.toPath());
+            } catch (IOException e) {
+                SimplyScreens.LOGGER.error("Failed to read image data for " + imageId, e);
+            }
+        }
+
+        return null;
+    }
+
+    public static List<ImageMetadata> getImageList(MinecraftServer server) {
+        if (cachedImageList != null) {
+            return cachedImageList;
+        }
+
+        List<ImageMetadata> imageList = new ArrayList<>();
+        Path imagesDir = getImagesDir(server);
+
+        if (Files.exists(imagesDir) && Files.isDirectory(imagesDir)) {
+            try (Stream<Path> paths = Files.walk(imagesDir)) {
+                paths.filter(path -> path.toString().endsWith(".json"))
+                        .forEach(path -> {
+                            try (FileReader reader = new FileReader(path.toFile())) {
+                                imageList.add(GSON.fromJson(reader, ImageMetadata.class));
+                            } catch (IOException e) {
+                                SimplyScreens.LOGGER.error("Failed to read image metadata", e);
+                            }
+                        });
+            } catch (IOException e) {
+                SimplyScreens.LOGGER.error("Failed to list images", e);
+            }
+        }
+
+        cachedImageList = imageList;
+        return imageList;
+    }
+
+    public static List<ImageMetadata> getImageListForPlayer(MinecraftServer server, String playerUUID) {
+        List<ImageMetadata> allImages = getImageList(server);
+        List<ImageMetadata> playerImages = new ArrayList<>();
+        for (ImageMetadata image : allImages) {
+            if (image.getOwnerUUID() == null || image.getOwnerUUID().equals(playerUUID)) {
+                playerImages.add(image);
+            }
+        }
+        return playerImages;
+    }
+}
+
+

@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-      - release/1.20.1
-      - release/1.20.4
 
 jobs:
   build:
@@ -29,7 +27,10 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build
-        run: ./gradlew build
+        run: |
+          ./gradlew build
+          chmod +x ./neoforge-26.1.2/gradlew
+          ./neoforge-26.1.2/gradlew -p ./neoforge-26.1.2 build
 
       - name: Get version
         id: get_version
@@ -46,16 +47,21 @@ jobs:
           set -euo pipefail
 
           tag="v${MC_VERSION}-${MOD_VERSION}"
-          neoforge_jar="./neoforge-${MC_VERSION}/build/libs/simply_screens-neoforge-${MC_VERSION}-${MOD_VERSION}.jar"
-          fabric_jar="./fabric-${MC_VERSION}/build/libs/simply_screens-fabric-${MC_VERSION}-${MOD_VERSION}.jar"
+          forge_1201="./forge-1.20.1/build/libs/simply_screens-forge-1.20.1-${MOD_VERSION}.jar"
+          fabric_1201="./fabric-1.20.1/build/libs/simply_screens-fabric-1.20.1-${MOD_VERSION}.jar"
+          neoforge_1211="./neoforge-1.21.1/build/libs/simply_screens-neoforge-1.21.1-${MOD_VERSION}.jar"
+          fabric_1211="./fabric-1.21.1/build/libs/simply_screens-fabric-1.21.1-${MOD_VERSION}.jar"
+          neoforge_2612="./neoforge-26.1.2/build/libs/simply_screens-neoforge-26.1.2-${MOD_VERSION}.jar"
+          assets=("$forge_1201" "$fabric_1201" "$neoforge_1211" "$fabric_1211" "$neoforge_2612")
 
-          test -f "$neoforge_jar"
-          test -f "$fabric_jar"
+          for asset in "${assets[@]}"; do
+            test -f "$asset"
+          done
 
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" "$neoforge_jar" "$fabric_jar" --clobber
+            gh release upload "$tag" "${assets[@]}" --clobber
           else
-            gh release create "$tag" "$neoforge_jar" "$fabric_jar" \
-              --title "Simply Screens v${MC_VERSION}-${MOD_VERSION}" \
+            gh release create "$tag" "${assets[@]}" \
+              --title "Simply Screens v${MOD_VERSION}" \
               --generate-notes
           fi

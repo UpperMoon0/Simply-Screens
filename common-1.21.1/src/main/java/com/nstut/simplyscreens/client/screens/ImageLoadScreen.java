@@ -99,8 +99,8 @@ public class ImageLoadScreen extends Screen {
 
         // Back button (only visible in Import tab)
         backButton = Button.builder(Component.literal("← Back"), button -> switchTab(Tab.GALLERY))
-                .pos(guiLeft + 8, guiTop + 45)
-                .size(50, 18)
+                .pos(guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.SCREEN_ID_LABEL_Y)
+                .size(ScreenGuiConstants.REMOVE_BUTTON_WIDTH, ScreenGuiConstants.BUTTON_HEIGHT)
                 .build();
         addRenderableWidget(backButton);
 
@@ -139,8 +139,8 @@ public class ImageLoadScreen extends Screen {
         addRenderableWidget(screenIdField);
 
         linkScreenIdButton = Button.builder(Component.translatable("gui.simplyscreens.screen.link"), button -> onLinkScreenId())
-                .pos(guiLeft + 110, guiTop + 55)
-                .size(58, 18)
+                .pos(guiLeft + 110, guiTop + ScreenGuiConstants.SCREEN_ID_FIELD_Y)
+                .size(58, ScreenGuiConstants.BUTTON_HEIGHT)
                 .build();
         addRenderableWidget(linkScreenIdButton);
 
@@ -165,7 +165,7 @@ public class ImageLoadScreen extends Screen {
         // Import Tab Components - Upload from Computer Section
         uploadFromComputerButton = Button.builder(Component.literal("Upload"), button -> onUploadFromComputer())
                 .pos(guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + 80)
-                .size(160, ScreenGuiConstants.SELECT_BUTTON_HEIGHT + 4)
+                .size(ScreenGuiConstants.IMAGE_LIST_WIDTH, ScreenGuiConstants.SELECT_BUTTON_HEIGHT + 4)
                 .build();
         uploadFromComputerButton.visible = !Config.DISABLE_UPLOAD;
         addRenderableWidget(uploadFromComputerButton);
@@ -369,13 +369,13 @@ public class ImageLoadScreen extends Screen {
 
         // Tab labels based on current tab
         if (currentTab == Tab.SETTINGS) {
-            guiGraphics.drawString(this.font, Component.translatable("gui.simplyscreens.screen.id.label"), guiLeft + 8, guiTop + ScreenGuiConstants.SCREEN_ID_LABEL_Y, 0x404040, false);
+            guiGraphics.drawString(this.font, Component.translatable("gui.simplyscreens.screen.id.label"), guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.SCREEN_ID_LABEL_Y, 0x404040, false);
             guiGraphics.drawString(this.font, Component.translatable("gui.simplyscreens.screen.maintain_aspect"), guiLeft + ScreenGuiConstants.MAINTAIN_ASPECT_LABEL_X, guiTop + 82, 0x404040, false);
         } else if (currentTab == Tab.IMPORT) {
             // Upload from Computer section label
-            guiGraphics.drawString(this.font, Component.literal("From Computer:"), guiLeft + 8, guiTop + 68, 0x404040, false);
+            guiGraphics.drawString(this.font, Component.literal("From Computer:"), guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + 68, 0x404040, false);
             // Download from URL section label
-            guiGraphics.drawString(this.font, Component.literal("From URL:"), guiLeft + 8, guiTop + 118, 0x404040, false);
+            guiGraphics.drawString(this.font, Component.literal("From URL:"), guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + 118, 0x404040, false);
         }
     }
 
