@@ -33,6 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ClientImageManager {
     private static final Path CACHE_DIR = Minecraft.getInstance().gameDirectory.toPath().resolve("simply_screens_cache");
     private static final Map<UUID, DynamicTexture> IN_MEMORY_CACHE = new ConcurrentHashMap<>();
+    private static final Map<UUID, ResourceLocation> TEXTURE_LOCATIONS = new ConcurrentHashMap<>();
     private static final Map<UUID, ImageMetadata> METADATA_CACHE = new ConcurrentHashMap<>();
     private static final Map<UUID, byte[][]> CHUNK_MAP = new ConcurrentHashMap<>();
     private static final Map<UUID, String> EXTENSION_MAP = new ConcurrentHashMap<>();
@@ -145,9 +146,14 @@ public class ClientImageManager {
     }
 
     public static ResourceLocation getTextureLocation(UUID imageId) {
+        ResourceLocation existing = TEXTURE_LOCATIONS.get(imageId);
+        if (existing != null) return existing;
+
         DynamicTexture texture = getImageTexture(imageId);
         if (texture != null) {
-            return Minecraft.getInstance().getTextureManager().register(imageId.toString(), texture);
+            ResourceLocation location = Minecraft.getInstance().getTextureManager().register(imageId.toString(), texture);
+            TEXTURE_LOCATIONS.put(imageId, location);
+            return location;
         }
         return null;
     }
@@ -217,5 +223,6 @@ public class ClientImageManager {
     public static void clearCache() {
         IN_MEMORY_CACHE.values().forEach(DynamicTexture::close);
         IN_MEMORY_CACHE.clear();
+        TEXTURE_LOCATIONS.clear();
     }
 }

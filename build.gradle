@@ -97,3 +97,16 @@ subprojects {
         }
     }
 }
+
+tasks.register('testNeoForge2612', GradleBuild) {
+    group = 'verification'
+    description = 'Runs the standalone NeoForge 26.1.2 test suite.'
+    dir = file('neoforge-26.1.2')
+    tasks = ['test']
+}
+
+tasks.register('testAllVersions') {
+    group = 'verification'
+    description = 'Runs shared and version-specific tests for every supported Minecraft version.'
+    dependsOn ':common:test', ':common-1.20.1:test', ':common-1.21.1:test', testNeoForge2612
+}

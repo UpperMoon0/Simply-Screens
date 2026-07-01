@@ -13,6 +13,7 @@ public class Config {
     public static int SCREEN_TICK_RATE = 100;
     public static boolean DISABLE_UPLOAD = false;
     public static boolean DISABLE_URL_DOWNLOAD = false;
+    public static boolean DEBUG_RENDERING = false;
     public static int MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5MB
     public static int MAX_URL_DOWNLOAD_SIZE = 10 * 1024 * 1024; // 10MB for URL downloads
 
@@ -51,6 +52,7 @@ public class Config {
         SCREEN_TICK_RATE = getInt("screenTickRate", SCREEN_TICK_RATE);
         DISABLE_UPLOAD = getBoolean("disableUpload", DISABLE_UPLOAD);
         DISABLE_URL_DOWNLOAD = getBoolean("disableUrlDownload", DISABLE_URL_DOWNLOAD);
+        DEBUG_RENDERING = getBoolean("debugRendering", DEBUG_RENDERING);
         MAX_UPLOAD_SIZE = getInt("maxUploadSize", MAX_UPLOAD_SIZE);
         MAX_URL_DOWNLOAD_SIZE = getInt("maxUrlDownloadSize", MAX_URL_DOWNLOAD_SIZE);
     }
@@ -61,6 +63,7 @@ public class Config {
         properties.setProperty("screenTickRate", String.valueOf(SCREEN_TICK_RATE));
         properties.setProperty("disableUpload", String.valueOf(DISABLE_UPLOAD));
         properties.setProperty("disableUrlDownload", String.valueOf(DISABLE_URL_DOWNLOAD));
+        properties.setProperty("debugRendering", String.valueOf(DEBUG_RENDERING));
         properties.setProperty("maxUploadSize", String.valueOf(MAX_UPLOAD_SIZE));
         properties.setProperty("maxUrlDownloadSize", String.valueOf(MAX_URL_DOWNLOAD_SIZE));
         try (FileOutputStream stream = new FileOutputStream(path.toFile())) {

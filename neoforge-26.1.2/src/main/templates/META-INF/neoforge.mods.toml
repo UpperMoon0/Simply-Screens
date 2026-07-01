@@ -36,11 +36,11 @@ displayURL="https://github.com/nstut/simply-screens"
 #credits="" #optional
 
 # The authors of the mod, displayed in the mod UI (optional)
-authors="NsTut"
+authors="${mod_authors}"
 
 # The description text for the mod (multi line!) (#mandatory)
 description='''
-A simple mod that adds screen blocks that can display uploaded images or images downloaded from a URL.
+${mod_description}
 '''
 
 # The [[mixins]] block allows you to declare your mixin config to FML so that it gets loaded.
@@ -85,7 +85,7 @@ A simple mod that adds screen blocks that can display uploaded images or images 
 [[dependencies.${mod_id}]]
     modId="architectury"
     type="required"
-    versionRange="[20.0.7,)"
+    versionRange="[${architectury_version},)"
     ordering="AFTER"
     side="BOTH"
 

@@ -12,4 +12,7 @@ public final class ScreenBlockEntityRenderState extends BlockEntityRenderState {
     public float scaleY = 1;
     public int width = 1;
     public int height = 1;
+    public int anchorOffsetX;
+    public int anchorOffsetY;
+    public int anchorOffsetZ;
 }

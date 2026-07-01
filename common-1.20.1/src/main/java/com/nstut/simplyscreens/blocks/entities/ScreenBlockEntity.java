@@ -2,6 +2,7 @@ package com.nstut.simplyscreens.blocks.entities;
 
 import com.nstut.simplyscreens.Config;
 import com.nstut.simplyscreens.ScreenRegistry;
+import com.nstut.simplyscreens.ScreenStructureDetector;
 import com.nstut.simplyscreens.blocks.ScreenBlock;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import com.nstut.simplyscreens.network.UpdateScreenS2CPacket;
@@ -16,9 +17,8 @@ import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.stream.IntStream;
 
 @Setter
 @Getter
@@ -50,10 +50,10 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     private void writePersistentData(CompoundTag tag) {
-        if (isAnchor() && imageId != null) {
+        if (imageId != null) {
             tag.putUUID("imageId", imageId);
         }
-        if (isAnchor() && screenId != null && !screenId.isEmpty()) {
+        if (screenId != null && !screenId.isEmpty()) {
             tag.putString("screenId", screenId);
         }
         tag.putBoolean("maintainAspectRatio", maintainAspectRatio);
@@ -451,92 +451,16 @@ public class ScreenBlockEntity extends BlockEntity {
 
     private BlockPos calculateStructureBounds(Direction facing) {
         if (level == null || level.isClientSide) return null;
+        Direction widthDirection = getWidthDirection(facing);
+        Direction heightDirection = getHeightDirection(facing);
+        int maxWidth = findMaxExtension(widthDirection);
+        int maxHeight = findMaxExtension(heightDirection);
 
-        if (isHorizontal(facing)) {
-            // Existing horizontal facing logic unchanged
-            Direction widthDirection = getWidthDirection(facing);
-            int maxHorizontal = findMaxExtension(widthDirection);
-            int maxVertical = findMaxExtension(Direction.UP);
-
-            int bestWidth = 0;
-            int bestHeight = 0;
-
-            for (int w = 0; w <= maxHorizontal; w++) {
-                for (int h = 0; h <= maxVertical; h++) {
-                    if (isValidHorizontalStructure(w, h, widthDirection)) {
-                        if ((w + 1) * (h + 1) > (bestWidth + 1) * (bestHeight + 1)) {
-                            bestWidth = w;
-                            bestHeight = h;
-                        }
-                    }
-                }
-            }
-
-            return worldPosition.relative(widthDirection, bestWidth).above(bestHeight);
-        } else {
-            // Vertical facing (up/down)
-            if (facing == Direction.UP) {
-                // Up-facing: expand WEST (width) and SOUTH (height)
-                int maxWest = findMaxExtension(Direction.WEST);
-                int maxSouth = findMaxExtension(Direction.SOUTH);
-
-                int bestWidth = 0;
-                int bestHeight = 0;
-
-                for (int w = 0; w <= maxWest; w++) {
-                    for (int h = 0; h <= maxSouth; h++) {
-                        if (isValidVerticalStructure(w, h, Direction.SOUTH)) {
-                            if ((w + 1) * (h + 1) > (bestWidth + 1) * (bestHeight + 1)) {
-                                bestWidth = w;
-                                bestHeight = h;
-                            }
-                        }
-                    }
-                }
-                return worldPosition.relative(Direction.WEST, bestWidth).relative(Direction.SOUTH, bestHeight);
-            } else {
-                // Down-facing: expand WEST (width) and NORTH (height)
-                int maxWest = findMaxExtension(Direction.WEST);
-                int maxNorth = findMaxExtension(Direction.NORTH);
-
-                int bestWidth = 0;
-                int bestHeight = 0;
-
-                for (int w = 0; w <= maxWest; w++) {
-                    for (int h = 0; h <= maxNorth; h++) {
-                        if (isValidVerticalStructure(w, h, Direction.NORTH)) {
-                            if ((w + 1) * (h + 1) > (bestWidth + 1) * (bestHeight + 1)) {
-                                bestWidth = w;
-                                bestHeight = h;
-                            }
-                        }
-                    }
-                }
-                return worldPosition.relative(Direction.WEST, bestWidth).relative(Direction.NORTH, bestHeight);
-            }
-        }
-    }
-
-    private boolean isValidHorizontalStructure(int width, int height, Direction direction) {
-        if (level == null || level.isClientSide) return false;
-
-        return IntStream.rangeClosed(0, width)
-                .allMatch(i -> IntStream.rangeClosed(0, height)
-                        .allMatch(j -> {
-                            BlockPos checkPos = worldPosition.relative(direction, i).above(j);
-                            return checkPos.equals(worldPosition) || (level.getBlockEntity(checkPos) instanceof ScreenBlockEntity);
-                        }));
-    }
-
-    private boolean isValidVerticalStructure(int width, int height, Direction heightDir) {
-        if (level == null) return false;
-
-        return IntStream.rangeClosed(0, width)
-                .allMatch(w -> IntStream.rangeClosed(0, height)
-                        .allMatch(h -> {
-                            BlockPos checkPos = worldPosition.relative(Direction.WEST, w).relative(heightDir, h);
-                            return checkPos.equals(worldPosition) || (level.getBlockEntity(checkPos) instanceof ScreenBlockEntity);
-                        }));
+        ScreenStructureDetector.Bounds bounds = ScreenStructureDetector.detect(maxWidth, maxHeight, (width, height) -> {
+            BlockPos checkPos = worldPosition.relative(widthDirection, width).relative(heightDirection, height);
+            return level.getBlockEntity(checkPos) instanceof ScreenBlockEntity;
+        });
+        return worldPosition.relative(widthDirection, bounds.width()).relative(heightDirection, bounds.height());
     }
 
 
@@ -580,6 +504,17 @@ public class ScreenBlockEntity extends BlockEntity {
 
     public boolean isAnchor() {
         return anchorPos != null && anchorPos.equals(worldPosition);
+    }
+
+    /** Forge uses this full structure box for block-entity frustum and section culling. */
+    public AABB getRenderBoundingBox() {
+        BlockPos anchor = anchorPos != null ? anchorPos : worldPosition;
+        Direction facing = getFacing();
+        BlockPos far = anchor.relative(getWidthDirection(facing), Math.max(0, screenWidth - 1))
+                .relative(getHeightDirection(facing), Math.max(0, screenHeight - 1));
+        return new AABB(
+                Math.min(anchor.getX(), far.getX()), Math.min(anchor.getY(), far.getY()), Math.min(anchor.getZ(), far.getZ()),
+                Math.max(anchor.getX(), far.getX()) + 1, Math.max(anchor.getY(), far.getY()) + 1, Math.max(anchor.getZ(), far.getZ()) + 1);
     }
 
     private static Direction getWidthDirection(Direction facing) {

@@ -146,11 +146,14 @@ public class ClientImageManager {
     }
 
     public static Identifier getTextureLocation(UUID imageId) {
+        Identifier existing = TEXTURE_LOCATIONS.get(imageId);
+        if (existing != null) return existing;
+
         DynamicTexture texture = getImageTexture(imageId);
         if (texture != null) {
-            Identifier location = TEXTURE_LOCATIONS.computeIfAbsent(imageId, id ->
-                    Identifier.fromNamespaceAndPath(SimplyScreens.MOD_ID, "dynamic/" + id));
+            Identifier location = Identifier.fromNamespaceAndPath(SimplyScreens.MOD_ID, "dynamic/" + imageId);
             Minecraft.getInstance().getTextureManager().register(location, texture);
+            TEXTURE_LOCATIONS.put(imageId, location);
             return location;
         }
         return null;
