@@ -102,7 +102,7 @@ public class ScreenBlockEntity extends BlockEntity {
 
     private void updateClients() {
         if (level != null && !level.isClientSide) {
-            UpdateScreenS2CPacket packet = new UpdateScreenS2CPacket(worldPosition, getResolvedImageId(), maintainAspectRatio, screenId, screenWidth, screenHeight);
+            UpdateScreenS2CPacket packet = new UpdateScreenS2CPacket(worldPosition, anchorPos, getResolvedImageId(), maintainAspectRatio, screenId, screenWidth, screenHeight);
             if (level.getServer() != null) {
                 for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
                     PacketRegistries.CHANNEL.sendToPlayer(player, packet);
@@ -559,7 +559,7 @@ public class ScreenBlockEntity extends BlockEntity {
             if (level.getServer() != null) {
                 for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
                     PacketRegistries.CHANNEL.sendToPlayer(player, new UpdateScreenS2CPacket(
-                            newAnchorPos, imageId, maintainAspectRatio, screenId,
+                            newAnchorPos, newAnchorPos, imageId, maintainAspectRatio, screenId,
                             promotion.width(), promotion.height()));
                 }
             }

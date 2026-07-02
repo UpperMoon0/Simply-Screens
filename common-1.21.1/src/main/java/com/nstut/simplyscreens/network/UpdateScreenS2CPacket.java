@@ -18,14 +18,16 @@ public class UpdateScreenS2CPacket implements CustomPacketPayload {
             StreamCodec.ofMember(UpdateScreenS2CPacket::write, UpdateScreenS2CPacket::new);
 
     private final BlockPos pos;
+    private final BlockPos anchorPos;
     private final UUID imageId;
     private final boolean maintainAspectRatio;
     private final String screenId;
     private final int screenWidth;
     private final int screenHeight;
 
-    public UpdateScreenS2CPacket(BlockPos pos, UUID imageId, boolean maintainAspectRatio, String screenId, int screenWidth, int screenHeight) {
+    public UpdateScreenS2CPacket(BlockPos pos, BlockPos anchorPos, UUID imageId, boolean maintainAspectRatio, String screenId, int screenWidth, int screenHeight) {
         this.pos = pos;
+        this.anchorPos = anchorPos;
         this.imageId = imageId;
         this.maintainAspectRatio = maintainAspectRatio;
         this.screenId = screenId;
@@ -35,6 +37,7 @@ public class UpdateScreenS2CPacket implements CustomPacketPayload {
 
     public UpdateScreenS2CPacket(RegistryFriendlyByteBuf buf) {
         pos = buf.readBlockPos();
+        anchorPos = buf.readBlockPos();
         if (buf.readBoolean()) {
             imageId = buf.readUUID();
         } else {
@@ -48,6 +51,7 @@ public class UpdateScreenS2CPacket implements CustomPacketPayload {
 
     public void write(RegistryFriendlyByteBuf buf) {
         buf.writeBlockPos(pos);
+        buf.writeBlockPos(anchorPos);
         buf.writeBoolean(imageId != null);
         if (imageId != null) {
             buf.writeUUID(imageId);
@@ -74,6 +78,10 @@ public class UpdateScreenS2CPacket implements CustomPacketPayload {
         return imageId;
     }
 
+    public BlockPos getAnchorPos() {
+        return anchorPos;
+    }
+
     public boolean isMaintainAspectRatio() {
         return maintainAspectRatio;
     }
@@ -91,6 +99,6 @@ public class UpdateScreenS2CPacket implements CustomPacketPayload {
     }
 
     public static void handle(UpdateScreenS2CPacket packet, NetworkManager.PacketContext context) {
-        context.queue(() -> ClientPacketHandler.handleUpdateScreen(packet.pos, packet.imageId, packet.maintainAspectRatio, packet.screenId, packet.screenWidth, packet.screenHeight));
+        context.queue(() -> ClientPacketHandler.handleUpdateScreen(packet.pos, packet.anchorPos, packet.imageId, packet.maintainAspectRatio, packet.screenId, packet.screenWidth, packet.screenHeight));
     }
 }

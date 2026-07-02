@@ -45,7 +45,8 @@ class PacketSerializationTest {
         UUID imageId = UUID.randomUUID();
         String screenId = "screen-123";
 
-        UpdateScreenS2CPacket original = new UpdateScreenS2CPacket(pos, imageId, true, screenId, 3, 2);
+        BlockPos anchorPos = pos.offset(2, 1, 0);
+        UpdateScreenS2CPacket original = new UpdateScreenS2CPacket(pos, anchorPos, imageId, true, screenId, 3, 2);
 
         ByteBuf raw = Unpooled.buffer();
         RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(raw, registryAccess);
@@ -54,6 +55,7 @@ class PacketSerializationTest {
         UpdateScreenS2CPacket decoded = new UpdateScreenS2CPacket(buf);
 
         assertEquals(pos, decoded.getPos());
+        assertEquals(anchorPos, decoded.getAnchorPos());
         assertEquals(imageId, decoded.getImageId());
         assertTrue(decoded.isMaintainAspectRatio());
         assertEquals(screenId, decoded.getScreenId());
@@ -65,7 +67,7 @@ class PacketSerializationTest {
     void updateScreenS2CPacket_roundTrip_nullImageId() {
         String screenId = "screen-null-img";
 
-        UpdateScreenS2CPacket original = new UpdateScreenS2CPacket(pos, null, false, screenId, 1, 1);
+        UpdateScreenS2CPacket original = new UpdateScreenS2CPacket(pos, pos, null, false, screenId, 1, 1);
 
         ByteBuf raw = Unpooled.buffer();
         RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(raw, registryAccess);
@@ -74,6 +76,7 @@ class PacketSerializationTest {
         UpdateScreenS2CPacket decoded = new UpdateScreenS2CPacket(buf);
 
         assertEquals(pos, decoded.getPos());
+        assertEquals(pos, decoded.getAnchorPos());
         assertNull(decoded.getImageId());
         assertFalse(decoded.isMaintainAspectRatio());
         assertEquals(screenId, decoded.getScreenId());
@@ -85,7 +88,7 @@ class PacketSerializationTest {
     void updateScreenS2CPacket_roundTrip_emptyScreenId() {
         UUID imageId = UUID.randomUUID();
 
-        UpdateScreenS2CPacket original = new UpdateScreenS2CPacket(pos, imageId, true, "", 1, 1);
+        UpdateScreenS2CPacket original = new UpdateScreenS2CPacket(pos, pos, imageId, true, "", 1, 1);
 
         ByteBuf raw = Unpooled.buffer();
         RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(raw, registryAccess);

@@ -83,17 +83,6 @@ public class ScreenBlock extends Block implements EntityBlock {
     }
 
     @Override
-    public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
-        if (!level.isClientSide()) {
-            BlockEntity blockEntity = level.getBlockEntity(pos);
-            if (blockEntity instanceof ScreenBlockEntity screen && screen.isAnchor()) {
-                screen.findNewAnchor();
-            }
-        }
-        return super.playerWillDestroy(level, pos, state, player);
-    }
-    
-    @Override
     public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
         // Return a simple cube shape for interaction
         return Block.box(0, 0, 0, 16, 16, 16);

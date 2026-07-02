@@ -44,6 +44,16 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        // 26.1.2 invokes this for every server-side state replacement while this
+        // block entity is still available, covering players, explosions, and pistons.
+        if (isAnchor()) {
+            findNewAnchor();
+        }
+        super.preRemoveSideEffects(pos, state);
+    }
+
+    @Override
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
         writePersistentData(output);
@@ -104,7 +114,7 @@ public class ScreenBlockEntity extends BlockEntity {
     private void updateClients() {
         if (level != null && !level.isClientSide()) {
             UUID resolvedImageId = getResolvedImageId();
-            UpdateScreenS2CPacket packet = new UpdateScreenS2CPacket(worldPosition, resolvedImageId, maintainAspectRatio, screenId, screenWidth, screenHeight);
+            UpdateScreenS2CPacket packet = new UpdateScreenS2CPacket(worldPosition, anchorPos, resolvedImageId, maintainAspectRatio, screenId, screenWidth, screenHeight);
             if (level.getServer() != null) {
                 for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
                     PacketRegistries.sendToPlayer(player, packet);
@@ -563,7 +573,7 @@ public class ScreenBlockEntity extends BlockEntity {
             if (level.getServer() != null) {
                 for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
                     PacketRegistries.sendToPlayer(player, new UpdateScreenS2CPacket(
-                            newAnchorPos, imageId, maintainAspectRatio, screenId,
+                            newAnchorPos, newAnchorPos, imageId, maintainAspectRatio, screenId,
                             promotion.width(), promotion.height()));
                 }
             }

@@ -8,14 +8,16 @@ import java.util.function.Supplier;
 
 public class UpdateScreenS2CPacket {
     public final BlockPos pos;
+    public final BlockPos anchorPos;
     public final UUID imageId;
     public final boolean maintainAspectRatio;
     public final String screenId;
     public final int screenWidth;
     public final int screenHeight;
 
-    public UpdateScreenS2CPacket(BlockPos pos, UUID imageId, boolean maintainAspectRatio, String screenId, int screenWidth, int screenHeight) {
+    public UpdateScreenS2CPacket(BlockPos pos, BlockPos anchorPos, UUID imageId, boolean maintainAspectRatio, String screenId, int screenWidth, int screenHeight) {
         this.pos = pos;
+        this.anchorPos = anchorPos;
         this.imageId = imageId;
         this.maintainAspectRatio = maintainAspectRatio;
         this.screenId = screenId != null ? screenId : "";
@@ -25,6 +27,7 @@ public class UpdateScreenS2CPacket {
 
     public UpdateScreenS2CPacket(FriendlyByteBuf buf) {
         pos = buf.readBlockPos();
+        anchorPos = buf.readBlockPos();
         if (buf.readBoolean()) {
             imageId = buf.readUUID();
         } else {
@@ -38,6 +41,7 @@ public class UpdateScreenS2CPacket {
 
     public void write(FriendlyByteBuf buf) {
         buf.writeBlockPos(pos);
+        buf.writeBlockPos(anchorPos);
         buf.writeBoolean(imageId != null);
         if (imageId != null) {
             buf.writeUUID(imageId);
@@ -50,6 +54,6 @@ public class UpdateScreenS2CPacket {
     }
 
     public void handle(Supplier<NetworkManager.PacketContext> context) {
-        context.get().queue(() -> ClientPacketHandler.handleUpdateScreen(pos, imageId, maintainAspectRatio, screenId, screenWidth, screenHeight));
+        context.get().queue(() -> ClientPacketHandler.handleUpdateScreen(pos, anchorPos, imageId, maintainAspectRatio, screenId, screenWidth, screenHeight));
     }
 }
