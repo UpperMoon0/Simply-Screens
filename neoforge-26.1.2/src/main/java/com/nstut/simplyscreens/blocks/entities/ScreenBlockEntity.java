@@ -2,6 +2,7 @@ package com.nstut.simplyscreens.blocks.entities;
 
 import com.nstut.simplyscreens.Config;
 import com.nstut.simplyscreens.ScreenRegistry;
+import com.nstut.simplyscreens.ScreenAnchorPromotion;
 import com.nstut.simplyscreens.ScreenStructureDetector;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.ScreenBlock;
@@ -543,78 +544,54 @@ public class ScreenBlockEntity extends BlockEntity {
     public void findNewAnchor() {
         if (level == null || level.isClientSide()) return;
 
-        // Immediate structure update before promotion
-        updateScreenStructure();
-
-        if (screenWidth == 1 && screenHeight == 1) return;
+        ScreenAnchorPromotion.Result promotion = ScreenAnchorPromotion.choose(screenWidth, screenHeight);
+        if (promotion.axis() == ScreenAnchorPromotion.Axis.NONE) return;
 
         Direction facing = getBlockState().hasProperty(ScreenBlock.FACING) ?
             getBlockState().getValue(ScreenBlock.FACING) : Direction.NORTH;
-        BlockPos newAnchorPos = findNewAnchorPosition(facing);
+        BlockPos newAnchorPos = worldPosition.relative(promotion.axis() == ScreenAnchorPromotion.Axis.HEIGHT
+                ? getHeightDirection(facing) : getWidthDirection(facing));
 
         BlockEntity newAnchorBe = level.getBlockEntity(newAnchorPos);
         if (newAnchorBe instanceof ScreenBlockEntity newAnchor) {
-            // Force immediate update of new anchor
+            newAnchor.updateScreen(this.imageId, promotion.width(), promotion.height(), newAnchorPos, this.maintainAspectRatio);
+            newAnchor.setScreenIdInternal(this.screenId);
+            updateChildrenToNewAnchor(newAnchorPos, facing, promotion.width(), promotion.height());
             newAnchor.updateScreenStructure();
-            newAnchor.updateScreen(this.imageId, this.screenWidth, this.screenHeight, newAnchorPos, this.maintainAspectRatio);
-
-            // Update children immediately
-            updateChildrenToNewAnchor(newAnchorPos, facing);
-
-            // Force render updates
             newAnchor.markForRenderUpdate();
-        }
 
-        // Immediately update network sync
-        if (level.getServer() != null) {
-            for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
-                PacketRegistries.sendToPlayer(player, new UpdateScreenS2CPacket(
-                        newAnchorPos,
-                        imageId,
-                        maintainAspectRatio,
-                        screenId,
-                        screenWidth,
-                        screenHeight
-                ));
-            }
-        }
-    }
-
-    private BlockPos findNewAnchorPosition(Direction facing) {
-        boolean promoteAbove = (screenWidth * (screenHeight - 1)) > ((screenWidth - 1) * screenHeight);
-
-        if (promoteAbove) {
-            return worldPosition.relative(getHeightDirection(facing));
-        } else {
-            return worldPosition.relative(getWidthDirection(facing));
-        }
-    }
-
-    private void updateChildrenToNewAnchor(BlockPos newAnchorPos, Direction facing) {
-        if (level == null || level.isClientSide()) return;
-
-        for (int x = 0; x < screenWidth; x++) {
-            for (int y = 0; y < screenHeight; y++) {
-                BlockPos childPos = calculateChildPosition(facing, x, y);
-                if (childPos.equals(worldPosition)) continue;
-
-                BlockEntity be = level.getBlockEntity(childPos);
-                if (be instanceof ScreenBlockEntity child) {
-                    child.setAnchorPos(newAnchorPos);
-                    child.updateClients();
-
-                    // Force immediate block update
-                    child.markForRenderUpdate();
-                    level.sendBlockUpdated(childPos, child.getBlockState(), child.getBlockState(), Block.UPDATE_ALL);
+            if (level.getServer() != null) {
+                for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
+                    PacketRegistries.sendToPlayer(player, new UpdateScreenS2CPacket(
+                            newAnchorPos, imageId, maintainAspectRatio, screenId,
+                            promotion.width(), promotion.height()));
                 }
             }
         }
     }
 
-    private BlockPos calculateChildPosition(Direction facing, int x, int y) {
+    private void updateChildrenToNewAnchor(BlockPos newAnchorPos, Direction facing, int width, int height) {
+        if (level == null || level.isClientSide()) return;
+
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                BlockPos childPos = calculateChildPosition(newAnchorPos, facing, x, y);
+                if (childPos.equals(newAnchorPos)) continue;
+
+                BlockEntity be = level.getBlockEntity(childPos);
+                if (be instanceof ScreenBlockEntity child) {
+                    child.updateScreen(this.imageId, width, height, newAnchorPos, this.maintainAspectRatio);
+                    child.setScreenIdInternal(this.screenId);
+                    child.markForRenderUpdate();
+                }
+            }
+        }
+    }
+
+    private BlockPos calculateChildPosition(BlockPos origin, Direction facing, int x, int y) {
         Direction widthDirection = getWidthDirection(facing);
         Direction heightDirection = getHeightDirection(facing);
-        return worldPosition.relative(widthDirection, x).relative(heightDirection, y);
+        return origin.relative(widthDirection, x).relative(heightDirection, y);
     }
 
     public void onNeighborRemoved() {

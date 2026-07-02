@@ -86,6 +86,17 @@ public class ScreenBlock extends Block implements EntityBlock {
             }
         };
     }
+
+    @Override
+    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        if (state.getBlock() != newState.getBlock() && !level.isClientSide) {
+            BlockEntity blockEntity = level.getBlockEntity(pos);
+            if (blockEntity instanceof ScreenBlockEntity screen && screen.isAnchor()) {
+                screen.findNewAnchor();
+            }
+        }
+        super.onRemove(state, level, pos, newState, movedByPiston);
+    }
     
     @Override
     public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {

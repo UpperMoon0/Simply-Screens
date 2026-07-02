@@ -5,7 +5,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import com.nstut.simplyscreens.Config;
-import com.nstut.simplyscreens.ScreenRenderProxy;
+import com.nstut.simplyscreens.ScreenTileLayout;
 import com.nstut.simplyscreens.ScreenVisibility;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.ScreenBlock;
@@ -29,7 +29,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBlockEntity, ScreenBlockEntityRenderState> {
     private static final int FULL_BRIGHTNESS = 15728880;
     private static final float BASE_OFFSET = 0.501f;
-    private static long lastDebugLogNanos;
     private static final Map<BlockPos, Long> LAST_DRAW_LOG_NANOS = new ConcurrentHashMap<>();
 
     public ScreenBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
@@ -43,12 +42,12 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
     @Override
     public void extractRenderState(ScreenBlockEntity entity, ScreenBlockEntityRenderState state, float partialTicks,
                                    Vec3 cameraPosition, ModelFeatureRenderer.CrumblingOverlay breakProgress) {
-        if (!isChunkRepresentative(entity)) {
+        ScreenBlockEntity anchor = entity.isAnchor() ? entity : entity.getAnchorEntity();
+        if (anchor == null) {
             BlockEntityRenderer.super.extractRenderState(entity, state, partialTicks, cameraPosition, breakProgress);
             state.visible = false;
             return;
         }
-        ScreenBlockEntity anchor = entity;
         BlockEntityRenderer.super.extractRenderState(anchor, state, partialTicks, cameraPosition, breakProgress);
         UUID imageId = anchor.getResolvedImageId();
         state.visible = imageId != null;
@@ -56,12 +55,9 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
                 ? anchor.getBlockState().getValue(ScreenBlock.FACING) : Direction.NORTH;
         state.width = anchor.getScreenWidth();
         state.height = anchor.getScreenHeight();
-        BlockPos anchorPos = entity.getAnchorPos();
-        BlockPos entityPos = entity.getBlockPos();
-        // submit() starts at the elected cell; this offset restores the logical anchor coordinate space.
-        state.anchorOffsetX = anchorPos == null ? 0 : anchorPos.getX() - entityPos.getX();
-        state.anchorOffsetY = anchorPos == null ? 0 : anchorPos.getY() - entityPos.getY();
-        state.anchorOffsetZ = anchorPos == null ? 0 : anchorPos.getZ() - entityPos.getZ();
+        state.anchorOffsetX = 0;
+        state.anchorOffsetY = 0;
+        state.anchorOffsetZ = 0;
         state.texture = imageId == null ? null : ClientImageManager.getTextureLocation(imageId);
         state.scaleX = state.width;
         state.scaleY = state.height;
@@ -75,6 +71,16 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
                 else state.scaleX = state.height * imageAspect;
             }
         }
+        ScreenTileLayout.Tile tile = calculateTile(entity, anchor, state.facing, state.scaleX, state.scaleY);
+        state.visible = state.visible && !tile.isEmpty();
+        state.tileMinX = tile.minX();
+        state.tileMaxX = tile.maxX();
+        state.tileMinY = tile.minY();
+        state.tileMaxY = tile.maxY();
+        state.tileMinU = tile.minU();
+        state.tileMaxU = tile.maxU();
+        state.tileMinV = tile.minV();
+        state.tileMaxV = tile.maxV();
     }
 
     @Override
@@ -87,9 +93,8 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
         applyFacingRotation(poseStack, state.facing);
         poseStack.translate(0, 0, state.facing == Direction.NORTH || state.facing == Direction.SOUTH ? -BASE_OFFSET : BASE_OFFSET);
         poseStack.translate(-(state.width - 1) / 2f, (state.height - 1) / 2f, 0);
-        poseStack.scale(state.scaleX, state.scaleY, 1);
         collector.submitCustomGeometry(poseStack, RenderTypes.text(state.texture),
-                (pose, consumer) -> buildTexturedQuad(consumer, pose));
+                (pose, consumer) -> buildTexturedQuad(consumer, pose, state));
         poseStack.popPose();
     }
 
@@ -104,11 +109,11 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
         }
     }
 
-    private static void buildTexturedQuad(VertexConsumer consumer, PoseStack.Pose pose) {
-        vertex(consumer, pose, -.5f, .5f, 1, 0);
-        vertex(consumer, pose, .5f, .5f, 0, 0);
-        vertex(consumer, pose, .5f, -.5f, 0, 1);
-        vertex(consumer, pose, -.5f, -.5f, 1, 1);
+    private static void buildTexturedQuad(VertexConsumer consumer, PoseStack.Pose pose, ScreenBlockEntityRenderState state) {
+        vertex(consumer, pose, state.tileMinX, state.tileMaxY, state.tileMaxU, state.tileMinV);
+        vertex(consumer, pose, state.tileMaxX, state.tileMaxY, state.tileMinU, state.tileMinV);
+        vertex(consumer, pose, state.tileMaxX, state.tileMinY, state.tileMinU, state.tileMaxV);
+        vertex(consumer, pose, state.tileMinX, state.tileMinY, state.tileMaxU, state.tileMaxV);
     }
 
     private static void vertex(VertexConsumer consumer, PoseStack.Pose pose, float x, float y, float u, float v) {
@@ -128,8 +133,6 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
 
     @Override
     public boolean shouldRender(ScreenBlockEntity entity, Vec3 cameraPosition) {
-        // Keep every loaded chunk eligible; extractRenderState() deduplicates geometry within each chunk.
-        isRenderOwner(entity, cameraPosition); // Retain proxy diagnostics while investigating visibility.
         BlockPos anchor = entity.getAnchorPos();
         if (anchor == null) return false;
         BlockPos farCorner = getFarCorner(entity);
@@ -156,46 +159,6 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
                 .relative(heightDirection, entity.getScreenHeight() - 1);
     }
 
-    private static boolean isRenderOwner(ScreenBlockEntity entity, Vec3 camera) {
-        if (entity.getAnchorPos() == null) return false;
-        Direction facing = entity.getBlockState().hasProperty(ScreenBlock.FACING)
-                ? entity.getBlockState().getValue(ScreenBlock.FACING) : Direction.NORTH;
-        Direction width = getWidthDirection(facing);
-        Direction height = facing.getAxis().isHorizontal()
-                ? Direction.UP : facing == Direction.UP ? Direction.SOUTH : Direction.NORTH;
-        BlockPos anchor = entity.getAnchorPos();
-        ScreenRenderProxy.Position proxy = ScreenRenderProxy.nearestCell(
-                camera.x, camera.y, camera.z,
-                anchor.getX(), anchor.getY(), anchor.getZ(),
-                width.getStepX(), width.getStepY(), width.getStepZ(),
-                height.getStepX(), height.getStepY(), height.getStepZ(),
-                entity.getScreenWidth(), entity.getScreenHeight());
-        BlockPos current = entity.getBlockPos();
-        debugOwnership(entity, camera, facing, proxy);
-        // Useful breakpoint: proxy must equal exactly one loaded cell for the screen to be submitted.
-        return current.getX() == proxy.x() && current.getY() == proxy.y() && current.getZ() == proxy.z();
-    }
-
-    private static void debugOwnership(ScreenBlockEntity entity, Vec3 camera, Direction facing,
-                                       ScreenRenderProxy.Position proxy) {
-        if (!Config.DEBUG_RENDERING || System.nanoTime() - lastDebugLogNanos < 1_000_000_000L) return;
-        lastDebugLogNanos = System.nanoTime();
-        BlockPos anchor = entity.getAnchorPos();
-        if (anchor == null || entity.getLevel() == null) return;
-        BlockPos proxyPos = new BlockPos(proxy.x(), proxy.y(), proxy.z());
-        var proxyEntity = entity.getLevel().getBlockEntity(proxyPos);
-        var anchorEntity = entity.getLevel().getBlockEntity(anchor);
-        BlockPos far = getFarCorner(entity);
-        boolean boundsVisible = ScreenVisibility.isWithinDistance(camera.x, camera.y, camera.z,
-                anchor.getX(), anchor.getY(), anchor.getZ(), far.getX(), far.getY(), far.getZ(), Config.VIEW_DISTANCE);
-        SimplyScreens.LOGGER.info("Screen render debug camera={} current={} anchor={} anchorLoaded={} proxy={} proxyLoaded={} proxyAnchor={} proxyImage={} size={}x{} facing={} boundsVisible={}",
-                camera, entity.getBlockPos(), anchor, anchorEntity instanceof ScreenBlockEntity, proxyPos,
-                proxyEntity instanceof ScreenBlockEntity,
-                proxyEntity instanceof ScreenBlockEntity screen ? screen.getAnchorPos() : null,
-                proxyEntity instanceof ScreenBlockEntity screen ? screen.getResolvedImageId() : null,
-                entity.getScreenWidth(), entity.getScreenHeight(), facing, boundsVisible);
-    }
-
     private static void debugDraw(ScreenBlockEntityRenderState state) {
         if (!Config.DEBUG_RENDERING) return;
         BlockPos owner = state.blockPos;
@@ -217,25 +180,20 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
         };
     }
 
-    private static boolean isChunkRepresentative(ScreenBlockEntity entity) {
-        BlockPos anchor = entity.getAnchorPos();
-        if (anchor == null) return false;
-        Direction facing = entity.getBlockState().hasProperty(ScreenBlock.FACING)
-                ? entity.getBlockState().getValue(ScreenBlock.FACING) : Direction.NORTH;
+    private static ScreenTileLayout.Tile calculateTile(ScreenBlockEntity entity, ScreenBlockEntity anchor,
+                                                        Direction facing, float imageWidth, float imageHeight) {
         Direction width = getWidthDirection(facing);
         Direction height = facing.getAxis().isHorizontal()
                 ? Direction.UP : facing == Direction.UP ? Direction.SOUTH : Direction.NORTH;
         BlockPos current = entity.getBlockPos();
-        int dx = current.getX() - anchor.getX();
-        int dy = current.getY() - anchor.getY();
-        int dz = current.getZ() - anchor.getZ();
+        BlockPos origin = anchor.getBlockPos();
+        int dx = current.getX() - origin.getX();
+        int dy = current.getY() - origin.getY();
+        int dz = current.getZ() - origin.getZ();
         int widthIndex = dx * width.getStepX() + dy * width.getStepY() + dz * width.getStepZ();
         int heightIndex = dx * height.getStepX() + dy * height.getStepY() + dz * height.getStepZ();
-        if (widthIndex > 0 && sameChunk(current, current.relative(width.getOpposite()))) return false;
-        return heightIndex <= 0 || !sameChunk(current, current.relative(height.getOpposite()));
+        return ScreenTileLayout.calculate(anchor.getScreenWidth(), anchor.getScreenHeight(),
+                widthIndex, heightIndex, imageWidth, imageHeight);
     }
 
-    private static boolean sameChunk(BlockPos first, BlockPos second) {
-        return (first.getX() >> 4) == (second.getX() >> 4) && (first.getZ() >> 4) == (second.getZ() >> 4);
-    }
 }
