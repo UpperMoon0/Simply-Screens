@@ -22,6 +22,9 @@ include 'common-1.21.1'
 include 'fabric-1.21.1'
 include 'neoforge-1.21.1'
 
+// 26.1.2 module (NeoForge, standalone ModDevGradle project)
+include 'neoforge-26.1.2'
+
 // Explicit mapping from project name to MC version group.
 // This is the single place to update when adding/removing version support.
 gradle.ext.mcVersionMapping = [
@@ -32,4 +35,5 @@ gradle.ext.mcVersionMapping = [
     ':common-1.21.1': '1.21.1',
     ':fabric-1.21.1': '1.21.1',
     ':neoforge-1.21.1': '1.21.1',
+    ':neoforge-26.1.2': '26.1.2',
 ]

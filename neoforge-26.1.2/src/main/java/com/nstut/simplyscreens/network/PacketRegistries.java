@@ -1,10 +1,14 @@
 package com.nstut.simplyscreens.network;
 
 import dev.architectury.networking.NetworkManager;
+import dev.architectury.platform.Platform;
+import dev.architectury.utils.Env;
 import net.minecraft.server.level.ServerPlayer;
 
 public class PacketRegistries {
     public static void register() {
+        if (Platform.getEnvironment() == Env.SERVER) registerS2CPayloadTypes();
+
         // Register client to server packets
         NetworkManager.registerReceiver(NetworkManager.c2s(),
             UpdateScreenSelectedImageC2SPacket.TYPE,
@@ -45,6 +49,13 @@ public class PacketRegistries {
             RemoveImageC2SPacket.TYPE,
             RemoveImageC2SPacket.CODEC,
             (packet, context) -> RemoveImageC2SPacket.handle(packet, context));
+    }
+
+    static void registerS2CPayloadTypes() {
+        // Dedicated servers encode these payloads but never install client receivers.
+        NetworkManager.registerS2CPayloadType(UpdateScreenS2CPacket.TYPE, UpdateScreenS2CPacket.CODEC);
+        NetworkManager.registerS2CPayloadType(UpdateImageListS2CPacket.TYPE, UpdateImageListS2CPacket.CODEC);
+        NetworkManager.registerS2CPayloadType(ImageDownloadChunkS2CPacket.TYPE, ImageDownloadChunkS2CPacket.CODEC);
     }
     
     public static void registerS2CPackets() {

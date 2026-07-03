@@ -35,6 +35,10 @@ def depVersionsFor(String mcVer) {
 }
 
 subprojects {
+    if (project.name == 'neoforge-26.1.2') {
+        return
+    }
+
     apply plugin: 'dev.architectury.loom'
     apply plugin: 'architectury-plugin'
     apply plugin: 'maven-publish'
@@ -98,15 +102,8 @@ subprojects {
     }
 }
 
-tasks.register('testNeoForge2612', GradleBuild) {
-    group = 'verification'
-    description = 'Runs the standalone NeoForge 26.1.2 test suite.'
-    dir = file('neoforge-26.1.2')
-    tasks = ['test']
-}
-
 tasks.register('testAllVersions') {
     group = 'verification'
     description = 'Runs shared and version-specific tests for every supported Minecraft version.'
-    dependsOn ':common:test', ':common-1.20.1:test', ':common-1.21.1:test', testNeoForge2612
+    dependsOn ':common:test', ':common-1.20.1:test', ':common-1.21.1:test', ':neoforge-26.1.2:test'
 }
