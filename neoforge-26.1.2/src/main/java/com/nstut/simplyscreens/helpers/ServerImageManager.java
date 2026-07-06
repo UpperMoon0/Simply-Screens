@@ -2,6 +2,7 @@ package com.nstut.simplyscreens.helpers;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.nstut.simplyscreens.Config;
 import com.nstut.simplyscreens.SimplyScreens;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
@@ -27,53 +28,80 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 
 public class ServerImageManager {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Map<UUID, byte[][]> CHUNK_MAP = new ConcurrentHashMap<>();
     private static final Map<UUID, String> FILENAME_MAP = new ConcurrentHashMap<>();
-    private static List<ImageMetadata> cachedImageList;
+    private static final ExecutorService IMAGE_UPLOAD_EXECUTOR = Executors.newFixedThreadPool(2, runnable -> {
+        Thread thread = new Thread(runnable, "Simply Screens Image Upload");
+        thread.setDaemon(true);
+        return thread;
+    });
+    private static volatile List<ImageMetadata> cachedImageList;
 
     public static void handleImageChunk(ServerPlayer player, BlockPos blockPos, UUID transactionId, int chunkIndex, int totalChunks, byte[] data, String fileName) {
-        CHUNK_MAP.computeIfAbsent(transactionId, k -> new byte[totalChunks][])[chunkIndex] = data;
+        if (chunkIndex < 0 || totalChunks <= 0 || chunkIndex >= totalChunks) {
+            SimplyScreens.LOGGER.warn("Ignoring invalid image upload chunk {} of {} for transaction {}", chunkIndex, totalChunks, transactionId);
+            return;
+        }
+
+        byte[][] chunks = CHUNK_MAP.computeIfAbsent(transactionId, k -> new byte[totalChunks][]);
+        if (chunks.length != totalChunks) {
+            SimplyScreens.LOGGER.warn("Ignoring image upload transaction {} with mismatched chunk count {} (expected {})", transactionId, totalChunks, chunks.length);
+            CHUNK_MAP.remove(transactionId);
+            FILENAME_MAP.remove(transactionId);
+            return;
+        }
+
+        chunks[chunkIndex] = data;
         if (fileName != null) {
             FILENAME_MAP.put(transactionId, fileName);
         }
 
         boolean allChunksReceived = true;
         for (int i = 0; i < totalChunks; i++) {
-            if (CHUNK_MAP.get(transactionId)[i] == null) {
+            if (chunks[i] == null) {
                 allChunksReceived = false;
                 break;
             }
         }
 
         if (allChunksReceived) {
-            try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-                for (int i = 0; i < totalChunks; i++) {
-                    outputStream.write(CHUNK_MAP.get(transactionId)[i]);
-                }
-                byte[] imageData = outputStream.toByteArray();
-                String originalName = FILENAME_MAP.get(transactionId);
+            CHUNK_MAP.remove(transactionId);
+            String originalName = FILENAME_MAP.remove(transactionId);
+            MinecraftServer server = player.level().getServer();
+            String ownerUUID = player.getUUID().toString();
 
-                UUID imageId = saveImage(player.level().getServer(), originalName, imageData, null, player.getUUID().toString());
-                if (imageId != null) {
-                    player.level().getServer().execute(() -> {
-                        if (player.level().getBlockEntity(blockPos) instanceof com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity screen) {
-                            screen.setImageId(imageId);
-                        }
-                    });
+            IMAGE_UPLOAD_EXECUTOR.execute(() -> finishImageUpload(server, player, blockPos, chunks, totalChunks, originalName, ownerUUID));
+        }
+    }
 
-                    List<ImageMetadata> images = getImageListForPlayer(player.level().getServer(), player.getUUID().toString());
-                    PacketRegistries.sendToPlayer(player, new UpdateImageListS2CPacket(images));
-                }
-            } catch (IOException e) {
-                SimplyScreens.LOGGER.error("Failed to reassemble image from chunks", e);
-            } finally {
-                CHUNK_MAP.remove(transactionId);
-                FILENAME_MAP.remove(transactionId);
+    private static void finishImageUpload(MinecraftServer server, ServerPlayer player, BlockPos blockPos, byte[][] chunks, int totalChunks, String originalName, String ownerUUID) {
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            for (int i = 0; i < totalChunks; i++) {
+                outputStream.write(chunks[i]);
             }
+            byte[] imageData = outputStream.toByteArray();
+
+            UUID imageId = saveImage(server, originalName, imageData, null, ownerUUID);
+            if (imageId != null) {
+                List<ImageMetadata> images = getImageListForPlayer(server, ownerUUID);
+                server.execute(() -> {
+                    if (player.level().getBlockEntity(blockPos) instanceof com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity screen) {
+                        screen.setImageId(imageId);
+                    }
+
+                    PacketRegistries.sendToPlayer(player, new UpdateImageListS2CPacket(images));
+                });
+            }
+        } catch (IOException e) {
+            SimplyScreens.LOGGER.error("Failed to reassemble image from chunks", e);
+        } catch (RuntimeException e) {
+            SimplyScreens.LOGGER.error("Failed to finish image upload", e);
         }
     }
 
@@ -120,7 +148,8 @@ public class ServerImageManager {
             }
 
             File metadataFile = imagesDir.resolve(imageId + ".json").toFile();
-            String nameWithoutExtension = originalName.contains(".") ? originalName.substring(0, originalName.lastIndexOf('.')) : originalName;
+            String safeOriginalName = originalName != null && !originalName.isBlank() ? originalName : "uploaded_image";
+            String nameWithoutExtension = safeOriginalName.contains(".") ? safeOriginalName.substring(0, safeOriginalName.lastIndexOf('.')) : safeOriginalName;
             ImageMetadata metadata = new ImageMetadata(nameWithoutExtension, imageId.toString(), extension, ownerUUID);
             try (FileWriter writer = new FileWriter(metadataFile)) {
                 GSON.toJson(metadata, writer);
@@ -244,6 +273,13 @@ public class ServerImageManager {
 
         if (imageFile.exists()) {
             try {
+                long maxSize = Math.max(Config.MAX_UPLOAD_SIZE, Config.MAX_URL_DOWNLOAD_SIZE);
+                long fileSize = Files.size(imageFile.toPath());
+                if (fileSize > maxSize) {
+                    SimplyScreens.LOGGER.warn("Refusing to load image {} because it is {} bytes, over the configured limit of {} bytes", imageId, fileSize, maxSize);
+                    return null;
+                }
+
                 return Files.readAllBytes(imageFile.toPath());
             } catch (IOException e) {
                 SimplyScreens.LOGGER.error("Failed to read image data for " + imageId, e);

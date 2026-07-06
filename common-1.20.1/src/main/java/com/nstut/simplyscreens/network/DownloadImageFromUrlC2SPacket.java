@@ -12,6 +12,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import java.util.function.Supplier;
 import dev.architectury.networking.NetworkManager;
 
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -69,10 +70,13 @@ public class DownloadImageFromUrlC2SPacket {
                             .timeout(java.time.Duration.ofSeconds(30))
                             .build();
 
-                    HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+                    HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
 
                     if (response.statusCode() == 200) {
-                        byte[] imageData = response.body();
+                        byte[] imageData;
+                        try (InputStream body = response.body()) {
+                            imageData = body.readNBytes(Config.MAX_URL_DOWNLOAD_SIZE + 1);
+                        }
                         if (imageData == null || imageData.length == 0) {
                             SimplyScreens.LOGGER.warn("Empty image data received from URL: {}", url);
                             return;
