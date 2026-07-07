@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,6 +39,8 @@ public class ClientImageManager {
     private static final Map<UUID, byte[][]> CHUNK_MAP = new ConcurrentHashMap<>();
     private static final Map<UUID, String> EXTENSION_MAP = new ConcurrentHashMap<>();
     private static final Set<UUID> FAILED_IMAGES = ConcurrentHashMap.newKeySet();
+    private static final TransferRequestCoordinator<UUID> PENDING_DOWNLOADS =
+            new TransferRequestCoordinator<>(Duration.ofSeconds(30));
     private static DynamicTexture errorTexture;
     private static ResourceLocation errorTextureLocation;
 
@@ -78,6 +81,7 @@ public class ClientImageManager {
             } finally {
                 CHUNK_MAP.remove(imageId);
                 EXTENSION_MAP.remove(imageId);
+                PENDING_DOWNLOADS.release(imageId);
             }
         }
     }
@@ -122,7 +126,8 @@ public class ClientImageManager {
             }
         }
 
-        PacketRegistries.CHANNEL.sendToServer(new RequestImageDownloadC2SPacket(imageId));
+        PENDING_DOWNLOADS.tryStart(imageId,
+                () -> PacketRegistries.CHANNEL.sendToServer(new RequestImageDownloadC2SPacket(imageId)));
         return null;
     }
 

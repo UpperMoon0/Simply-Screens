@@ -8,6 +8,8 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -24,23 +26,20 @@ import net.minecraft.server.level.ServerPlayer;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 
 public class ServerImageManager {
+    private static final long MAX_IMAGE_PIXELS = 16_777_216L;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Map<UUID, byte[][]> CHUNK_MAP = new ConcurrentHashMap<>();
-    private static final Map<UUID, String> FILENAME_MAP = new ConcurrentHashMap<>();
-    private static final ExecutorService IMAGE_UPLOAD_EXECUTOR = Executors.newFixedThreadPool(2, runnable -> {
-        Thread thread = new Thread(runnable, "Simply Screens Image Upload");
-        thread.setDaemon(true);
-        return thread;
-    });
+    private static final Map<UUID, UploadState> UPLOADS = new ConcurrentHashMap<>();
+    private static final ExecutorService IMAGE_UPLOAD_EXECUTOR =
+            ChunkedFileTransfer.newDaemonFixedThreadPool(2, "Simply Screens Image Upload");
     private static volatile List<ImageMetadata> cachedImageList;
 
     public static void handleImageChunk(ServerPlayer player, BlockPos blockPos, UUID transactionId, int chunkIndex, int totalChunks, byte[] data, String fileName) {
@@ -49,45 +48,44 @@ public class ServerImageManager {
             return;
         }
 
-        byte[][] chunks = CHUNK_MAP.computeIfAbsent(transactionId, k -> new byte[totalChunks][]);
-        if (chunks.length != totalChunks) {
-            SimplyScreens.LOGGER.warn("Ignoring image upload transaction {} with mismatched chunk count {} (expected {})", transactionId, totalChunks, chunks.length);
-            CHUNK_MAP.remove(transactionId);
-            FILENAME_MAP.remove(transactionId);
+        UploadState state = UPLOADS.computeIfAbsent(transactionId, k -> new UploadState(totalChunks));
+        if (state.totalChunks != totalChunks) {
+            SimplyScreens.LOGGER.warn("Ignoring image upload transaction {} with mismatched chunk count {} (expected {})", transactionId, totalChunks, state.totalChunks);
+            UPLOADS.remove(transactionId);
             return;
         }
 
-        chunks[chunkIndex] = data;
-        if (fileName != null) {
-            FILENAME_MAP.put(transactionId, fileName);
-        }
-
-        boolean allChunksReceived = true;
-        for (int i = 0; i < totalChunks; i++) {
-            if (chunks[i] == null) {
-                allChunksReceived = false;
-                break;
+        boolean allChunksReceived;
+        synchronized (state) {
+            if (state.chunks[chunkIndex] == null && state.receivedBytes + data.length > Config.MAX_UPLOAD_SIZE) {
+                SimplyScreens.LOGGER.warn("Rejecting image upload transaction {} because received bytes would exceed configured limit of {}", transactionId, Config.MAX_UPLOAD_SIZE);
+                UPLOADS.remove(transactionId);
+                return;
             }
+
+            state.addChunk(chunkIndex, data, fileName);
+            allChunksReceived = state.isComplete();
         }
 
         if (allChunksReceived) {
-            CHUNK_MAP.remove(transactionId);
-            String originalName = FILENAME_MAP.remove(transactionId);
+            UPLOADS.remove(transactionId);
             MinecraftServer server = player.getServer();
             String ownerUUID = player.getUUID().toString();
 
-            IMAGE_UPLOAD_EXECUTOR.execute(() -> finishImageUpload(server, player, blockPos, chunks, totalChunks, originalName, ownerUUID));
+            IMAGE_UPLOAD_EXECUTOR.execute(() -> finishImageUpload(server, player, blockPos, state, ownerUUID));
         }
     }
 
-    private static void finishImageUpload(MinecraftServer server, ServerPlayer player, BlockPos blockPos, byte[][] chunks, int totalChunks, String originalName, String ownerUUID) {
-        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-            for (int i = 0; i < totalChunks; i++) {
-                outputStream.write(chunks[i]);
+    private static void finishImageUpload(MinecraftServer server, ServerPlayer player, BlockPos blockPos, UploadState state, String ownerUUID) {
+        try {
+            byte[] imageData = new byte[(int) state.receivedBytes];
+            int offset = 0;
+            for (byte[] chunk : state.chunks) {
+                System.arraycopy(chunk, 0, imageData, offset, chunk.length);
+                offset += chunk.length;
             }
-            byte[] imageData = outputStream.toByteArray();
 
-            UUID imageId = saveImage(server, originalName, imageData, null, ownerUUID);
+            UUID imageId = saveImage(server, state.originalName, imageData, null, ownerUUID);
             if (imageId != null) {
                 List<ImageMetadata> images = getImageListForPlayer(server, ownerUUID);
                 server.execute(() -> {
@@ -98,8 +96,6 @@ public class ServerImageManager {
                     PacketRegistries.CHANNEL.sendToPlayer(player, new UpdateImageListS2CPacket(images));
                 });
             }
-        } catch (IOException e) {
-            SimplyScreens.LOGGER.error("Failed to reassemble image from chunks", e);
         } catch (RuntimeException e) {
             SimplyScreens.LOGGER.error("Failed to finish image upload", e);
         }
@@ -115,6 +111,10 @@ public class ServerImageManager {
 
             if (extension == null) {
                 SimplyScreens.LOGGER.error("Could not determine a valid image type for '{}' based on its content. It might be corrupted or an unsupported format.", originalName);
+                return null;
+            }
+
+            if (!validateImageDimensions(data, originalName)) {
                 return null;
             }
 
@@ -263,23 +263,12 @@ public class ServerImageManager {
     }
 
     public static byte[] getImageData(MinecraftServer server, UUID imageId) {
-        ImageMetadata metadata = getImageMetadata(server, imageId);
-        if (metadata == null) {
-            return null;
-        }
-
-        Path imagesDir = getImagesDir(server);
-        File imageFile = imagesDir.resolve(imageId + "." + metadata.getExtension()).toFile();
+        Path imagePath = getImageFilePath(server, imageId);
+        if (imagePath == null) return null;
+        File imageFile = imagePath.toFile();
 
         if (imageFile.exists()) {
             try {
-                long maxSize = Math.max(Config.MAX_UPLOAD_SIZE, Config.MAX_URL_DOWNLOAD_SIZE);
-                long fileSize = Files.size(imageFile.toPath());
-                if (fileSize > maxSize) {
-                    SimplyScreens.LOGGER.warn("Refusing to load image {} because it is {} bytes, over the configured limit of {} bytes", imageId, fileSize, maxSize);
-                    return null;
-                }
-
                 return Files.readAllBytes(imageFile.toPath());
             } catch (IOException e) {
                 SimplyScreens.LOGGER.error("Failed to read image data for " + imageId, e);
@@ -287,6 +276,47 @@ public class ServerImageManager {
         }
 
         return null;
+    }
+
+    private static boolean validateImageDimensions(byte[] data, String originalName) {
+        try (ImageInputStream imageInputStream = ImageIO.createImageInputStream(new ByteArrayInputStream(data))) {
+            if (imageInputStream == null) {
+                return true;
+            }
+
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInputStream);
+            if (!readers.hasNext()) {
+                return true;
+            }
+
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(imageInputStream, true, true);
+                int width = reader.getWidth(0);
+                int height = reader.getHeight(0);
+                long pixels = (long) width * height;
+                if (pixels > MAX_IMAGE_PIXELS) {
+                    SimplyScreens.LOGGER.warn("Rejecting image '{}' because it is {}x{} ({} pixels), over the limit of {} pixels", originalName, width, height, pixels, MAX_IMAGE_PIXELS);
+                    return false;
+                }
+            } finally {
+                reader.dispose();
+            }
+        } catch (IOException e) {
+            SimplyScreens.LOGGER.warn("Could not validate image dimensions for '{}'", originalName, e);
+            return false;
+        }
+
+        return true;
+    }
+
+    public static Path getImageFilePath(MinecraftServer server, UUID imageId) {
+        ImageMetadata metadata = getImageMetadata(server, imageId);
+        if (metadata == null) {
+            return null;
+        }
+
+        return getImagesDir(server).resolve(imageId + "." + metadata.getExtension());
     }
 
     public static List<ImageMetadata> getImageList(MinecraftServer server) {
@@ -325,5 +355,39 @@ public class ServerImageManager {
             }
         }
         return playerImages;
+    }
+
+    private static class UploadState {
+        private final int totalChunks;
+        private final byte[][] chunks;
+        private long receivedBytes;
+        private String originalName;
+
+        private UploadState(int totalChunks) {
+            this.totalChunks = totalChunks;
+            this.chunks = new byte[totalChunks][];
+        }
+
+        private void addChunk(int chunkIndex, byte[] data, String fileName) {
+            if (chunks[chunkIndex] != null) {
+                receivedBytes -= chunks[chunkIndex].length;
+            }
+
+            chunks[chunkIndex] = data;
+            receivedBytes += data.length;
+
+            if (fileName != null) {
+                originalName = fileName;
+            }
+        }
+
+        private boolean isComplete() {
+            for (byte[] chunk : chunks) {
+                if (chunk == null) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 }

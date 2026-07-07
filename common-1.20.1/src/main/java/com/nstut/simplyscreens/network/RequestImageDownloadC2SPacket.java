@@ -1,6 +1,9 @@
 package com.nstut.simplyscreens.network;
 
 import com.nstut.simplyscreens.SimplyScreens;
+import com.nstut.simplyscreens.Config;
+import com.nstut.simplyscreens.helpers.ChunkedFileTransfer;
+import com.nstut.simplyscreens.helpers.TransferRequestCoordinator;
 import com.nstut.simplyscreens.helpers.ImageMetadata;
 import com.nstut.simplyscreens.helpers.ServerImageManager;
 import dev.architectury.networking.NetworkManager;
@@ -8,25 +11,21 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 
 public class RequestImageDownloadC2SPacket implements IPacket {
     private static final int CHUNK_SIZE = 1024 * 30; // 30KB
-    private static final ExecutorService IMAGE_DOWNLOAD_EXECUTOR = Executors.newFixedThreadPool(2, runnable -> {
-        Thread thread = new Thread(runnable, "Simply Screens Image Download");
-        thread.setDaemon(true);
-        return thread;
-    });
+    private static final ExecutorService IMAGE_DOWNLOAD_EXECUTOR =
+            ChunkedFileTransfer.newDaemonFixedThreadPool(2, "Simply Screens Image Download");
+    private static final TransferRequestCoordinator<String> ACTIVE_DOWNLOADS =
+            new TransferRequestCoordinator<>(Duration.ofSeconds(30));
     private static final Set<UUID> loggedWarnings = ConcurrentHashMap.newKeySet();
     private final UUID imageId;
 
@@ -48,50 +47,45 @@ public class RequestImageDownloadC2SPacket implements IPacket {
         context.get().queue(() -> {
             ServerPlayer player = (ServerPlayer) context.get().getPlayer();
             MinecraftServer server = player.getServer();
-            IMAGE_DOWNLOAD_EXECUTOR.execute(() -> sendImageDownload(server, player, imageId));
+            String transferKey = player.getUUID() + ":" + imageId;
+            ACTIVE_DOWNLOADS.tryStart(transferKey,
+                    () -> IMAGE_DOWNLOAD_EXECUTOR.execute(() -> sendImageDownload(server, player, imageId, transferKey)));
         });
     }
 
-    private static void sendImageDownload(MinecraftServer server, ServerPlayer player, UUID imageId) {
+    private static void sendImageDownload(MinecraftServer server, ServerPlayer player, UUID imageId, String transferKey) {
         ImageMetadata metadata = ServerImageManager.getImageMetadata(server, imageId);
-        byte[] imageData = ServerImageManager.getImageData(server, imageId);
-
-        if (imageData == null || metadata == null) {
+        if (metadata == null) {
+            ACTIVE_DOWNLOADS.release(transferKey);
             if (loggedWarnings.add(imageId)) {
-                SimplyScreens.LOGGER.warn("Player {} requested non-existent or oversized image {}. This warning will not be shown again.", player.getName().getString(), imageId);
+                SimplyScreens.LOGGER.warn("Player {} requested non-existent image {}. This warning will not be shown again.", player.getName().getString(), imageId);
             }
             return;
         }
 
-        String ext = metadata.getExtension();
-        if (!"png".equals(ext)) {
-            try {
-                BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageData));
-                if (image != null) {
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    ImageIO.write(image, "png", baos);
-                    imageData = baos.toByteArray();
-                    ext = "png";
-                }
-            } catch (IOException e) {
-                SimplyScreens.LOGGER.warn("Could not convert image {} to PNG, sending original format", imageId);
-            }
+        Path imagePath = ServerImageManager.getImageFilePath(server, imageId);
+        if (imagePath == null || !Files.exists(imagePath)) {
+            ACTIVE_DOWNLOADS.release(transferKey);
+            return;
         }
 
-        byte[] finalImageData = imageData;
-        String finalExt = ext;
-        server.execute(() -> sendImageChunks(player, imageId, finalImageData, finalExt));
-    }
-
-    private static void sendImageChunks(ServerPlayer player, UUID imageId, byte[] imageData, String ext) {
-        int totalChunks = (int) Math.ceil((double) imageData.length / CHUNK_SIZE);
-        for (int i = 0; i < totalChunks; i++) {
-            int start = i * CHUNK_SIZE;
-            int end = Math.min(imageData.length, start + CHUNK_SIZE);
-            byte[] chunk = new byte[end - start];
-            System.arraycopy(imageData, start, chunk, 0, chunk.length);
-
-            PacketRegistries.CHANNEL.sendToPlayer(player, new ImageDownloadChunkS2CPacket(imageId, i, totalChunks, chunk, i == 0 ? ext : null));
+        try {
+            long maxDownloadSize = Math.max(Config.MAX_UPLOAD_SIZE, Config.MAX_URL_DOWNLOAD_SIZE);
+            long fileSize = Files.size(imagePath);
+            if (fileSize > maxDownloadSize) {
+                ACTIVE_DOWNLOADS.release(transferKey);
+                SimplyScreens.LOGGER.warn("Refusing to send image {} because it is {} bytes, over the configured limit of {} bytes",
+                        imageId, fileSize, maxDownloadSize);
+                return;
+            }
+            ChunkedFileTransfer.streamFile(imagePath, CHUNK_SIZE, (chunkIndex, totalChunks, chunk) -> {
+                String packetExt = chunkIndex == 0 ? metadata.getExtension() : null;
+                server.execute(() -> PacketRegistries.CHANNEL.sendToPlayer(player, new ImageDownloadChunkS2CPacket(
+                        imageId, chunkIndex, totalChunks, chunk, packetExt)));
+            });
+        } catch (Exception e) {
+            ACTIVE_DOWNLOADS.release(transferKey);
+            SimplyScreens.LOGGER.error("Failed to stream image {} to player {}", imageId, player.getName().getString(), e);
         }
     }
 }
