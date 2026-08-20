@@ -67,6 +67,10 @@ public class RequestImageDownloadC2SPacket implements CustomPacketPayload {
     }
 
     private static void sendImageDownload(MinecraftServer server, ServerPlayer player, UUID imageId, String transferKey) {
+        if (!ServerImageManager.canPlayerAccessImage(server, imageId, player.getUUID().toString())) {
+            ACTIVE_DOWNLOADS.release(transferKey);
+            return;
+        }
         ImageMetadata metadata = ServerImageManager.getImageMetadata(server, imageId);
         if (metadata == null) {
             ACTIVE_DOWNLOADS.release(transferKey);

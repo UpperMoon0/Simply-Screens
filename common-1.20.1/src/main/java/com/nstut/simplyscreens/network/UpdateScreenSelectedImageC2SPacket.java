@@ -1,6 +1,8 @@
 package com.nstut.simplyscreens.network;
 
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
+import com.nstut.simplyscreens.helpers.ScreenPacketSecurity;
+import com.nstut.simplyscreens.helpers.ServerImageManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import java.util.UUID;
@@ -35,6 +37,7 @@ public class UpdateScreenSelectedImageC2SPacket {
             if (player == null) {
                 return;
             }
+            if (!ScreenPacketSecurity.canModify(player, pos) || !ServerImageManager.canPlayerAccessImage(player.getServer(), imageId, player.getUUID().toString())) return;
             ServerLevel level = player.serverLevel();
             BlockEntity blockEntity = level.getBlockEntity(pos);
 

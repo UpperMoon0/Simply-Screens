@@ -3,6 +3,7 @@ package com.nstut.simplyscreens.network;
 import com.nstut.simplyscreens.ScreenRegistry;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
+import com.nstut.simplyscreens.helpers.ScreenPacketSecurity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
@@ -37,6 +38,7 @@ public class UpdateScreenIdC2SPacket {
             if (player == null) {
                 return;
             }
+            if (!ScreenPacketSecurity.canModify(player, pos)) return;
             ServerLevel level = player.serverLevel();
             BlockEntity blockEntity = level.getBlockEntity(pos);
 
@@ -44,12 +46,6 @@ public class UpdateScreenIdC2SPacket {
                 ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
                 if (anchor != null) {
                     anchor.setScreenId(screenId);
-
-                    // Also update the registry with the current image ID
-                    if (screenId != null && !screenId.isEmpty() && anchor.getImageId() != null) {
-                        ScreenRegistry.setImageId(screenId, anchor.getImageId());
-                        ScreenRegistry.saveRegistry();
-                    }
                 }
             }
         });

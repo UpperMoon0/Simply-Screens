@@ -46,10 +46,12 @@ public class ScreenRegistryHelper {
      *
      * @param worldSavePath The path to the world save directory
      */
-    public void init(Path worldSavePath) {
-        if (initialized) return;
-
-        registryFilePath = worldSavePath.resolve("screen_registry.json");
+    public synchronized void init(Path worldSavePath) {
+        Path nextPath = worldSavePath.resolve("screen_registry.json").toAbsolutePath().normalize();
+        if (initialized && nextPath.equals(registryFilePath)) return;
+        if (initialized) saveRegistry();
+        screenIdToImageId.clear();
+        registryFilePath = nextPath;
         loadRegistry();
         initialized = true;
     }

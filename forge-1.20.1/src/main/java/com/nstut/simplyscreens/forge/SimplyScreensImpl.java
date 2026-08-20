@@ -10,6 +10,9 @@ import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.server.ServerStartedEvent;
+import net.minecraft.world.level.storage.LevelResource;
 
 @Mod(SimplyScreens.MOD_ID)
 public class SimplyScreensImpl {
@@ -23,6 +26,8 @@ public class SimplyScreensImpl {
         ItemRegistries.ITEMS.register();
 
         modEventBus.addListener(this::onCommonSetup);
+        MinecraftForge.EVENT_BUS.addListener((ServerStartedEvent event) ->
+                SimplyScreens.initializeScreens(event.getServer().getWorldPath(LevelResource.ROOT)));
     }
 
     public void onCommonSetup(FMLCommonSetupEvent event) {

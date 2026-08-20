@@ -67,6 +67,7 @@ public class ScreenBlock extends Block implements EntityBlock {
 
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, @NotNull BlockState state, @NotNull BlockEntityType<T> blockEntityType) {
+        if (state.getValue(STATE) != STATE_ANCHOR) return null;
         return level.isClientSide ? null : (lvl, pos, blockState, blockEntity) -> {
             if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                 screenBlockEntity.tick();
@@ -79,6 +80,7 @@ public class ScreenBlock extends Block implements EntityBlock {
         if (state.getBlock() != newState.getBlock() && !level.isClientSide) {
             BlockEntity blockEntity = level.getBlockEntity(pos);
             if (blockEntity instanceof ScreenBlockEntity screen && screen.isAnchor()) {
+                com.nstut.simplyscreens.ScreenRegistry.unregisterScreen(level, pos, screen.getScreenId());
                 screen.findNewAnchor();
             }
         }

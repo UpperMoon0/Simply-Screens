@@ -109,6 +109,7 @@ public class ScreenBlockEntity extends BlockEntity {
             UpdateScreenS2CPacket packet = new UpdateScreenS2CPacket(worldPosition, anchorPos, resolvedImageId, maintainAspectRatio, screenId, screenWidth, screenHeight);
             if (level.getServer() != null) {
                 for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
+                    if (player.level() != level || player.distanceToSqr(worldPosition.getX() + .5D, worldPosition.getY() + .5D, worldPosition.getZ() + .5D) > (double) Config.VIEW_DISTANCE * Config.VIEW_DISTANCE) continue;
                     PacketRegistries.sendToPlayer(player, packet);
                 }
             }
@@ -286,6 +287,13 @@ public class ScreenBlockEntity extends BlockEntity {
 
         String oldScreenId = this.screenId;
         this.screenId = screenId != null ? screenId : "";
+        UUID linkedImage = this.screenId.isEmpty() ? null : ScreenRegistry.getImageId(this.screenId);
+        if (linkedImage != null) {
+            this.imageId = linkedImage;
+        } else if (!this.screenId.isEmpty() && this.imageId != null) {
+            ScreenRegistry.setImageId(this.screenId, this.imageId);
+            ScreenRegistry.saveRegistry();
+        }
         setChanged();
 
         // Update registry
@@ -345,12 +353,6 @@ public class ScreenBlockEntity extends BlockEntity {
                 ScreenRegistry.registerScreen(level, worldPosition, screenId);
                 screenLinkRegistered = true;
             }
-            if (tickSinceLastUpdate++ >= Config.SCREEN_TICK_RATE) {
-                updateScreenStructure();
-                tickSinceLastUpdate = 0;
-            }
-        } else {
-            verifyAnchorValidity();
         }
     }
 
@@ -463,24 +465,24 @@ public class ScreenBlockEntity extends BlockEntity {
         if (level == null || level.isClientSide) return null;
         Direction widthDirection = getWidthDirection(facing);
         Direction heightDirection = getHeightDirection(facing);
-        int maxWidth = findMaxExtension(widthDirection);
-        int maxHeight = findMaxExtension(heightDirection);
+        int maxWidth = findMaxExtension(widthDirection, facing);
+        int maxHeight = findMaxExtension(heightDirection, facing);
 
         ScreenStructureDetector.Bounds bounds = ScreenStructureDetector.detect(maxWidth, maxHeight, (width, height) -> {
             BlockPos checkPos = worldPosition.relative(widthDirection, width).relative(heightDirection, height);
-            return level.getBlockEntity(checkPos) instanceof ScreenBlockEntity;
+            return isMatchingScreen(checkPos, facing);
         });
         return worldPosition.relative(widthDirection, bounds.width()).relative(heightDirection, bounds.height());
     }
 
 
-    private int findMaxExtension(Direction direction) {
+    private int findMaxExtension(Direction direction, Direction facing) {
         if (level == null) return 0;
 
         int extension = 0;
         BlockPos current = worldPosition.relative(direction);
 
-        while (level.getBlockEntity(current) instanceof ScreenBlockEntity) {
+        while (isMatchingScreen(current, facing)) {
             extension++;
             current = current.relative(direction);
         }
@@ -488,8 +490,15 @@ public class ScreenBlockEntity extends BlockEntity {
         return extension;
     }
 
+    private boolean isMatchingScreen(BlockPos pos, Direction facing) {
+        BlockEntity entity = level.getBlockEntity(pos);
+        return entity instanceof ScreenBlockEntity && entity.getBlockState().hasProperty(ScreenBlock.FACING)
+                && entity.getBlockState().getValue(ScreenBlock.FACING) == facing;
+    }
+
     private void verifyAnchorValidity() {
         if (anchorPos == null || level == null) return;
+        if (!level.hasChunkAt(anchorPos)) return;
 
         BlockEntity be = level.getBlockEntity(anchorPos);
         if (!(be instanceof ScreenBlockEntity anchorEntity) || !anchorEntity.isAnchor()) {
@@ -563,6 +572,7 @@ public class ScreenBlockEntity extends BlockEntity {
 
             if (level.getServer() != null) {
                 for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
+                    if (player.level() != level || player.distanceToSqr(worldPosition.getX() + .5D, worldPosition.getY() + .5D, worldPosition.getZ() + .5D) > (double) Config.VIEW_DISTANCE * Config.VIEW_DISTANCE) continue;
                     PacketRegistries.sendToPlayer(player, new UpdateScreenS2CPacket(
                             newAnchorPos, newAnchorPos, imageId, maintainAspectRatio, screenId,
                             promotion.width(), promotion.height()));

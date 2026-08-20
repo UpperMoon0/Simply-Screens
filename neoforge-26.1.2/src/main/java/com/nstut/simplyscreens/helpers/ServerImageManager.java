@@ -32,26 +32,56 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 public class ServerImageManager {
     private static final long MAX_IMAGE_PIXELS = 16_777_216L;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Map<UUID, UploadState> UPLOADS = new ConcurrentHashMap<>();
+    private static final int UPLOAD_CHUNK_SIZE = 32768;
+    private static final long UPLOAD_TTL_MILLIS = 60_000L;
+    private static final int MAX_ACTIVE_UPLOADS_PER_PLAYER = 4;
+    private static final Map<String, UploadState> UPLOADS = new ConcurrentHashMap<>();
     private static final ExecutorService IMAGE_UPLOAD_EXECUTOR =
             ChunkedFileTransfer.newDaemonFixedThreadPool(2, "Simply Screens Image Upload");
+    private static final java.util.concurrent.ScheduledExecutorService UPLOAD_REAPER =
+            Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread thread = new Thread(r, "Simply Screens Upload Reaper");
+                thread.setDaemon(true);
+                return thread;
+            });
+    static {
+        UPLOAD_REAPER.scheduleAtFixedRate(() -> {
+            long now = System.currentTimeMillis();
+            UPLOADS.entrySet().removeIf(entry -> now - entry.getValue().lastActivity > UPLOAD_TTL_MILLIS);
+        }, UPLOAD_TTL_MILLIS, UPLOAD_TTL_MILLIS, TimeUnit.MILLISECONDS);
+    }
     private static volatile List<ImageMetadata> cachedImageList;
+    private static volatile Path cachedImagesDirectory;
 
     public static void handleImageChunk(ServerPlayer player, BlockPos blockPos, UUID transactionId, int chunkIndex, int totalChunks, byte[] data, String fileName) {
-        if (chunkIndex < 0 || totalChunks <= 0 || chunkIndex >= totalChunks) {
+        if (!ScreenPacketSecurity.canModify(player, blockPos) || Config.DISABLE_UPLOAD) return;
+        long now = System.currentTimeMillis();
+        UPLOADS.entrySet().removeIf(entry -> now - entry.getValue().lastActivity > UPLOAD_TTL_MILLIS);
+        int maxChunks = Math.max(1, (Config.MAX_UPLOAD_SIZE + UPLOAD_CHUNK_SIZE - 1) / UPLOAD_CHUNK_SIZE);
+        if (data == null || data.length == 0 || data.length > UPLOAD_CHUNK_SIZE || chunkIndex < 0 ||
+                totalChunks <= 0 || totalChunks > maxChunks || chunkIndex >= totalChunks) {
             SimplyScreens.LOGGER.warn("Ignoring invalid image upload chunk {} of {} for transaction {}", chunkIndex, totalChunks, transactionId);
             return;
         }
 
-        UploadState state = UPLOADS.computeIfAbsent(transactionId, k -> new UploadState(totalChunks));
+        String uploadKey = player.getUUID() + ":" + transactionId;
+        long activeForPlayer = UPLOADS.values().stream().filter(s -> s.owner.equals(player.getUUID())).count();
+        UploadState existing = UPLOADS.get(uploadKey);
+        if (existing == null && activeForPlayer >= MAX_ACTIVE_UPLOADS_PER_PLAYER) {
+            SimplyScreens.LOGGER.warn("Rejecting excess concurrent upload from {}", player.getUUID());
+            return;
+        }
+        UploadState state = UPLOADS.computeIfAbsent(uploadKey, k -> new UploadState(player.getUUID(), totalChunks, now));
         if (state.totalChunks != totalChunks) {
             SimplyScreens.LOGGER.warn("Ignoring image upload transaction {} with mismatched chunk count {} (expected {})", transactionId, totalChunks, state.totalChunks);
-            UPLOADS.remove(transactionId);
+            UPLOADS.remove(uploadKey);
             return;
         }
 
@@ -59,16 +89,17 @@ public class ServerImageManager {
         synchronized (state) {
             if (state.chunks[chunkIndex] == null && state.receivedBytes + data.length > Config.MAX_UPLOAD_SIZE) {
                 SimplyScreens.LOGGER.warn("Rejecting image upload transaction {} because received bytes would exceed configured limit of {}", transactionId, Config.MAX_UPLOAD_SIZE);
-                UPLOADS.remove(transactionId);
+                UPLOADS.remove(uploadKey);
                 return;
             }
 
             state.addChunk(chunkIndex, data, fileName);
+            state.lastActivity = now;
             allChunksReceived = state.isComplete();
         }
 
         if (allChunksReceived) {
-            UPLOADS.remove(transactionId);
+            UPLOADS.remove(uploadKey);
             MinecraftServer server = player.level().getServer();
             String ownerUUID = player.getUUID().toString();
 
@@ -105,8 +136,13 @@ public class ServerImageManager {
         return saveImage(server, originalName, data, contentType, null);
     }
 
-    public static UUID saveImage(MinecraftServer server, String originalName, byte[] data, String contentType, String ownerUUID) {
+    public static synchronized UUID saveImage(MinecraftServer server, String originalName, byte[] data, String contentType, String ownerUUID) {
         try {
+            if (data == null || data.length > Math.max(Config.MAX_UPLOAD_SIZE, Config.MAX_URL_DOWNLOAD_SIZE) ||
+                    !hasStorageCapacity(server, ownerUUID, data == null ? 0 : data.length)) {
+                SimplyScreens.LOGGER.warn("Rejecting image because its owner/server storage quota would be exceeded");
+                return null;
+            }
             String extension = getImageExtension(data);
 
             if (extension == null) {
@@ -170,7 +206,7 @@ public class ServerImageManager {
             return false;
         }
 
-        if (metadata.getOwnerUUID() != null && !metadata.getOwnerUUID().equals(requesterUUID)) {
+        if (metadata.getOwnerUUID() == null || !metadata.getOwnerUUID().equals(requesterUUID)) {
             SimplyScreens.LOGGER.warn("Player {} tried to delete image {} owned by {}", requesterUUID, imageId, metadata.getOwnerUUID());
             return false;
         }
@@ -320,12 +356,12 @@ public class ServerImageManager {
     }
 
     public static List<ImageMetadata> getImageList(MinecraftServer server) {
-        if (cachedImageList != null) {
+        Path imagesDir = getImagesDir(server).toAbsolutePath().normalize();
+        if (cachedImageList != null && imagesDir.equals(cachedImagesDirectory)) {
             return cachedImageList;
         }
 
         List<ImageMetadata> imageList = new ArrayList<>();
-        Path imagesDir = getImagesDir(server);
 
         if (Files.exists(imagesDir) && Files.isDirectory(imagesDir)) {
             try (Stream<Path> paths = Files.walk(imagesDir)) {
@@ -343,6 +379,7 @@ public class ServerImageManager {
         }
 
         cachedImageList = imageList;
+        cachedImagesDirectory = imagesDir;
         return imageList;
     }
 
@@ -357,15 +394,43 @@ public class ServerImageManager {
         return playerImages;
     }
 
+    public static boolean canPlayerAccessImage(MinecraftServer server, UUID imageId, String playerUUID) {
+        ImageMetadata metadata = getImageMetadata(server, imageId);
+        return metadata != null && (metadata.getOwnerUUID() == null || metadata.getOwnerUUID().equals(playerUUID));
+    }
+
+    private static boolean hasStorageCapacity(MinecraftServer server, String ownerUUID, long incomingBytes) {
+        long total = 0L, ownerTotal = 0L;
+        int ownerCount = 0;
+        for (ImageMetadata metadata : getImageList(server)) {
+            Path file = getImagesDir(server).resolve(metadata.getId() + "." + metadata.getExtension());
+            try {
+                long size = Files.exists(file) ? Files.size(file) : 0L;
+                total += size;
+                if (ownerUUID != null && ownerUUID.equals(metadata.getOwnerUUID())) {
+                    ownerTotal += size;
+                    ownerCount++;
+                }
+            } catch (IOException ignored) { }
+        }
+        return total + incomingBytes <= Config.MAX_STORAGE_TOTAL &&
+                ownerTotal + incomingBytes <= Config.MAX_STORAGE_PER_PLAYER &&
+                ownerCount < Config.MAX_IMAGES_PER_PLAYER;
+    }
+
     private static class UploadState {
+        private final UUID owner;
         private final int totalChunks;
         private final byte[][] chunks;
         private long receivedBytes;
         private String originalName;
+        private volatile long lastActivity;
 
-        private UploadState(int totalChunks) {
+        private UploadState(UUID owner, int totalChunks, long now) {
+            this.owner = owner;
             this.totalChunks = totalChunks;
             this.chunks = new byte[totalChunks][];
+            this.lastActivity = now;
         }
 
         private void addChunk(int chunkIndex, byte[] data, String fileName) {

@@ -3,6 +3,8 @@ package com.nstut.simplyscreens.network;
 import com.nstut.simplyscreens.Config;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.helpers.ServerImageManager;
+import com.nstut.simplyscreens.helpers.UrlSecurity;
+import com.nstut.simplyscreens.helpers.ScreenPacketSecurity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
@@ -45,6 +47,7 @@ public class DownloadImageFromUrlC2SPacket {
     public void handle(Supplier<NetworkManager.PacketContext> context) {
         context.get().queue(() -> {
             ServerPlayer player = (ServerPlayer) context.get().getPlayer();
+            if (player == null || Config.DISABLE_URL_DOWNLOAD || !ScreenPacketSecurity.canModify(player, blockPos)) return;
             if (player == null) {
                 return;
             }
@@ -66,7 +69,7 @@ public class DownloadImageFromUrlC2SPacket {
                 try {
                     HttpClient client = HttpClient.newHttpClient();
                     HttpRequest request = HttpRequest.newBuilder()
-                            .uri(URI.create(url))
+                            .uri(UrlSecurity.requirePublicHttpUrl(url))
                             .timeout(java.time.Duration.ofSeconds(30))
                             .build();
 

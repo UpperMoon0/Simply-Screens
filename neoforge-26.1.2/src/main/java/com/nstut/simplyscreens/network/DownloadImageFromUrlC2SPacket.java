@@ -3,6 +3,8 @@ package com.nstut.simplyscreens.network;
 import com.nstut.simplyscreens.Config;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.helpers.ServerImageManager;
+import com.nstut.simplyscreens.helpers.UrlSecurity;
+import com.nstut.simplyscreens.helpers.ScreenPacketSecurity;
 import dev.architectury.networking.NetworkManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -72,6 +74,7 @@ public class DownloadImageFromUrlC2SPacket implements CustomPacketPayload {
             if (player == null) {
                 return;
             }
+            if (Config.DISABLE_URL_DOWNLOAD || !ScreenPacketSecurity.canModify(player, packet.getBlockPos())) return;
 
             // Validate URL
             String url = packet.getUrl();
@@ -90,10 +93,10 @@ public class DownloadImageFromUrlC2SPacket implements CustomPacketPayload {
             CompletableFuture.runAsync(() -> {
                 try {
                     HttpClient client = HttpClient.newBuilder()
-                            .followRedirects(HttpClient.Redirect.NORMAL)
+                            .followRedirects(HttpClient.Redirect.NEVER)
                             .build();
                     HttpRequest request = HttpRequest.newBuilder()
-                            .uri(URI.create(url))
+                            .uri(UrlSecurity.requirePublicHttpUrl(url))
                             .timeout(java.time.Duration.ofSeconds(30))
                             .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
                             .header("Accept", "image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")

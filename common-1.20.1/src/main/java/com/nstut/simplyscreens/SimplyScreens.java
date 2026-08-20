@@ -17,8 +17,8 @@ public class SimplyScreens {
         PacketRegistries.register();
     }
 
-    public static void initializeScreens() {
+    public static void initializeScreens(java.nio.file.Path worldSavePath) {
         LOGGER.info("Initializing Screen Registry");
-        // ScreenRegistry will be lazily initialized when first accessed
+        ScreenRegistry.init(worldSavePath);
     }
 }

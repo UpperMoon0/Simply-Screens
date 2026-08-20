@@ -16,9 +16,11 @@ import net.minecraft.util.Mth;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.io.ByteArrayInputStream;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -32,6 +34,7 @@ public class ImageListWidget extends AbstractWidget {
     private static final int TEXT_HEIGHT = 12;
     private static final int ITEM_HEIGHT = ITEM_SIZE + TEXT_HEIGHT;
     private final Map<String, ResourceLocation> textureCache = new HashMap<>();
+    private final Set<String> requestedTextures = new HashSet<>();
     private List<ImageEntry> imageFiles = new ArrayList<>();
     private List<ImageEntry> filteredImageFiles = new ArrayList<>();
     private double scrollAmount;
@@ -130,10 +133,11 @@ public class ImageListWidget extends AbstractWidget {
                 guiGraphics.renderOutline(itemX, itemY, ITEM_SIZE, ITEM_HEIGHT, 0xFF00FF00);
             }
 
-            ResourceLocation texture = textureCache.computeIfAbsent(entry.getImageId().toString(), id -> {
-                PacketRegistries.sendToServer(new com.nstut.simplyscreens.network.RequestImageDownloadC2SPacket(UUID.fromString(id)));
-                return null;
-            });
+            String textureId = entry.getImageId().toString();
+            ResourceLocation texture = textureCache.get(textureId);
+            if (texture == null && requestedTextures.add(textureId)) {
+                PacketRegistries.sendToServer(new com.nstut.simplyscreens.network.RequestImageDownloadC2SPacket(entry.getImageId()));
+            }
 
             if (texture != null) {
                 RenderSystem.setShaderTexture(0, texture);
@@ -220,6 +224,7 @@ public class ImageListWidget extends AbstractWidget {
     public void close() {
         textureCache.values().forEach(Minecraft.getInstance().getTextureManager()::release);
         textureCache.clear();
+        requestedTextures.clear();
     }
 
     public void setVisible(boolean visible) {
@@ -241,6 +246,7 @@ public class ImageListWidget extends AbstractWidget {
     }
 
     public void receiveImageData(String imageId, byte[] imageData) {
+        requestedTextures.remove(imageId);
         try {
             BufferedImage bufferedImage = ImageImportSupport.decode(imageData);
             NativeImage nativeImage = toNativeImage(bufferedImage);
