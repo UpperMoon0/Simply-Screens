@@ -26,6 +26,7 @@ public class ScreenRegistry {
      * @param worldSavePath The path to the world save directory
      */
     public static void init(java.nio.file.Path worldSavePath) {
+        LINK_INDEX.clearAll();
         HELPER.init(worldSavePath);
     }
 

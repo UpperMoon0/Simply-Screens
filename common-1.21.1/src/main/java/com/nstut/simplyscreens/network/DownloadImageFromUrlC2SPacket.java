@@ -16,13 +16,19 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.io.InputStream;
-import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.concurrent.CompletableFuture;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import com.nstut.simplyscreens.helpers.ChunkedFileTransfer;
 
 public class DownloadImageFromUrlC2SPacket implements CustomPacketPayload {
+    private static final ExecutorService URL_EXECUTOR = ChunkedFileTransfer.newDaemonFixedThreadPool(2, "Simply Screens URL Import");
+    private static final Set<UUID> ACTIVE_PLAYERS = ConcurrentHashMap.newKeySet();
+    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build();
     public static final Type<DownloadImageFromUrlC2SPacket> TYPE = new Type<>(
             ResourceLocation.fromNamespaceAndPath(SimplyScreens.MOD_ID, "download_image_from_url_c2s"));
 
@@ -89,12 +95,10 @@ public class DownloadImageFromUrlC2SPacket implements CustomPacketPayload {
                 return;
             }
 
-            // Download image asynchronously
-            CompletableFuture.runAsync(() -> {
+            ServerLevel intendedLevel = player.serverLevel();
+            if (!ACTIVE_PLAYERS.add(player.getUUID())) return;
+            URL_EXECUTOR.execute(() -> {
                 try {
-                    HttpClient client = HttpClient.newBuilder()
-                            .followRedirects(HttpClient.Redirect.NEVER)
-                            .build();
                     HttpRequest request = HttpRequest.newBuilder()
                             .uri(UrlSecurity.requirePublicHttpUrl(url))
                             .timeout(java.time.Duration.ofSeconds(30))
@@ -105,7 +109,7 @@ public class DownloadImageFromUrlC2SPacket implements CustomPacketPayload {
                             .GET()
                             .build();
 
-                    HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+                    HttpResponse<InputStream> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofInputStream());
 
                     if (response.statusCode() == 200) {
                         byte[] imageData;
@@ -124,6 +128,7 @@ public class DownloadImageFromUrlC2SPacket implements CustomPacketPayload {
                         }
 
                         // Save the image using ServerImageManager
+                        if (player.level() != intendedLevel) return;
                         String fileName = packet.getFileName() != null ? packet.getFileName() : "url_image";
                         var imageId = ServerImageManager.saveImage(player.getServer(), fileName, imageData, null, player.getUUID().toString());
                         if (imageId != null) {
@@ -131,8 +136,8 @@ public class DownloadImageFromUrlC2SPacket implements CustomPacketPayload {
 
                             // Set the image on the screen block
                             player.getServer().execute(() -> {
-                                ServerLevel level = player.serverLevel();
-                                var blockEntity = level.getBlockEntity(packet.getBlockPos());
+                                if (player.level() != intendedLevel || !ScreenPacketSecurity.canModify(player, packet.getBlockPos())) return;
+                                var blockEntity = intendedLevel.getBlockEntity(packet.getBlockPos());
                                 if (blockEntity instanceof com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity screen) {
                                     var anchor = screen.getAnchorEntity();
                                     if (anchor != null) {
@@ -158,6 +163,8 @@ public class DownloadImageFromUrlC2SPacket implements CustomPacketPayload {
                     }
                 } catch (Exception e) {
                     SimplyScreens.LOGGER.error("Error downloading image from URL: {}", url, e);
+                } finally {
+                    ACTIVE_PLAYERS.remove(player.getUUID());
                 }
             });
         });

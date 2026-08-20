@@ -35,7 +35,7 @@ import java.util.UUID;
 public class ImageLoadScreen extends Screen {
     private static final ResourceLocation BACKGROUND_TEXTURE = ResourceLocation.fromNamespaceAndPath(SimplyScreens.MOD_ID, "textures/gui/screen.png");
 
-    private static final int CHUNK_SIZE = 1024 * 30; // 30KB
+    private static final int CHUNK_SIZE = com.nstut.simplyscreens.helpers.ChunkedFileTransfer.CHUNK_SIZE;
     private static final int SCREEN_WIDTH = ScreenGuiConstants.SCREEN_WIDTH;
     private static final int SCREEN_HEIGHT = ScreenGuiConstants.SCREEN_HEIGHT;
 
@@ -153,7 +153,7 @@ public class ImageLoadScreen extends Screen {
                         if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                             ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
                             if (anchor != null) {
-                                PacketRegistries.sendToServer(new UpdateScreenAspectRatioC2SPacket(anchor.getBlockPos(), selected));
+                            PacketRegistries.sendToServer(new UpdateScreenAspectRatioC2SPacket(blockEntityPos, selected));
                             }
                         }
                     }
@@ -257,7 +257,7 @@ public class ImageLoadScreen extends Screen {
                 if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                     ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
                     if (anchor != null) {
-                        PacketRegistries.sendToServer(new UpdateScreenIdC2SPacket(anchor.getBlockPos(), screenId));
+                    PacketRegistries.sendToServer(new UpdateScreenIdC2SPacket(blockEntityPos, screenId));
                     }
                 }
             }
@@ -269,8 +269,8 @@ public class ImageLoadScreen extends Screen {
                     ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
                     if (anchor != null) {
                         // First set the image, then set the screen ID (which will register the mapping)
-                        PacketRegistries.sendToServer(new UpdateScreenSelectedImageC2SPacket(anchor.getBlockPos(), selectedEntry.getImageId()));
-                        PacketRegistries.sendToServer(new UpdateScreenIdC2SPacket(anchor.getBlockPos(), screenId));
+                        PacketRegistries.sendToServer(new UpdateScreenSelectedImageC2SPacket(blockEntityPos, selectedEntry.getImageId()));
+                        PacketRegistries.sendToServer(new UpdateScreenIdC2SPacket(blockEntityPos, screenId));
                     }
                 }
             }
@@ -415,7 +415,7 @@ public class ImageLoadScreen extends Screen {
                 if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                     ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
                     if (anchor != null) {
-                        PacketRegistries.sendToServer(new UpdateScreenSelectedImageC2SPacket(anchor.getBlockPos(), selectedEntry.getImageId()));
+                        PacketRegistries.sendToServer(new UpdateScreenSelectedImageC2SPacket(blockEntityPos, selectedEntry.getImageId()));
                     }
                 }
             }

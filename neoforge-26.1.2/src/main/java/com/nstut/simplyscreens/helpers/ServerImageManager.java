@@ -23,6 +23,7 @@ import com.nstut.simplyscreens.network.PacketRegistries;
 import com.nstut.simplyscreens.network.UpdateImageListS2CPacket;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
@@ -39,7 +40,7 @@ import java.util.stream.Stream;
 public class ServerImageManager {
     private static final long MAX_IMAGE_PIXELS = 16_777_216L;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final int UPLOAD_CHUNK_SIZE = 32768;
+    private static final int UPLOAD_CHUNK_SIZE = ChunkedFileTransfer.CHUNK_SIZE;
     private static final long UPLOAD_TTL_MILLIS = 60_000L;
     private static final int MAX_ACTIVE_UPLOADS_PER_PLAYER = 4;
     private static final Map<String, UploadState> UPLOADS = new ConcurrentHashMap<>();
@@ -78,7 +79,12 @@ public class ServerImageManager {
             SimplyScreens.LOGGER.warn("Rejecting excess concurrent upload from {}", player.getUUID());
             return;
         }
-        UploadState state = UPLOADS.computeIfAbsent(uploadKey, k -> new UploadState(player.getUUID(), totalChunks, now));
+        ServerLevel intendedLevel = player.level();
+        UploadState state = UPLOADS.computeIfAbsent(uploadKey, k -> new UploadState(player.getUUID(), intendedLevel, totalChunks, now));
+        if (state.level != intendedLevel) {
+            UPLOADS.remove(uploadKey);
+            return;
+        }
         if (state.totalChunks != totalChunks) {
             SimplyScreens.LOGGER.warn("Ignoring image upload transaction {} with mismatched chunk count {} (expected {})", transactionId, totalChunks, state.totalChunks);
             UPLOADS.remove(uploadKey);
@@ -109,6 +115,7 @@ public class ServerImageManager {
 
     private static void finishImageUpload(MinecraftServer server, ServerPlayer player, BlockPos blockPos, UploadState state, String ownerUUID) {
         try {
+            if (player.level() != state.level) return;
             byte[] imageData = new byte[(int) state.receivedBytes];
             int offset = 0;
             for (byte[] chunk : state.chunks) {
@@ -120,7 +127,8 @@ public class ServerImageManager {
             if (imageId != null) {
                 List<ImageMetadata> images = getImageListForPlayer(server, ownerUUID);
                 server.execute(() -> {
-                    if (player.level().getBlockEntity(blockPos) instanceof com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity screen) {
+                    if (player.level() == state.level && ScreenPacketSecurity.canModify(player, blockPos) &&
+                            state.level.getBlockEntity(blockPos) instanceof com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity screen) {
                         screen.setImageId(imageId);
                     }
 
@@ -138,8 +146,7 @@ public class ServerImageManager {
 
     public static synchronized UUID saveImage(MinecraftServer server, String originalName, byte[] data, String contentType, String ownerUUID) {
         try {
-            if (data == null || data.length > Math.max(Config.MAX_UPLOAD_SIZE, Config.MAX_URL_DOWNLOAD_SIZE) ||
-                    !hasStorageCapacity(server, ownerUUID, data == null ? 0 : data.length)) {
+            if (data == null || data.length > Math.max(Config.MAX_UPLOAD_SIZE, Config.MAX_URL_DOWNLOAD_SIZE)) {
                 SimplyScreens.LOGGER.warn("Rejecting image because its owner/server storage quota would be exceeded");
                 return null;
             }
@@ -169,6 +176,12 @@ public class ServerImageManager {
                     SimplyScreens.LOGGER.error("Failed to convert image to PNG", e);
                     return null;
                 }
+            }
+
+            long finalLimit = Math.max(Config.MAX_UPLOAD_SIZE, Config.MAX_URL_DOWNLOAD_SIZE);
+            if (data.length > finalLimit || !hasStorageCapacity(server, ownerUUID, data.length)) {
+                SimplyScreens.LOGGER.warn("Rejecting normalized image because it exceeds a transfer or storage quota");
+                return null;
             }
 
             UUID imageId = UUID.randomUUID();
@@ -420,14 +433,16 @@ public class ServerImageManager {
 
     private static class UploadState {
         private final UUID owner;
+        private final ServerLevel level;
         private final int totalChunks;
         private final byte[][] chunks;
         private long receivedBytes;
         private String originalName;
         private volatile long lastActivity;
 
-        private UploadState(UUID owner, int totalChunks, long now) {
+        private UploadState(UUID owner, ServerLevel level, int totalChunks, long now) {
             this.owner = owner;
+            this.level = level;
             this.totalChunks = totalChunks;
             this.chunks = new byte[totalChunks][];
             this.lastActivity = now;

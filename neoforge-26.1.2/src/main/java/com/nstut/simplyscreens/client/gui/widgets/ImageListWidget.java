@@ -30,6 +30,7 @@ import com.nstut.simplyscreens.ImageImportSupport;
 import com.nstut.simplyscreens.helpers.ImageMetadata;
 
 public class ImageListWidget extends AbstractWidget {
+    private static final int THUMBNAIL_MAX_SIZE = 128;
     private static final int ITEM_SIZE = 40;
     private static final int PADDING = 2;
     private static final int TEXT_HEIGHT = 12;
@@ -251,6 +252,7 @@ public class ImageListWidget extends AbstractWidget {
         requestedTextures.remove(imageId);
         try {
             BufferedImage bufferedImage = ImageImportSupport.decode(imageData);
+            bufferedImage = createThumbnail(bufferedImage);
             NativeImage nativeImage = toNativeImage(bufferedImage);
             DynamicTexture dynamicTexture = new DynamicTexture(() -> "Simply Screens image " + imageId, nativeImage);
             Identifier texture = Identifier.fromNamespaceAndPath("simply_screens", "gui/" + imageId);
@@ -274,5 +276,21 @@ public class ImageListWidget extends AbstractWidget {
             }
         }
         return nativeImage;
+    }
+
+    private static BufferedImage createThumbnail(BufferedImage source) {
+        double scale = Math.min(1.0D, (double) THUMBNAIL_MAX_SIZE / Math.max(source.getWidth(), source.getHeight()));
+        if (scale >= 1.0D) return source;
+        int width = Math.max(1, (int) Math.round(source.getWidth() * scale));
+        int height = Math.max(1, (int) Math.round(source.getHeight() * scale));
+        BufferedImage thumbnail = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D graphics = thumbnail.createGraphics();
+        try {
+            graphics.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            graphics.drawImage(source, 0, 0, width, height, null);
+        } finally {
+            graphics.dispose();
+        }
+        return thumbnail;
     }
 }

@@ -13,6 +13,8 @@ import lombok.Setter;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.level.block.Block;
@@ -103,9 +105,8 @@ public class ScreenBlockEntity extends BlockEntity {
     private void updateClients() {
         if (level != null && !level.isClientSide) {
             UpdateScreenS2CPacket packet = new UpdateScreenS2CPacket(worldPosition, anchorPos, getResolvedImageId(), maintainAspectRatio, screenId, screenWidth, screenHeight);
-            if (level.getServer() != null) {
-                for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
-                    if (player.level() != level || player.distanceToSqr(worldPosition.getX() + .5D, worldPosition.getY() + .5D, worldPosition.getZ() + .5D) > (double) Config.VIEW_DISTANCE * Config.VIEW_DISTANCE) continue;
+            if (level instanceof ServerLevel serverLevel) {
+                for (ServerPlayer player : serverLevel.getChunkSource().chunkMap.getPlayers(new ChunkPos(worldPosition), false)) {
                     PacketRegistries.CHANNEL.sendToPlayer(player, packet);
                 }
             }
@@ -325,6 +326,7 @@ public class ScreenBlockEntity extends BlockEntity {
         this.screenHeight = height;
         this.anchorPos = anchor;
         this.maintainAspectRatio = maintainAspect;
+        setChanged();
 
         updateClients();
 
@@ -350,6 +352,7 @@ public class ScreenBlockEntity extends BlockEntity {
 
     public void updateScreenStructure() {
         Direction facing = getFacing();
+        if (!isCurrentStructureLoaded(facing)) return;
         BlockPos farCorner = calculateStructureBounds(facing);
 
         if (farCorner != null) {
@@ -466,6 +469,17 @@ public class ScreenBlockEntity extends BlockEntity {
         return worldPosition.relative(widthDirection, bounds.width()).relative(heightDirection, bounds.height());
     }
 
+    private boolean isCurrentStructureLoaded(Direction facing) {
+        Direction widthDirection = getWidthDirection(facing);
+        Direction heightDirection = getHeightDirection(facing);
+        for (int width = 0; width < screenWidth; width++) {
+            for (int height = 0; height < screenHeight; height++) {
+                if (!level.hasChunkAt(worldPosition.relative(widthDirection, width).relative(heightDirection, height))) return false;
+            }
+        }
+        return true;
+    }
+
 
     private int findMaxExtension(Direction direction, Direction facing) {
         if (level == null) return 0;
@@ -565,9 +579,8 @@ public class ScreenBlockEntity extends BlockEntity {
             newAnchor.updateScreenStructure();
             newAnchor.markForRenderUpdate();
 
-            if (level.getServer() != null) {
-                for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
-                    if (player.level() != level || player.distanceToSqr(worldPosition.getX() + .5D, worldPosition.getY() + .5D, worldPosition.getZ() + .5D) > (double) Config.VIEW_DISTANCE * Config.VIEW_DISTANCE) continue;
+            if (level instanceof ServerLevel serverLevel) {
+                for (ServerPlayer player : serverLevel.getChunkSource().chunkMap.getPlayers(new ChunkPos(newAnchorPos), false)) {
                     PacketRegistries.CHANNEL.sendToPlayer(player, new UpdateScreenS2CPacket(
                             newAnchorPos, newAnchorPos, imageId, maintainAspectRatio, screenId,
                             promotion.width(), promotion.height()));

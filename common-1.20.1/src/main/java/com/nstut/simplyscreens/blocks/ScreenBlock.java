@@ -3,6 +3,8 @@ package com.nstut.simplyscreens.blocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
@@ -76,13 +78,40 @@ public class ScreenBlock extends Block implements EntityBlock {
     }
 
     @Override
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
+        super.setPlacedBy(level, pos, state, placer, stack);
+        if (!level.isClientSide && level.getServer() != null) {
+            level.getServer().execute(() -> refreshScreens(level, pos, state.getValue(FACING)));
+        }
+    }
+
+    private static void refreshScreens(Level level, BlockPos changedPos, Direction facing) {
+        for (Direction direction : Direction.values()) refreshScreenAt(level, changedPos.relative(direction), facing);
+        refreshScreenAt(level, changedPos, facing);
+    }
+
+    private static void refreshScreenAt(Level level, BlockPos pos, Direction facing) {
+        if (!level.hasChunkAt(pos)) return;
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+        if (blockEntity instanceof ScreenBlockEntity screen && screen.getBlockState().getValue(FACING) == facing) {
+            ScreenBlockEntity anchor = screen.getAnchorEntity();
+            if (anchor != null) anchor.updateScreenStructure();
+        }
+    }
+
+    @Override
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
         if (state.getBlock() != newState.getBlock() && !level.isClientSide) {
             BlockEntity blockEntity = level.getBlockEntity(pos);
+            BlockPos oldAnchorPos = blockEntity instanceof ScreenBlockEntity screen ? screen.getAnchorPos() : null;
             if (blockEntity instanceof ScreenBlockEntity screen && screen.isAnchor()) {
                 com.nstut.simplyscreens.ScreenRegistry.unregisterScreen(level, pos, screen.getScreenId());
                 screen.findNewAnchor();
             }
+            if (level.getServer() != null) level.getServer().execute(() -> {
+                if (oldAnchorPos != null) refreshScreenAt(level, oldAnchorPos, state.getValue(FACING));
+                refreshScreens(level, pos, state.getValue(FACING));
+            });
         }
         super.onRemove(state, level, pos, newState, movedByPiston);
     }

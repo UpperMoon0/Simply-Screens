@@ -67,10 +67,6 @@ public class RequestImageDownloadC2SPacket implements CustomPacketPayload {
     }
 
     private static void sendImageDownload(MinecraftServer server, ServerPlayer player, UUID imageId, String transferKey) {
-        if (!ServerImageManager.canPlayerAccessImage(server, imageId, player.getUUID().toString())) {
-            ACTIVE_DOWNLOADS.release(transferKey);
-            return;
-        }
         ImageMetadata metadata = ServerImageManager.getImageMetadata(server, imageId);
         if (metadata == null) {
             ACTIVE_DOWNLOADS.release(transferKey);
@@ -97,6 +93,7 @@ public class RequestImageDownloadC2SPacket implements CustomPacketPayload {
                 server.execute(() -> PacketRegistries.sendToPlayer(player, new ImageDownloadChunkS2CPacket(
                         imageId, chunkIndex, totalChunks, chunk, packetExt)));
             });
+            ACTIVE_DOWNLOADS.release(transferKey);
         } catch (Exception e) {
             ACTIVE_DOWNLOADS.release(transferKey);
             SimplyScreens.LOGGER.error("Failed to stream image {} to player {}", imageId, player.getName().getString(), e);

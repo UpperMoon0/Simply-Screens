@@ -35,7 +35,7 @@ import java.util.UUID;
 public class ImageLoadScreen extends Screen {
     private static final ResourceLocation BACKGROUND_TEXTURE = new ResourceLocation(SimplyScreens.MOD_ID, "textures/gui/screen.png");
 
-    private static final int CHUNK_SIZE = 1024 * 30; // 30KB
+    private static final int CHUNK_SIZE = com.nstut.simplyscreens.helpers.ChunkedFileTransfer.CHUNK_SIZE;
     private static final int SCREEN_WIDTH = ScreenGuiConstants.SCREEN_WIDTH;
     private static final int SCREEN_HEIGHT = ScreenGuiConstants.SCREEN_HEIGHT;
 
@@ -151,7 +151,7 @@ public class ImageLoadScreen extends Screen {
                     if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                         ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
                         if (anchor != null) {
-                            PacketRegistries.CHANNEL.sendToServer(new UpdateScreenAspectRatioC2SPacket(anchor.getBlockPos(), this.selected()));
+                            PacketRegistries.CHANNEL.sendToServer(new UpdateScreenAspectRatioC2SPacket(blockEntityPos, this.selected()));
                         }
                     }
                 }
@@ -251,9 +251,9 @@ public class ImageLoadScreen extends Screen {
             if (anchor != null) {
                 ImageListWidget.ImageEntry selectedEntry = imageListWidget.getSelected();
                 if (selectedEntry != null) {
-                    PacketRegistries.CHANNEL.sendToServer(new UpdateScreenSelectedImageC2SPacket(anchor.getBlockPos(), selectedEntry.getImageId()));
+                    PacketRegistries.CHANNEL.sendToServer(new UpdateScreenSelectedImageC2SPacket(blockEntityPos, selectedEntry.getImageId()));
                 }
-                PacketRegistries.CHANNEL.sendToServer(new UpdateScreenIdC2SPacket(anchor.getBlockPos(), screenId));
+                PacketRegistries.CHANNEL.sendToServer(new UpdateScreenIdC2SPacket(blockEntityPos, screenId));
             }
         }
     }
@@ -357,7 +357,7 @@ public class ImageLoadScreen extends Screen {
                 if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                     ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
                     if (anchor != null) {
-                        PacketRegistries.CHANNEL.sendToServer(new UpdateScreenSelectedImageC2SPacket(anchor.getBlockPos(), selectedEntry.getImageId()));
+                        PacketRegistries.CHANNEL.sendToServer(new UpdateScreenSelectedImageC2SPacket(blockEntityPos, selectedEntry.getImageId()));
                     }
                 }
             }
