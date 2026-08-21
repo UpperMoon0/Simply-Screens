@@ -4,6 +4,8 @@ import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.BlockEntityRegistries;
 import com.nstut.simplyscreens.client.renderers.ScreenBlockEntityRenderer;
 import com.nstut.simplyscreens.helpers.ClientImageManager;
+import com.nstut.simplyscreens.client.ClientServerConfig;
+import com.nstut.simplyscreens.network.PacketRegistries;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
@@ -18,6 +20,7 @@ public class ClientSetup {
     public static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
             ClientImageManager.initialize();
+            PacketRegistries.registerS2CPackets();
             BlockEntityRenderers.register(BlockEntityRegistries.SCREEN.get(), ScreenBlockEntityRenderer::new);
             MinecraftForge.EVENT_BUS.addListener(ClientSetup::onClientDisconnect);
         });
@@ -25,5 +28,6 @@ public class ClientSetup {
 
     public static void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
         ClientImageManager.clearCache();
+        ClientServerConfig.reset();
     }
 }

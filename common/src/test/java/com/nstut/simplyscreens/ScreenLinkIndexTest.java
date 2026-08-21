@@ -19,4 +19,18 @@ class ScreenLinkIndexTest {
         index.clear("overworld");
         assertNull(index.getScreenId("overworld", 1));
     }
+
+    @Test
+    void clearAllReleasesEveryWorldReference() {
+        ScreenLinkIndex<Object, Integer> index = new ScreenLinkIndex<>();
+        Object firstWorld = new Object();
+        Object secondWorld = new Object();
+        index.register(firstWorld, 1, "shared");
+        index.register(secondWorld, 2, "shared");
+
+        index.clearAll();
+
+        assertTrue(index.getPositions(firstWorld, "shared").isEmpty());
+        assertTrue(index.getPositions(secondWorld, "shared").isEmpty());
+    }
 }

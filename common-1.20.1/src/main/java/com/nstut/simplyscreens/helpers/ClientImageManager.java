@@ -86,10 +86,46 @@ public class ClientImageManager {
         }
     }
 
+    public static void invalidateImage(UUID imageId) {
+        if (imageId == null) return;
+        DynamicTexture texture = IN_MEMORY_CACHE.remove(imageId);
+        if (texture != null) {
+            texture.close();
+        }
+        TEXTURE_LOCATIONS.remove(imageId);
+        METADATA_CACHE.remove(imageId);
+        CHUNK_MAP.remove(imageId);
+        EXTENSION_MAP.remove(imageId);
+        FAILED_IMAGES.remove(imageId);
+        PENDING_DOWNLOADS.release(imageId);
+        try {
+            for (String ext : List.of("png", "jpg", "jpeg")) {
+                Files.deleteIfExists(getImagePath(imageId, ext));
+            }
+        } catch (IOException ignored) {}
+    }
+
     public static void updateImageCache(List<ImageMetadata> images) {
+        Set<UUID> freshIds = new java.util.HashSet<>();
+        if (images != null) {
+            for (ImageMetadata image : images) {
+                try {
+                    freshIds.add(UUID.fromString(image.getId()));
+                } catch (Exception ignored) {}
+            }
+        }
+        for (UUID cachedId : Set.copyOf(METADATA_CACHE.keySet())) {
+            if (!freshIds.contains(cachedId)) {
+                invalidateImage(cachedId);
+            }
+        }
         METADATA_CACHE.clear();
-        for (ImageMetadata image : images) {
-            METADATA_CACHE.put(UUID.fromString(image.getId()), image);
+        if (images != null) {
+            for (ImageMetadata image : images) {
+                try {
+                    METADATA_CACHE.put(UUID.fromString(image.getId()), image);
+                } catch (Exception ignored) {}
+            }
         }
     }
 
@@ -127,7 +163,7 @@ public class ClientImageManager {
         }
 
         PENDING_DOWNLOADS.tryStart(imageId,
-                () -> PacketRegistries.CHANNEL.sendToServer(new RequestImageDownloadC2SPacket(imageId)));
+                () -> PacketRegistries.sendToServer(new RequestImageDownloadC2SPacket(imageId)));
         return null;
     }
 

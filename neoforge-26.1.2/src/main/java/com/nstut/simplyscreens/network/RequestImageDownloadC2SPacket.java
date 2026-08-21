@@ -19,13 +19,19 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class RequestImageDownloadC2SPacket implements CustomPacketPayload {
-    private static final int CHUNK_SIZE = 32768;
+    private static final int CHUNK_SIZE = ChunkedFileTransfer.CHUNK_SIZE;
     private static final ExecutorService IMAGE_DOWNLOAD_EXECUTOR =
-            ChunkedFileTransfer.newDaemonFixedThreadPool(2, "Simply Screens Image Download");
+            ChunkedFileTransfer.newDaemonBoundedThreadPool(2, 64, "Simply Screens Image Download");
     private static final TransferRequestCoordinator<String> ACTIVE_DOWNLOADS =
             new TransferRequestCoordinator<>(Duration.ofSeconds(30));
+    private static final Map<UUID, AtomicInteger> PLAYER_DOWNLOADS = new ConcurrentHashMap<>();
+    private static final int MAX_DOWNLOADS_PER_PLAYER = 4;
 
     public static final Type<RequestImageDownloadC2SPacket> TYPE = new Type<>(
             Identifier.fromNamespaceAndPath(SimplyScreens.MOD_ID, "request_image_download_c2s"));
@@ -60,10 +66,28 @@ public class RequestImageDownloadC2SPacket implements CustomPacketPayload {
         ServerPlayer player = (ServerPlayer) context.getPlayer();
         context.queue(() -> {
             MinecraftServer server = player.level().getServer();
+            Path requestedPath = ServerImageManager.getImageFilePath(server, packet.imageId);
+            if (requestedPath == null || !Files.isRegularFile(requestedPath)) return;
             String transferKey = player.getUUID() + ":" + packet.imageId;
-            ACTIVE_DOWNLOADS.tryStart(transferKey,
-                    () -> IMAGE_DOWNLOAD_EXECUTOR.execute(() -> sendImageDownload(server, player, packet.imageId, transferKey)));
+            AtomicInteger playerCount = PLAYER_DOWNLOADS.computeIfAbsent(player.getUUID(), ignored -> new AtomicInteger());
+            if (playerCount.incrementAndGet() > MAX_DOWNLOADS_PER_PLAYER) {
+                releasePlayerDownload(player.getUUID(), playerCount);
+                return;
+            }
+            try {
+                boolean started = ACTIVE_DOWNLOADS.tryStart(transferKey, () -> IMAGE_DOWNLOAD_EXECUTOR.execute(() -> {
+                    try { sendImageDownload(server, player, packet.imageId, transferKey); }
+                    finally { releasePlayerDownload(player.getUUID(), playerCount); }
+                }));
+                if (!started) releasePlayerDownload(player.getUUID(), playerCount);
+            } catch (RejectedExecutionException exception) {
+                releasePlayerDownload(player.getUUID(), playerCount);
+            }
         });
+    }
+
+    private static void releasePlayerDownload(UUID playerId, AtomicInteger counter) {
+        if (counter.decrementAndGet() <= 0) PLAYER_DOWNLOADS.remove(playerId, counter);
     }
 
     private static void sendImageDownload(MinecraftServer server, ServerPlayer player, UUID imageId, String transferKey) {
@@ -93,6 +117,7 @@ public class RequestImageDownloadC2SPacket implements CustomPacketPayload {
                 server.execute(() -> PacketRegistries.sendToPlayer(player, new ImageDownloadChunkS2CPacket(
                         imageId, chunkIndex, totalChunks, chunk, packetExt)));
             });
+            ACTIVE_DOWNLOADS.release(transferKey);
         } catch (Exception e) {
             ACTIVE_DOWNLOADS.release(transferKey);
             SimplyScreens.LOGGER.error("Failed to stream image {} to player {}", imageId, player.getName().getString(), e);

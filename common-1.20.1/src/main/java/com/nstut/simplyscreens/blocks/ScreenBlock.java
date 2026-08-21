@@ -2,7 +2,11 @@ package com.nstut.simplyscreens.blocks;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.SectionPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
@@ -12,9 +16,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.material.MapColor;
 
 import org.jetbrains.annotations.NotNull;
+import com.nstut.simplyscreens.ServerTickScheduler;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 
 import net.minecraft.world.level.Level;
@@ -67,6 +73,7 @@ public class ScreenBlock extends Block implements EntityBlock {
 
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, @NotNull BlockState state, @NotNull BlockEntityType<T> blockEntityType) {
+        if (state.getValue(STATE) != STATE_ANCHOR) return null;
         return level.isClientSide ? null : (lvl, pos, blockState, blockEntity) -> {
             if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                 screenBlockEntity.tick();
@@ -75,12 +82,47 @@ public class ScreenBlock extends Block implements EntityBlock {
     }
 
     @Override
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
+        super.setPlacedBy(level, pos, state, placer, stack);
+        if (!level.isClientSide) {
+            Direction facing = state.getValue(FACING);
+            ServerTickScheduler.schedule(() -> refreshScreens(level, pos, facing));
+        }
+    }
+
+    private static void refreshScreens(Level level, BlockPos changedPos, Direction facing) {
+        for (Direction direction : Direction.values()) refreshScreenAt(level, changedPos.relative(direction), facing);
+        refreshScreenAt(level, changedPos, facing);
+    }
+
+    private static void refreshScreenAt(Level level, BlockPos pos, Direction facing) {
+        if (level instanceof ServerLevel serverLevel) {
+            LevelChunk chunk = serverLevel.getChunkSource().getChunkNow(
+                    SectionPos.blockToSectionCoord(pos.getX()),
+                    SectionPos.blockToSectionCoord(pos.getZ())
+            );
+            if (chunk == null) return;
+            BlockEntity blockEntity = chunk.getBlockEntity(pos);
+            if (blockEntity instanceof ScreenBlockEntity screen && screen.getBlockState().getValue(FACING) == facing) {
+                ScreenBlockEntity anchor = screen.getAnchorEntity();
+                if (anchor != null) anchor.updateScreenStructure();
+            }
+        }
+    }
+
+    @Override
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
         if (state.getBlock() != newState.getBlock() && !level.isClientSide) {
             BlockEntity blockEntity = level.getBlockEntity(pos);
+            BlockPos oldAnchorPos = blockEntity instanceof ScreenBlockEntity screen ? screen.getAnchorPos() : null;
             if (blockEntity instanceof ScreenBlockEntity screen && screen.isAnchor()) {
+                com.nstut.simplyscreens.ScreenRegistry.unregisterScreen(level, pos, screen.getScreenId());
                 screen.findNewAnchor();
             }
+            ServerTickScheduler.schedule(() -> {
+                if (oldAnchorPos != null) refreshScreenAt(level, oldAnchorPos, state.getValue(FACING));
+                refreshScreens(level, pos, state.getValue(FACING));
+            });
         }
         super.onRemove(state, level, pos, newState, movedByPiston);
     }

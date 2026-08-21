@@ -45,4 +45,8 @@ public final class ScreenLinkIndex<L, P> {
     public void clear(L level) {
         screensByLevel.remove(level);
     }
+
+    public void clearAll() {
+        screensByLevel.clear();
+    }
 }

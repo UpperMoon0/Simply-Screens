@@ -21,20 +21,23 @@ public class UpdateImageListS2CPacket implements IPacket {
     }
 
     public UpdateImageListS2CPacket(FriendlyByteBuf buf) {
-        imageList = buf.readList(friendlyByteBuf -> new ImageMetadata(
-                friendlyByteBuf.readUtf(),
-                friendlyByteBuf.readUtf(),
-                friendlyByteBuf.readUtf()
-        ));
+        int size = buf.readVarInt();
+        if (size < 0 || size > 1024) throw new IllegalArgumentException("Invalid image-list size: " + size);
+        java.util.ArrayList<ImageMetadata> images = new java.util.ArrayList<>(size);
+        for (int i = 0; i < size; i++) images.add(new ImageMetadata(
+                buf.readUtf(com.nstut.simplyscreens.ImageNameSanitizer.MAX_LENGTH), buf.readUtf(36), buf.readUtf(8)));
+        imageList = images;
     }
 
     @Override
     public void write(FriendlyByteBuf buf) {
-        buf.writeCollection(imageList, (friendlyByteBuf, imageMetadata) -> {
-            friendlyByteBuf.writeUtf(imageMetadata.getName());
-            friendlyByteBuf.writeUtf(imageMetadata.getId());
-            friendlyByteBuf.writeUtf(imageMetadata.getExtension());
-        });
+        int size = Math.min(imageList.size(), 1024);
+        buf.writeVarInt(size);
+        for (ImageMetadata imageMetadata : imageList.subList(0, size)) {
+            buf.writeUtf(imageMetadata.getName(), com.nstut.simplyscreens.ImageNameSanitizer.MAX_LENGTH);
+            buf.writeUtf(imageMetadata.getId(), 36);
+            buf.writeUtf(imageMetadata.getExtension(), 8);
+        }
     }
 
     @Override

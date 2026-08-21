@@ -1,5 +1,6 @@
 package com.nstut.simplyscreens;
 
+import com.nstut.simplyscreens.blocks.entities.ScreenLoadReconciler;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,10 +16,13 @@ public class SimplyScreens {
         Config.setModId(MOD_ID);
         Config.load();
         PacketRegistries.register();
+
+        ScreenLoadReconciler.init();
+        ServerTickScheduler.init();
     }
 
-    public static void initializeScreens() {
+    public static void initializeScreens(java.nio.file.Path worldSavePath) {
         LOGGER.info("Initializing Screen Registry");
-        // ScreenRegistry will be lazily initialized when first accessed
+        ScreenRegistry.init(worldSavePath);
     }
 }

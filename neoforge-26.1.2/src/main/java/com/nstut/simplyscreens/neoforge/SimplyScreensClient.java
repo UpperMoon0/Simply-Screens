@@ -4,6 +4,7 @@ import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.BlockEntityRegistries;
 import com.nstut.simplyscreens.client.renderers.ScreenBlockEntityRenderer;
 import com.nstut.simplyscreens.helpers.ClientImageManager;
+import com.nstut.simplyscreens.client.ClientServerConfig;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
 import net.neoforged.api.distmarker.Dist;
@@ -12,6 +13,8 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.common.NeoForge;
 
 @Mod(value = SimplyScreens.MOD_ID, dist = Dist.CLIENT)
 @EventBusSubscriber(modid = SimplyScreens.MOD_ID, value = Dist.CLIENT)
@@ -25,6 +28,12 @@ public final class SimplyScreensClient {
             ClientImageManager.initialize();
             BlockEntityRenderers.register(BlockEntityRegistries.SCREEN.get(), ScreenBlockEntityRenderer::new);
             PacketRegistries.registerS2CPackets();
+            NeoForge.EVENT_BUS.addListener(SimplyScreensClient::clientDisconnect);
         });
+    }
+
+    private static void clientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
+        ClientImageManager.clearCache();
+        ClientServerConfig.reset();
     }
 }

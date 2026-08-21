@@ -14,6 +14,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Files;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.*;
@@ -99,6 +100,30 @@ class ScreenRegistryHelperTest {
 
         helper.removeScreenId("screen1");
         assertNull(helper.getImageId("screen1"));
+    }
+
+    @Test
+    void removeImageReferencesClearsEveryMatchingLink() {
+        UUID removed = UUID.randomUUID();
+        UUID retained = UUID.randomUUID();
+        helper.setImageId("first", removed);
+        helper.setImageId("second", removed);
+        helper.setImageId("other", retained);
+        assertTrue(helper.removeImageReferences(removed));
+        assertNull(helper.getImageId("first"));
+        assertNull(helper.getImageId("second"));
+        assertEquals(retained, helper.getImageId("other"));
+    }
+
+    @Test
+    void repeatedSaveCreatesRegistryBackups(@TempDir Path tempDir) {
+        helper.init(tempDir);
+        helper.setImageId("first", UUID.randomUUID());
+        helper.saveRegistry();
+        helper.setImageId("second", UUID.randomUUID());
+        helper.saveRegistry();
+        assertTrue(Files.exists(tempDir.resolve("screen_registry.json.bak")));
+        assertTrue(Files.exists(tempDir.resolve("screen_registry_owners.json.bak")));
     }
 
     // 1.8 getAllScreenIds returns all IDs
@@ -194,5 +219,141 @@ class ScreenRegistryHelperTest {
         executor.shutdown();
         assertTrue(exceptions.isEmpty(),
                 "Concurrent access caused exceptions: " + exceptions);
+    }
+
+    @Test
+    void screenIdOwnershipPreventsCrossPlayerWritesAndPersists(@TempDir Path tempDir) {
+        UUID owner = UUID.randomUUID();
+        UUID intruder = UUID.randomUUID();
+        helper.init(tempDir);
+        assertTrue(helper.claimScreenId("private-link", owner, false));
+        helper.saveRegistry();
+
+        ScreenRegistryHelper reloaded = new ScreenRegistryHelper(logger);
+        reloaded.init(tempDir);
+        assertTrue(reloaded.canWriteScreenId("private-link", owner, false));
+        assertFalse(reloaded.canWriteScreenId("private-link", intruder, false));
+        assertTrue(reloaded.canWriteScreenId("private-link", intruder, true));
+    }
+
+    @Test
+    void legacyOwnerlessIdRequiresAdministratorClaim() {
+        UUID player = UUID.randomUUID();
+        helper.setImageId("legacy", UUID.randomUUID());
+        assertFalse(helper.claimScreenId("legacy", player, false));
+        assertTrue(helper.claimScreenId("legacy", player, true));
+    }
+
+    @Test
+    void screenIdsAreNormalizedAndInvalidValuesAreRejected() {
+        UUID player = UUID.randomUUID();
+        assertEquals("valid-link_1", ScreenRegistryHelper.normalizeScreenId("  valid-link_1  "));
+        assertEquals("", ScreenRegistryHelper.normalizeScreenId("   "));
+        assertEquals("", ScreenRegistryHelper.normalizeScreenId("contains spaces"));
+        assertEquals("", ScreenRegistryHelper.normalizeScreenId("x".repeat(65)));
+        assertFalse(helper.claimScreenId("   ", player, false));
+        assertFalse(helper.claimScreenId("contains spaces", player, false));
+    }
+
+    @Test
+    void playersCannotReserveUnlimitedScreenIds() {
+        UUID player = UUID.randomUUID();
+        for (int i = 0; i < ScreenRegistryHelper.MAX_SCREEN_IDS_PER_PLAYER; i++) {
+            assertTrue(helper.claimScreenId("link-" + i, player, false));
+        }
+        assertFalse(helper.claimScreenId("one-too-many", player, false));
+    }
+
+    @Test
+    void anchorRedirect_storesAndResolvesDirect() {
+        helper.redirectAnchor("minecraft:overworld", 0, 64, 0, 1, 64, 0);
+        int[] resolved = helper.resolveAnchorRedirect("minecraft:overworld", 0, 64, 0);
+        assertNotNull(resolved);
+        assertArrayEquals(new int[]{1, 64, 0}, resolved);
+    }
+
+    @Test
+    void anchorRedirect_resolvesChainedAndPathCompresses() {
+        helper.redirectAnchor("minecraft:overworld", 0, 64, 0, 1, 64, 0);
+        helper.redirectAnchor("minecraft:overworld", 1, 64, 0, 2, 64, 0);
+
+        int[] resolved = helper.resolveAnchorRedirect("minecraft:overworld", 0, 64, 0);
+        assertNotNull(resolved);
+        assertArrayEquals(new int[]{2, 64, 0}, resolved);
+
+        // Chained resolution should have compressed shortcut
+        assertEquals("2,64,0", helper.resolveAnchorRedirectString("minecraft:overworld", "0,64,0"));
+    }
+
+    @Test
+    void anchorRedirect_handlesCyclesSafely() {
+        helper.redirectAnchor("minecraft:overworld", 0, 64, 0, 1, 64, 0);
+        helper.redirectAnchor("minecraft:overworld", 1, 64, 0, 0, 64, 0);
+
+        int[] resolved = helper.resolveAnchorRedirect("minecraft:overworld", 0, 64, 0);
+        assertNotNull(resolved);
+        // Returns the last valid target reached before the cycle was detected
+        assertArrayEquals(new int[]{1, 64, 0}, resolved);
+    }
+
+    @Test
+    void anchorRedirect_removeAndClear() {
+        helper.redirectAnchor("minecraft:overworld", 0, 64, 0, 1, 64, 0);
+        helper.redirectAnchor("minecraft:the_nether", 10, 50, 10, 20, 50, 20);
+
+        helper.removeAnchorRedirect("minecraft:overworld", 0, 64, 0);
+        assertNull(helper.resolveAnchorRedirect("minecraft:overworld", 0, 64, 0));
+        assertNotNull(helper.resolveAnchorRedirect("minecraft:the_nether", 10, 50, 10));
+
+        helper.clearAnchorRedirects("minecraft:the_nether");
+        assertNull(helper.resolveAnchorRedirect("minecraft:the_nether", 10, 50, 10));
+    }
+
+    @Test
+    void anchorRedirect_persistsAndLoadsFromDisk(@TempDir Path tempDir) {
+        helper.init(tempDir);
+        helper.redirectAnchor("minecraft:overworld", 5, 70, 5, 6, 70, 5);
+        helper.saveRegistry();
+
+        Path redirectFile = tempDir.resolve("anchor_redirects.json");
+        assertTrue(Files.exists(redirectFile));
+
+        ScreenRegistryHelper helper2 = new ScreenRegistryHelper(logger);
+        helper2.init(tempDir);
+        int[] resolved = helper2.resolveAnchorRedirect("minecraft:overworld", 5, 70, 5);
+        assertNotNull(resolved);
+        assertArrayEquals(new int[]{6, 70, 5}, resolved);
+    }
+
+    @Test
+    void loadRegistry_recoversFromBackupWhenPrimaryCorruptOrMissing(@TempDir Path tempDir) throws IOException {
+        helper.init(tempDir);
+        UUID imageId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        assertTrue(helper.claimScreenId("screen_main", ownerId, false));
+        helper.setImageId("screen_main", imageId);
+        helper.redirectAnchor("minecraft:overworld", 1, 2, 3, 4, 5, 6);
+        helper.saveRegistry();
+        // Save again to generate .bak files
+        helper.saveRegistry();
+
+        assertTrue(Files.exists(tempDir.resolve("screen_registry.json.bak")));
+        assertTrue(Files.exists(tempDir.resolve("screen_registry_owners.json.bak")));
+        assertTrue(Files.exists(tempDir.resolve("anchor_redirects.json.bak")));
+
+        // Corrupt primary files
+        Files.writeString(tempDir.resolve("screen_registry.json"), "{ corrupted json content");
+        Files.delete(tempDir.resolve("screen_registry_owners.json"));
+        Files.writeString(tempDir.resolve("anchor_redirects.json"), "invalid json data");
+
+        // Reload into fresh helper
+        ScreenRegistryHelper helper2 = new ScreenRegistryHelper(logger);
+        helper2.init(tempDir);
+
+        assertEquals(imageId, helper2.getImageId("screen_main"), "Should recover imageId from backup");
+        assertEquals(ownerId, helper2.getScreenIdOwner("screen_main"), "Should recover owner from backup");
+        int[] resolved = helper2.resolveAnchorRedirect("minecraft:overworld", 1, 2, 3);
+        assertNotNull(resolved, "Should recover anchor redirect from backup");
+        assertArrayEquals(new int[]{4, 5, 6}, resolved);
     }
 }

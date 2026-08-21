@@ -3,6 +3,7 @@ package com.nstut.simplyscreens.fabric.client;
 import com.nstut.simplyscreens.blocks.entities.BlockEntityRegistries;
 import com.nstut.simplyscreens.client.renderers.ScreenBlockEntityRenderer;
 import com.nstut.simplyscreens.helpers.ClientImageManager;
+import com.nstut.simplyscreens.client.ClientServerConfig;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -13,7 +14,10 @@ public class ClientSetup implements ClientModInitializer {
     public void onInitializeClient() {
         ClientImageManager.initialize();
         BlockEntityRenderers.register(BlockEntityRegistries.SCREEN.get(), ScreenBlockEntityRenderer::new);
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ClientImageManager.clearCache());
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            ClientImageManager.clearCache();
+            ClientServerConfig.reset();
+        });
         
         // Register S2C packets on client side only
         PacketRegistries.registerS2CPackets();

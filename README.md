@@ -1,11 +1,51 @@
 # Simply Screens
-A simple mod that adds screens to Minecraft that can display images from local files or the web.
 
-CurseForge page: https://legacy.curseforge.com/minecraft/mc-mods/simply-screens
+A Minecraft mod that adds configurable screen blocks capable of displaying images from local files or the web, supporting dynamic multi-block structures and synchronized screen networks.
 
-![Demo](demo.png)
+[![CurseForge](https://cf.way2muchnoise.eu/simply-screens.svg)](https://www.curseforge.com/minecraft/mc-mods/simply-screens)
 
-Features:
-- Easy to use: simply enter an image path or a URL, and the screen will display your image.
-- You can create a bigger screen by placing multiple screen blocks in a rectangular shape.
-- The existing image will automatically expand or shrink as the screen size changes.
+## Features
+
+- **Screen Blocks:** Display customizable images in-game on wall, floor, or ceiling mounts.
+- **Dynamic Multi-Block Scaling:** Combine multiple screen blocks in any rectangle (up to 64x64) — the display automatically adapts and spans across all blocks.
+- **Synchronized Screen Networks:** Group screens using a **Screen ID** to display identical media in real-time across your server.
+- **Aspect Ratio Control:** Choose between full stretching or aspect-ratio preservation.
+- **In-Game Media Management:**
+  - Upload PNG, JPG, and JPEG images directly from your computer via an in-game file dialog.
+  - Download images from web URLs with built-in SSRF and security filtering.
+  - Browse, select, and manage server-stored images in the screen GUI.
+- **Security & Hardening:**
+  - Server-authoritative distance, permission, and ownership validation.
+  - DNS/IP-level SSRF filtering against private, loopback, or cloud-metadata destinations.
+  - Per-player upload concurrency and rate limits, bounded processing queues, and full image decode checks.
+  - Atomic registry operations with automated `.bak` backups and crash recovery.
+
+## Getting Started
+
+1. Craft and place a **Screen** block.
+2. Build larger displays by placing screen blocks adjacent to each other in a rectangle.
+3. Right-click any block in the screen to open the management GUI.
+4. Upload an image, download from a URL, or choose a saved image from the list.
+5. (Optional) Set a **Screen ID** to link screens together.
+
+## Development & Building
+
+Simply Screens uses Gradle with Architectury Loom:
+
+```bash
+# Build all subprojects
+./gradlew build
+
+# Run unit tests
+./gradlew test
+```
+
+### Supported Minecraft Versions
+
+- **1.20.1** (Fabric & Forge)
+- **1.21.1** (Fabric & NeoForge)
+- **26.1.2** (NeoForge)
+
+## License
+
+This project is distributed under the terms of its repository license.

@@ -32,7 +32,7 @@ public class UploadImageChunkC2SPacket implements CustomPacketPayload {
         this.chunkIndex = chunkIndex;
         this.totalChunks = totalChunks;
         this.data = data;
-        this.fileName = fileName;
+        this.fileName = fileName == null ? null : com.nstut.simplyscreens.ImageNameSanitizer.sanitize(fileName);
     }
 
     public UploadImageChunkC2SPacket(RegistryFriendlyByteBuf buf) {
@@ -42,7 +42,7 @@ public class UploadImageChunkC2SPacket implements CustomPacketPayload {
         this.totalChunks = buf.readVarInt();
         this.data = buf.readByteArray();
         if (this.chunkIndex == 0) {
-            this.fileName = buf.readUtf();
+            this.fileName = buf.readUtf(com.nstut.simplyscreens.ImageNameSanitizer.MAX_LENGTH);
         } else {
             this.fileName = null;
         }
@@ -55,7 +55,7 @@ public class UploadImageChunkC2SPacket implements CustomPacketPayload {
         buf.writeVarInt(totalChunks);
         buf.writeByteArray(data);
         if (chunkIndex == 0) {
-            buf.writeUtf(fileName);
+            buf.writeUtf(fileName, com.nstut.simplyscreens.ImageNameSanitizer.MAX_LENGTH);
         }
     }
 

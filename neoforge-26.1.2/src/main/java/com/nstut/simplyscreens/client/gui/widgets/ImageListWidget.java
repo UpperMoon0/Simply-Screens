@@ -17,9 +17,11 @@ import net.minecraft.util.Mth;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.io.ByteArrayInputStream;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -28,11 +30,13 @@ import com.nstut.simplyscreens.ImageImportSupport;
 import com.nstut.simplyscreens.helpers.ImageMetadata;
 
 public class ImageListWidget extends AbstractWidget {
+    private static final int THUMBNAIL_MAX_SIZE = 128;
     private static final int ITEM_SIZE = 40;
     private static final int PADDING = 2;
     private static final int TEXT_HEIGHT = 12;
     private static final int ITEM_HEIGHT = ITEM_SIZE + TEXT_HEIGHT;
     private final Map<String, Identifier> textureCache = new HashMap<>();
+    private final Set<String> requestedTextures = new HashSet<>();
     private List<ImageEntry> imageFiles = new ArrayList<>();
     private List<ImageEntry> filteredImageFiles = new ArrayList<>();
     private double scrollAmount;
@@ -65,19 +69,31 @@ public class ImageListWidget extends AbstractWidget {
     }
 
     public void updateList(List<ImageMetadata> imageMetadata) {
-        this.imageFiles = imageMetadata.stream()
+        this.imageFiles = imageMetadata != null ? imageMetadata.stream()
                 .map(meta -> new ImageEntry(meta.getName(), meta.getId()))
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()) : new ArrayList<>();
         this.filteredImageFiles = new ArrayList<>(this.imageFiles);
         this.scrollAmount = 0;
-        if (displayedImage != null) {
+        ImageEntry newSelected = null;
+        if (selected != null) {
             for (ImageEntry entry : imageFiles) {
-                if (entry.getImageId().equals(displayedImage)) {
-                    this.selected = entry;
-                    onSelect.accept(entry);
+                if (entry.getImageId().equals(selected.getImageId())) {
+                    newSelected = entry;
                     break;
                 }
             }
+        }
+        if (newSelected == null && displayedImage != null) {
+            for (ImageEntry entry : imageFiles) {
+                if (entry.getImageId().equals(displayedImage)) {
+                    newSelected = entry;
+                    break;
+                }
+            }
+        }
+        this.selected = newSelected;
+        if (onSelect != null) {
+            onSelect.accept(newSelected);
         }
     }
 
@@ -131,10 +147,11 @@ public class ImageListWidget extends AbstractWidget {
                 guiGraphics.outline(itemX, itemY, ITEM_SIZE, ITEM_HEIGHT, 0xFF00FF00);
             }
 
-            Identifier texture = textureCache.computeIfAbsent(entry.getImageId().toString(), id -> {
-                PacketRegistries.sendToServer(new com.nstut.simplyscreens.network.RequestImageDownloadC2SPacket(UUID.fromString(id)));
-                return null;
-            });
+            String textureId = entry.getImageId().toString();
+            Identifier texture = textureCache.get(textureId);
+            if (texture == null && requestedTextures.add(textureId)) {
+                PacketRegistries.sendToServer(new com.nstut.simplyscreens.network.RequestImageDownloadC2SPacket(entry.getImageId()));
+            }
 
             if (texture != null) {
                 guiGraphics.blit(texture, itemX + 2, itemY + 2, itemX + ITEM_SIZE - 2, itemY + ITEM_SIZE - 2, 0, 1, 0, 1);
@@ -210,8 +227,11 @@ public class ImageListWidget extends AbstractWidget {
                     .collect(Collectors.toList());
         }
         this.scrollAmount = 0;
-        if (!this.filteredImageFiles.contains(this.selected)) {
+        if (this.selected != null && !this.filteredImageFiles.contains(this.selected)) {
             this.selected = null;
+            if (this.onSelect != null) {
+                this.onSelect.accept(null);
+            }
         }
     }
 
@@ -222,6 +242,7 @@ public class ImageListWidget extends AbstractWidget {
     public void close() {
         textureCache.values().forEach(Minecraft.getInstance().getTextureManager()::release);
         textureCache.clear();
+        requestedTextures.clear();
     }
 
     public void setVisible(boolean visible) {
@@ -243,8 +264,10 @@ public class ImageListWidget extends AbstractWidget {
     }
 
     public void receiveImageData(String imageId, byte[] imageData) {
+        requestedTextures.remove(imageId);
         try {
             BufferedImage bufferedImage = ImageImportSupport.decode(imageData);
+            bufferedImage = createThumbnail(bufferedImage);
             NativeImage nativeImage = toNativeImage(bufferedImage);
             DynamicTexture dynamicTexture = new DynamicTexture(() -> "Simply Screens image " + imageId, nativeImage);
             Identifier texture = Identifier.fromNamespaceAndPath("simply_screens", "gui/" + imageId);
@@ -268,5 +291,21 @@ public class ImageListWidget extends AbstractWidget {
             }
         }
         return nativeImage;
+    }
+
+    private static BufferedImage createThumbnail(BufferedImage source) {
+        double scale = Math.min(1.0D, (double) THUMBNAIL_MAX_SIZE / Math.max(source.getWidth(), source.getHeight()));
+        if (scale >= 1.0D) return source;
+        int width = Math.max(1, (int) Math.round(source.getWidth() * scale));
+        int height = Math.max(1, (int) Math.round(source.getHeight() * scale));
+        BufferedImage thumbnail = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D graphics = thumbnail.createGraphics();
+        try {
+            graphics.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            graphics.drawImage(source, 0, 0, width, height, null);
+        } finally {
+            graphics.dispose();
+        }
+        return thumbnail;
     }
 }

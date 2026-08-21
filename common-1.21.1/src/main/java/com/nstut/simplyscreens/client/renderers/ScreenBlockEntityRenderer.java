@@ -38,9 +38,10 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
     public void render(@NotNull ScreenBlockEntity blockEntity, float partialTicks, @NotNull PoseStack poseStack,
                        @NotNull MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
         ScreenBlockEntity anchor = blockEntity.isAnchor() ? blockEntity : blockEntity.getAnchorEntity();
-        if (anchor == null || anchor.getResolvedImageId() == null) return;
+        ScreenBlockEntity renderData = anchor != null ? anchor : blockEntity;
+        if (renderData.getResolvedImageId() == null || blockEntity.getAnchorPos() == null) return;
 
-        UUID imageId = anchor.getResolvedImageId();
+        UUID imageId = renderData.getResolvedImageId();
         ResourceLocation texture = ClientImageManager.getTextureLocation(imageId);
         if (texture == null) return;
 
@@ -55,20 +56,20 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
                     anchorPos.getZ() - currentPos.getZ());
         }
 
-        BlockState blockState = anchor.getBlockState();
+        BlockState blockState = blockEntity.getBlockState();
         Direction facing = blockState.hasProperty(ScreenBlock.FACING) ?
             blockState.getValue(ScreenBlock.FACING) : Direction.NORTH;
 
         DynamicTexture imageTexture = ClientImageManager.getImageTexture(imageId);
         if (imageTexture == null) return;
-        float[] scales = calculateScalingFactors(imageTexture, anchor.getScreenWidth(), anchor.getScreenHeight(),
-                anchor.isMaintainAspectRatio());
-        ScreenTileLayout.Tile tile = calculateTile(blockEntity, anchor, facing, scales[0], scales[1]);
+        float[] scales = calculateScalingFactors(imageTexture, renderData.getScreenWidth(), renderData.getScreenHeight(),
+                renderData.isMaintainAspectRatio());
+        ScreenTileLayout.Tile tile = calculateTile(blockEntity, renderData, facing, scales[0], scales[1]);
         if (tile.isEmpty()) return;
 
         debugDraw(blockEntity, texture, facing);
 
-        prepareRenderingTransform(poseStack, anchor, facing);
+        prepareRenderingTransform(poseStack, renderData, facing);
         renderTextureQuad(texture, tile, poseStack, bufferSource, packedOverlay);
     }
 
@@ -141,7 +142,7 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         Direction height = facing.getAxis().isHorizontal()
                 ? Direction.UP : facing == Direction.UP ? Direction.SOUTH : Direction.NORTH;
         BlockPos current = entity.getBlockPos();
-        BlockPos origin = anchor.getBlockPos();
+        BlockPos origin = entity.getAnchorPos();
         int dx = current.getX() - origin.getX();
         int dy = current.getY() - origin.getY();
         int dz = current.getZ() - origin.getZ();

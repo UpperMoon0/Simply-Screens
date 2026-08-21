@@ -1,6 +1,7 @@
 package com.nstut.simplyscreens.network;
 
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
+import com.nstut.simplyscreens.helpers.ScreenPacketSecurity;
 import dev.architectury.networking.NetworkManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
@@ -35,6 +36,7 @@ public class UpdateScreenAspectRatioC2SPacket {
             if (player == null) {
                 return;
             }
+            if (!ScreenPacketSecurity.canModify(player, pos)) return;
             ServerLevel level = player.serverLevel();
             BlockEntity blockEntity = level.getBlockEntity(pos);
 

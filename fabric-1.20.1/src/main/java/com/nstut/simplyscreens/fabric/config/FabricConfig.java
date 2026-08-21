@@ -61,7 +61,12 @@ public class FabricConfig {
             props.setProperty("viewDistance", String.valueOf(Config.VIEW_DISTANCE));
             props.setProperty("screenTickRate", String.valueOf(Config.SCREEN_TICK_RATE));
             props.setProperty("disableUpload", String.valueOf(Config.DISABLE_UPLOAD));
+            props.setProperty("disableUrlDownload", String.valueOf(Config.DISABLE_URL_DOWNLOAD));
             props.setProperty("maxUploadSize", String.valueOf(Config.MAX_UPLOAD_SIZE));
+            props.setProperty("maxUrlDownloadSize", String.valueOf(Config.MAX_URL_DOWNLOAD_SIZE));
+            props.setProperty("maxImagesPerPlayer", String.valueOf(Config.MAX_IMAGES_PER_PLAYER));
+            props.setProperty("maxStoragePerPlayer", String.valueOf(Config.MAX_STORAGE_PER_PLAYER));
+            props.setProperty("maxStorageTotal", String.valueOf(Config.MAX_STORAGE_TOTAL));
 
             props.store(writer, "Simply Screens Configuration");
         } catch (IOException e) {

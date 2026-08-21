@@ -184,4 +184,18 @@ class ScreenRegistryTest {
         freshHelper.init(savedTempDir);
         assertEquals(imageId, freshHelper.getImageId("persist-screen"));
     }
+
+    @Test
+    void anchorRedirect_delegatesToHelper() {
+        BlockPos from = new BlockPos(100, 64, 100);
+        BlockPos to = new BlockPos(101, 64, 100);
+
+        ScreenRegistry.redirectAnchor(serverLevel, from, to);
+        BlockPos resolved = ScreenRegistry.resolveAnchorRedirect(serverLevel, from);
+        assertNotNull(resolved);
+        assertEquals(to, resolved);
+
+        ScreenRegistry.removeAnchorRedirect(serverLevel, from);
+        assertNull(ScreenRegistry.resolveAnchorRedirect(serverLevel, from));
+    }
 }

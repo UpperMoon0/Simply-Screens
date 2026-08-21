@@ -26,6 +26,7 @@ public class UpdateImageListS2CPacket implements CustomPacketPayload {
 
     public UpdateImageListS2CPacket(RegistryFriendlyByteBuf buf) {
         int size = buf.readVarInt();
+        if (size < 0 || size > 1024) throw new IllegalArgumentException("Invalid image-list size: " + size);
         this.imageList = new java.util.ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             this.imageList.add(new ImageMetadata(buf));
@@ -33,8 +34,9 @@ public class UpdateImageListS2CPacket implements CustomPacketPayload {
     }
 
     public void write(RegistryFriendlyByteBuf buf) {
-        buf.writeVarInt(imageList.size());
-        for (ImageMetadata metadata : imageList) {
+        int size = Math.min(imageList.size(), 1024);
+        buf.writeVarInt(size);
+        for (ImageMetadata metadata : imageList.subList(0, size)) {
             metadata.write(buf);
         }
     }
