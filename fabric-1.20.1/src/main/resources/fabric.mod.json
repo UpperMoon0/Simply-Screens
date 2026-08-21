@@ -3,7 +3,7 @@
   "id": "simply_screens",
   "version": "${version}",
   "name": "Simply Screens",
-  "description": "A simple mod that adds screens to display images from a URL.",
+  "description": "Adds configurable screen blocks that display images from local files or the web. Build dynamic multi-block displays up to 64x64, link screens into synchronized networks with a shared Screen ID, and manage media in-game with secure upload and download support.",
   "authors": [
     "nstut"
   ],
