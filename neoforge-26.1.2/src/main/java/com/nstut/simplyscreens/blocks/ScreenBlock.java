@@ -1,8 +1,11 @@
 package com.nstut.simplyscreens.blocks;
 
 import com.nstut.simplyscreens.SimplyScreens;
+import com.nstut.simplyscreens.ServerTickScheduler;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.SectionPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -22,11 +25,12 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 import org.jetbrains.annotations.NotNull;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
@@ -87,8 +91,9 @@ public class ScreenBlock extends Block implements EntityBlock {
     @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
         super.setPlacedBy(level, pos, state, placer, stack);
-        if (!level.isClientSide() && level.getServer() != null) {
-            level.getServer().execute(() -> refreshScreens(level, pos, state.getValue(FACING)));
+        if (!level.isClientSide()) {
+            Direction facing = state.getValue(FACING);
+            ServerTickScheduler.schedule(() -> refreshScreens(level, pos, facing));
         }
     }
 
@@ -98,11 +103,17 @@ public class ScreenBlock extends Block implements EntityBlock {
     }
 
     private static void refreshScreenAt(Level level, BlockPos pos, Direction facing) {
-        if (!level.hasChunkAt(pos)) return;
-        BlockEntity blockEntity = level.getBlockEntity(pos);
-        if (blockEntity instanceof ScreenBlockEntity screen && screen.getBlockState().getValue(FACING) == facing) {
-            ScreenBlockEntity anchor = screen.getAnchorEntity();
-            if (anchor != null) anchor.updateScreenStructure();
+        if (level instanceof ServerLevel serverLevel) {
+            LevelChunk chunk = serverLevel.getChunkSource().getChunkNow(
+                    SectionPos.blockToSectionCoord(pos.getX()),
+                    SectionPos.blockToSectionCoord(pos.getZ())
+            );
+            if (chunk == null) return;
+            BlockEntity blockEntity = chunk.getBlockEntity(pos);
+            if (blockEntity instanceof ScreenBlockEntity screen && screen.getBlockState().getValue(FACING) == facing) {
+                ScreenBlockEntity anchor = screen.getAnchorEntity();
+                if (anchor != null) anchor.updateScreenStructure();
+            }
         }
     }
 

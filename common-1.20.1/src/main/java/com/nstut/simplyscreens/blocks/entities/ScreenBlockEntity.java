@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.nbt.CompoundTag;
@@ -23,6 +24,7 @@ import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.NotNull;
 
@@ -388,8 +390,9 @@ public class ScreenBlockEntity extends BlockEntity {
     public void setLevel(net.minecraft.world.level.Level level) {
         super.setLevel(level);
         if (!level.isClientSide) com.nstut.simplyscreens.helpers.ServerImageManager.trackLoadedScreen(this);
-        if (!level.isClientSide && level.getServer() != null) {
-            level.getServer().execute(this::reconcileAfterLoad);
+
+        if (!level.isClientSide && level instanceof ServerLevel serverLevel) {
+            ScreenLoadReconciler.enqueue(serverLevel, worldPosition);
         }
     }
 
@@ -402,7 +405,7 @@ public class ScreenBlockEntity extends BlockEntity {
 
     public static final int MAX_SCREEN_DIMENSION = 64;
 
-    private void reconcileAfterLoad() {
+    void reconcileAfterLoad() {
         if (level == null || level.isClientSide || isRemoved()) return;
         if (isAnchor()) {
             if ((screenId == null || screenId.isEmpty()) && imageId != null
@@ -442,7 +445,7 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     private ScreenBlockEntity getLoadedAnchor(BlockPos pos) {
-        if (pos == null || level == null || !level.hasChunkAt(pos)) return null;
+        if (pos == null || level == null) return null;
         BlockEntity be = getLoadedBlockEntity(pos);
         if (be instanceof ScreenBlockEntity anchor && anchor.isAnchor()) {
             return anchor;
@@ -457,7 +460,6 @@ public class ScreenBlockEntity extends BlockEntity {
         for (int width = 0; width < screenWidth; width++) {
             for (int height = 0; height < screenHeight; height++) {
                 BlockPos pos = worldPosition.relative(widthDirection, width).relative(heightDirection, height);
-                if (!level.hasChunkAt(pos)) continue;
                 if (getLoadedBlockEntity(pos) instanceof ScreenBlockEntity screen) {
                     screen.updateScreen(imageId, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
                     screen.setScreenIdInternal(screenId);
@@ -607,10 +609,21 @@ public class ScreenBlockEntity extends BlockEntity {
         Direction heightDirection = getHeightDirection(facing);
         for (int width = 0; width < screenWidth; width++) {
             for (int height = 0; height < screenHeight; height++) {
-                if (!level.hasChunkAt(worldPosition.relative(widthDirection, width).relative(heightDirection, height))) return false;
+                if (!isChunkFullyAvailable(worldPosition.relative(widthDirection, width).relative(heightDirection, height))) return false;
             }
         }
         return true;
+    }
+
+    private boolean isChunkFullyAvailable(BlockPos pos) {
+        if (!(level instanceof ServerLevel serverLevel)) {
+            return level != null && level.hasChunkAt(pos);
+        }
+
+        int chunkX = SectionPos.blockToSectionCoord(pos.getX());
+        int chunkZ = SectionPos.blockToSectionCoord(pos.getZ());
+
+        return serverLevel.getChunkSource().getChunkNow(chunkX, chunkZ) != null;
     }
 
     private int findMaxExtension(Direction direction, Direction facing) {
@@ -628,7 +641,7 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     private boolean isMatchingScreen(BlockPos pos, Direction facing) {
-        if (!level.hasChunkAt(pos)) throw new UnresolvedStructureException();
+        if (!isChunkFullyAvailable(pos)) throw new UnresolvedStructureException();
         BlockEntity entity = getLoadedBlockEntity(pos);
         if (!(entity instanceof ScreenBlockEntity screen) || !entity.getBlockState().hasProperty(ScreenBlock.FACING)
                 || entity.getBlockState().getValue(ScreenBlock.FACING) != facing) return false;
@@ -638,7 +651,7 @@ public class ScreenBlockEntity extends BlockEntity {
         }
         if (foreignAnchor != null && !foreignAnchor.equals(screen.getBlockPos()) && !foreignAnchor.equals(this.worldPosition)) {
             if (allowedMergeAnchors.contains(foreignAnchor)) return true;
-            if (level.hasChunkAt(foreignAnchor)) {
+            if (isChunkFullyAvailable(foreignAnchor)) {
                 BlockEntity foreignBe = getLoadedBlockEntity(foreignAnchor);
                 if (foreignBe instanceof ScreenBlockEntity foreignAnchorBe && foreignAnchorBe.isAnchor()) {
                     return false;
@@ -694,7 +707,30 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     private BlockEntity getLoadedBlockEntity(BlockPos pos) {
-        return level != null && level.hasChunkAt(pos) ? level.getBlockEntity(pos) : null;
+        if (level == null || pos == null) {
+            return null;
+        }
+
+        if (level instanceof ServerLevel serverLevel) {
+            int chunkX = SectionPos.blockToSectionCoord(pos.getX());
+            int chunkZ = SectionPos.blockToSectionCoord(pos.getZ());
+
+            LevelChunk chunk = serverLevel.getChunkSource().getChunkNow(chunkX, chunkZ);
+
+            if (chunk == null) {
+                return null;
+            }
+
+            return chunk.getBlockEntity(pos);
+        }
+
+        // Client side only. The server-side deadlock path cannot
+        // come through here.
+        if (!level.hasChunkAt(pos)) {
+            return null;
+        }
+
+        return level.getBlockEntity(pos);
     }
 
     public AABB getRenderBoundingBox() {

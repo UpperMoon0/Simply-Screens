@@ -2,6 +2,8 @@ package com.nstut.simplyscreens.blocks;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.SectionPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.entity.LivingEntity;
@@ -14,9 +16,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.material.MapColor;
 
 import org.jetbrains.annotations.NotNull;
+import com.nstut.simplyscreens.ServerTickScheduler;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 
 import net.minecraft.world.level.Level;
@@ -80,8 +84,9 @@ public class ScreenBlock extends Block implements EntityBlock {
     @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
         super.setPlacedBy(level, pos, state, placer, stack);
-        if (!level.isClientSide && level.getServer() != null) {
-            level.getServer().execute(() -> refreshScreens(level, pos, state.getValue(FACING)));
+        if (!level.isClientSide) {
+            Direction facing = state.getValue(FACING);
+            ServerTickScheduler.schedule(() -> refreshScreens(level, pos, facing));
         }
     }
 
@@ -91,11 +96,17 @@ public class ScreenBlock extends Block implements EntityBlock {
     }
 
     private static void refreshScreenAt(Level level, BlockPos pos, Direction facing) {
-        if (!level.hasChunkAt(pos)) return;
-        BlockEntity blockEntity = level.getBlockEntity(pos);
-        if (blockEntity instanceof ScreenBlockEntity screen && screen.getBlockState().getValue(FACING) == facing) {
-            ScreenBlockEntity anchor = screen.getAnchorEntity();
-            if (anchor != null) anchor.updateScreenStructure();
+        if (level instanceof ServerLevel serverLevel) {
+            LevelChunk chunk = serverLevel.getChunkSource().getChunkNow(
+                    SectionPos.blockToSectionCoord(pos.getX()),
+                    SectionPos.blockToSectionCoord(pos.getZ())
+            );
+            if (chunk == null) return;
+            BlockEntity blockEntity = chunk.getBlockEntity(pos);
+            if (blockEntity instanceof ScreenBlockEntity screen && screen.getBlockState().getValue(FACING) == facing) {
+                ScreenBlockEntity anchor = screen.getAnchorEntity();
+                if (anchor != null) anchor.updateScreenStructure();
+            }
         }
     }
 
@@ -108,7 +119,7 @@ public class ScreenBlock extends Block implements EntityBlock {
                 com.nstut.simplyscreens.ScreenRegistry.unregisterScreen(level, pos, screen.getScreenId());
                 screen.findNewAnchor();
             }
-            if (level.getServer() != null) level.getServer().execute(() -> {
+            ServerTickScheduler.schedule(() -> {
                 if (oldAnchorPos != null) refreshScreenAt(level, oldAnchorPos, state.getValue(FACING));
                 refreshScreens(level, pos, state.getValue(FACING));
             });
