@@ -1,5 +1,6 @@
 package com.nstut.simplyscreens;
 
+import dev.architectury.event.events.common.LifecycleEvent;
 import dev.architectury.event.events.common.TickEvent;
 import net.minecraft.server.MinecraftServer;
 
@@ -13,8 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * semantics of MinecraftServer.execute(), which can run a task inline when called
  * from the server thread.
  *
- * Tasks are cleared automatically when a different server instance appears (for
- * example, an integrated server restarted in the same JVM) so pending work cannot
+ * Tasks are cleared automatically on server lifecycle events so pending work cannot
  * leak into the next world.
  */
 public final class ServerTickScheduler {
@@ -33,6 +33,19 @@ public final class ServerTickScheduler {
         }
 
         initialized = true;
+
+        LifecycleEvent.SERVER_BEFORE_START.register(server -> {
+            TASKS.clear();
+            activeServer = server;
+        });
+
+        LifecycleEvent.SERVER_STOPPED.register(server -> {
+            if (activeServer == server) {
+                TASKS.clear();
+                activeServer = null;
+            }
+        });
+
         TickEvent.SERVER_POST.register(ServerTickScheduler::process);
     }
 
@@ -43,9 +56,6 @@ public final class ServerTickScheduler {
     }
 
     private static void process(MinecraftServer server) {
-        if (activeServer != null && activeServer != server) {
-            TASKS.clear();
-        }
         activeServer = server;
 
         if (TASKS.isEmpty()) {

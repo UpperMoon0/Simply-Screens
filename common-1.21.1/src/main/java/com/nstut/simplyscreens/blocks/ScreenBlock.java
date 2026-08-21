@@ -3,6 +3,9 @@ package com.nstut.simplyscreens.blocks;
 import com.nstut.simplyscreens.SimplyScreens;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.SectionPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -105,11 +108,17 @@ public class ScreenBlock extends Block implements EntityBlock {
     }
 
     private static void refreshScreenAt(Level level, BlockPos pos, Direction facing) {
-        if (!level.hasChunkAt(pos)) return;
-        BlockEntity blockEntity = level.getBlockEntity(pos);
-        if (blockEntity instanceof ScreenBlockEntity screen && screen.getBlockState().getValue(FACING) == facing) {
-            ScreenBlockEntity anchor = screen.getAnchorEntity();
-            if (anchor != null) anchor.updateScreenStructure();
+        if (level instanceof ServerLevel serverLevel) {
+            LevelChunk chunk = serverLevel.getChunkSource().getChunkNow(
+                    SectionPos.blockToSectionCoord(pos.getX()),
+                    SectionPos.blockToSectionCoord(pos.getZ())
+            );
+            if (chunk == null) return;
+            BlockEntity blockEntity = chunk.getBlockEntity(pos);
+            if (blockEntity instanceof ScreenBlockEntity screen && screen.getBlockState().getValue(FACING) == facing) {
+                ScreenBlockEntity anchor = screen.getAnchorEntity();
+                if (anchor != null) anchor.updateScreenStructure();
+            }
         }
     }
 

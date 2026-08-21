@@ -367,8 +367,12 @@ public class ScreenBlockEntity extends BlockEntity {
             for (ServerLevel lvl : serverLevel.getServer().getAllLevels()) {
                 for (BlockPos pos : ScreenRegistry.getPositionsForScreenId(lvl, screenId)) {
                     if (lvl == level && pos.equals(worldPosition)) continue;
-                    if (!lvl.hasChunkAt(pos)) continue;
-                    BlockEntity be = lvl.getBlockEntity(pos);
+                    LevelChunk chunk = lvl.getChunkSource().getChunkNow(
+                            SectionPos.blockToSectionCoord(pos.getX()),
+                            SectionPos.blockToSectionCoord(pos.getZ())
+                    );
+                    if (chunk == null) continue;
+                    BlockEntity be = chunk.getBlockEntity(pos);
                     if (be instanceof ScreenBlockEntity linkedScreen && linkedScreen.isAnchor() && screenId.equals(linkedScreen.getScreenId())) {
                         linkedScreen.applyLinkedImageId(linkedImageId);
                     }

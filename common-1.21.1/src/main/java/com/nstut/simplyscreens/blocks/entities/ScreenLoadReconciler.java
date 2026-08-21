@@ -1,5 +1,6 @@
 package com.nstut.simplyscreens.blocks.entities;
 
+import dev.architectury.event.events.common.LifecycleEvent;
 import dev.architectury.event.events.common.TickEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
@@ -37,6 +38,19 @@ public final class ScreenLoadReconciler {
         }
 
         initialized = true;
+
+        LifecycleEvent.SERVER_BEFORE_START.register(server -> {
+            PENDING.clear();
+            activeServer = server;
+        });
+
+        LifecycleEvent.SERVER_STOPPED.register(server -> {
+            if (activeServer == server) {
+                PENDING.clear();
+                activeServer = null;
+            }
+        });
+
         TickEvent.SERVER_POST.register(ScreenLoadReconciler::process);
     }
 
@@ -49,12 +63,6 @@ public final class ScreenLoadReconciler {
     }
 
     private static void process(MinecraftServer server) {
-        // Drop any entries from a previous server instance (e.g. an integrated
-        // server that was stopped and restarted in the same JVM) so pending
-        // work cannot leak into the next world.
-        if (activeServer != null && activeServer != server) {
-            PENDING.clear();
-        }
         activeServer = server;
 
         if (PENDING.isEmpty()) {
