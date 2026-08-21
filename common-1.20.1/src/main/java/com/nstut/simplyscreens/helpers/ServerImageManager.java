@@ -24,6 +24,8 @@ import com.nstut.simplyscreens.network.UpdateImageListS2CPacket;
 import com.nstut.simplyscreens.network.UpdateScreenS2CPacket;
 import com.nstut.simplyscreens.network.InvalidateImageS2CPacket;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.ServerLevel;
 
@@ -98,7 +100,8 @@ public class ServerImageManager {
 
         boolean allChunksReceived;
         synchronized (state) {
-            if (state.chunks[chunkIndex] == null && state.receivedBytes + data.length > Config.MAX_UPLOAD_SIZE) {
+            int previousLength = state.chunks[chunkIndex] == null ? 0 : state.chunks[chunkIndex].length;
+            if (state.receivedBytes - previousLength + data.length > Config.MAX_UPLOAD_SIZE) {
                 SimplyScreens.LOGGER.warn("Rejecting image upload transaction {} because received bytes would exceed configured limit of {}", transactionId, Config.MAX_UPLOAD_SIZE);
                 UPLOADS.remove(uploadKey);
                 return;
@@ -270,9 +273,9 @@ public class ServerImageManager {
         try {
             Files.deleteIfExists(imagesDir.resolve(imageId + "." + metadata.getExtension()));
             Files.deleteIfExists(imagesDir.resolve(imageId + ".json"));
-            com.nstut.simplyscreens.ScreenRegistry.removeImageReferences(imageId);
             cachedImageList = null;
             invalidateScreensUsingImage(server, imageId);
+            com.nstut.simplyscreens.ScreenRegistry.removeImageReferences(imageId);
             return true;
         } catch (IOException e) {
             SimplyScreens.LOGGER.error("Failed to delete image {}", imageId, e);
@@ -542,13 +545,15 @@ public class ServerImageManager {
                         && anchor.isAnchor() && imageId.equals(anchor.getImageId())) {
                     anchor.setImageId(null);
                     for (ServerPlayer player : level.getChunkSource().chunkMap.getPlayers(new ChunkPos(pos), false)) {
-                        PacketRegistries.sendToPlayer(player, new UpdateScreenS2CPacket(
+                        PacketRegistries.CHANNEL.sendToPlayer(player, new UpdateScreenS2CPacket(
                                 pos, pos, null, anchor.isMaintainAspectRatio(), anchor.getScreenId(),
                                 anchor.getScreenWidth(), anchor.getScreenHeight()));
-                        PacketRegistries.sendToPlayer(player, new InvalidateImageS2CPacket(imageId));
                     }
                 }
             }
+        }
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            PacketRegistries.CHANNEL.sendToPlayer(player, new InvalidateImageS2CPacket(imageId));
         }
     }
 }

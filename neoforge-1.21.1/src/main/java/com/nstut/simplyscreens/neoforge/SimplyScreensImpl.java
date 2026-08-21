@@ -12,7 +12,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
-import net.neoforged.neoforge.event.server.PlayerLoggedInEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent;
 import net.minecraft.world.level.storage.LevelResource;
 
 @Mod(SimplyScreens.MOD_ID)
@@ -30,7 +30,7 @@ public class SimplyScreensImpl {
     }
 
     private void onPlayerLoggedIn(PlayerLoggedInEvent event) {
-        if (event.getPlayer() instanceof net.minecraft.server.level.ServerPlayer player) {
+        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
             PacketRegistries.sendToPlayer(player, new ServerConfigSyncS2CPacket(
                 com.nstut.simplyscreens.Config.DISABLE_UPLOAD,
                 com.nstut.simplyscreens.Config.DISABLE_URL_DOWNLOAD,

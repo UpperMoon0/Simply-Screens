@@ -1,6 +1,8 @@
 package com.nstut.simplyscreens.network;
 
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
+import com.nstut.simplyscreens.Config;
+import com.nstut.simplyscreens.helpers.ClientImageManager;
 import com.nstut.simplyscreens.client.gui.widgets.ImageListWidget;
 import com.nstut.simplyscreens.client.screens.ImageLoadScreen;
 import net.minecraft.client.Minecraft;
@@ -35,6 +37,7 @@ public class ClientPacketHandler {
     }
 
     public static void handleInvalidateImage(UUID imageId) {
+        ClientImageManager.invalidateImage(imageId);
     }
 
     public static void handleConfigSync(boolean disableUpload, boolean disableUrlDownload, int maxUploadSize) {

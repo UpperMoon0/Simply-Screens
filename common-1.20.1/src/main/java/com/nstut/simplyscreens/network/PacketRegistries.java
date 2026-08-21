@@ -80,14 +80,14 @@ public class PacketRegistries {
 
         CHANNEL.register(InvalidateImageS2CPacket.class,
                 InvalidateImageS2CPacket::write,
-                InvalidateImageS2CPacket::read,
-                InvalidateImageS2CPacket::handle
+                InvalidateImageS2CPacket::new,
+                (packet, context) -> packet.handle(context)
         );
 
         CHANNEL.register(ServerConfigSyncS2CPacket.class,
                 ServerConfigSyncS2CPacket::write,
-                ServerConfigSyncS2CPacket::read,
-                ServerConfigSyncS2CPacket::handle
+                ServerConfigSyncS2CPacket::new,
+                (packet, context) -> packet.handle(context)
         );
     }
 }

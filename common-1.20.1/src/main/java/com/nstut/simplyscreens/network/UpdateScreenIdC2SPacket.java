@@ -60,12 +60,13 @@ public class UpdateScreenIdC2SPacket {
                 if (anchor != null) {
                     String normalizedId = com.nstut.simplyscreens.ScreenRegistryHelper.normalizeScreenId(screenId);
                     if (screenId != null && !screenId.isBlank() && normalizedId.isEmpty()) return;
+                    if (selectedImageId != null && !ServerImageManager.canPlayerAccessImage(
+                            player.serverLevel().getServer(), selectedImageId, player.getUUID().toString())) return;
                     if (!normalizedId.equals(anchor.getScreenId())) {
                         if (!normalizedId.isEmpty() && !ScreenRegistry.claimScreenId(normalizedId, player.getUUID(), player.hasPermissions(2))) return;
                         anchor.setScreenId(normalizedId);
                     }
                     if (selectedImageId != null) {
-                        if (!ServerImageManager.canPlayerAccessImage(player.serverLevel().getServer(), selectedImageId, player.getUUID().toString())) return;
                         anchor.setImageId(selectedImageId);
                     }
                 }

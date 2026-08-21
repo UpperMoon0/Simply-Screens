@@ -4,6 +4,7 @@ import com.nstut.simplyscreens.ScreenRegistry;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simplyscreens.helpers.ScreenPacketSecurity;
+import com.nstut.simplyscreens.helpers.ServerImageManager;
 import dev.architectury.networking.NetworkManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -84,12 +85,13 @@ public class UpdateScreenIdC2SPacket implements CustomPacketPayload {
                     boolean administrator = player.level().getServer().getPlayerList().isOp(player.nameAndId());
                     String normalizedId = com.nstut.simplyscreens.ScreenRegistryHelper.normalizeScreenId(packet.screenId);
                     if (packet.screenId != null && !packet.screenId.isBlank() && normalizedId.isEmpty()) return;
+                    if (packet.selectedImageId != null && !ServerImageManager.canPlayerAccessImage(
+                            player.level().getServer(), packet.selectedImageId, player.getUUID().toString())) return;
                     if (!normalizedId.equals(anchor.getScreenId())) {
                         if (!normalizedId.isEmpty() && !ScreenRegistry.claimScreenId(normalizedId, player.getUUID(), administrator)) return;
                         anchor.setScreenId(normalizedId);
                     }
                     if (packet.selectedImageId != null) {
-                        if (!ServerImageManager.canPlayerAccessImage(player.level().getServer(), packet.selectedImageId, player.getUUID().toString())) return;
                         anchor.setImageId(packet.selectedImageId);
                     }
                 }

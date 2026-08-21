@@ -1,7 +1,7 @@
 package com.nstut.simplyscreens.blocks.entities;
 
 import com.nstut.simplyscreens.Config;
-import com.nstut.simplyscreens.ScreenMetadata;
+import com.nstut.simplyscreens.ScreenRegistryHelper.ScreenMetadata;
 import com.nstut.simplyscreens.ScreenRegistry;
 import com.nstut.simplyscreens.ScreenAnchorPromotion;
 import com.nstut.simplyscreens.ScreenStructureDetector;
@@ -12,6 +12,8 @@ import net.minecraft.server.level.ServerPlayer;
 import lombok.Getter;
 import lombok.Setter;
 import java.util.UUID;
+import java.util.HashSet;
+import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.ChunkPos;
@@ -36,6 +38,7 @@ public class ScreenBlockEntity extends BlockEntity {
     private int tickSinceLastUpdate = 0;
     private boolean screenLinkRegistered;
     private boolean needsStructureRefresh = true;
+    private final Set<BlockPos> allowedMergeAnchors = new HashSet<>();
 
     public ScreenBlockEntity(BlockPos pos, BlockState state) {
         super(BlockEntityRegistries.SCREEN.get(), pos, state);
@@ -535,6 +538,7 @@ public class ScreenBlockEntity extends BlockEntity {
                             leftover.screenHeight = 1;
                             leftover.needsStructureRefresh = true;
                             leftover.setChanged();
+                            level.setBlock(leftoverPos, leftover.getBlockState().setValue(ScreenBlock.STATE, ScreenBlock.STATE_ANCHOR), Block.UPDATE_ALL);
                         }
                     }
                 }
@@ -568,6 +572,7 @@ public class ScreenBlockEntity extends BlockEntity {
     private BlockPos calculateStructureBounds(Direction facing) {
         if (level == null || level.isClientSide) return null;
         try {
+            allowedMergeAnchors.clear();
             Direction widthDirection = getWidthDirection(facing);
             Direction heightDirection = getHeightDirection(facing);
             int maxWidth = findMaxExtension(widthDirection, facing);
@@ -614,7 +619,11 @@ public class ScreenBlockEntity extends BlockEntity {
         if (!(entity instanceof ScreenBlockEntity screen) || !entity.getBlockState().hasProperty(ScreenBlock.FACING)
                 || entity.getBlockState().getValue(ScreenBlock.FACING) != facing) return false;
         BlockPos foreignAnchor = screen.getAnchorPos();
+        if (screen.isAnchor() && !screen.getBlockPos().equals(this.worldPosition)) {
+            allowedMergeAnchors.add(screen.getBlockPos());
+        }
         if (foreignAnchor != null && !foreignAnchor.equals(screen.getBlockPos()) && !foreignAnchor.equals(this.worldPosition)) {
+            if (allowedMergeAnchors.contains(foreignAnchor)) return true;
             if (level.hasChunkAt(foreignAnchor)) {
                 BlockEntity foreignBe = getLoadedBlockEntity(foreignAnchor);
                 if (foreignBe instanceof ScreenBlockEntity foreignAnchorBe && foreignAnchorBe.isAnchor()) {
@@ -783,6 +792,7 @@ public class ScreenBlockEntity extends BlockEntity {
                     leftover.screenHeight = 1;
                     leftover.needsStructureRefresh = true;
                     leftover.setChanged();
+                    level.setBlock(pos, leftover.getBlockState().setValue(ScreenBlock.STATE, ScreenBlock.STATE_ANCHOR), Block.UPDATE_ALL);
                 }
             }
         }
