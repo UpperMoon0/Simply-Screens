@@ -154,6 +154,9 @@ public class ScreenBlockEntity extends BlockEntity {
      * Falls back to direct imageId if no screenId is set.
      */
     public UUID getResolvedImageId() {
+        if (level != null && level.isClientSide) {
+            return imageId;
+        }
         if (screenId != null && !screenId.isEmpty()) {
             return ScreenRegistry.getImageId(screenId);
         }
@@ -298,11 +301,24 @@ public class ScreenBlockEntity extends BlockEntity {
 
     private void broadcastImageIdToLinkedScreens(UUID linkedImageId) {
         if (level == null || screenId == null || screenId.isEmpty()) return;
-        for (BlockPos pos : ScreenRegistry.getPositionsForScreenId(level, screenId)) {
-            if (pos.equals(worldPosition)) continue;
-            BlockEntity blockEntity = getLoadedBlockEntity(pos);
-            if (blockEntity instanceof ScreenBlockEntity linkedScreen && linkedScreen.isAnchor()) {
-                linkedScreen.applyLinkedImageId(linkedImageId);
+        if (level instanceof ServerLevel serverLevel && serverLevel.getServer() != null) {
+            for (ServerLevel lvl : serverLevel.getServer().getAllLevels()) {
+                for (BlockPos pos : ScreenRegistry.getPositionsForScreenId(lvl, screenId)) {
+                    if (lvl == level && pos.equals(worldPosition)) continue;
+                    if (!lvl.hasChunkAt(pos)) continue;
+                    BlockEntity blockEntity = lvl.getBlockEntity(pos);
+                    if (blockEntity instanceof ScreenBlockEntity linkedScreen && linkedScreen.isAnchor()) {
+                        linkedScreen.applyLinkedImageId(linkedImageId);
+                    }
+                }
+            }
+        } else {
+            for (BlockPos pos : ScreenRegistry.getPositionsForScreenId(level, screenId)) {
+                if (pos.equals(worldPosition)) continue;
+                BlockEntity blockEntity = getLoadedBlockEntity(pos);
+                if (blockEntity instanceof ScreenBlockEntity linkedScreen && linkedScreen.isAnchor()) {
+                    linkedScreen.applyLinkedImageId(linkedImageId);
+                }
             }
         }
     }

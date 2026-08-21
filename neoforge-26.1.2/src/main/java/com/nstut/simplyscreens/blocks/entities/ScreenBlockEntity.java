@@ -232,6 +232,9 @@ public class ScreenBlockEntity extends BlockEntity {
      * @return The resolved image UUID
      */
     public UUID getResolvedImageId() {
+        if (level != null && level.isClientSide()) {
+            return imageId;
+        }
         if (screenId != null && !screenId.isEmpty()) {
             return ScreenRegistry.getImageId(screenId);
         }
@@ -332,11 +335,24 @@ public class ScreenBlockEntity extends BlockEntity {
     private void broadcastImageIdToLinkedScreens(UUID imageId) {
         if (level == null || screenId == null || screenId.isEmpty()) return;
 
-        for (BlockPos pos : ScreenRegistry.getPositionsForScreenId(level, screenId)) {
-            if (pos.equals(worldPosition)) continue;
-            BlockEntity be = getLoadedBlockEntity(pos);
-            if (be instanceof ScreenBlockEntity linkedScreen && linkedScreen.isAnchor()) {
-                linkedScreen.applyLinkedImageId(imageId);
+        if (level instanceof ServerLevel serverLevel && serverLevel.getServer() != null) {
+            for (ServerLevel lvl : serverLevel.getServer().getAllLevels()) {
+                for (BlockPos pos : ScreenRegistry.getPositionsForScreenId(lvl, screenId)) {
+                    if (lvl == level && pos.equals(worldPosition)) continue;
+                    if (!lvl.hasChunkAt(pos)) continue;
+                    BlockEntity be = lvl.getBlockEntity(pos);
+                    if (be instanceof ScreenBlockEntity linkedScreen && linkedScreen.isAnchor()) {
+                        linkedScreen.applyLinkedImageId(imageId);
+                    }
+                }
+            }
+        } else {
+            for (BlockPos pos : ScreenRegistry.getPositionsForScreenId(level, screenId)) {
+                if (pos.equals(worldPosition)) continue;
+                BlockEntity be = getLoadedBlockEntity(pos);
+                if (be instanceof ScreenBlockEntity linkedScreen && linkedScreen.isAnchor()) {
+                    linkedScreen.applyLinkedImageId(imageId);
+                }
             }
         }
     }

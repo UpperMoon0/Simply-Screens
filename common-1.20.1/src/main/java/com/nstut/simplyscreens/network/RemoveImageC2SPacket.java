@@ -27,8 +27,10 @@ public class RemoveImageC2SPacket {
 
     public static void apply(RemoveImageC2SPacket msg, Supplier<NetworkManager.PacketContext> context) {
         ServerPlayer player = (ServerPlayer) context.get().getPlayer();
+        if (player == null) return;
         context.get().queue(() -> {
-            ServerImageManager.deleteImage(player.getServer(), msg.imageId, player.getUUID().toString());
+            boolean isAdmin = player.hasPermissions(2);
+            ServerImageManager.deleteImage(player.getServer(), msg.imageId, player.getUUID().toString(), isAdmin);
             var images = ServerImageManager.getImageListForPlayer(player.getServer(), player.getUUID().toString());
             PacketRegistries.CHANNEL.sendToPlayer(player, new UpdateImageListS2CPacket(images));
         });

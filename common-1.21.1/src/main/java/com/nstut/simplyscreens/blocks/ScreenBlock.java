@@ -47,7 +47,6 @@ public class ScreenBlock extends Block implements EntityBlock {
                 .strength(3.5F, 6.0F) // Hardness 3.5 (like iron), resistance 6.0 (like iron)
                 .requiresCorrectToolForDrops() // Requires proper tool to drop
                 .sound(SoundType.METAL)); // Metal sound type
-        System.out.println("ScreenBlock constructor called");
         this.registerDefaultState(this.stateDefinition.any()
                 .setValue(FACING, Direction.NORTH)
                 .setValue(STATE, STATE_ANCHOR));

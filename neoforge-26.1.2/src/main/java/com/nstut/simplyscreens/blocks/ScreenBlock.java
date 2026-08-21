@@ -42,7 +42,6 @@ public class ScreenBlock extends Block implements EntityBlock {
 
     public ScreenBlock(BlockBehaviour.Properties properties) {
         super(properties);
-        System.out.println("ScreenBlock constructor called");
         this.registerDefaultState(this.stateDefinition.any()
                 .setValue(FACING, Direction.NORTH)
                 .setValue(STATE, STATE_ANCHOR));

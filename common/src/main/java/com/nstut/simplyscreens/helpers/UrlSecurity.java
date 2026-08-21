@@ -60,4 +60,17 @@ public final class UrlSecurity {
         }
         return false;
     }
+
+    public static String sanitizeForLogging(String value) {
+        if (value == null || value.isBlank()) return "";
+        try {
+            URI uri = URI.create(value);
+            String host = uri.getHost() != null ? uri.getHost() : "";
+            int port = uri.getPort();
+            String path = uri.getPath() != null ? uri.getPath() : "";
+            return uri.getScheme() + "://" + host + (port != -1 ? ":" + port : "") + path;
+        } catch (Exception e) {
+            return "[invalid-url]";
+        }
+    }
 }

@@ -241,7 +241,8 @@ public class ImageLoadScreen extends Screen {
 
     private void onLinkScreenId() {
         String screenId = screenIdField.getValue();
-        if (screenId == null || screenId.isEmpty() || this.minecraft == null || this.minecraft.level == null) {
+        if (screenId == null) screenId = "";
+        if (this.minecraft == null || this.minecraft.level == null) {
             return;
         }
 
@@ -249,11 +250,11 @@ public class ImageLoadScreen extends Screen {
         if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
             ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
             if (anchor != null) {
+                PacketRegistries.CHANNEL.sendToServer(new UpdateScreenIdC2SPacket(blockEntityPos, screenId));
                 ImageListWidget.ImageEntry selectedEntry = imageListWidget.getSelected();
                 if (selectedEntry != null) {
                     PacketRegistries.CHANNEL.sendToServer(new UpdateScreenSelectedImageC2SPacket(blockEntityPos, selectedEntry.getImageId()));
                 }
-                PacketRegistries.CHANNEL.sendToServer(new UpdateScreenIdC2SPacket(blockEntityPos, screenId));
             }
         }
     }
@@ -298,7 +299,7 @@ public class ImageLoadScreen extends Screen {
                     }
                     imageListWidget.refresh();
                     switchTab(Tab.GALLERY);
-                } catch (java.io.IOException e) {
+                } catch (java.io.IOException | SecurityException e) {
                     SimplyScreens.LOGGER.error("Failed to read image file", e);
                 }
             }

@@ -249,12 +249,18 @@ public class ServerImageManager {
     }
 
     public static boolean deleteImage(MinecraftServer server, UUID imageId, String requesterUUID) {
+        return deleteImage(server, imageId, requesterUUID, false);
+    }
+
+    public static boolean deleteImage(MinecraftServer server, UUID imageId, String requesterUUID, boolean isAdmin) {
         ImageMetadata metadata = getImageMetadata(server, imageId);
         if (metadata == null) {
             return false;
         }
 
-        if (metadata.getOwnerUUID() == null || !metadata.getOwnerUUID().equals(requesterUUID)) {
+        boolean isOwner = metadata.getOwnerUUID() != null && metadata.getOwnerUUID().equals(requesterUUID);
+        boolean isLegacyUnowned = metadata.getOwnerUUID() == null;
+        if (!isAdmin && !isOwner) {
             SimplyScreens.LOGGER.warn("Player {} tried to delete image {} owned by {}", requesterUUID, imageId, metadata.getOwnerUUID());
             return false;
         }
@@ -339,7 +345,7 @@ public class ServerImageManager {
         if (metadataFile.exists()) {
             try (FileReader reader = new FileReader(metadataFile)) {
                 return GSON.fromJson(reader, ImageMetadata.class);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 SimplyScreens.LOGGER.error("Failed to read image metadata for " + imageId, e);
             }
         }
@@ -417,9 +423,12 @@ public class ServerImageManager {
                 paths.filter(path -> path.toString().endsWith(".json"))
                         .forEach(path -> {
                             try (FileReader reader = new FileReader(path.toFile())) {
-                                imageList.add(GSON.fromJson(reader, ImageMetadata.class));
-                            } catch (IOException e) {
-                                SimplyScreens.LOGGER.error("Failed to read image metadata", e);
+                                ImageMetadata meta = GSON.fromJson(reader, ImageMetadata.class);
+                                if (meta != null) {
+                                    imageList.add(meta);
+                                }
+                            } catch (Exception e) {
+                                SimplyScreens.LOGGER.error("Failed to read image metadata for {}", path, e);
                             }
                         });
             } catch (IOException e) {

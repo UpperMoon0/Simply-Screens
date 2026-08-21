@@ -244,33 +244,18 @@ public class ImageLoadScreen extends Screen {
 
     private void onLinkScreenId() {
         String screenId = screenIdField.getValue();
+        if (screenId == null) screenId = "";
         ImageListWidget.ImageEntry selectedEntry = imageListWidget.getSelected();
 
-        if (screenId == null || screenId.isEmpty()) {
-            return;
-        }
-
-        if (selectedEntry == null) {
-            // Just update the screen ID without changing the image
-            if (this.minecraft != null && this.minecraft.level != null) {
-                BlockEntity blockEntity = this.minecraft.level.getBlockEntity(blockEntityPos);
-                if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
-                    ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
-                    if (anchor != null) {
+        if (this.minecraft != null && this.minecraft.level != null) {
+            BlockEntity blockEntity = this.minecraft.level.getBlockEntity(blockEntityPos);
+            if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
+                ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
+                if (anchor != null) {
+                    // Update screen ID FIRST so any selected image update applies to the new group, not the old group
                     PacketRegistries.sendToServer(new UpdateScreenIdC2SPacket(blockEntityPos, screenId));
-                    }
-                }
-            }
-        } else {
-            // Update both screen ID and image
-            if (this.minecraft != null && this.minecraft.level != null) {
-                BlockEntity blockEntity = this.minecraft.level.getBlockEntity(blockEntityPos);
-                if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
-                    ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
-                    if (anchor != null) {
-                        // First set the image, then set the screen ID (which will register the mapping)
+                    if (selectedEntry != null) {
                         PacketRegistries.sendToServer(new UpdateScreenSelectedImageC2SPacket(blockEntityPos, selectedEntry.getImageId()));
-                        PacketRegistries.sendToServer(new UpdateScreenIdC2SPacket(blockEntityPos, screenId));
                     }
                 }
             }
@@ -319,7 +304,7 @@ public class ImageLoadScreen extends Screen {
                     // Refresh and auto-switch to Gallery tab after upload
                     imageListWidget.refresh();
                     switchTab(Tab.GALLERY);
-                } catch (java.io.IOException e) {
+                } catch (java.io.IOException | SecurityException e) {
                     SimplyScreens.LOGGER.error("Failed to read image file", e);
                 }
             }
