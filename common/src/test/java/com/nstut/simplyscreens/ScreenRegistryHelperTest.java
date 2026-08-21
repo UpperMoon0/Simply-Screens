@@ -218,4 +218,24 @@ class ScreenRegistryHelperTest {
         assertFalse(helper.claimScreenId("legacy", player, false));
         assertTrue(helper.claimScreenId("legacy", player, true));
     }
+
+    @Test
+    void screenIdsAreNormalizedAndInvalidValuesAreRejected() {
+        UUID player = UUID.randomUUID();
+        assertEquals("valid-link_1", ScreenRegistryHelper.normalizeScreenId("  valid-link_1  "));
+        assertEquals("", ScreenRegistryHelper.normalizeScreenId("   "));
+        assertEquals("", ScreenRegistryHelper.normalizeScreenId("contains spaces"));
+        assertEquals("", ScreenRegistryHelper.normalizeScreenId("x".repeat(65)));
+        assertFalse(helper.claimScreenId("   ", player, false));
+        assertFalse(helper.claimScreenId("contains spaces", player, false));
+    }
+
+    @Test
+    void playersCannotReserveUnlimitedScreenIds() {
+        UUID player = UUID.randomUUID();
+        for (int i = 0; i < ScreenRegistryHelper.MAX_SCREEN_IDS_PER_PLAYER; i++) {
+            assertTrue(helper.claimScreenId("link-" + i, player, false));
+        }
+        assertFalse(helper.claimScreenId("one-too-many", player, false));
+    }
 }

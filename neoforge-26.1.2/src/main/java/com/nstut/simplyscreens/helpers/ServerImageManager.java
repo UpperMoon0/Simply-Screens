@@ -43,9 +43,12 @@ public class ServerImageManager {
     private static final int UPLOAD_CHUNK_SIZE = ChunkedFileTransfer.CHUNK_SIZE;
     private static final long UPLOAD_TTL_MILLIS = 60_000L;
     private static final int MAX_ACTIVE_UPLOADS_PER_PLAYER = 4;
+    private static final int MAX_PROCESSING_UPLOADS_PER_PLAYER = 4;
+    private static final int MIN_UPLOAD_SIZE = 16;
     private static final Map<String, UploadState> UPLOADS = new ConcurrentHashMap<>();
+    private static final Map<UUID, Integer> PROCESSING_UPLOADS = new ConcurrentHashMap<>();
     private static final ExecutorService IMAGE_UPLOAD_EXECUTOR =
-            ChunkedFileTransfer.newDaemonFixedThreadPool(2, "Simply Screens Image Upload");
+            ChunkedFileTransfer.newDaemonBoundedThreadPool(2, 64, "Simply Screens Image Upload");
     private static final java.util.concurrent.ScheduledExecutorService UPLOAD_REAPER =
             Executors.newSingleThreadScheduledExecutor(r -> {
                 Thread thread = new Thread(r, "Simply Screens Upload Reaper");
@@ -82,7 +85,7 @@ public class ServerImageManager {
         ServerLevel intendedLevel = player.level();
         UploadState state = UPLOADS.computeIfAbsent(uploadKey, k -> new UploadState(player.getUUID(), intendedLevel, totalChunks, now));
         if (state.level != intendedLevel) {
-            UPLOADS.remove(uploadKey);
+            UPLOADS.remove(uploadKey, state);
             return;
         }
         if (state.totalChunks != totalChunks) {
@@ -105,11 +108,24 @@ public class ServerImageManager {
         }
 
         if (allChunksReceived) {
-            UPLOADS.remove(uploadKey);
+            if (state.receivedBytes < MIN_UPLOAD_SIZE) {
+                UPLOADS.remove(uploadKey, state);
+                return;
+            }
+            if (!tryAcquireProcessingSlot(player.getUUID())) return;
+            if (!UPLOADS.remove(uploadKey, state)) {
+                releaseProcessingSlot(player.getUUID());
+                return;
+            }
             MinecraftServer server = player.level().getServer();
             String ownerUUID = player.getUUID().toString();
 
-            IMAGE_UPLOAD_EXECUTOR.execute(() -> finishImageUpload(server, player, blockPos, state, ownerUUID));
+            try {
+                IMAGE_UPLOAD_EXECUTOR.execute(() -> finishImageUpload(server, player, blockPos, state, ownerUUID));
+            } catch (java.util.concurrent.RejectedExecutionException rejected) {
+                releaseProcessingSlot(player.getUUID());
+                SimplyScreens.LOGGER.warn("Rejecting image upload because the processing queue is full");
+            }
         }
     }
 
@@ -137,7 +153,20 @@ public class ServerImageManager {
             }
         } catch (RuntimeException e) {
             SimplyScreens.LOGGER.error("Failed to finish image upload", e);
+        } finally {
+            releaseProcessingSlot(state.owner);
         }
+    }
+
+    private static synchronized boolean tryAcquireProcessingSlot(UUID playerId) {
+        int count = PROCESSING_UPLOADS.getOrDefault(playerId, 0);
+        if (count >= MAX_PROCESSING_UPLOADS_PER_PLAYER) return false;
+        PROCESSING_UPLOADS.put(playerId, count + 1);
+        return true;
+    }
+
+    private static synchronized void releaseProcessingSlot(UUID playerId) {
+        PROCESSING_UPLOADS.computeIfPresent(playerId, (id, count) -> count <= 1 ? null : count - 1);
     }
 
     public static UUID saveImage(MinecraftServer server, String originalName, byte[] data, String contentType) {

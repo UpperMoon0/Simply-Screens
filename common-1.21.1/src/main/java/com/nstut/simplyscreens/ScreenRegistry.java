@@ -92,8 +92,9 @@ public class ScreenRegistry {
     }
 
     public static boolean claimScreenId(String screenId, UUID playerId, boolean administrator) {
+        UUID previousOwner = HELPER.getScreenIdOwner(screenId);
         boolean allowed = HELPER.claimScreenId(screenId, playerId, administrator);
-        if (allowed) HELPER.saveRegistry();
+        if (allowed && previousOwner == null && HELPER.getScreenIdOwner(screenId) != null) HELPER.saveRegistry();
         return allowed;
     }
 

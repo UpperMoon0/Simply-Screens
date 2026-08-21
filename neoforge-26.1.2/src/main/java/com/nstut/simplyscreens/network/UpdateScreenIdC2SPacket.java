@@ -66,9 +66,11 @@ public class UpdateScreenIdC2SPacket implements CustomPacketPayload {
                 ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
                 if (anchor != null) {
                     boolean administrator = player.level().getServer().getPlayerList().isOp(player.nameAndId());
-                    if (packet.screenId != null && !packet.screenId.isBlank() &&
-                            !ScreenRegistry.claimScreenId(packet.screenId, player.getUUID(), administrator)) return;
-                    anchor.setScreenId(packet.screenId);
+                    String normalizedId = com.nstut.simplyscreens.ScreenRegistryHelper.normalizeScreenId(packet.screenId);
+                    if (packet.screenId != null && !packet.screenId.isBlank() && normalizedId.isEmpty()) return;
+                    if (normalizedId.equals(anchor.getScreenId())) return;
+                    if (!normalizedId.isEmpty() && !ScreenRegistry.claimScreenId(normalizedId, player.getUUID(), administrator)) return;
+                    anchor.setScreenId(normalizedId);
                 }
             }
         });

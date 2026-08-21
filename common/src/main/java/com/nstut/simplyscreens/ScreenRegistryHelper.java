@@ -20,6 +20,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * This can be used by both 1.20.1 and 1.21.1 implementations.
  */
 public class ScreenRegistryHelper {
+    public static final int MAX_SCREEN_ID_LENGTH = 64;
+    public static final int MAX_SCREEN_IDS_PER_PLAYER = 64;
+    private static final java.util.regex.Pattern VALID_SCREEN_ID =
+            java.util.regex.Pattern.compile("[A-Za-z0-9._:-]{1," + MAX_SCREEN_ID_LENGTH + "}");
     
     // Map of screen ID to image UUID
     protected final Map<String, UUID> screenIdToImageId = new ConcurrentHashMap<>();
@@ -179,18 +183,32 @@ public class ScreenRegistryHelper {
     }
 
     public boolean claimScreenId(String screenId, UUID playerId, boolean administrator) {
-        if (screenId == null || screenId.isBlank() || playerId == null) return false;
+        screenId = normalizeScreenId(screenId);
+        if (screenId.isEmpty() || playerId == null) return false;
         UUID owner = screenIdToOwnerId.get(screenId);
         if (owner != null) return administrator || owner.equals(playerId);
         // Existing owner-less IDs are legacy data and require an administrator to claim.
         if (screenIdToImageId.containsKey(screenId) && !administrator) return false;
+        long ownedIds = screenIdToOwnerId.values().stream().filter(playerId::equals).count();
+        if (!administrator && ownedIds >= MAX_SCREEN_IDS_PER_PLAYER) return false;
         screenIdToOwnerId.put(screenId, playerId);
         return true;
     }
 
     public boolean canWriteScreenId(String screenId, UUID playerId, boolean administrator) {
-        if (screenId == null || screenId.isBlank()) return true;
+        screenId = normalizeScreenId(screenId);
+        if (screenId.isEmpty()) return true;
         UUID owner = screenIdToOwnerId.get(screenId);
         return administrator || (owner != null && owner.equals(playerId));
+    }
+
+    public UUID getScreenIdOwner(String screenId) {
+        return screenIdToOwnerId.get(normalizeScreenId(screenId));
+    }
+
+    public static String normalizeScreenId(String screenId) {
+        if (screenId == null) return "";
+        String normalized = screenId.strip();
+        return VALID_SCREEN_ID.matcher(normalized).matches() ? normalized : "";
     }
 }

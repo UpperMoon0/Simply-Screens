@@ -36,6 +36,8 @@ public class ScreenBlockEntity extends BlockEntity {
     private boolean maintainAspectRatio = true;
     private int tickSinceLastUpdate = 0;
     private boolean screenLinkRegistered;
+    private boolean needsStructureRefresh = true;
+    private boolean needsLoadReconciliation = true;
 
     public ScreenBlockEntity(BlockPos pos, BlockState state) {
         super(BlockEntityRegistries.SCREEN.get(), pos, state);
@@ -79,7 +81,7 @@ public class ScreenBlockEntity extends BlockEntity {
         } else {
             imageId = null;
         }
-        screenId = tag.contains("screenId") ? tag.getString("screenId") : "";
+        screenId = com.nstut.simplyscreens.ScreenRegistryHelper.normalizeScreenId(tag.contains("screenId") ? tag.getString("screenId") : "");
         maintainAspectRatio = !tag.contains("maintainAspectRatio") || tag.getBoolean("maintainAspectRatio");
         screenWidth = tag.contains("screenWidth") ? Math.max(1, tag.getInt("screenWidth")) : 1;
         screenHeight = tag.contains("screenHeight") ? Math.max(1, tag.getInt("screenHeight")) : 1;
@@ -136,7 +138,7 @@ public class ScreenBlockEntity extends BlockEntity {
 
     public void setScreenId(String screenId) {
         if (level != null && level.isClientSide) {
-            this.screenId = screenId != null ? screenId : "";
+            this.screenId = com.nstut.simplyscreens.ScreenRegistryHelper.normalizeScreenId(screenId);
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
             return;
         }
@@ -287,7 +289,7 @@ public class ScreenBlockEntity extends BlockEntity {
         }
 
         String oldScreenId = this.screenId;
-        this.screenId = screenId != null ? screenId : "";
+        this.screenId = com.nstut.simplyscreens.ScreenRegistryHelper.normalizeScreenId(screenId);
         UUID linkedImage = this.screenId.isEmpty() ? null : ScreenRegistry.getImageId(this.screenId);
         if (linkedImage != null) {
             this.imageId = linkedImage;
@@ -323,7 +325,7 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     private void setScreenIdInternal(String screenId) {
-        this.screenId = screenId != null ? screenId : "";
+        this.screenId = com.nstut.simplyscreens.ScreenRegistryHelper.normalizeScreenId(screenId);
     }
 
     public void updateScreen(UUID imageId, int width, int height, BlockPos anchor, boolean maintainAspect) {
@@ -351,6 +353,10 @@ public class ScreenBlockEntity extends BlockEntity {
         if (level == null || level.isClientSide) return;
 
         if (isAnchor()) {
+            if (needsStructureRefresh && ++tickSinceLastUpdate >= 100) {
+                tickSinceLastUpdate = 0;
+                updateScreenStructure();
+            }
             if (!screenLinkRegistered && screenId != null && !screenId.isEmpty()) {
                 ScreenRegistry.registerScreen(level, worldPosition, screenId);
                 screenLinkRegistered = true;
@@ -359,22 +365,37 @@ public class ScreenBlockEntity extends BlockEntity {
                     applyLinkedImageId(registryImage);
                 }
             }
+        } else if (needsLoadReconciliation && anchorPos != null && ++tickSinceLastUpdate >= 100) {
+            tickSinceLastUpdate = 0;
+            if (level.getBlockEntity(anchorPos) instanceof ScreenBlockEntity anchor && anchor.isAnchor()) {
+                updateScreen(anchor.imageId, anchor.screenWidth, anchor.screenHeight, anchor.worldPosition, anchor.maintainAspectRatio);
+                setScreenIdInternal(anchor.screenId);
+                anchor.needsStructureRefresh = true;
+                anchor.updateScreenStructure();
+                needsLoadReconciliation = false;
+            }
         }
     }
 
     public void updateScreenStructure() {
         Direction facing = getBlockState().hasProperty(ScreenBlock.FACING) ?
             getBlockState().getValue(ScreenBlock.FACING) : Direction.NORTH;
-        if (!isCurrentStructureLoaded(facing)) return;
+        if (!isCurrentStructureLoaded(facing)) {
+            needsStructureRefresh = true;
+            return;
+        }
         BlockPos farCorner = calculateStructureBounds(facing);
 
         if (farCorner != null) {
+            needsStructureRefresh = false;
             calculateScreenDimensions(facing, farCorner);
 
             // Add this line to force immediate client update
             this.updateScreen(this.imageId, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
 
             updateChildScreens(farCorner, facing);
+        } else {
+            needsStructureRefresh = true;
         }
     }
 

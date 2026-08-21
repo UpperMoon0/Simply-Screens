@@ -45,9 +45,11 @@ public class UpdateScreenIdC2SPacket {
             if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                 ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
                 if (anchor != null) {
-                    if (screenId != null && !screenId.isBlank() &&
-                            !ScreenRegistry.claimScreenId(screenId, player.getUUID(), player.hasPermissions(2))) return;
-                    anchor.setScreenId(screenId);
+                    String normalizedId = com.nstut.simplyscreens.ScreenRegistryHelper.normalizeScreenId(screenId);
+                    if (screenId != null && !screenId.isBlank() && normalizedId.isEmpty()) return;
+                    if (normalizedId.equals(anchor.getScreenId())) return;
+                    if (!normalizedId.isEmpty() && !ScreenRegistry.claimScreenId(normalizedId, player.getUUID(), player.hasPermissions(2))) return;
+                    anchor.setScreenId(normalizedId);
                 }
             }
         });
