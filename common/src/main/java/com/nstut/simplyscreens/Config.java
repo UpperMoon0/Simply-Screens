@@ -17,6 +17,7 @@ public class Config {
     public static int MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5MB
     public static int MAX_URL_DOWNLOAD_SIZE = 10 * 1024 * 1024; // 10MB for URL downloads
     public static int MAX_IMAGES_PER_PLAYER = 256;
+    public static final int MAX_IMAGES_PER_PLAYER_CAP = 1024;
     public static long MAX_STORAGE_PER_PLAYER = 512L * 1024 * 1024;
     public static long MAX_STORAGE_TOTAL = 2L * 1024 * 1024 * 1024;
 
@@ -58,7 +59,7 @@ public class Config {
         DEBUG_RENDERING = getBoolean("debugRendering", DEBUG_RENDERING);
         MAX_UPLOAD_SIZE = clamp(getInt("maxUploadSize", MAX_UPLOAD_SIZE), MIN_UPLOAD_SIZE, MAX_UPLOAD_SIZE_LIMIT);
         MAX_URL_DOWNLOAD_SIZE = clamp(getInt("maxUrlDownloadSize", MAX_URL_DOWNLOAD_SIZE), MIN_UPLOAD_SIZE, MAX_UPLOAD_SIZE_LIMIT);
-        MAX_IMAGES_PER_PLAYER = clamp(getInt("maxImagesPerPlayer", MAX_IMAGES_PER_PLAYER), 1, 100_000);
+        MAX_IMAGES_PER_PLAYER = clamp(getInt("maxImagesPerPlayer", MAX_IMAGES_PER_PLAYER), 1, MAX_IMAGES_PER_PLAYER_CAP);
         MAX_STORAGE_PER_PLAYER = getLong("maxStoragePerPlayer", MAX_STORAGE_PER_PLAYER, MIN_UPLOAD_SIZE, Long.MAX_VALUE);
         MAX_STORAGE_TOTAL = getLong("maxStorageTotal", MAX_STORAGE_TOTAL, MIN_UPLOAD_SIZE, Long.MAX_VALUE);
     }

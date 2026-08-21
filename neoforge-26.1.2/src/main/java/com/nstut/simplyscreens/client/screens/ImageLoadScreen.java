@@ -137,6 +137,7 @@ public class ImageLoadScreen extends Screen {
         // Settings Tab Components
         screenIdField = new EditBox(this.font, guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.SCREEN_ID_FIELD_Y, 100, ScreenGuiConstants.BUTTON_HEIGHT, Component.translatable("gui.simplyscreens.screen.id.placeholder"));
         screenIdField.setValue(initialScreenId);
+        screenIdField.setMaxLength(com.nstut.simplyscreens.ScreenRegistryHelper.MAX_SCREEN_ID_LENGTH);
         screenIdField.setTooltip(Tooltip.create(Component.translatable("gui.simplyscreens.screen.id.tooltip")));
         addRenderableWidget(screenIdField);
 
