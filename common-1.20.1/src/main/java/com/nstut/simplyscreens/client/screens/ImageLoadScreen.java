@@ -260,8 +260,10 @@ public class ImageLoadScreen extends Screen {
 
     private void onUploadFromComputer() {
         try (MemoryStack stack = MemoryStack.stackPush()) {
-            PointerBuffer filters = stack.mallocPointer(1);
-            filters.put(stack.UTF8("*.png;*.jpg;*.jpeg"));
+            PointerBuffer filters = stack.mallocPointer(3);
+            filters.put(stack.UTF8("*.png"));
+            filters.put(stack.UTF8("*.jpg"));
+            filters.put(stack.UTF8("*.jpeg"));
             filters.flip();
 
             String filePath = TinyFileDialogs.tinyfd_openFileDialog(Component.translatable("gui.simplyscreens.screen.dialog.select_image").getString(), "", filters, Component.translatable("gui.simplyscreens.screen.dialog.image_files").getString(), false);

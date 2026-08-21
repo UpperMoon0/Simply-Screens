@@ -263,4 +263,97 @@ class ScreenRegistryHelperTest {
         }
         assertFalse(helper.claimScreenId("one-too-many", player, false));
     }
+
+    @Test
+    void anchorRedirect_storesAndResolvesDirect() {
+        helper.redirectAnchor("minecraft:overworld", 0, 64, 0, 1, 64, 0);
+        int[] resolved = helper.resolveAnchorRedirect("minecraft:overworld", 0, 64, 0);
+        assertNotNull(resolved);
+        assertArrayEquals(new int[]{1, 64, 0}, resolved);
+    }
+
+    @Test
+    void anchorRedirect_resolvesChainedAndPathCompresses() {
+        helper.redirectAnchor("minecraft:overworld", 0, 64, 0, 1, 64, 0);
+        helper.redirectAnchor("minecraft:overworld", 1, 64, 0, 2, 64, 0);
+
+        int[] resolved = helper.resolveAnchorRedirect("minecraft:overworld", 0, 64, 0);
+        assertNotNull(resolved);
+        assertArrayEquals(new int[]{2, 64, 0}, resolved);
+
+        // Chained resolution should have compressed shortcut
+        assertEquals("2,64,0", helper.resolveAnchorRedirectString("minecraft:overworld", "0,64,0"));
+    }
+
+    @Test
+    void anchorRedirect_handlesCyclesSafely() {
+        helper.redirectAnchor("minecraft:overworld", 0, 64, 0, 1, 64, 0);
+        helper.redirectAnchor("minecraft:overworld", 1, 64, 0, 0, 64, 0);
+
+        int[] resolved = helper.resolveAnchorRedirect("minecraft:overworld", 0, 64, 0);
+        assertNotNull(resolved);
+        // Returns the last valid target reached before the cycle was detected
+        assertArrayEquals(new int[]{1, 64, 0}, resolved);
+    }
+
+    @Test
+    void anchorRedirect_removeAndClear() {
+        helper.redirectAnchor("minecraft:overworld", 0, 64, 0, 1, 64, 0);
+        helper.redirectAnchor("minecraft:the_nether", 10, 50, 10, 20, 50, 20);
+
+        helper.removeAnchorRedirect("minecraft:overworld", 0, 64, 0);
+        assertNull(helper.resolveAnchorRedirect("minecraft:overworld", 0, 64, 0));
+        assertNotNull(helper.resolveAnchorRedirect("minecraft:the_nether", 10, 50, 10));
+
+        helper.clearAnchorRedirects("minecraft:the_nether");
+        assertNull(helper.resolveAnchorRedirect("minecraft:the_nether", 10, 50, 10));
+    }
+
+    @Test
+    void anchorRedirect_persistsAndLoadsFromDisk(@TempDir Path tempDir) {
+        helper.init(tempDir);
+        helper.redirectAnchor("minecraft:overworld", 5, 70, 5, 6, 70, 5);
+        helper.saveRegistry();
+
+        Path redirectFile = tempDir.resolve("anchor_redirects.json");
+        assertTrue(Files.exists(redirectFile));
+
+        ScreenRegistryHelper helper2 = new ScreenRegistryHelper(logger);
+        helper2.init(tempDir);
+        int[] resolved = helper2.resolveAnchorRedirect("minecraft:overworld", 5, 70, 5);
+        assertNotNull(resolved);
+        assertArrayEquals(new int[]{6, 70, 5}, resolved);
+    }
+
+    @Test
+    void loadRegistry_recoversFromBackupWhenPrimaryCorruptOrMissing(@TempDir Path tempDir) throws IOException {
+        helper.init(tempDir);
+        UUID imageId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        assertTrue(helper.claimScreenId("screen_main", ownerId, false));
+        helper.setImageId("screen_main", imageId);
+        helper.redirectAnchor("minecraft:overworld", 1, 2, 3, 4, 5, 6);
+        helper.saveRegistry();
+        // Save again to generate .bak files
+        helper.saveRegistry();
+
+        assertTrue(Files.exists(tempDir.resolve("screen_registry.json.bak")));
+        assertTrue(Files.exists(tempDir.resolve("screen_registry_owners.json.bak")));
+        assertTrue(Files.exists(tempDir.resolve("anchor_redirects.json.bak")));
+
+        // Corrupt primary files
+        Files.writeString(tempDir.resolve("screen_registry.json"), "{ corrupted json content");
+        Files.delete(tempDir.resolve("screen_registry_owners.json"));
+        Files.writeString(tempDir.resolve("anchor_redirects.json"), "invalid json data");
+
+        // Reload into fresh helper
+        ScreenRegistryHelper helper2 = new ScreenRegistryHelper(logger);
+        helper2.init(tempDir);
+
+        assertEquals(imageId, helper2.getImageId("screen_main"), "Should recover imageId from backup");
+        assertEquals(ownerId, helper2.getScreenIdOwner("screen_main"), "Should recover owner from backup");
+        int[] resolved = helper2.resolveAnchorRedirect("minecraft:overworld", 1, 2, 3);
+        assertNotNull(resolved, "Should recover anchor redirect from backup");
+        assertArrayEquals(new int[]{4, 5, 6}, resolved);
+    }
 }

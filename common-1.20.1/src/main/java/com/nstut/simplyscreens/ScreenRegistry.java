@@ -177,4 +177,42 @@ public class ScreenRegistry {
         if (level.isClientSide()) return List.of();
         return LINK_INDEX.getPositions(level, screenId);
     }
+
+    public static void redirectAnchor(Level level, BlockPos from, BlockPos to) {
+        if (level == null || level.isClientSide() || from == null || to == null) return;
+        String dimension = getDimensionId(level);
+        HELPER.redirectAnchor(dimension, from.getX(), from.getY(), from.getZ(), to.getX(), to.getY(), to.getZ());
+        HELPER.saveRegistry();
+    }
+
+    public static BlockPos resolveAnchorRedirect(Level level, BlockPos from) {
+        if (level == null || from == null) return null;
+        String dimension = getDimensionId(level);
+        int[] target = HELPER.resolveAnchorRedirect(dimension, from.getX(), from.getY(), from.getZ());
+        return target != null ? new BlockPos(target[0], target[1], target[2]) : null;
+    }
+
+    public static void removeAnchorRedirect(Level level, BlockPos pos) {
+        if (level == null || pos == null) return;
+        String dimension = getDimensionId(level);
+        HELPER.removeAnchorRedirect(dimension, pos.getX(), pos.getY(), pos.getZ());
+    }
+
+    public static void clearAnchorRedirects(Level level) {
+        if (level == null) {
+            HELPER.clearAnchorRedirects(null);
+        } else {
+            HELPER.clearAnchorRedirects(getDimensionId(level));
+        }
+    }
+
+    public static String getDimensionId(Level level) {
+        if (level == null) return "minecraft:overworld";
+        try {
+            if (level.dimension() != null && level.dimension().location() != null) {
+                return level.dimension().location().toString();
+            }
+        } catch (Exception ignored) {}
+        return "minecraft:overworld";
+    }
 }
