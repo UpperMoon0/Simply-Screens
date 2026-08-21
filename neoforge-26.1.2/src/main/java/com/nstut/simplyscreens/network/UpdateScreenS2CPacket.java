@@ -44,7 +44,7 @@ public class UpdateScreenS2CPacket implements CustomPacketPayload {
             imageId = null;
         }
         maintainAspectRatio = buf.readBoolean();
-        screenId = buf.readBoolean() ? buf.readUtf() : "";
+        screenId = buf.readBoolean() ? buf.readUtf(64) : "";
         screenWidth = buf.readVarInt();
         screenHeight = buf.readVarInt();
     }
@@ -59,7 +59,7 @@ public class UpdateScreenS2CPacket implements CustomPacketPayload {
         buf.writeBoolean(maintainAspectRatio);
         buf.writeBoolean(screenId != null && !screenId.isEmpty());
         if (screenId != null && !screenId.isEmpty()) {
-            buf.writeUtf(screenId);
+            buf.writeUtf(screenId, 64);
         }
         buf.writeVarInt(screenWidth);
         buf.writeVarInt(screenHeight);

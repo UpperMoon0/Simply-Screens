@@ -34,7 +34,7 @@ public class UpdateScreenS2CPacket {
             imageId = null;
         }
         maintainAspectRatio = buf.readBoolean();
-        screenId = buf.readBoolean() ? buf.readUtf() : "";
+        screenId = buf.readBoolean() ? buf.readUtf(64) : "";
         screenWidth = buf.readVarInt();
         screenHeight = buf.readVarInt();
     }
@@ -48,7 +48,7 @@ public class UpdateScreenS2CPacket {
         }
         buf.writeBoolean(maintainAspectRatio);
         buf.writeBoolean(!screenId.isEmpty());
-        if (!screenId.isEmpty()) buf.writeUtf(screenId);
+        if (!screenId.isEmpty()) buf.writeUtf(screenId, 64);
         buf.writeVarInt(screenWidth);
         buf.writeVarInt(screenHeight);
     }

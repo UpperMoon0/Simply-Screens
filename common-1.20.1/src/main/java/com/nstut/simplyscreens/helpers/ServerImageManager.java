@@ -185,6 +185,7 @@ public class ServerImageManager {
 
     public static synchronized UUID saveImage(MinecraftServer server, String originalName, byte[] data, String contentType, String ownerUUID) {
         try {
+            originalName = com.nstut.simplyscreens.ImageNameSanitizer.sanitize(originalName);
             if (data == null || data.length > Math.max(Config.MAX_UPLOAD_SIZE, Config.MAX_URL_DOWNLOAD_SIZE)) {
                 SimplyScreens.LOGGER.warn("Rejecting image because its owner/server storage quota would be exceeded");
                 return null;
@@ -238,7 +239,7 @@ public class ServerImageManager {
             }
 
             File metadataFile = imagesDir.resolve(imageId + ".json").toFile();
-            String safeOriginalName = originalName != null && !originalName.isBlank() ? originalName : "uploaded_image";
+            String safeOriginalName = originalName;
             String nameWithoutExtension = safeOriginalName.contains(".") ? safeOriginalName.substring(0, safeOriginalName.lastIndexOf('.')) : safeOriginalName;
             ImageMetadata metadata = new ImageMetadata(nameWithoutExtension, imageId.toString(), extension, ownerUUID);
             try (FileWriter writer = new FileWriter(metadataFile)) {

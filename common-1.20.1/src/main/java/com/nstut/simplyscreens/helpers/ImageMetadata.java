@@ -13,26 +13,26 @@ public class ImageMetadata {
     }
 
     public ImageMetadata(String name, String id, String extension, String ownerUUID) {
-        this.name = name;
+        this.name = com.nstut.simplyscreens.ImageNameSanitizer.sanitize(name);
         this.id = id;
         this.extension = extension;
         this.ownerUUID = ownerUUID;
     }
 
     public ImageMetadata(FriendlyByteBuf buf) {
-        this.name = buf.readUtf();
-        this.id = buf.readUtf();
-        this.extension = buf.readUtf();
-        this.ownerUUID = buf.readBoolean() ? buf.readUtf() : null;
+        this.name = buf.readUtf(com.nstut.simplyscreens.ImageNameSanitizer.MAX_LENGTH);
+        this.id = buf.readUtf(36);
+        this.extension = buf.readUtf(8);
+        this.ownerUUID = buf.readBoolean() ? buf.readUtf(36) : null;
     }
 
     public void write(FriendlyByteBuf buf) {
-        buf.writeUtf(name);
-        buf.writeUtf(id);
-        buf.writeUtf(extension);
+        buf.writeUtf(name, com.nstut.simplyscreens.ImageNameSanitizer.MAX_LENGTH);
+        buf.writeUtf(id, 36);
+        buf.writeUtf(extension, 8);
         buf.writeBoolean(ownerUUID != null);
         if (ownerUUID != null) {
-            buf.writeUtf(ownerUUID);
+            buf.writeUtf(ownerUUID, 36);
         }
     }
 

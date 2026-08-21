@@ -42,19 +42,19 @@ public class DownloadImageFromUrlC2SPacket implements CustomPacketPayload {
     public DownloadImageFromUrlC2SPacket(BlockPos blockPos, String url, String fileName) {
         this.blockPos = blockPos;
         this.url = url;
-        this.fileName = fileName;
+        this.fileName = com.nstut.simplyscreens.ImageNameSanitizer.sanitize(fileName);
     }
 
     public DownloadImageFromUrlC2SPacket(RegistryFriendlyByteBuf buf) {
         this.blockPos = buf.readBlockPos();
-        this.url = buf.readUtf();
-        this.fileName = buf.readUtf();
+        this.url = buf.readUtf(2048);
+        this.fileName = buf.readUtf(com.nstut.simplyscreens.ImageNameSanitizer.MAX_LENGTH);
     }
 
     public void write(RegistryFriendlyByteBuf buf) {
         buf.writeBlockPos(blockPos);
-        buf.writeUtf(url);
-        buf.writeUtf(fileName);
+        buf.writeUtf(url, 2048);
+        buf.writeUtf(fileName, com.nstut.simplyscreens.ImageNameSanitizer.MAX_LENGTH);
     }
 
     @Override

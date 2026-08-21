@@ -23,7 +23,7 @@ public class UploadImageChunkC2SPacket {
         this.chunkIndex = chunkIndex;
         this.totalChunks = totalChunks;
         this.data = data;
-        this.fileName = fileName;
+        this.fileName = fileName == null ? null : com.nstut.simplyscreens.ImageNameSanitizer.sanitize(fileName);
     }
 
     public void write(FriendlyByteBuf buf) {
@@ -33,7 +33,7 @@ public class UploadImageChunkC2SPacket {
         buf.writeVarInt(totalChunks);
         buf.writeByteArray(data);
         if (chunkIndex == 0) {
-            buf.writeUtf(fileName);
+            buf.writeUtf(fileName, com.nstut.simplyscreens.ImageNameSanitizer.MAX_LENGTH);
         }
     }
 
@@ -45,7 +45,7 @@ public class UploadImageChunkC2SPacket {
         byte[] data = buf.readByteArray();
         String fileName = null;
         if (chunkIndex == 0) {
-            fileName = buf.readUtf();
+            fileName = buf.readUtf(com.nstut.simplyscreens.ImageNameSanitizer.MAX_LENGTH);
         }
         return new UploadImageChunkC2SPacket(blockPos, transactionId, chunkIndex, totalChunks, data, fileName);
     }

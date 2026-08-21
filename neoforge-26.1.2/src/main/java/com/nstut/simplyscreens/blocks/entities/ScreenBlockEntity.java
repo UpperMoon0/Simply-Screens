@@ -778,6 +778,15 @@ public class ScreenBlockEntity extends BlockEntity {
             if (!level.hasChunkAt(newAnchorPos)) level.getChunkAt(newAnchorPos);
         }
 
+        // Load the complete bounded footprint before creating the redirect. Every
+        // preserved child must be rewritten while the old anchor still exists.
+        for (int w = 0; w < oldWidth; w++) {
+            for (int h = 0; h < oldHeight; h++) {
+                BlockPos pos = worldPosition.relative(widthDirection, w).relative(heightDirection, h);
+                if (!level.hasChunkAt(pos)) level.getChunkAt(pos);
+            }
+        }
+
         BlockEntity newAnchorBe = newAnchorPos != null ? getLoadedBlockEntity(newAnchorPos) : null;
         if (newAnchorBe instanceof ScreenBlockEntity newAnchor) {
             ScreenRegistry.redirectAnchor(level, worldPosition, newAnchorPos);
@@ -805,18 +814,14 @@ public class ScreenBlockEntity extends BlockEntity {
             for (int h = 0; h < oldHeight; h++) {
                 BlockPos pos = worldPosition.relative(widthDirection, w).relative(heightDirection, h);
                 if (pos.equals(worldPosition)) continue;
-                if (!level.hasChunkAt(pos)) level.getChunkAt(pos);
-            }
-        }
-
-        for (int w = 0; w < oldWidth; w++) {
-            for (int h = 0; h < oldHeight; h++) {
-                BlockPos pos = worldPosition.relative(widthDirection, w).relative(heightDirection, h);
-                if (pos.equals(worldPosition)) continue;
                 if (!level.hasChunkAt(pos)) continue;
                 BlockEntity be = getLoadedBlockEntity(pos);
                 if (be instanceof ScreenBlockEntity leftover) {
                     if (newAnchorPos != null && isInsideRectangle(pos, newAnchorPos, facing, promotion.width(), promotion.height())) {
+                        if (!newAnchorPos.equals(leftover.anchorPos)) {
+                            leftover.updateScreen(this.imageId, promotion.width(), promotion.height(), newAnchorPos, this.maintainAspectRatio);
+                            leftover.setScreenIdInternal(this.screenId);
+                        }
                         continue;
                     }
                     leftover.anchorPos = pos;

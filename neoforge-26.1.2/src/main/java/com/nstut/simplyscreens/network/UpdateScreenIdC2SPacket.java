@@ -38,14 +38,14 @@ public class UpdateScreenIdC2SPacket implements CustomPacketPayload {
 
     public UpdateScreenIdC2SPacket(RegistryFriendlyByteBuf buf) {
         pos = buf.readBlockPos();
-        String readScreenId = buf.readUtf();
+        String readScreenId = buf.readUtf(64);
         screenId = readScreenId.isEmpty() ? null : readScreenId;
         selectedImageId = buf.readBoolean() ? buf.readUUID() : null;
     }
 
     public void write(RegistryFriendlyByteBuf buf) {
         buf.writeBlockPos(pos);
-        buf.writeUtf(screenId != null ? screenId : "");
+        buf.writeUtf(screenId != null ? screenId : "", 64);
         buf.writeBoolean(selectedImageId != null);
         if (selectedImageId != null) {
             buf.writeUUID(selectedImageId);
