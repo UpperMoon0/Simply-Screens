@@ -52,14 +52,14 @@ public class PacketRegistries {
     }
 
     static void registerS2CPayloadTypes() {
-        // Dedicated servers encode these payloads but never install client receivers.
         NetworkManager.registerS2CPayloadType(UpdateScreenS2CPacket.TYPE, UpdateScreenS2CPacket.CODEC);
         NetworkManager.registerS2CPayloadType(UpdateImageListS2CPacket.TYPE, UpdateImageListS2CPacket.CODEC);
         NetworkManager.registerS2CPayloadType(ImageDownloadChunkS2CPacket.TYPE, ImageDownloadChunkS2CPacket.CODEC);
+        NetworkManager.registerS2CPayloadType(InvalidateImageS2CPacket.TYPE, InvalidateImageS2CPacket.CODEC);
+        NetworkManager.registerS2CPayloadType(ServerConfigSyncS2CPacket.TYPE, ServerConfigSyncS2CPacket.CODEC);
     }
     
     public static void registerS2CPackets() {
-        // Register server to client packets (client-side only)
         NetworkManager.registerReceiver(NetworkManager.s2c(),
             UpdateScreenS2CPacket.TYPE,
             UpdateScreenS2CPacket.CODEC,
@@ -74,6 +74,16 @@ public class PacketRegistries {
             ImageDownloadChunkS2CPacket.TYPE,
             ImageDownloadChunkS2CPacket.CODEC,
             (packet, context) -> ImageDownloadChunkS2CPacket.handle(packet, context));
+
+        NetworkManager.registerReceiver(NetworkManager.s2c(),
+            InvalidateImageS2CPacket.TYPE,
+            InvalidateImageS2CPacket.CODEC,
+            (packet, context) -> InvalidateImageS2CPacket.handle(packet, context));
+
+        NetworkManager.registerReceiver(NetworkManager.s2c(),
+            ServerConfigSyncS2CPacket.TYPE,
+            ServerConfigSyncS2CPacket.CODEC,
+            (packet, context) -> ServerConfigSyncS2CPacket.handle(packet, context));
     }
     
     public static <T extends net.minecraft.network.protocol.common.custom.CustomPacketPayload> void sendToPlayer(ServerPlayer player, T message) {

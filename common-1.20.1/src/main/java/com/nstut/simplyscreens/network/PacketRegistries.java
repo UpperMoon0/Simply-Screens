@@ -77,5 +77,17 @@ public class PacketRegistries {
                 RemoveImageC2SPacket::read,
                 RemoveImageC2SPacket::apply
         );
+
+        CHANNEL.register(InvalidateImageS2CPacket.class,
+                InvalidateImageS2CPacket::write,
+                InvalidateImageS2CPacket::read,
+                InvalidateImageS2CPacket::handle
+        );
+
+        CHANNEL.register(ServerConfigSyncS2CPacket.class,
+                ServerConfigSyncS2CPacket::write,
+                ServerConfigSyncS2CPacket::read,
+                ServerConfigSyncS2CPacket::handle
+        );
     }
 }

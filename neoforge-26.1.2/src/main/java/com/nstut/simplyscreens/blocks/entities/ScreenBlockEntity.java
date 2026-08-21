@@ -1,6 +1,7 @@
 package com.nstut.simplyscreens.blocks.entities;
 
 import com.nstut.simplyscreens.Config;
+import com.nstut.simplyscreens.ScreenMetadata;
 import com.nstut.simplyscreens.ScreenRegistry;
 import com.nstut.simplyscreens.ScreenAnchorPromotion;
 import com.nstut.simplyscreens.ScreenStructureDetector;
@@ -498,9 +499,8 @@ public class ScreenBlockEntity extends BlockEntity {
             Direction widthDirection = getWidthDirection(facing);
             Direction heightDirection = getHeightDirection(facing);
 
-            UUID inheritedImage = this.imageId;
-            String inheritedScreenId = this.screenId;
-            boolean inheritedAspect = this.maintainAspectRatio;
+            boolean currentHasMetadata = this.imageId != null || (this.screenId != null && !this.screenId.isEmpty());
+            ScreenMetadata childMetadata = null;
 
             for (int w = 0; w < newWidth; w++) {
                 for (int h = 0; h < newHeight; h++) {
@@ -508,21 +508,19 @@ public class ScreenBlockEntity extends BlockEntity {
                     if (pos.equals(worldPosition)) continue;
                     BlockEntity be = getLoadedBlockEntity(pos);
                     if (be instanceof ScreenBlockEntity other && other.isAnchor()) {
-                        if (inheritedImage == null && other.imageId != null) {
-                            inheritedImage = other.imageId;
+                        if (childMetadata == null && (other.imageId != null || other.screenId != null && !other.screenId.isEmpty())) {
+                            childMetadata = new ScreenMetadata(other.imageId, other.screenId, other.maintainAspectRatio);
                         }
-                        if ((inheritedScreenId == null || inheritedScreenId.isEmpty()) && other.screenId != null && !other.screenId.isEmpty()) {
-                            inheritedScreenId = other.screenId;
-                        }
-                        inheritedAspect = other.maintainAspectRatio;
                         ScreenRegistry.unregisterScreen(level, other.worldPosition, other.screenId);
                     }
                 }
             }
 
-            this.imageId = inheritedImage;
-            this.screenId = inheritedScreenId;
-            this.maintainAspectRatio = inheritedAspect;
+            if (!currentHasMetadata && childMetadata != null) {
+                this.imageId = childMetadata.imageId();
+                this.screenId = childMetadata.screenId();
+                this.maintainAspectRatio = childMetadata.maintainAspectRatio();
+            }
 
             if (this.screenId != null && !this.screenId.isEmpty()) {
                 ScreenRegistry.registerScreen(level, worldPosition, this.screenId);
@@ -564,7 +562,6 @@ public class ScreenBlockEntity extends BlockEntity {
                             leftover.screenHeight = 1;
                             leftover.needsStructureRefresh = true;
                             leftover.setChanged();
-                            leftover.updateScreenStructure();
                         }
                     }
                 }
@@ -628,7 +625,7 @@ public class ScreenBlockEntity extends BlockEntity {
         int extension = 0;
         BlockPos current = worldPosition.relative(direction);
 
-        while (extension < MAX_SCREEN_DIMENSION && isMatchingScreen(current, facing)) {
+        while (extension < MAX_SCREEN_DIMENSION - 1 && isMatchingScreen(current, facing)) {
             extension++;
             current = current.relative(direction);
         }
@@ -642,14 +639,21 @@ public class ScreenBlockEntity extends BlockEntity {
         if (!(entity instanceof ScreenBlockEntity screen) || !entity.getBlockState().hasProperty(ScreenBlock.FACING)
                 || entity.getBlockState().getValue(ScreenBlock.FACING) != facing) return false;
         BlockPos foreignAnchor = screen.getAnchorPos();
-        if (foreignAnchor != null && !foreignAnchor.equals(screen.getBlockPos()) && !foreignAnchor.equals(this.worldPosition) && !level.hasChunkAt(foreignAnchor)) {
-            BlockPos redirected = ScreenRegistry.resolveAnchorRedirect(level, foreignAnchor);
-            if (redirected != null && redirected.equals(this.worldPosition)) {
-                screen.anchorPos = this.worldPosition;
-                screen.setChanged();
-                return true;
+        if (foreignAnchor != null && !foreignAnchor.equals(screen.getBlockPos()) && !foreignAnchor.equals(this.worldPosition)) {
+            if (level.hasChunkAt(foreignAnchor)) {
+                BlockEntity foreignBe = getLoadedBlockEntity(foreignAnchor);
+                if (foreignBe instanceof ScreenBlockEntity foreignAnchorBe && foreignAnchorBe.isAnchor()) {
+                    return false;
+                }
+            } else {
+                BlockPos redirected = ScreenRegistry.resolveAnchorRedirect(level, foreignAnchor);
+                if (redirected != null && redirected.equals(this.worldPosition)) {
+                    screen.anchorPos = this.worldPosition;
+                    screen.setChanged();
+                    return true;
+                }
+                throw new UnresolvedStructureException();
             }
-            throw new UnresolvedStructureException();
         }
         return true;
     }
@@ -782,6 +786,14 @@ public class ScreenBlockEntity extends BlockEntity {
             for (int h = 0; h < oldHeight; h++) {
                 BlockPos pos = worldPosition.relative(widthDirection, w).relative(heightDirection, h);
                 if (pos.equals(worldPosition)) continue;
+                if (!level.hasChunkAt(pos)) level.getChunkAt(pos);
+            }
+        }
+
+        for (int w = 0; w < oldWidth; w++) {
+            for (int h = 0; h < oldHeight; h++) {
+                BlockPos pos = worldPosition.relative(widthDirection, w).relative(heightDirection, h);
+                if (pos.equals(worldPosition)) continue;
                 if (!level.hasChunkAt(pos)) continue;
                 BlockEntity be = getLoadedBlockEntity(pos);
                 if (be instanceof ScreenBlockEntity leftover) {
@@ -796,7 +808,6 @@ public class ScreenBlockEntity extends BlockEntity {
                     leftover.screenHeight = 1;
                     leftover.needsStructureRefresh = true;
                     leftover.setChanged();
-                    leftover.updateScreenStructure();
                 }
             }
         }

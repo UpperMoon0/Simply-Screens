@@ -89,6 +89,7 @@ public class UpdateScreenIdC2SPacket implements CustomPacketPayload {
                         anchor.setScreenId(normalizedId);
                     }
                     if (packet.selectedImageId != null) {
+                        if (!ServerImageManager.canPlayerAccessImage(player.level().getServer(), packet.selectedImageId, player.getUUID().toString())) return;
                         anchor.setImageId(packet.selectedImageId);
                     }
                 }

@@ -21,6 +21,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import com.nstut.simplyscreens.network.UpdateImageListS2CPacket;
+import com.nstut.simplyscreens.network.UpdateScreenS2CPacket;
+import com.nstut.simplyscreens.network.InvalidateImageS2CPacket;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.ServerLevel;
@@ -271,6 +273,7 @@ public class ServerImageManager {
             Files.deleteIfExists(imagesDir.resolve(imageId + ".json"));
             com.nstut.simplyscreens.ScreenRegistry.removeImageReferences(imageId);
             cachedImageList = null;
+            invalidateScreensUsingImage(server, imageId);
             return true;
         } catch (IOException e) {
             SimplyScreens.LOGGER.error("Failed to delete image {}", imageId, e);
@@ -518,6 +521,49 @@ public class ServerImageManager {
                 }
             }
             return true;
+        }
+    }
+
+    private static void invalidateScreensUsingImage(MinecraftServer server, UUID imageId) {
+        java.util.Set<BlockPos> affectedPositions = new java.util.HashSet<>();
+
+        for (String screenId : com.nstut.simplyscreens.ScreenRegistry.getAllScreenIds()) {
+            if (imageId.equals(com.nstut.simplyscreens.ScreenRegistry.getImageId(screenId))) {
+                for (ServerLevel level : server.getAllLevels()) {
+                    affectedPositions.addAll(com.nstut.simplyscreens.ScreenRegistry.getPositionsForScreenId(level, screenId));
+                }
+            }
+        }
+
+        for (ServerLevel level : server.getAllLevels()) {
+            for (ChunkPos chunkPos : level.getChunkSource().chunkMap.getChunkPositions()) {
+                if (!level.hasChunk(chunkPos.x, chunkPos.z)) continue;
+                net.minecraft.world.level.chunk.LevelChunk chunk = level.getChunk(chunkPos.x, chunkPos.z);
+                if (chunk == null) continue;
+                for (BlockEntity be : chunk.getBlockEntities().values()) {
+                    if (be instanceof com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity anchor
+                            && anchor.isAnchor() && imageId.equals(anchor.getImageId())) {
+                        affectedPositions.add(anchor.getBlockPos());
+                    }
+                }
+            }
+        }
+
+        for (BlockPos pos : affectedPositions) {
+            for (ServerLevel level : server.getAllLevels()) {
+                if (!level.hasChunkAt(pos)) continue;
+                BlockEntity be = level.getBlockEntity(pos);
+                if (be instanceof com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity anchor
+                        && anchor.isAnchor() && imageId.equals(anchor.getImageId())) {
+                    anchor.setImageId(null);
+                    for (ServerPlayer player : level.getChunkSource().chunkMap.getPlayers(new ChunkPos(pos), false)) {
+                        PacketRegistries.sendToPlayer(player, new UpdateScreenS2CPacket(
+                                pos, pos, null, anchor.isMaintainAspectRatio(), anchor.getScreenId(),
+                                anchor.getScreenWidth(), anchor.getScreenHeight()));
+                        PacketRegistries.sendToPlayer(player, new InvalidateImageS2CPacket(imageId));
+                    }
+                }
+            }
         }
     }
 }

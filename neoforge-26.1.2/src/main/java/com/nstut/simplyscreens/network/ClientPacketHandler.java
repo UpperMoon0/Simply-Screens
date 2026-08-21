@@ -34,6 +34,15 @@ public class ClientPacketHandler {
         if (screenId != null) screen.setScreenId(screenId);
     }
 
+    public static void handleInvalidateImage(UUID imageId) {
+    }
+
+    public static void handleConfigSync(boolean disableUpload, boolean disableUrlDownload, int maxUploadSize) {
+        Config.DISABLE_UPLOAD = disableUpload;
+        Config.DISABLE_URL_DOWNLOAD = disableUrlDownload;
+        Config.MAX_UPLOAD_SIZE = maxUploadSize;
+    }
+
     public static void handleUploadComplete() {
         Minecraft mc = Minecraft.getInstance();
         Screen currentScreen = mc.screen;

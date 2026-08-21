@@ -28,6 +28,9 @@ public class ScreenRegistryHelper {
     public static final int MAX_SCREEN_IDS_PER_PLAYER = 64;
     private static final java.util.regex.Pattern VALID_SCREEN_ID =
             java.util.regex.Pattern.compile("[A-Za-z0-9._:-]{1," + MAX_SCREEN_ID_LENGTH + "}");
+
+    public record ScreenMetadata(UUID imageId, String screenId, boolean maintainAspectRatio) {
+    }
     
     // Map of screen ID to image UUID
     protected final Map<String, UUID> screenIdToImageId = new ConcurrentHashMap<>();

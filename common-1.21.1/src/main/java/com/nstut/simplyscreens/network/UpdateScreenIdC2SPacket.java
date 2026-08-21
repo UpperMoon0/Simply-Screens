@@ -3,6 +3,7 @@ package com.nstut.simplyscreens.network;
 import com.nstut.simplyscreens.ScreenRegistry;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
+import com.nstut.simplyscreens.helpers.ServerImageManager;
 import com.nstut.simplyscreens.helpers.ScreenPacketSecurity;
 import dev.architectury.networking.NetworkManager;
 import net.minecraft.core.BlockPos;
@@ -88,6 +89,7 @@ public class UpdateScreenIdC2SPacket implements CustomPacketPayload {
                         anchor.setScreenId(normalizedId);
                     }
                     if (packet.selectedImageId != null) {
+                        if (!ServerImageManager.canPlayerAccessImage(player.serverLevel().getServer(), packet.selectedImageId, player.getUUID().toString())) return;
                         anchor.setImageId(packet.selectedImageId);
                     }
                 }
