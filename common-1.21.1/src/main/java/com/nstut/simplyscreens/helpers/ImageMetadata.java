@@ -34,12 +34,18 @@ public class ImageMetadata {
      * Returns null when the entry is unusable or its backing image file is missing.
      */
     public static ImageMetadata validateAndNormalize(ImageMetadata raw, Path imagesDir) {
+        return validateAndNormalize(raw, imagesDir, null);
+    }
+
+    public static ImageMetadata validateAndNormalize(ImageMetadata raw, Path imagesDir, String expectedImageId) {
         if (raw == null) return null;
         String name = com.nstut.simplyscreens.ImageNameSanitizer.sanitize(raw.name);
         if (!isValidUuid(raw.id)) return null;
+        if (expectedImageId != null && !expectedImageId.equals(raw.id)) return null;
         String extension = normalizeExtension(raw.extension);
         if (extension == null) return null;
-        String ownerUUID = raw.ownerUUID == null ? null : (isValidUuid(raw.ownerUUID) ? raw.ownerUUID : null);
+        if (raw.ownerUUID != null && !isValidUuid(raw.ownerUUID)) return null;
+        String ownerUUID = raw.ownerUUID;
         if (imagesDir != null) {
             Path primary = imagesDir.resolve(raw.id + "." + extension);
             if (!Files.exists(primary)) {

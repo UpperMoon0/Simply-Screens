@@ -354,7 +354,7 @@ public class ServerImageManager {
         if (metadataFile.exists()) {
             try (FileReader reader = new FileReader(metadataFile)) {
                 ImageMetadata raw = GSON.fromJson(reader, ImageMetadata.class);
-                return ImageMetadata.validateAndNormalize(raw, getImagesDir(server));
+                return ImageMetadata.validateAndNormalize(raw, getImagesDir(server), imageId.toString());
             } catch (Exception e) {
                 SimplyScreens.LOGGER.error("Failed to read image metadata for " + imageId, e);
             }
@@ -436,10 +436,15 @@ public class ServerImageManager {
         if (Files.exists(imagesDir) && Files.isDirectory(imagesDir)) {
             try (Stream<Path> paths = Files.walk(imagesDir)) {
                         paths.filter(path -> path.toString().endsWith(".json"))
+                        .sorted(java.util.Comparator.comparing(p -> p.getFileName().toString()))
                         .forEach(path -> {
                             try (FileReader reader = new FileReader(path.toFile())) {
                                 ImageMetadata raw = GSON.fromJson(reader, ImageMetadata.class);
-                                ImageMetadata meta = ImageMetadata.validateAndNormalize(raw, imagesDir);
+                                String expectedId = path.getFileName().toString();
+                                if (expectedId.endsWith(".json")) {
+                                    expectedId = expectedId.substring(0, expectedId.length() - 5);
+                                }
+                                ImageMetadata meta = ImageMetadata.validateAndNormalize(raw, imagesDir, expectedId);
                                 if (meta != null) {
                                     imageList.add(meta);
                                 }

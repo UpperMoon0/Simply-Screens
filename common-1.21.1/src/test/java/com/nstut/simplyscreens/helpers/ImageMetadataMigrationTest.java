@@ -37,6 +37,34 @@ class ImageMetadataMigrationTest {
     }
 
     @Test
+    void malformedPresentOwner_isRejected() {
+        String json = "{\"name\":\"ok\",\"id\":\"" + UUID.randomUUID() +
+                "\",\"extension\":\"png\",\"ownerUUID\":\"broken-uuid\"}";
+        ImageMetadata raw = GSON.fromJson(json, ImageMetadata.class);
+        assertNull(ImageMetadata.validateAndNormalize(raw, null),
+                "a present but malformed owner must be quarantined (fail-closed)");
+
+        String validOwner = UUID.randomUUID().toString();
+        json = "{\"name\":\"ok\",\"id\":\"" + UUID.randomUUID() +
+                "\",\"extension\":\"png\",\"ownerUUID\":\"" + validOwner + "\"}";
+        raw = GSON.fromJson(json, ImageMetadata.class);
+        ImageMetadata normalized = ImageMetadata.validateAndNormalize(raw, null);
+        assertNotNull(normalized);
+        assertEquals(validOwner, normalized.getOwnerUUID());
+    }
+
+    @Test
+    void idMismatchWithExpectedId_isRejected() {
+        UUID idA = UUID.randomUUID();
+        UUID idB = UUID.randomUUID();
+        String json = "{\"name\":\"ok\",\"id\":\"" + idA + "\",\"extension\":\"png\",\"ownerUUID\":null}";
+        ImageMetadata raw = GSON.fromJson(json, ImageMetadata.class);
+        assertNull(ImageMetadata.validateAndNormalize(raw, null, idB.toString()),
+                "metadata whose id does not match the requested filename must be rejected");
+        assertNotNull(ImageMetadata.validateAndNormalize(raw, null, idA.toString()));
+    }
+
+    @Test
     void invalidExtension_orMissingFile_isRejected() throws Exception {
         String id = UUID.randomUUID().toString();
         String json = "{\"name\":\"ok\",\"id\":\"" + id + "\",\"extension\":\"exe\",\"ownerUUID\":null}";
