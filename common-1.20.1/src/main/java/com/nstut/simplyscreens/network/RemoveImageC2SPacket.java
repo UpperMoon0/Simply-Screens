@@ -34,7 +34,7 @@ public class RemoveImageC2SPacket {
             if (deleted && player.getServer() != null) {
                 for (ServerPlayer onlinePlayer : player.getServer().getPlayerList().getPlayers()) {
                     var images = ServerImageManager.getImageListForPlayer(player.getServer(), onlinePlayer.getUUID().toString());
-                    PacketRegistries.CHANNEL.sendToPlayer(onlinePlayer, new UpdateImageListS2CPacket(images));
+                    PacketRegistries.sendToPlayer(onlinePlayer, new UpdateImageListS2CPacket(images));
                 }
             }
         });

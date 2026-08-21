@@ -51,6 +51,9 @@ public class ServerImageManager {
     private static final int MIN_UPLOAD_SIZE = 16;
     private static final Map<String, UploadState> UPLOADS = new ConcurrentHashMap<>();
     private static final Map<UUID, Integer> PROCESSING_UPLOADS = new ConcurrentHashMap<>();
+    private static final java.util.Set<com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity> LOADED_SCREENS = ConcurrentHashMap.newKeySet();
+    public static void trackLoadedScreen(com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity screen) { LOADED_SCREENS.add(screen); }
+    public static void untrackLoadedScreen(com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity screen) { LOADED_SCREENS.remove(screen); }
     private static final ExecutorService IMAGE_UPLOAD_EXECUTOR =
             ChunkedFileTransfer.newDaemonBoundedThreadPool(2, 64, "Simply Screens Image Upload");
     private static final java.util.concurrent.ScheduledExecutorService UPLOAD_REAPER =
@@ -140,7 +143,6 @@ public class ServerImageManager {
 
     private static void finishImageUpload(MinecraftServer server, ServerPlayer player, BlockPos blockPos, UploadState state, String ownerUUID) {
         try {
-            if (player.level() != state.level) return;
             byte[] imageData = new byte[(int) state.receivedBytes];
             int offset = 0;
             for (byte[] chunk : state.chunks) {
@@ -529,6 +531,9 @@ public class ServerImageManager {
 
     private static void invalidateScreensUsingImage(MinecraftServer server, UUID imageId) {
         java.util.Set<BlockPos> affectedPositions = new java.util.HashSet<>();
+        for (com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity screen : List.copyOf(LOADED_SCREENS)) {
+            if (screen.isAnchor() && imageId.equals(screen.getImageId())) screen.setImageId(null);
+        }
 
         for (String screenId : com.nstut.simplyscreens.ScreenRegistry.getAllScreenIds()) {
             if (imageId.equals(com.nstut.simplyscreens.ScreenRegistry.getImageId(screenId))) {

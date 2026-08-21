@@ -53,6 +53,7 @@ public class ScreenBlockEntity extends BlockEntity {
     @Override
     public void setLevel(net.minecraft.world.level.Level level) {
         super.setLevel(level);
+        if (!level.isClientSide()) com.nstut.simplyscreens.helpers.ServerImageManager.trackLoadedScreen(this);
         if (!level.isClientSide() && level.getServer() != null) level.getServer().execute(this::reconcileAfterLoad);
     }
 
@@ -61,6 +62,10 @@ public class ScreenBlockEntity extends BlockEntity {
     private void reconcileAfterLoad() {
         if (level == null || level.isClientSide() || isRemoved()) return;
         if (isAnchor()) {
+            if ((screenId == null || screenId.isEmpty()) && imageId != null
+                    && com.nstut.simplyscreens.helpers.ServerImageManager.getImageMetadata(level.getServer(), imageId) == null) {
+                setImageId(null);
+            }
             needsStructureRefresh = true;
             synchronizeLoadedChildren();
             return;
@@ -120,6 +125,7 @@ public class ScreenBlockEntity extends BlockEntity {
 
     @Override
     public void setRemoved() {
+        com.nstut.simplyscreens.helpers.ServerImageManager.untrackLoadedScreen(this);
         if (level != null && !level.isClientSide() && isAnchor()) {
             ScreenRegistry.unregisterScreen(level, worldPosition, screenId);
         }
@@ -474,7 +480,7 @@ public class ScreenBlockEntity extends BlockEntity {
                 ScreenRegistry.registerScreen(level, worldPosition, screenId);
                 screenLinkRegistered = true;
                 UUID registryImage = ScreenRegistry.getImageId(screenId);
-                if (registryImage != null && !registryImage.equals(imageId)) {
+                if (!java.util.Objects.equals(registryImage, imageId)) {
                     applyLinkedImageId(registryImage);
                 }
             }
@@ -515,6 +521,7 @@ public class ScreenBlockEntity extends BlockEntity {
                             childMetadata = new ScreenMetadata(other.imageId, other.screenId, other.maintainAspectRatio);
                         }
                         ScreenRegistry.unregisterScreen(level, other.worldPosition, other.screenId);
+                        other.screenLinkRegistered = false;
                     }
                 }
             }
@@ -529,7 +536,7 @@ public class ScreenBlockEntity extends BlockEntity {
                 ScreenRegistry.registerScreen(level, worldPosition, this.screenId);
                 screenLinkRegistered = true;
                 UUID registryImage = ScreenRegistry.getImageId(this.screenId);
-                if (registryImage != null && !registryImage.equals(this.imageId)) {
+                if (!java.util.Objects.equals(registryImage, this.imageId)) {
                     this.imageId = registryImage;
                 }
             }
@@ -564,6 +571,7 @@ public class ScreenBlockEntity extends BlockEntity {
                             leftover.screenWidth = 1;
                             leftover.screenHeight = 1;
                             leftover.needsStructureRefresh = true;
+                            leftover.screenLinkRegistered = false;
                             leftover.setChanged();
                             level.setBlock(leftoverPos, leftover.getBlockState().setValue(ScreenBlock.STATE, ScreenBlock.STATE_ANCHOR), Block.UPDATE_ALL);
                         }
@@ -775,8 +783,10 @@ public class ScreenBlockEntity extends BlockEntity {
             ScreenRegistry.redirectAnchor(level, worldPosition, newAnchorPos);
             newAnchor.updateScreen(this.imageId, promotion.width(), promotion.height(), newAnchorPos, this.maintainAspectRatio);
             newAnchor.setScreenIdInternal(this.screenId);
+            newAnchor.screenLinkRegistered = false;
             if (this.screenId != null && !this.screenId.isEmpty()) {
                 ScreenRegistry.registerScreen(level, newAnchorPos, this.screenId);
+                newAnchor.screenLinkRegistered = true;
             }
             updateChildrenToNewAnchor(newAnchorPos, facing, promotion.width(), promotion.height());
             newAnchor.updateScreenStructure();
@@ -816,11 +826,13 @@ public class ScreenBlockEntity extends BlockEntity {
                     leftover.screenWidth = 1;
                     leftover.screenHeight = 1;
                     leftover.needsStructureRefresh = true;
+                    leftover.screenLinkRegistered = false;
                     leftover.setChanged();
                     level.setBlock(pos, leftover.getBlockState().setValue(ScreenBlock.STATE, ScreenBlock.STATE_ANCHOR), Block.UPDATE_ALL);
                 }
             }
         }
+        ScreenRegistry.removeAnchorRedirect(level, worldPosition);
     }
 
     private void updateChildrenToNewAnchor(BlockPos newAnchorPos, Direction facing, int width, int height) {

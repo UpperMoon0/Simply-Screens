@@ -4,6 +4,7 @@ import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.BlockEntityRegistries;
 import com.nstut.simplyscreens.client.renderers.ScreenBlockEntityRenderer;
 import com.nstut.simplyscreens.helpers.ClientImageManager;
+import com.nstut.simplyscreens.client.ClientServerConfig;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
 import net.neoforged.api.distmarker.Dist;
@@ -47,5 +48,6 @@ public class ClientSetup {
         SimplyScreens.LOGGER.info("Client disconnect event received");
         System.out.println("Client disconnect event received");
         ClientImageManager.clearCache();
+        ClientServerConfig.reset();
     }
 }

@@ -1,6 +1,6 @@
 package com.nstut.simplyscreens.client.screens;
 
-import com.nstut.simplyscreens.Config;
+import com.nstut.simplyscreens.client.ClientServerConfig;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.ImageImportSupport;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
@@ -169,7 +169,7 @@ public class ImageLoadScreen extends Screen {
                 .pos(guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + 80)
                 .size(ScreenGuiConstants.IMAGE_LIST_WIDTH, ScreenGuiConstants.SELECT_BUTTON_HEIGHT + 4)
                 .build();
-        uploadFromComputerButton.visible = !Config.DISABLE_UPLOAD;
+        uploadFromComputerButton.visible = !ClientServerConfig.disableUpload();
         addRenderableWidget(uploadFromComputerButton);
 
         // Import Tab Components - Download from URL Section
@@ -182,7 +182,7 @@ public class ImageLoadScreen extends Screen {
                 .pos(guiLeft + ScreenGuiConstants.DOWNLOAD_BUTTON_X, guiTop + 130)
                 .size(ScreenGuiConstants.DOWNLOAD_BUTTON_WIDTH, ScreenGuiConstants.URL_FIELD_HEIGHT)
                 .build();
-        downloadFromUrlButton.visible = !Config.DISABLE_URL_DOWNLOAD;
+        downloadFromUrlButton.visible = !ClientServerConfig.disableUrlDownload();
         addRenderableWidget(downloadFromUrlButton);
 
         updateTabVisibility();
@@ -220,9 +220,9 @@ public class ImageLoadScreen extends Screen {
         maintainAspectCheckbox.visible = isSettings;
 
         // Import tab
-        uploadFromComputerButton.visible = isImport && !Config.DISABLE_UPLOAD;
-        urlField.visible = isImport && !Config.DISABLE_URL_DOWNLOAD;
-        downloadFromUrlButton.visible = isImport && !Config.DISABLE_URL_DOWNLOAD;
+        uploadFromComputerButton.visible = isImport && !ClientServerConfig.disableUpload();
+        urlField.visible = isImport && !ClientServerConfig.disableUrlDownload();
+        downloadFromUrlButton.visible = isImport && !ClientServerConfig.disableUrlDownload();
         backButton.visible = isImport;
 
         // Update tab button states (visual feedback)
@@ -275,14 +275,14 @@ public class ImageLoadScreen extends Screen {
                 try {
                     Path path = Paths.get(filePath);
                     long fileSize = java.nio.file.Files.size(path);
-                    if (fileSize > Config.MAX_UPLOAD_SIZE) {
-                        TinyFileDialogs.tinyfd_messageBox(Component.translatable("gui.simplyscreens.screen.dialog.upload_error").getString(), Component.translatable("gui.simplyscreens.screen.upload.error.size", Config.MAX_UPLOAD_SIZE / 1024 / 1024).getString(), "ok", "error", 1);
+                    if (fileSize > ClientServerConfig.maxUploadSize()) {
+                        TinyFileDialogs.tinyfd_messageBox(Component.translatable("gui.simplyscreens.screen.dialog.upload_error").getString(), Component.translatable("gui.simplyscreens.screen.upload.error.size", ClientServerConfig.maxUploadSize() / 1024 / 1024).getString(), "ok", "error", 1);
                         return;
                     }
                     byte[] data = java.nio.file.Files.readAllBytes(path);
 
-                    if (data.length > Config.MAX_UPLOAD_SIZE) {
-                        TinyFileDialogs.tinyfd_messageBox(Component.translatable("gui.simplyscreens.screen.dialog.upload_error").getString(), Component.translatable("gui.simplyscreens.screen.upload.error.size", Config.MAX_UPLOAD_SIZE / 1024 / 1024).getString(), "ok", "error", 1);
+                    if (data.length > ClientServerConfig.maxUploadSize()) {
+                        TinyFileDialogs.tinyfd_messageBox(Component.translatable("gui.simplyscreens.screen.dialog.upload_error").getString(), Component.translatable("gui.simplyscreens.screen.upload.error.size", ClientServerConfig.maxUploadSize() / 1024 / 1024).getString(), "ok", "error", 1);
                         return;
                     }
 

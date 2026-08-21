@@ -103,7 +103,7 @@ public class RequestImageDownloadC2SPacket implements IPacket {
             }
             ChunkedFileTransfer.streamFile(imagePath, CHUNK_SIZE, (chunkIndex, totalChunks, chunk) -> {
                 String packetExt = chunkIndex == 0 ? metadata.getExtension() : null;
-                server.execute(() -> PacketRegistries.CHANNEL.sendToPlayer(player, new ImageDownloadChunkS2CPacket(
+                server.execute(() -> PacketRegistries.sendToPlayer(player, new ImageDownloadChunkS2CPacket(
                         imageId, chunkIndex, totalChunks, chunk, packetExt)));
             });
             ACTIVE_DOWNLOADS.release(transferKey);

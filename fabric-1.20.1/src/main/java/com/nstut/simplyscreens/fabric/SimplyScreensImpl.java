@@ -27,7 +27,7 @@ public class SimplyScreensImpl implements ModInitializer {
         ServerLifecycleEvents.SERVER_STARTED.register(server ->
                 SimplyScreens.initializeScreens(server.getWorldPath(LevelResource.ROOT)));
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
-            PacketRegistries.CHANNEL.sendToPlayer(handler.getPlayer(), new ServerConfigSyncS2CPacket(
+            PacketRegistries.sendToPlayer(handler.getPlayer(), new ServerConfigSyncS2CPacket(
                 com.nstut.simplyscreens.Config.DISABLE_UPLOAD,
                 com.nstut.simplyscreens.Config.DISABLE_URL_DOWNLOAD,
                 com.nstut.simplyscreens.Config.MAX_UPLOAD_SIZE));

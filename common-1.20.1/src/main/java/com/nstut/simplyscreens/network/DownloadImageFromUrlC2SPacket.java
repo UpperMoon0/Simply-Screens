@@ -122,7 +122,7 @@ public class DownloadImageFromUrlC2SPacket {
 
                                     // Send updated image list to player
                                     var images = ServerImageManager.getImageListForPlayer(server, playerUUID.toString());
-                                    PacketRegistries.CHANNEL.sendToPlayer(p, new UpdateImageListS2CPacket(images));
+                                    PacketRegistries.sendToPlayer(p, new UpdateImageListS2CPacket(images));
                                 });
                             } else {
                                 server.execute(() -> {

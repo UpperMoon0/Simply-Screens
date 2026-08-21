@@ -1,6 +1,6 @@
 package com.nstut.simplyscreens.client.screens;
 
-import com.nstut.simplyscreens.Config;
+import com.nstut.simplyscreens.client.ClientServerConfig;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.ImageImportSupport;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
@@ -151,7 +151,7 @@ public class ImageLoadScreen extends Screen {
                     if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                         ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
                         if (anchor != null) {
-                            PacketRegistries.CHANNEL.sendToServer(new UpdateScreenAspectRatioC2SPacket(blockEntityPos, this.selected()));
+                            PacketRegistries.sendToServer(new UpdateScreenAspectRatioC2SPacket(blockEntityPos, this.selected()));
                         }
                     }
                 }
@@ -165,7 +165,7 @@ public class ImageLoadScreen extends Screen {
                 .pos(guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + 80)
                 .size(ScreenGuiConstants.IMAGE_LIST_WIDTH, ScreenGuiConstants.SELECT_BUTTON_HEIGHT + 4)
                 .build();
-        uploadFromComputerButton.visible = !Config.DISABLE_UPLOAD;
+        uploadFromComputerButton.visible = !ClientServerConfig.disableUpload();
         addRenderableWidget(uploadFromComputerButton);
 
         urlField = new EditBox(this.font, guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + 130, 120, ScreenGuiConstants.URL_FIELD_HEIGHT, Component.translatable("gui.simplyscreens.screen.url.placeholder"));
@@ -177,7 +177,7 @@ public class ImageLoadScreen extends Screen {
                 .pos(guiLeft + ScreenGuiConstants.DOWNLOAD_BUTTON_X, guiTop + 130)
                 .size(ScreenGuiConstants.DOWNLOAD_BUTTON_WIDTH, ScreenGuiConstants.URL_FIELD_HEIGHT)
                 .build();
-        downloadFromUrlButton.visible = !Config.DISABLE_URL_DOWNLOAD;
+        downloadFromUrlButton.visible = !ClientServerConfig.disableUrlDownload();
         addRenderableWidget(downloadFromUrlButton);
 
         updateTabVisibility();
@@ -188,7 +188,7 @@ public class ImageLoadScreen extends Screen {
     private void onRemove() {
         ImageListWidget.ImageEntry selectedEntry = imageListWidget.getSelected();
         if (selectedEntry != null) {
-            PacketRegistries.CHANNEL.sendToServer(new RemoveImageC2SPacket(selectedEntry.getImageId()));
+            PacketRegistries.sendToServer(new RemoveImageC2SPacket(selectedEntry.getImageId()));
         }
     }
 
@@ -215,9 +215,9 @@ public class ImageLoadScreen extends Screen {
         maintainAspectCheckbox.visible = isSettings;
 
         // Upload tab
-        uploadFromComputerButton.visible = isImport && !Config.DISABLE_UPLOAD;
-        urlField.visible = isImport && !Config.DISABLE_URL_DOWNLOAD;
-        downloadFromUrlButton.visible = isImport && !Config.DISABLE_URL_DOWNLOAD;
+        uploadFromComputerButton.visible = isImport && !ClientServerConfig.disableUpload();
+        urlField.visible = isImport && !ClientServerConfig.disableUrlDownload();
+        downloadFromUrlButton.visible = isImport && !ClientServerConfig.disableUrlDownload();
         backButton.visible = isImport;
 
         // Update tab button states (visual feedback)
@@ -252,7 +252,7 @@ public class ImageLoadScreen extends Screen {
             if (anchor != null) {
                 ImageListWidget.ImageEntry selectedEntry = imageListWidget.getSelected();
                 UUID selectedId = selectedEntry != null ? selectedEntry.getImageId() : null;
-                PacketRegistries.CHANNEL.sendToServer(new UpdateScreenIdC2SPacket(blockEntityPos, screenId, selectedId));
+                PacketRegistries.sendToServer(new UpdateScreenIdC2SPacket(blockEntityPos, screenId, selectedId));
             }
         }
     }
@@ -271,14 +271,14 @@ public class ImageLoadScreen extends Screen {
                 try {
                     Path path = Paths.get(filePath);
                     long fileSize = java.nio.file.Files.size(path);
-                    if (fileSize > Config.MAX_UPLOAD_SIZE) {
-                        TinyFileDialogs.tinyfd_messageBox(Component.translatable("gui.simplyscreens.screen.dialog.upload_error").getString(), Component.translatable("gui.simplyscreens.screen.upload.error.size", Config.MAX_UPLOAD_SIZE / 1024 / 1024).getString(), "ok", "error", true);
+                    if (fileSize > ClientServerConfig.maxUploadSize()) {
+                        TinyFileDialogs.tinyfd_messageBox(Component.translatable("gui.simplyscreens.screen.dialog.upload_error").getString(), Component.translatable("gui.simplyscreens.screen.upload.error.size", ClientServerConfig.maxUploadSize() / 1024 / 1024).getString(), "ok", "error", true);
                         return;
                     }
                     byte[] data = java.nio.file.Files.readAllBytes(path);
 
-                    if (data.length > Config.MAX_UPLOAD_SIZE) {
-                        TinyFileDialogs.tinyfd_messageBox(Component.translatable("gui.simplyscreens.screen.dialog.upload_error").getString(), Component.translatable("gui.simplyscreens.screen.upload.error.size", Config.MAX_UPLOAD_SIZE / 1024 / 1024).getString(), "ok", "error", true);
+                    if (data.length > ClientServerConfig.maxUploadSize()) {
+                        TinyFileDialogs.tinyfd_messageBox(Component.translatable("gui.simplyscreens.screen.dialog.upload_error").getString(), Component.translatable("gui.simplyscreens.screen.upload.error.size", ClientServerConfig.maxUploadSize() / 1024 / 1024).getString(), "ok", "error", true);
                         return;
                     }
 
@@ -293,7 +293,7 @@ public class ImageLoadScreen extends Screen {
                         byte[] chunk = new byte[end - start];
                         System.arraycopy(data, start, chunk, 0, chunk.length);
 
-                        PacketRegistries.CHANNEL.sendToServer(new UploadImageChunkC2SPacket(blockEntityPos, transactionId, i, totalChunks, chunk, i == 0 ? fileName : null));
+                        PacketRegistries.sendToServer(new UploadImageChunkC2SPacket(blockEntityPos, transactionId, i, totalChunks, chunk, i == 0 ? fileName : null));
                     }
                     imageListWidget.refresh();
                     switchTab(Tab.GALLERY);
@@ -363,7 +363,7 @@ public class ImageLoadScreen extends Screen {
                 if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                     ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
                     if (anchor != null) {
-                        PacketRegistries.CHANNEL.sendToServer(new UpdateScreenSelectedImageC2SPacket(blockEntityPos, selectedEntry.getImageId()));
+                        PacketRegistries.sendToServer(new UpdateScreenSelectedImageC2SPacket(blockEntityPos, selectedEntry.getImageId()));
                     }
                 }
             }
@@ -387,7 +387,7 @@ public class ImageLoadScreen extends Screen {
 
         String fileName = ImageImportSupport.fileNameFromUrl(url);
 
-        PacketRegistries.CHANNEL.sendToServer(new DownloadImageFromUrlC2SPacket(blockEntityPos, url, fileName));
+        PacketRegistries.sendToServer(new DownloadImageFromUrlC2SPacket(blockEntityPos, url, fileName));
 
         new Thread(() -> {
             try {

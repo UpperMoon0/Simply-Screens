@@ -11,7 +11,7 @@ A Minecraft mod that adds configurable screen blocks capable of displaying image
 - **Synchronized Screen Networks:** Group screens using a **Screen ID** to display identical media in real-time across your server.
 - **Aspect Ratio Control:** Choose between full stretching or aspect-ratio preservation.
 - **In-Game Media Management:**
-  - Upload images (PNG, JPG, JPEG, GIF, WebP, BMP) directly from your computer via an in-game file dialog.
+  - Upload PNG, JPG, and JPEG images directly from your computer via an in-game file dialog.
   - Download images from web URLs with built-in SSRF and security filtering.
   - Browse, select, and manage server-stored images in the screen GUI.
 - **Security & Hardening:**

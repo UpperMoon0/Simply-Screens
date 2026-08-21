@@ -33,7 +33,7 @@ public class SimplyScreensImpl {
                 SimplyScreens.initializeScreens(event.getServer().getWorldPath(LevelResource.ROOT)));
         MinecraftForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedInEvent event) -> {
             if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
-                PacketRegistries.CHANNEL.sendToPlayer(player, new ServerConfigSyncS2CPacket(
+                PacketRegistries.sendToPlayer(player, new ServerConfigSyncS2CPacket(
                     com.nstut.simplyscreens.Config.DISABLE_UPLOAD,
                     com.nstut.simplyscreens.Config.DISABLE_URL_DOWNLOAD,
                     com.nstut.simplyscreens.Config.MAX_UPLOAD_SIZE));

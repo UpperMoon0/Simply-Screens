@@ -1,8 +1,8 @@
 package com.nstut.simplyscreens.network;
 
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
-import com.nstut.simplyscreens.Config;
 import com.nstut.simplyscreens.helpers.ClientImageManager;
+import com.nstut.simplyscreens.client.ClientServerConfig;
 import com.nstut.simplyscreens.client.gui.widgets.ImageListWidget;
 import com.nstut.simplyscreens.client.screens.ImageLoadScreen;
 import net.minecraft.client.Minecraft;
@@ -41,9 +41,7 @@ public class ClientPacketHandler {
     }
 
     public static void handleConfigSync(boolean disableUpload, boolean disableUrlDownload, int maxUploadSize) {
-        Config.DISABLE_UPLOAD = disableUpload;
-        Config.DISABLE_URL_DOWNLOAD = disableUrlDownload;
-        Config.MAX_UPLOAD_SIZE = maxUploadSize;
+        ClientServerConfig.apply(disableUpload, disableUrlDownload, maxUploadSize);
     }
 
     public static void handleUploadComplete() {

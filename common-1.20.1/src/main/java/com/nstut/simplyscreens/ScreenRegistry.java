@@ -196,6 +196,7 @@ public class ScreenRegistry {
         if (level == null || pos == null) return;
         String dimension = getDimensionId(level);
         HELPER.removeAnchorRedirect(dimension, pos.getX(), pos.getY(), pos.getZ());
+        HELPER.saveRegistry();
     }
 
     public static void clearAnchorRedirects(Level level) {

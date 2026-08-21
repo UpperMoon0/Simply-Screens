@@ -163,7 +163,7 @@ public class ClientImageManager {
         }
 
         PENDING_DOWNLOADS.tryStart(imageId,
-                () -> PacketRegistries.CHANNEL.sendToServer(new RequestImageDownloadC2SPacket(imageId)));
+                () -> PacketRegistries.sendToServer(new RequestImageDownloadC2SPacket(imageId)));
         return null;
     }
 
