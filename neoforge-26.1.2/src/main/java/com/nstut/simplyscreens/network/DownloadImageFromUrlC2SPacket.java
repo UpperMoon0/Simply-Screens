@@ -103,7 +103,7 @@ public class DownloadImageFromUrlC2SPacket implements CustomPacketPayload {
                             .uri(UrlSecurity.requirePublicHttpUrl(url))
                             .timeout(java.time.Duration.ofSeconds(30))
                             .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-                            .header("Accept", "image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")
+                            .header("Accept", "image/png,image/jpeg,image/gif,image/*;q=0.8")
                             .header("Accept-Language", "en-US,en;q=0.9")
                             .header("Referer", "https://www.google.com/")
                             .GET()

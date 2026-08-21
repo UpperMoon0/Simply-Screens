@@ -112,7 +112,11 @@ public class ServerImageManager {
                 UPLOADS.remove(uploadKey, state);
                 return;
             }
-            if (!tryAcquireProcessingSlot(player.getUUID())) return;
+            if (!tryAcquireProcessingSlot(player.getUUID())) {
+                UPLOADS.remove(uploadKey, state);
+                SimplyScreens.LOGGER.warn("Rejecting completed upload because the player's processing limit is reached");
+                return;
+            }
             if (!UPLOADS.remove(uploadKey, state)) {
                 releaseProcessingSlot(player.getUUID());
                 return;
@@ -194,12 +198,14 @@ public class ServerImageManager {
             if (!"png".equals(extension)) {
                 try {
                     BufferedImage image = ImageIO.read(new ByteArrayInputStream(data));
-                    if (image != null) {
-                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                        ImageIO.write(image, "png", baos);
-                        data = baos.toByteArray();
-                        extension = "png";
+                    if (image == null) {
+                        SimplyScreens.LOGGER.warn("Rejecting unsupported image format '{}': no decoder is available", extension);
+                        return null;
                     }
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    ImageIO.write(image, "png", baos);
+                    data = baos.toByteArray();
+                    extension = "png";
                 } catch (IOException e) {
                     SimplyScreens.LOGGER.error("Failed to convert image to PNG", e);
                     return null;
@@ -358,7 +364,7 @@ public class ServerImageManager {
     private static boolean validateImageDimensions(byte[] data, String originalName) {
         try (ImageInputStream imageInputStream = ImageIO.createImageInputStream(new ByteArrayInputStream(data))) {
             if (imageInputStream == null) {
-                return true;
+                return false;
             }
 
             Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInputStream);

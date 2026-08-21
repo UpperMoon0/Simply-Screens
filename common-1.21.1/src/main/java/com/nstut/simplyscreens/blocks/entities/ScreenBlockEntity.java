@@ -37,7 +37,6 @@ public class ScreenBlockEntity extends BlockEntity {
     private int tickSinceLastUpdate = 0;
     private boolean screenLinkRegistered;
     private boolean needsStructureRefresh = true;
-    private boolean needsLoadReconciliation = true;
 
     public ScreenBlockEntity(BlockPos pos, BlockState state) {
         super(BlockEntityRegistries.SCREEN.get(), pos, state);
@@ -68,7 +67,7 @@ public class ScreenBlockEntity extends BlockEntity {
         tag.putInt("screenWidth", screenWidth);
         tag.putInt("screenHeight", screenHeight);
 
-        if (anchorPos != null) {
+        if (anchorPos != null && level.hasChunkAt(anchorPos)) {
             tag.putInt("anchorX", anchorPos.getX());
             tag.putInt("anchorY", anchorPos.getY());
             tag.putInt("anchorZ", anchorPos.getZ());
@@ -214,7 +213,7 @@ public class ScreenBlockEntity extends BlockEntity {
         if (isAnchor()) {
             return this;
         }
-        if (anchorPos != null) {
+        if (anchorPos != null && level.hasChunkAt(anchorPos)) {
             BlockEntity be = level.getBlockEntity(anchorPos);
             if (be instanceof ScreenBlockEntity) {
                 return (ScreenBlockEntity) be;
@@ -353,7 +352,7 @@ public class ScreenBlockEntity extends BlockEntity {
         if (level == null || level.isClientSide) return;
 
         if (isAnchor()) {
-            if (needsStructureRefresh && ++tickSinceLastUpdate >= 100) {
+            if (needsStructureRefresh && ++tickSinceLastUpdate >= Config.SCREEN_TICK_RATE) {
                 tickSinceLastUpdate = 0;
                 updateScreenStructure();
             }
@@ -365,14 +364,40 @@ public class ScreenBlockEntity extends BlockEntity {
                     applyLinkedImageId(registryImage);
                 }
             }
-        } else if (needsLoadReconciliation && anchorPos != null && ++tickSinceLastUpdate >= 100) {
-            tickSinceLastUpdate = 0;
-            if (level.getBlockEntity(anchorPos) instanceof ScreenBlockEntity anchor && anchor.isAnchor()) {
-                updateScreen(anchor.imageId, anchor.screenWidth, anchor.screenHeight, anchor.worldPosition, anchor.maintainAspectRatio);
-                setScreenIdInternal(anchor.screenId);
-                anchor.needsStructureRefresh = true;
-                anchor.updateScreenStructure();
-                needsLoadReconciliation = false;
+        }
+    }
+
+    @Override
+    public void setLevel(net.minecraft.world.level.Level level) {
+        super.setLevel(level);
+        if (!level.isClientSide && level.getServer() != null) level.getServer().execute(this::reconcileAfterLoad);
+    }
+
+    private void reconcileAfterLoad() {
+        if (level == null || level.isClientSide || isRemoved()) return;
+        if (isAnchor()) {
+            needsStructureRefresh = true;
+            synchronizeLoadedChildren();
+            return;
+        }
+        if (anchorPos == null || !level.hasChunkAt(anchorPos)) return;
+        if (level.getBlockEntity(anchorPos) instanceof ScreenBlockEntity anchor && anchor.isAnchor()) {
+            updateScreen(anchor.imageId, anchor.screenWidth, anchor.screenHeight, anchor.worldPosition, anchor.maintainAspectRatio);
+            setScreenIdInternal(anchor.screenId);
+            anchor.needsStructureRefresh = true;
+        }
+    }
+
+    private void synchronizeLoadedChildren() {
+        Direction facing = getBlockState().hasProperty(ScreenBlock.FACING) ? getBlockState().getValue(ScreenBlock.FACING) : Direction.NORTH;
+        for (int width = 0; width < screenWidth; width++) {
+            for (int height = 0; height < screenHeight; height++) {
+                BlockPos pos = worldPosition.relative(getWidthDirection(facing), width).relative(getHeightDirection(facing), height);
+                if (!level.hasChunkAt(pos)) continue;
+                if (level.getBlockEntity(pos) instanceof ScreenBlockEntity screen) {
+                    screen.updateScreen(imageId, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
+                    screen.setScreenIdInternal(screenId);
+                }
             }
         }
     }
@@ -660,6 +685,7 @@ public class ScreenBlockEntity extends BlockEntity {
         if (anchorPos.equals(worldPosition)) {
             updateScreenStructure();
         } else {
+            if (!level.hasChunkAt(anchorPos)) return;
             BlockEntity anchorBe = level.getBlockEntity(anchorPos);
             if (anchorBe instanceof ScreenBlockEntity anchor) {
                 anchor.updateScreenStructure();
@@ -685,6 +711,7 @@ public class ScreenBlockEntity extends BlockEntity {
             }
             updateScreenStructure();
         } else {
+            if (!level.hasChunkAt(anchorPos)) return;
             BlockEntity anchorBe = level.getBlockEntity(anchorPos);
             if (anchorBe instanceof ScreenBlockEntity anchor && anchor.isAnchor()) {
                 anchor.updateScreenStructure();

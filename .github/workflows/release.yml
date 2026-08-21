@@ -3,6 +3,7 @@ name: Build and Release Mod
 on:
   push:
     branches: [main]
+    tags: ['v*']
 
 jobs:
   verify:
@@ -46,6 +47,7 @@ jobs:
   publish-curseforge:
     name: Publish ${{ matrix.platform }} ${{ matrix.version }} to CurseForge
     needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -69,6 +71,7 @@ jobs:
           set -euo pipefail
           mod_version="$(sed -n 's/^mod_version[[:space:]]*=[[:space:]]*//p' gradle.properties | head -n 1 | tr -d '\r' | xargs)"
           [[ "$mod_version" =~ ^[0-9A-Za-z][0-9A-Za-z._+-]*$ ]] || { echo "Invalid mod_version: $mod_version" >&2; exit 1; }
+          [[ "$GITHUB_REF_NAME" == "v$mod_version" ]] || { echo "Tag $GITHUB_REF_NAME does not match mod version $mod_version" >&2; exit 1; }
           mapfile -t jars < <(find curseforge-artifact -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' ! -name '*-dev-shadow.jar' | sort)
           [[ ${#jars[@]} -eq 1 ]] || { echo "Expected one runnable JAR; found ${#jars[@]}" >&2; exit 1; }
           printf 'mod_version=%s\njar_path=%s\n' "$mod_version" "${jars[0]}" >> "$GITHUB_OUTPUT"
@@ -100,7 +103,8 @@ jobs:
           echo "Published $JAR_PATH as CurseForge file $(jq -er '.id' <<< "$response")."
 
   release:
-    needs: build
+    needs: [build, publish-curseforge]
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions: { contents: write }
     steps:
@@ -108,7 +112,10 @@ jobs:
       - name: Read mod version
         id: version
         shell: bash
-        run: echo "value=$(sed -n 's/^mod_version[[:space:]]*=[[:space:]]*//p' gradle.properties | head -n 1 | tr -d '\r' | xargs)" >> "$GITHUB_OUTPUT"
+        run: |
+          value="$(sed -n 's/^mod_version[[:space:]]*=[[:space:]]*//p' gradle.properties | head -n 1 | tr -d '\r' | xargs)"
+          [[ "$GITHUB_REF_NAME" == "v$value" ]] || { echo "Tag $GITHUB_REF_NAME does not match mod version $value" >&2; exit 1; }
+          echo "value=$value" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4
         with: { path: artifacts }
       - uses: softprops/action-gh-release@v2
