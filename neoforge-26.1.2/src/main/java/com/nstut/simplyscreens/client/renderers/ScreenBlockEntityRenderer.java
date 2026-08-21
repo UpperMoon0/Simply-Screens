@@ -43,25 +43,23 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
     public void extractRenderState(ScreenBlockEntity entity, ScreenBlockEntityRenderState state, float partialTicks,
                                    Vec3 cameraPosition, ModelFeatureRenderer.CrumblingOverlay breakProgress) {
         ScreenBlockEntity anchor = entity.isAnchor() ? entity : entity.getAnchorEntity();
-        if (anchor == null) {
-            BlockEntityRenderer.super.extractRenderState(entity, state, partialTicks, cameraPosition, breakProgress);
-            state.visible = false;
-            return;
-        }
-        BlockEntityRenderer.super.extractRenderState(anchor, state, partialTicks, cameraPosition, breakProgress);
-        UUID imageId = anchor.getResolvedImageId();
+        ScreenBlockEntity renderData = anchor != null ? anchor : entity;
+        BlockEntityRenderer.super.extractRenderState(entity, state, partialTicks, cameraPosition, breakProgress);
+        UUID imageId = renderData.getResolvedImageId();
         state.visible = imageId != null;
-        state.facing = anchor.getBlockState().hasProperty(ScreenBlock.FACING)
-                ? anchor.getBlockState().getValue(ScreenBlock.FACING) : Direction.NORTH;
-        state.width = anchor.getScreenWidth();
-        state.height = anchor.getScreenHeight();
-        state.anchorOffsetX = 0;
-        state.anchorOffsetY = 0;
-        state.anchorOffsetZ = 0;
+        state.facing = entity.getBlockState().hasProperty(ScreenBlock.FACING)
+                ? entity.getBlockState().getValue(ScreenBlock.FACING) : Direction.NORTH;
+        state.width = renderData.getScreenWidth();
+        state.height = renderData.getScreenHeight();
+        BlockPos anchorPos = entity.getAnchorPos();
+        state.visible = state.visible && anchorPos != null;
+        state.anchorOffsetX = anchorPos == null ? 0 : anchorPos.getX() - entity.getBlockPos().getX();
+        state.anchorOffsetY = anchorPos == null ? 0 : anchorPos.getY() - entity.getBlockPos().getY();
+        state.anchorOffsetZ = anchorPos == null ? 0 : anchorPos.getZ() - entity.getBlockPos().getZ();
         state.texture = imageId == null ? null : ClientImageManager.getTextureLocation(imageId);
         state.scaleX = state.width;
         state.scaleY = state.height;
-        if (imageId != null && anchor.isMaintainAspectRatio()) {
+        if (imageId != null && renderData.isMaintainAspectRatio()) {
             DynamicTexture texture = ClientImageManager.getImageTexture(imageId);
             NativeImage image = texture == null ? null : texture.getPixels();
             if (image != null) {
@@ -71,7 +69,7 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
                 else state.scaleX = state.height * imageAspect;
             }
         }
-        ScreenTileLayout.Tile tile = calculateTile(entity, anchor, state.facing, state.scaleX, state.scaleY);
+        ScreenTileLayout.Tile tile = calculateTile(entity, renderData, state.facing, state.scaleX, state.scaleY);
         state.visible = state.visible && !tile.isEmpty();
         state.tileMinX = tile.minX();
         state.tileMaxX = tile.maxX();
@@ -186,7 +184,7 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
         Direction height = facing.getAxis().isHorizontal()
                 ? Direction.UP : facing == Direction.UP ? Direction.SOUTH : Direction.NORTH;
         BlockPos current = entity.getBlockPos();
-        BlockPos origin = anchor.getBlockPos();
+        BlockPos origin = entity.getAnchorPos();
         int dx = current.getX() - origin.getX();
         int dy = current.getY() - origin.getY();
         int dz = current.getZ() - origin.getZ();

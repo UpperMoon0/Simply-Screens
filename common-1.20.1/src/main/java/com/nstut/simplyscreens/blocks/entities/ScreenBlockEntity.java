@@ -77,9 +77,9 @@ public class ScreenBlockEntity extends BlockEntity {
             imageId = null;
         }
         screenId = tag.contains("screenId") ? tag.getString("screenId") : "";
-        maintainAspectRatio = tag.getBoolean("maintainAspectRatio");
-        screenWidth = tag.getInt("screenWidth");
-        screenHeight = tag.getInt("screenHeight");
+        maintainAspectRatio = !tag.contains("maintainAspectRatio") || tag.getBoolean("maintainAspectRatio");
+        screenWidth = tag.contains("screenWidth") ? Math.max(1, tag.getInt("screenWidth")) : 1;
+        screenHeight = tag.contains("screenHeight") ? Math.max(1, tag.getInt("screenHeight")) : 1;
 
         if (tag.contains("anchorX") && tag.contains("anchorY") && tag.contains("anchorZ")) {
             anchorPos = new BlockPos(
@@ -346,6 +346,10 @@ public class ScreenBlockEntity extends BlockEntity {
             if (!screenLinkRegistered && screenId != null && !screenId.isEmpty()) {
                 ScreenRegistry.registerScreen(level, worldPosition, screenId);
                 screenLinkRegistered = true;
+                UUID registryImage = ScreenRegistry.getImageId(screenId);
+                if (registryImage != null && !registryImage.equals(imageId)) {
+                    applyLinkedImageId(registryImage);
+                }
             }
         }
     }
@@ -457,6 +461,7 @@ public class ScreenBlockEntity extends BlockEntity {
 
     private BlockPos calculateStructureBounds(Direction facing) {
         if (level == null || level.isClientSide) return null;
+        try {
         Direction widthDirection = getWidthDirection(facing);
         Direction heightDirection = getHeightDirection(facing);
         int maxWidth = findMaxExtension(widthDirection, facing);
@@ -467,6 +472,9 @@ public class ScreenBlockEntity extends BlockEntity {
             return isMatchingScreen(checkPos, facing);
         });
         return worldPosition.relative(widthDirection, bounds.width()).relative(heightDirection, bounds.height());
+        } catch (UnresolvedStructureException ignored) {
+            return null;
+        }
     }
 
     private boolean isCurrentStructureLoaded(Direction facing) {
@@ -497,9 +505,16 @@ public class ScreenBlockEntity extends BlockEntity {
 
     private boolean isMatchingScreen(BlockPos pos, Direction facing) {
         BlockEntity entity = level.getBlockEntity(pos);
-        return entity instanceof ScreenBlockEntity && entity.getBlockState().hasProperty(ScreenBlock.FACING)
-                && entity.getBlockState().getValue(ScreenBlock.FACING) == facing;
+        if (!(entity instanceof ScreenBlockEntity screen) || !entity.getBlockState().hasProperty(ScreenBlock.FACING)
+                || entity.getBlockState().getValue(ScreenBlock.FACING) != facing) return false;
+        BlockPos foreignAnchor = screen.getAnchorPos();
+        if (foreignAnchor != null && !foreignAnchor.equals(screen.getBlockPos()) && !level.hasChunkAt(foreignAnchor)) {
+            throw new UnresolvedStructureException();
+        }
+        return true;
     }
+
+    private static final class UnresolvedStructureException extends RuntimeException { }
 
     private void verifyAnchorValidity() {
         if (anchorPos == null || level == null) return;

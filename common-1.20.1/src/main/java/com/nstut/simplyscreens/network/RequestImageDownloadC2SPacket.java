@@ -18,14 +18,19 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Map;
 import java.util.function.Supplier;
 
 public class RequestImageDownloadC2SPacket implements IPacket {
-    private static final int CHUNK_SIZE = 1024 * 30; // 30KB
+    private static final int CHUNK_SIZE = ChunkedFileTransfer.CHUNK_SIZE;
     private static final ExecutorService IMAGE_DOWNLOAD_EXECUTOR =
-            ChunkedFileTransfer.newDaemonFixedThreadPool(2, "Simply Screens Image Download");
+            ChunkedFileTransfer.newDaemonBoundedThreadPool(2, 64, "Simply Screens Image Download");
     private static final TransferRequestCoordinator<String> ACTIVE_DOWNLOADS =
             new TransferRequestCoordinator<>(Duration.ofSeconds(30));
+    private static final Map<UUID, AtomicInteger> PLAYER_DOWNLOADS = new ConcurrentHashMap<>();
+    private static final int MAX_DOWNLOADS_PER_PLAYER = 4;
     private static final Set<UUID> loggedWarnings = ConcurrentHashMap.newKeySet();
     private final UUID imageId;
 
@@ -47,10 +52,28 @@ public class RequestImageDownloadC2SPacket implements IPacket {
         context.get().queue(() -> {
             ServerPlayer player = (ServerPlayer) context.get().getPlayer();
             MinecraftServer server = player.getServer();
+            Path requestedPath = ServerImageManager.getImageFilePath(server, imageId);
+            if (requestedPath == null || !Files.isRegularFile(requestedPath)) return;
             String transferKey = player.getUUID() + ":" + imageId;
-            ACTIVE_DOWNLOADS.tryStart(transferKey,
-                    () -> IMAGE_DOWNLOAD_EXECUTOR.execute(() -> sendImageDownload(server, player, imageId, transferKey)));
+            AtomicInteger playerCount = PLAYER_DOWNLOADS.computeIfAbsent(player.getUUID(), ignored -> new AtomicInteger());
+            if (playerCount.incrementAndGet() > MAX_DOWNLOADS_PER_PLAYER) {
+                releasePlayerDownload(player.getUUID(), playerCount);
+                return;
+            }
+            try {
+                boolean started = ACTIVE_DOWNLOADS.tryStart(transferKey, () -> IMAGE_DOWNLOAD_EXECUTOR.execute(() -> {
+                    try { sendImageDownload(server, player, imageId, transferKey); }
+                    finally { releasePlayerDownload(player.getUUID(), playerCount); }
+                }));
+                if (!started) releasePlayerDownload(player.getUUID(), playerCount);
+            } catch (RejectedExecutionException exception) {
+                releasePlayerDownload(player.getUUID(), playerCount);
+            }
         });
+    }
+
+    private static void releasePlayerDownload(UUID playerId, AtomicInteger counter) {
+        if (counter.decrementAndGet() <= 0) PLAYER_DOWNLOADS.remove(playerId, counter);
     }
 
     private static void sendImageDownload(MinecraftServer server, ServerPlayer player, UUID imageId, String transferKey) {

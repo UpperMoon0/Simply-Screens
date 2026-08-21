@@ -91,6 +91,16 @@ public class ScreenRegistry {
         return HELPER.getAllScreenIds();
     }
 
+    public static boolean claimScreenId(String screenId, UUID playerId, boolean administrator) {
+        boolean allowed = HELPER.claimScreenId(screenId, playerId, administrator);
+        if (allowed) HELPER.saveRegistry();
+        return allowed;
+    }
+
+    public static boolean canWriteScreenId(String screenId, UUID playerId, boolean administrator) {
+        return HELPER.canWriteScreenId(screenId, playerId, administrator);
+    }
+
     /**
      * Registers a screen with the registry.
      *

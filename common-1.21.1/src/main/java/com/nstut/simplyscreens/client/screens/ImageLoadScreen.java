@@ -288,6 +288,11 @@ public class ImageLoadScreen extends Screen {
             if (filePath != null) {
                 try {
                     Path path = Paths.get(filePath);
+                    long fileSize = java.nio.file.Files.size(path);
+                    if (fileSize > Config.MAX_UPLOAD_SIZE) {
+                        TinyFileDialogs.tinyfd_messageBox(Component.translatable("gui.simplyscreens.screen.dialog.upload_error").getString(), Component.translatable("gui.simplyscreens.screen.upload.error.size", Config.MAX_UPLOAD_SIZE / 1024 / 1024).getString(), "ok", "error", true);
+                        return;
+                    }
                     byte[] data = java.nio.file.Files.readAllBytes(path);
 
                     if (data.length > Config.MAX_UPLOAD_SIZE) {

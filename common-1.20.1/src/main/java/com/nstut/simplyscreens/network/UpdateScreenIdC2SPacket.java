@@ -45,6 +45,8 @@ public class UpdateScreenIdC2SPacket {
             if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                 ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
                 if (anchor != null) {
+                    if (screenId != null && !screenId.isBlank() &&
+                            !ScreenRegistry.claimScreenId(screenId, player.getUUID(), player.hasPermissions(2))) return;
                     anchor.setScreenId(screenId);
                 }
             }

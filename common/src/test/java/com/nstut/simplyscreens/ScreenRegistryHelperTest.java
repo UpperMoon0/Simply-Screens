@@ -195,4 +195,27 @@ class ScreenRegistryHelperTest {
         assertTrue(exceptions.isEmpty(),
                 "Concurrent access caused exceptions: " + exceptions);
     }
+
+    @Test
+    void screenIdOwnershipPreventsCrossPlayerWritesAndPersists(@TempDir Path tempDir) {
+        UUID owner = UUID.randomUUID();
+        UUID intruder = UUID.randomUUID();
+        helper.init(tempDir);
+        assertTrue(helper.claimScreenId("private-link", owner, false));
+        helper.saveRegistry();
+
+        ScreenRegistryHelper reloaded = new ScreenRegistryHelper(logger);
+        reloaded.init(tempDir);
+        assertTrue(reloaded.canWriteScreenId("private-link", owner, false));
+        assertFalse(reloaded.canWriteScreenId("private-link", intruder, false));
+        assertTrue(reloaded.canWriteScreenId("private-link", intruder, true));
+    }
+
+    @Test
+    void legacyOwnerlessIdRequiresAdministratorClaim() {
+        UUID player = UUID.randomUUID();
+        helper.setImageId("legacy", UUID.randomUUID());
+        assertFalse(helper.claimScreenId("legacy", player, false));
+        assertTrue(helper.claimScreenId("legacy", player, true));
+    }
 }

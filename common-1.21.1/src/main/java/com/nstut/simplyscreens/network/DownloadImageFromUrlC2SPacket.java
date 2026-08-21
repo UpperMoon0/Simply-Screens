@@ -110,6 +110,7 @@ public class DownloadImageFromUrlC2SPacket implements CustomPacketPayload {
                             .build();
 
                     HttpResponse<InputStream> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofInputStream());
+                    if (response.statusCode() != 200) response.body().close();
 
                     if (response.statusCode() == 200) {
                         byte[] imageData;

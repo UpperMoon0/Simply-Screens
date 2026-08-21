@@ -23,12 +23,14 @@ public class ScreenRegistryHelper {
     
     // Map of screen ID to image UUID
     protected final Map<String, UUID> screenIdToImageId = new ConcurrentHashMap<>();
+    protected final Map<String, UUID> screenIdToOwnerId = new ConcurrentHashMap<>();
 
     // Gson instance for serialization
     protected static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     // Registry file path
     protected Path registryFilePath;
+    protected Path ownersFilePath;
 
     // Flag to track if registry has been initialized
     protected boolean initialized = false;
@@ -51,7 +53,9 @@ public class ScreenRegistryHelper {
         if (initialized && nextPath.equals(registryFilePath)) return;
         if (initialized) saveRegistry();
         screenIdToImageId.clear();
+        screenIdToOwnerId.clear();
         registryFilePath = nextPath;
+        ownersFilePath = worldSavePath.resolve("screen_registry_owners.json").toAbsolutePath().normalize();
         loadRegistry();
         initialized = true;
     }
@@ -77,6 +81,9 @@ public class ScreenRegistryHelper {
             file.getParentFile().mkdirs();
             try (FileWriter writer = new FileWriter(file)) {
                 writer.write(json);
+            }
+            try (FileWriter writer = new FileWriter(ownersFilePath.toFile())) {
+                writer.write(GSON.toJson(screenIdToOwnerId));
             }
             logger.info("Saved screen registry to {}", registryFilePath);
         } catch (IOException e) {
@@ -110,6 +117,18 @@ public class ScreenRegistryHelper {
                 }
             } else {
                 logger.info("No existing screen registry file found, starting with empty registry");
+            }
+            File ownersFile = ownersFilePath == null ? null : ownersFilePath.toFile();
+            if (ownersFile != null && ownersFile.exists()) {
+                try (FileReader reader = new FileReader(ownersFile)) {
+                    Type type = new TypeToken<Map<String, String>>(){}.getType();
+                    Map<String, String> loadedOwners = GSON.fromJson(reader, type);
+                    screenIdToOwnerId.clear();
+                    if (loadedOwners != null) loadedOwners.forEach((id, owner) -> {
+                        try { screenIdToOwnerId.put(id, UUID.fromString(owner)); }
+                        catch (IllegalArgumentException e) { logger.warn("Invalid owner UUID in screen registry: {}", owner); }
+                    });
+                }
             }
         } catch (Exception e) {
             logger.error("Failed to load screen registry", e);
@@ -157,5 +176,21 @@ public class ScreenRegistryHelper {
      */
     public Set<String> getAllScreenIds() {
         return Set.copyOf(screenIdToImageId.keySet());
+    }
+
+    public boolean claimScreenId(String screenId, UUID playerId, boolean administrator) {
+        if (screenId == null || screenId.isBlank() || playerId == null) return false;
+        UUID owner = screenIdToOwnerId.get(screenId);
+        if (owner != null) return administrator || owner.equals(playerId);
+        // Existing owner-less IDs are legacy data and require an administrator to claim.
+        if (screenIdToImageId.containsKey(screenId) && !administrator) return false;
+        screenIdToOwnerId.put(screenId, playerId);
+        return true;
+    }
+
+    public boolean canWriteScreenId(String screenId, UUID playerId, boolean administrator) {
+        if (screenId == null || screenId.isBlank()) return true;
+        UUID owner = screenIdToOwnerId.get(screenId);
+        return administrator || (owner != null && owner.equals(playerId));
     }
 }

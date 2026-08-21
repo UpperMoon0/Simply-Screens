@@ -65,6 +65,8 @@ public class UpdateScreenIdC2SPacket implements CustomPacketPayload {
             if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                 ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
                 if (anchor != null) {
+                    if (packet.screenId != null && !packet.screenId.isBlank() &&
+                            !ScreenRegistry.claimScreenId(packet.screenId, player.getUUID(), player.hasPermissions(2))) return;
                     anchor.setScreenId(packet.screenId);
                 }
             }
