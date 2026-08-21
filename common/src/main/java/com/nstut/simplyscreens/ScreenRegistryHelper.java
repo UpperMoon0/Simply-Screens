@@ -165,6 +165,11 @@ public class ScreenRegistryHelper {
                 T data = GSON.fromJson(reader, type);
                 if (data != null) {
                     logger.info("Successfully recovered {} from backup", primaryPath.getFileName());
+                    try {
+                        Files.copy(backupPath, primaryPath, StandardCopyOption.REPLACE_EXISTING);
+                    } catch (IOException copyEx) {
+                        logger.warn("Failed to overwrite corrupt primary with recovered backup", copyEx);
+                    }
                     return data;
                 }
             } catch (Exception e) {
@@ -205,7 +210,9 @@ public class ScreenRegistryHelper {
      * @param screenId The screen ID to remove
      */
     public void removeScreenId(String screenId) {
-        screenIdToImageId.remove(screenId);
+        String normalized = normalizeScreenId(screenId);
+        screenIdToImageId.remove(normalized);
+        screenIdToOwnerId.remove(normalized);
     }
 
     public boolean removeImageReferences(UUID imageId) {

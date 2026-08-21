@@ -69,19 +69,31 @@ public class ImageListWidget extends AbstractWidget {
     }
 
     public void updateList(List<ImageMetadata> imageMetadata) {
-        this.imageFiles = imageMetadata.stream()
+        this.imageFiles = imageMetadata != null ? imageMetadata.stream()
                 .map(meta -> new ImageEntry(meta.getName(), meta.getId()))
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()) : new ArrayList<>();
         this.filteredImageFiles = new ArrayList<>(this.imageFiles);
         this.scrollAmount = 0;
-        if (displayedImage != null) {
+        ImageEntry newSelected = null;
+        if (selected != null) {
             for (ImageEntry entry : imageFiles) {
-                if (entry.getImageId().equals(displayedImage)) {
-                    this.selected = entry;
-                    onSelect.accept(entry);
+                if (entry.getImageId().equals(selected.getImageId())) {
+                    newSelected = entry;
                     break;
                 }
             }
+        }
+        if (newSelected == null && displayedImage != null) {
+            for (ImageEntry entry : imageFiles) {
+                if (entry.getImageId().equals(displayedImage)) {
+                    newSelected = entry;
+                    break;
+                }
+            }
+        }
+        this.selected = newSelected;
+        if (onSelect != null) {
+            onSelect.accept(newSelected);
         }
     }
 
@@ -215,8 +227,11 @@ public class ImageListWidget extends AbstractWidget {
                     .collect(Collectors.toList());
         }
         this.scrollAmount = 0;
-        if (!this.filteredImageFiles.contains(this.selected)) {
+        if (this.selected != null && !this.filteredImageFiles.contains(this.selected)) {
             this.selected = null;
+            if (this.onSelect != null) {
+                this.onSelect.accept(null);
+            }
         }
     }
 
