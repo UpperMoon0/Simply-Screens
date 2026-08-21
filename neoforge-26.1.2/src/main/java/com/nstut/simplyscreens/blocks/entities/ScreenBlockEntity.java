@@ -60,7 +60,7 @@ public class ScreenBlockEntity extends BlockEntity {
             return;
         }
         if (anchorPos == null || !level.hasChunkAt(anchorPos)) return;
-        if (level.getBlockEntity(anchorPos) instanceof ScreenBlockEntity anchor && anchor.isAnchor()) {
+        if (getLoadedBlockEntity(anchorPos) instanceof ScreenBlockEntity anchor && anchor.isAnchor()) {
             updateScreen(anchor.imageId, anchor.screenWidth, anchor.screenHeight, anchor.worldPosition, anchor.maintainAspectRatio);
             setScreenIdInternal(anchor.screenId);
             anchor.needsStructureRefresh = true;
@@ -73,7 +73,7 @@ public class ScreenBlockEntity extends BlockEntity {
             for (int height = 0; height < screenHeight; height++) {
                 BlockPos pos = worldPosition.relative(getWidthDirection(facing), width).relative(getHeightDirection(facing), height);
                 if (!level.hasChunkAt(pos)) continue;
-                if (level.getBlockEntity(pos) instanceof ScreenBlockEntity screen) {
+                if (getLoadedBlockEntity(pos) instanceof ScreenBlockEntity screen) {
                     screen.updateScreen(imageId, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
                     screen.setScreenIdInternal(screenId);
                 }
@@ -126,7 +126,7 @@ public class ScreenBlockEntity extends BlockEntity {
         tag.putInt("screenWidth", screenWidth);
         tag.putInt("screenHeight", screenHeight);
 
-        if (anchorPos != null && level.hasChunkAt(anchorPos)) {
+        if (anchorPos != null) {
             tag.putInt("anchorX", anchorPos.getX());
             tag.putInt("anchorY", anchorPos.getY());
             tag.putInt("anchorZ", anchorPos.getZ());
@@ -255,7 +255,7 @@ public class ScreenBlockEntity extends BlockEntity {
         for (int w = 0; w < screenWidth; w++) {
             for (int h = 0; h < screenHeight; h++) {
                 BlockPos currentPos = worldPosition.relative(widthDirection, w).relative(heightDirection, h);
-                BlockEntity be = level.getBlockEntity(currentPos);
+                BlockEntity be = getLoadedBlockEntity(currentPos);
                 if (be instanceof ScreenBlockEntity screen) {
                     screen.updateScreen(this.imageId, this.screenWidth, this.screenHeight, this.worldPosition, this.maintainAspectRatio);
                 }
@@ -269,7 +269,7 @@ public class ScreenBlockEntity extends BlockEntity {
             return this;
         }
         if (anchorPos != null && level.hasChunkAt(anchorPos)) {
-            BlockEntity be = level.getBlockEntity(anchorPos);
+            BlockEntity be = getLoadedBlockEntity(anchorPos);
             if (be instanceof ScreenBlockEntity) {
                 return (ScreenBlockEntity) be;
             }
@@ -293,7 +293,7 @@ public class ScreenBlockEntity extends BlockEntity {
         for (int w = 0; w < screenWidth; w++) {
             for (int h = 0; h < screenHeight; h++) {
                 BlockPos currentPos = worldPosition.relative(widthDirection, w).relative(heightDirection, h);
-                BlockEntity be = level.getBlockEntity(currentPos);
+                BlockEntity be = getLoadedBlockEntity(currentPos);
                 if (be instanceof ScreenBlockEntity screen) {
                     screen.updateScreen(this.imageId, this.screenWidth, this.screenHeight, this.worldPosition, this.maintainAspectRatio);
                 }
@@ -312,7 +312,7 @@ public class ScreenBlockEntity extends BlockEntity {
 
         for (BlockPos pos : ScreenRegistry.getPositionsForScreenId(level, screenId)) {
             if (pos.equals(worldPosition)) continue;
-            BlockEntity be = level.getBlockEntity(pos);
+            BlockEntity be = getLoadedBlockEntity(pos);
             if (be instanceof ScreenBlockEntity linkedScreen && linkedScreen.isAnchor()) {
                 linkedScreen.applyLinkedImageId(imageId);
             }
@@ -328,7 +328,7 @@ public class ScreenBlockEntity extends BlockEntity {
         Direction heightDirection = getHeightDirection(facing);
         for (int w = 0; w < screenWidth; w++) {
             for (int h = 0; h < screenHeight; h++) {
-                BlockEntity blockEntity = level.getBlockEntity(worldPosition.relative(widthDirection, w).relative(heightDirection, h));
+                BlockEntity blockEntity = getLoadedBlockEntity(worldPosition.relative(widthDirection, w).relative(heightDirection, h));
                 if (blockEntity instanceof ScreenBlockEntity screen) {
                     screen.updateScreen(linkedImageId, screenWidth, screenHeight, worldPosition, maintainAspectRatio);
                 }
@@ -369,7 +369,7 @@ public class ScreenBlockEntity extends BlockEntity {
         for (int w = 0; w < screenWidth; w++) {
             for (int h = 0; h < screenHeight; h++) {
                 BlockPos currentPos = worldPosition.relative(widthDirection, w).relative(heightDirection, h);
-                BlockEntity be = level.getBlockEntity(currentPos);
+                BlockEntity be = getLoadedBlockEntity(currentPos);
                 if (be instanceof ScreenBlockEntity screen) {
                     screen.updateScreen(this.imageId, this.screenWidth, this.screenHeight, this.worldPosition, this.maintainAspectRatio);
                     screen.setScreenIdInternal(this.screenId);
@@ -469,7 +469,7 @@ public class ScreenBlockEntity extends BlockEntity {
             for (int i = 0; i <= horizontalExtent; i++) {
                 for (int j = 0; j <= verticalExtent; j++) {
                     BlockPos currentPos = worldPosition.relative(widthDirection, i).above(j);
-                    BlockEntity be = level.getBlockEntity(currentPos);
+                    BlockEntity be = getLoadedBlockEntity(currentPos);
 
                     if (be instanceof ScreenBlockEntity childEntity && !currentPos.equals(worldPosition)) {
                         if (childEntity.isAnchor() && childEntity.imageId != null) {
@@ -514,7 +514,7 @@ public class ScreenBlockEntity extends BlockEntity {
     private void updateChildAtPosition(BlockPos currentPos) {
         if (level == null || level.isClientSide()) return;
 
-        BlockEntity be = level.getBlockEntity(currentPos);
+        BlockEntity be = getLoadedBlockEntity(currentPos);
         if (be instanceof ScreenBlockEntity childEntity && !currentPos.equals(worldPosition)) {
             if (childEntity.isAnchor() && childEntity.imageId != null) {
                 this.imageId = childEntity.imageId;
@@ -580,7 +580,8 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     private boolean isMatchingScreen(BlockPos pos, Direction facing) {
-        BlockEntity entity = level.getBlockEntity(pos);
+        if (!level.hasChunkAt(pos)) throw new UnresolvedStructureException();
+        BlockEntity entity = getLoadedBlockEntity(pos);
         if (!(entity instanceof ScreenBlockEntity screen) || !entity.getBlockState().hasProperty(ScreenBlock.FACING)
                 || entity.getBlockState().getValue(ScreenBlock.FACING) != facing) return false;
         BlockPos foreignAnchor = screen.getAnchorPos();
@@ -596,7 +597,7 @@ public class ScreenBlockEntity extends BlockEntity {
         if (anchorPos == null || level == null) return;
         if (!level.hasChunkAt(anchorPos)) return;
 
-        BlockEntity be = level.getBlockEntity(anchorPos);
+        BlockEntity be = getLoadedBlockEntity(anchorPos);
         if (!(be instanceof ScreenBlockEntity anchorEntity) || !anchorEntity.isAnchor()) {
             switchToErrorState();
         }
@@ -619,6 +620,10 @@ public class ScreenBlockEntity extends BlockEntity {
 
     public boolean isAnchor() {
         return anchorPos != null && anchorPos.equals(worldPosition);
+    }
+
+    private BlockEntity getLoadedBlockEntity(BlockPos pos) {
+        return level != null && level.hasChunkAt(pos) ? level.getBlockEntity(pos) : null;
     }
 
     /** NeoForge uses this full structure box for block-entity frustum and section culling. */
@@ -658,7 +663,7 @@ public class ScreenBlockEntity extends BlockEntity {
         BlockPos newAnchorPos = worldPosition.relative(promotion.axis() == ScreenAnchorPromotion.Axis.HEIGHT
                 ? getHeightDirection(facing) : getWidthDirection(facing));
 
-        BlockEntity newAnchorBe = level.getBlockEntity(newAnchorPos);
+        BlockEntity newAnchorBe = getLoadedBlockEntity(newAnchorPos);
         if (newAnchorBe instanceof ScreenBlockEntity newAnchor) {
             newAnchor.updateScreen(this.imageId, promotion.width(), promotion.height(), newAnchorPos, this.maintainAspectRatio);
             newAnchor.setScreenIdInternal(this.screenId);
@@ -684,7 +689,7 @@ public class ScreenBlockEntity extends BlockEntity {
                 BlockPos childPos = calculateChildPosition(newAnchorPos, facing, x, y);
                 if (childPos.equals(newAnchorPos)) continue;
 
-                BlockEntity be = level.getBlockEntity(childPos);
+                BlockEntity be = getLoadedBlockEntity(childPos);
                 if (be instanceof ScreenBlockEntity child) {
                     child.updateScreen(this.imageId, width, height, newAnchorPos, this.maintainAspectRatio);
                     child.setScreenIdInternal(this.screenId);
@@ -707,7 +712,7 @@ public class ScreenBlockEntity extends BlockEntity {
             updateScreenStructure();
         } else {
             if (!level.hasChunkAt(anchorPos)) return;
-            BlockEntity anchorBe = level.getBlockEntity(anchorPos);
+            BlockEntity anchorBe = getLoadedBlockEntity(anchorPos);
             if (anchorBe instanceof ScreenBlockEntity anchor) {
                 anchor.updateScreenStructure();
             }
@@ -724,7 +729,7 @@ public class ScreenBlockEntity extends BlockEntity {
             Direction negativeHeightDir = getHeightDirection(facing).getOpposite();
             Direction negativeWidthDir = getWidthDirection(facing).getOpposite();
             if (neighborDir == negativeHeightDir || neighborDir == negativeWidthDir) {
-                BlockEntity neighborBe = level.getBlockEntity(neighborPos);
+                BlockEntity neighborBe = getLoadedBlockEntity(neighborPos);
 
                 if (neighborBe instanceof ScreenBlockEntity neighborScreen) {
                     neighborScreen.updateScreenStructure();
@@ -733,7 +738,7 @@ public class ScreenBlockEntity extends BlockEntity {
             updateScreenStructure();
         } else {
             if (!level.hasChunkAt(anchorPos)) return;
-            BlockEntity anchorBe = level.getBlockEntity(anchorPos);
+            BlockEntity anchorBe = getLoadedBlockEntity(anchorPos);
             if (anchorBe instanceof ScreenBlockEntity anchor && anchor.isAnchor()) {
                 anchor.updateScreenStructure();
             }

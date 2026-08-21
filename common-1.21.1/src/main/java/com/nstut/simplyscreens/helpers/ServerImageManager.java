@@ -370,7 +370,7 @@ public class ServerImageManager {
 
             Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInputStream);
             if (!readers.hasNext()) {
-                return true;
+                return false;
             }
 
             ImageReader reader = readers.next();
