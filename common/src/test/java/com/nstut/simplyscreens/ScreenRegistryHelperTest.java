@@ -14,6 +14,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Files;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.*;
@@ -99,6 +100,30 @@ class ScreenRegistryHelperTest {
 
         helper.removeScreenId("screen1");
         assertNull(helper.getImageId("screen1"));
+    }
+
+    @Test
+    void removeImageReferencesClearsEveryMatchingLink() {
+        UUID removed = UUID.randomUUID();
+        UUID retained = UUID.randomUUID();
+        helper.setImageId("first", removed);
+        helper.setImageId("second", removed);
+        helper.setImageId("other", retained);
+        assertTrue(helper.removeImageReferences(removed));
+        assertNull(helper.getImageId("first"));
+        assertNull(helper.getImageId("second"));
+        assertEquals(retained, helper.getImageId("other"));
+    }
+
+    @Test
+    void repeatedSaveCreatesRegistryBackups(@TempDir Path tempDir) {
+        helper.init(tempDir);
+        helper.setImageId("first", UUID.randomUUID());
+        helper.saveRegistry();
+        helper.setImageId("second", UUID.randomUUID());
+        helper.saveRegistry();
+        assertTrue(Files.exists(tempDir.resolve("screen_registry.json.bak")));
+        assertTrue(Files.exists(tempDir.resolve("screen_registry_owners.json.bak")));
     }
 
     // 1.8 getAllScreenIds returns all IDs

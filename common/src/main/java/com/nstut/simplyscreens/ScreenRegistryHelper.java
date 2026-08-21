@@ -6,10 +6,13 @@ import com.google.gson.reflect.TypeToken;
 
 import java.io.File;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.file.Path;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -80,15 +83,9 @@ public class ScreenRegistryHelper {
         if (registryFilePath == null) return;
 
         try {
-            String json = GSON.toJson(screenIdToImageId);
-            File file = registryFilePath.toFile();
-            file.getParentFile().mkdirs();
-            try (FileWriter writer = new FileWriter(file)) {
-                writer.write(json);
-            }
-            try (FileWriter writer = new FileWriter(ownersFilePath.toFile())) {
-                writer.write(GSON.toJson(screenIdToOwnerId));
-            }
+            Files.createDirectories(registryFilePath.getParent());
+            atomicWriteWithBackup(registryFilePath, GSON.toJson(screenIdToImageId));
+            atomicWriteWithBackup(ownersFilePath, GSON.toJson(screenIdToOwnerId));
             logger.info("Saved screen registry to {}", registryFilePath);
         } catch (IOException e) {
             logger.error("Failed to save screen registry", e);
@@ -173,6 +170,11 @@ public class ScreenRegistryHelper {
         screenIdToImageId.remove(screenId);
     }
 
+    public boolean removeImageReferences(UUID imageId) {
+        if (imageId == null) return false;
+        return screenIdToImageId.entrySet().removeIf(entry -> imageId.equals(entry.getValue()));
+    }
+
     /**
      * Gets all screen IDs.
      *
@@ -180,6 +182,18 @@ public class ScreenRegistryHelper {
      */
     public Set<String> getAllScreenIds() {
         return Set.copyOf(screenIdToImageId.keySet());
+    }
+
+    private static void atomicWriteWithBackup(Path target, String contents) throws IOException {
+        Path temporary = target.resolveSibling(target.getFileName() + ".tmp");
+        Path backup = target.resolveSibling(target.getFileName() + ".bak");
+        Files.writeString(temporary, contents, StandardCharsets.UTF_8);
+        if (Files.exists(target)) Files.copy(target, backup, StandardCopyOption.REPLACE_EXISTING);
+        try {
+            Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } catch (AtomicMoveNotSupportedException ignored) {
+            Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
+        }
     }
 
     public boolean claimScreenId(String screenId, UUID playerId, boolean administrator) {

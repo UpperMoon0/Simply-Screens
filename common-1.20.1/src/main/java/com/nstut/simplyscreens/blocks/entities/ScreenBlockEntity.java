@@ -639,6 +639,9 @@ public class ScreenBlockEntity extends BlockEntity {
         BlockPos newAnchorPos = worldPosition.relative(promotion.axis() == ScreenAnchorPromotion.Axis.HEIGHT
                 ? getHeightDirection(facing) : getWidthDirection(facing));
 
+        // Anchor removal is an explicit, rare operation. Load only the predetermined
+        // replacement chunk so promotion completes before the old anchor disappears.
+        if (!level.hasChunkAt(newAnchorPos)) level.getChunkAt(newAnchorPos);
         BlockEntity newAnchorBe = getLoadedBlockEntity(newAnchorPos);
         if (newAnchorBe instanceof ScreenBlockEntity newAnchor) {
             newAnchor.updateScreen(this.imageId, promotion.width(), promotion.height(), newAnchorPos, this.maintainAspectRatio);

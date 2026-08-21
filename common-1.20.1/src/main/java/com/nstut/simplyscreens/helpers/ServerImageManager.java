@@ -262,6 +262,7 @@ public class ServerImageManager {
         try {
             Files.deleteIfExists(imagesDir.resolve(imageId + "." + metadata.getExtension()));
             Files.deleteIfExists(imagesDir.resolve(imageId + ".json"));
+            com.nstut.simplyscreens.ScreenRegistry.removeImageReferences(imageId);
             cachedImageList = null;
             return true;
         } catch (IOException e) {

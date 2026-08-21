@@ -82,6 +82,10 @@ public class ScreenRegistry {
         HELPER.removeScreenId(screenId);
     }
 
+    public static void removeImageReferences(UUID imageId) {
+        if (HELPER.removeImageReferences(imageId)) HELPER.saveRegistry();
+    }
+
     /**
      * Gets all screen IDs.
      *
