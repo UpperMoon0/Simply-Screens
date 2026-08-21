@@ -389,6 +389,11 @@ public class ServerImageManager {
                     SimplyScreens.LOGGER.warn("Rejecting image '{}' because it is {}x{} ({} pixels), over the limit of {} pixels", originalName, width, height, pixels, MAX_IMAGE_PIXELS);
                     return false;
                 }
+                BufferedImage decoded = ImageIO.read(new ByteArrayInputStream(data));
+                if (decoded == null) {
+                    SimplyScreens.LOGGER.warn("Rejecting image '{}' because it could not be decoded", originalName);
+                    return false;
+                }
             } finally {
                 reader.dispose();
             }

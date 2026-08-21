@@ -42,9 +42,13 @@ public class RemoveImageC2SPacket implements CustomPacketPayload {
         if (player == null) return;
         context.queue(() -> {
             boolean isAdmin = player.level().getServer() != null && player.level().getServer().getPlayerList().isOp(player.nameAndId());
-            ServerImageManager.deleteImage(player.level().getServer(), packet.imageId, player.getUUID().toString(), isAdmin);
-            var images = ServerImageManager.getImageListForPlayer(player.level().getServer(), player.getUUID().toString());
-            PacketRegistries.sendToPlayer(player, new UpdateImageListS2CPacket(images));
+            boolean deleted = ServerImageManager.deleteImage(player.level().getServer(), packet.imageId, player.getUUID().toString(), isAdmin);
+            if (deleted && player.level().getServer() != null) {
+                for (ServerPlayer onlinePlayer : player.level().getServer().getPlayerList().getPlayers()) {
+                    var images = ServerImageManager.getImageListForPlayer(player.level().getServer(), onlinePlayer.getUUID().toString());
+                    PacketRegistries.sendToPlayer(onlinePlayer, new UpdateImageListS2CPacket(images));
+                }
+            }
         });
     }
 }

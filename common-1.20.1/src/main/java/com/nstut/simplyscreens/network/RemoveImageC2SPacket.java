@@ -30,9 +30,13 @@ public class RemoveImageC2SPacket {
         if (player == null) return;
         context.get().queue(() -> {
             boolean isAdmin = player.hasPermissions(2);
-            ServerImageManager.deleteImage(player.getServer(), msg.imageId, player.getUUID().toString(), isAdmin);
-            var images = ServerImageManager.getImageListForPlayer(player.getServer(), player.getUUID().toString());
-            PacketRegistries.CHANNEL.sendToPlayer(player, new UpdateImageListS2CPacket(images));
+            boolean deleted = ServerImageManager.deleteImage(player.getServer(), msg.imageId, player.getUUID().toString(), isAdmin);
+            if (deleted && player.getServer() != null) {
+                for (ServerPlayer onlinePlayer : player.getServer().getPlayerList().getPlayers()) {
+                    var images = ServerImageManager.getImageListForPlayer(player.getServer(), onlinePlayer.getUUID().toString());
+                    PacketRegistries.CHANNEL.sendToPlayer(onlinePlayer, new UpdateImageListS2CPacket(images));
+                }
+            }
         });
     }
 }

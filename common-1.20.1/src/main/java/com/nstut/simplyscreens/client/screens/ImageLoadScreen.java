@@ -250,11 +250,9 @@ public class ImageLoadScreen extends Screen {
         if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
             ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
             if (anchor != null) {
-                PacketRegistries.CHANNEL.sendToServer(new UpdateScreenIdC2SPacket(blockEntityPos, screenId));
                 ImageListWidget.ImageEntry selectedEntry = imageListWidget.getSelected();
-                if (selectedEntry != null) {
-                    PacketRegistries.CHANNEL.sendToServer(new UpdateScreenSelectedImageC2SPacket(blockEntityPos, selectedEntry.getImageId()));
-                }
+                UUID selectedId = selectedEntry != null ? selectedEntry.getImageId() : null;
+                PacketRegistries.CHANNEL.sendToServer(new UpdateScreenIdC2SPacket(blockEntityPos, screenId, selectedId));
             }
         }
     }

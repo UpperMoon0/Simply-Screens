@@ -248,17 +248,14 @@ public class ImageLoadScreen extends Screen {
         String screenId = screenIdField.getValue();
         if (screenId == null) screenId = "";
         ImageListWidget.ImageEntry selectedEntry = imageListWidget.getSelected();
+        UUID selectedId = selectedEntry != null ? selectedEntry.getImageId() : null;
 
         if (this.minecraft != null && this.minecraft.level != null) {
             BlockEntity blockEntity = this.minecraft.level.getBlockEntity(blockEntityPos);
             if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                 ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
                 if (anchor != null) {
-                    // Update screen ID FIRST so any selected image update applies to the new group, not the old group
-                    PacketRegistries.sendToServer(new UpdateScreenIdC2SPacket(blockEntityPos, screenId));
-                    if (selectedEntry != null) {
-                        PacketRegistries.sendToServer(new UpdateScreenSelectedImageC2SPacket(blockEntityPos, selectedEntry.getImageId()));
-                    }
+                    PacketRegistries.sendToServer(new UpdateScreenIdC2SPacket(blockEntityPos, screenId, selectedId));
                 }
             }
         }

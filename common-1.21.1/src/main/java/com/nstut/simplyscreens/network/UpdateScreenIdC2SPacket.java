@@ -12,6 +12,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import java.util.UUID;
 
 public class UpdateScreenIdC2SPacket implements CustomPacketPayload {
     public static final Type<UpdateScreenIdC2SPacket> TYPE = new Type<>(
@@ -22,21 +23,32 @@ public class UpdateScreenIdC2SPacket implements CustomPacketPayload {
 
     private final BlockPos pos;
     private final String screenId;
+    private final UUID selectedImageId;
 
     public UpdateScreenIdC2SPacket(BlockPos pos, String screenId) {
+        this(pos, screenId, null);
+    }
+
+    public UpdateScreenIdC2SPacket(BlockPos pos, String screenId, UUID selectedImageId) {
         this.pos = pos;
         this.screenId = screenId;
+        this.selectedImageId = selectedImageId;
     }
 
     public UpdateScreenIdC2SPacket(RegistryFriendlyByteBuf buf) {
         pos = buf.readBlockPos();
         String readScreenId = buf.readUtf();
         screenId = readScreenId.isEmpty() ? null : readScreenId;
+        selectedImageId = buf.readBoolean() ? buf.readUUID() : null;
     }
 
     public void write(RegistryFriendlyByteBuf buf) {
         buf.writeBlockPos(pos);
         buf.writeUtf(screenId != null ? screenId : "");
+        buf.writeBoolean(selectedImageId != null);
+        if (selectedImageId != null) {
+            buf.writeUUID(selectedImageId);
+        }
     }
 
     @Override
@@ -50,6 +62,10 @@ public class UpdateScreenIdC2SPacket implements CustomPacketPayload {
 
     public String getScreenId() {
         return screenId;
+    }
+
+    public UUID getSelectedImageId() {
+        return selectedImageId;
     }
 
     public static void handle(UpdateScreenIdC2SPacket packet, NetworkManager.PacketContext context) {
@@ -67,9 +83,13 @@ public class UpdateScreenIdC2SPacket implements CustomPacketPayload {
                 if (anchor != null) {
                     String normalizedId = com.nstut.simplyscreens.ScreenRegistryHelper.normalizeScreenId(packet.screenId);
                     if (packet.screenId != null && !packet.screenId.isBlank() && normalizedId.isEmpty()) return;
-                    if (normalizedId.equals(anchor.getScreenId())) return;
-                    if (!normalizedId.isEmpty() && !ScreenRegistry.claimScreenId(normalizedId, player.getUUID(), player.hasPermissions(2))) return;
-                    anchor.setScreenId(normalizedId);
+                    if (!normalizedId.equals(anchor.getScreenId())) {
+                        if (!normalizedId.isEmpty() && !ScreenRegistry.claimScreenId(normalizedId, player.getUUID(), player.hasPermissions(2))) return;
+                        anchor.setScreenId(normalizedId);
+                    }
+                    if (packet.selectedImageId != null) {
+                        anchor.setImageId(packet.selectedImageId);
+                    }
                 }
             }
         });
