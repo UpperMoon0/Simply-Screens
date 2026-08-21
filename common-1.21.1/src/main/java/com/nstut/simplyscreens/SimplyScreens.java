@@ -1,5 +1,6 @@
 package com.nstut.simplyscreens;
 
+import com.nstut.simplyscreens.blocks.entities.ScreenLoadReconciler;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +18,9 @@ public class SimplyScreens {
         Config.setModId(MOD_ID);
         Config.load();
         PacketRegistries.register();
+
+        ScreenLoadReconciler.init();
+        ServerTickScheduler.init();
     }
 
     /**

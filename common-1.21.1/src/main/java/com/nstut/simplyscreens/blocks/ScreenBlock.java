@@ -30,6 +30,7 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 
 import org.jetbrains.annotations.NotNull;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
+import com.nstut.simplyscreens.ServerTickScheduler;
 
 public class ScreenBlock extends Block implements EntityBlock {
 
@@ -92,8 +93,9 @@ public class ScreenBlock extends Block implements EntityBlock {
     @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
         super.setPlacedBy(level, pos, state, placer, stack);
-        if (!level.isClientSide && level.getServer() != null) {
-            level.getServer().execute(() -> refreshScreens(level, pos, state.getValue(FACING)));
+        if (!level.isClientSide) {
+            Direction facing = state.getValue(FACING);
+            ServerTickScheduler.schedule(() -> refreshScreens(level, pos, facing));
         }
     }
 
@@ -120,9 +122,10 @@ public class ScreenBlock extends Block implements EntityBlock {
                 com.nstut.simplyscreens.ScreenRegistry.unregisterScreen(level, pos, screen.getScreenId());
                 screen.findNewAnchor();
             }
-            if (level.getServer() != null) level.getServer().execute(() -> {
-                if (oldAnchorPos != null) refreshScreenAt(level, oldAnchorPos, state.getValue(FACING));
-                refreshScreens(level, pos, state.getValue(FACING));
+            Direction facing = state.getValue(FACING);
+            ServerTickScheduler.schedule(() -> {
+                if (oldAnchorPos != null) refreshScreenAt(level, oldAnchorPos, facing);
+                refreshScreens(level, pos, facing);
             });
         }
         super.onRemove(state, level, pos, newState, movedByPiston);
