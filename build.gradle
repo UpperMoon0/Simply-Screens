@@ -13,6 +13,7 @@ allprojects {
     version = rootProject.mod_version
 
     repositories {
+        mavenLocal()
         mavenCentral()
     }
 }

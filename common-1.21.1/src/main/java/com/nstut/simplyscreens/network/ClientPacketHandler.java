@@ -3,7 +3,6 @@ package com.nstut.simplyscreens.network;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simplyscreens.helpers.ClientImageManager;
 import com.nstut.simplyscreens.client.ClientServerConfig;
-import com.nstut.simplyscreens.client.gui.widgets.ImageListWidget;
 import com.nstut.simplyscreens.client.screens.ImageLoadScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -21,6 +20,10 @@ public class ClientPacketHandler {
             if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                 applyScreenUpdate(screenBlockEntity, anchorPos, imageId, maintainAspectRatio,
                         screenId, screenWidth, screenHeight);
+            }
+            if (Minecraft.getInstance().screen instanceof ImageLoadScreen imageLoadScreen
+                    && imageLoadScreen.matchesScreenUpdate(pos, anchorPos)) {
+                imageLoadScreen.updateScreenState(imageId, maintainAspectRatio, screenId);
             }
         }
     }
@@ -48,11 +51,8 @@ public class ClientPacketHandler {
         Minecraft mc = Minecraft.getInstance();
         Screen currentScreen = mc.screen;
 
-        if (currentScreen instanceof ImageLoadScreen) {
-            ImageListWidget imageListWidget = ((ImageLoadScreen) currentScreen).getImageListWidget();
-            if (imageListWidget != null) {
-                imageListWidget.refresh();
-            }
+        if (currentScreen instanceof ImageLoadScreen imageLoadScreen) {
+            imageLoadScreen.refreshImageList();
         }
     }
 }

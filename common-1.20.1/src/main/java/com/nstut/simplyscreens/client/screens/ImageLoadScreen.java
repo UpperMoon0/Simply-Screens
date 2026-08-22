@@ -1,67 +1,91 @@
 package com.nstut.simplyscreens.client.screens;
 
-import com.nstut.simplyscreens.client.ClientServerConfig;
-import com.nstut.simplyscreens.SimplyScreens;
+import com.nstut.openui.api.ButtonWidget;
+import com.nstut.openui.api.HStack;
+import com.nstut.openui.api.UIComponent;
+import com.nstut.openui.api.Ui;
+import com.nstut.openui.api.VStack;
+import com.nstut.openui.controls.Badge;
+import com.nstut.openui.controls.Card;
+import com.nstut.openui.controls.Dialog;
+import com.nstut.openui.controls.EmptyState;
+import com.nstut.openui.controls.IconWidget;
+import com.nstut.openui.controls.Toast;
+import com.nstut.openui.layout.Alignment;
+import com.nstut.openui.layout.Justification;
+import com.nstut.openui.overlay.OverlayHandle;
+import com.nstut.openui.state.Computed;
+import com.nstut.openui.state.Signal;
+import com.nstut.openui.state.Signals;
+import com.nstut.openui.state.Subscription;
 import com.nstut.simplyscreens.ImageImportSupport;
+import com.nstut.simplyscreens.ScreenRegistryHelper;
+import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
-import com.nstut.simplyscreens.client.ScreenGuiConstants;
-import com.nstut.simplyscreens.client.gui.widgets.ImageListWidget;
+import com.nstut.simplyscreens.client.ClientServerConfig;
+import com.nstut.simplyscreens.client.ui.SimplyScreensUiScreen;
+import com.nstut.simplyscreens.helpers.ImageMetadata;
+import com.nstut.simplyscreens.helpers.ClientImageManager;
 import com.nstut.simplyscreens.network.DownloadImageFromUrlC2SPacket;
 import com.nstut.simplyscreens.network.PacketRegistries;
-import com.nstut.simplyscreens.network.UpdateScreenIdC2SPacket;
-import com.nstut.simplyscreens.network.UploadImageChunkC2SPacket;
-import com.nstut.simplyscreens.network.UpdateScreenAspectRatioC2SPacket;
-import com.nstut.simplyscreens.network.UpdateScreenSelectedImageC2SPacket;
 import com.nstut.simplyscreens.network.RemoveImageC2SPacket;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.Checkbox;
-import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
+import com.nstut.simplyscreens.network.RequestImageListC2SPacket;
+import com.nstut.simplyscreens.network.UpdateScreenAspectRatioC2SPacket;
+import com.nstut.simplyscreens.network.UpdateScreenIdC2SPacket;
+import com.nstut.simplyscreens.network.UpdateScreenSelectedImageC2SPacket;
+import com.nstut.simplyscreens.network.UploadImageChunkC2SPacket;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import org.jetbrains.annotations.NotNull;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
-public class ImageLoadScreen extends Screen {
-    private static final ResourceLocation BACKGROUND_TEXTURE = new ResourceLocation(SimplyScreens.MOD_ID, "textures/gui/screen.png");
-
+public class ImageLoadScreen extends SimplyScreensUiScreen {
     private static final int CHUNK_SIZE = com.nstut.simplyscreens.helpers.ChunkedFileTransfer.CHUNK_SIZE;
-    private static final int SCREEN_WIDTH = ScreenGuiConstants.SCREEN_WIDTH;
-    private static final int SCREEN_HEIGHT = ScreenGuiConstants.SCREEN_HEIGHT;
-
-    private final BlockPos blockEntityPos;
-    private java.util.UUID initialLocalHash;
-    private String initialScreenId = "";
-    private boolean initialMaintainAspectRatio = true;
-
-    private ImageListWidget imageListWidget;
-    private Button selectButton;
-    private Button removeButton;
-    private Button uploadFromComputerButton;
-    private Button downloadFromUrlButton;
-    private Button galleryTabButton;
-    private Button settingsTabButton;
-    private Button addImageButton;
-    private Button backButton;
-    private Button linkScreenIdButton;
-    private Checkbox maintainAspectCheckbox;
-    private EditBox searchBar;
-    private EditBox screenIdField;
-    private EditBox urlField;
+    private static final int PANEL_WIDTH = 340;
 
     private enum Tab { GALLERY, SETTINGS, IMPORT }
-    private Tab currentTab = Tab.GALLERY;
+    private enum GalleryState { EMPTY, NO_MATCHES, RESULTS }
+    private record ImageEntry(String displayName, UUID imageId) { }
+    private record ImageRow(ImageEntry image, boolean selected, boolean displayed) { }
 
+    private final BlockPos blockEntityPos;
+    private final Signal<Tab> tab = Signals.of(Tab.GALLERY);
+    private final Signal<String> search = Signals.of("");
+    private final Signal<List<ImageEntry>> images = Signals.of(List.of());
+    private final Signal<UUID> selectedImageId = Signals.of(null);
+    private final Signal<UUID> displayedImageId = Signals.of(null);
+    private final Signal<String> screenId = Signals.of("");
+    private final Signal<Boolean> maintainAspectRatio = Signals.of(true);
+    private final Signal<String> imageUrl = Signals.of("");
+    private final Signal<Component> status = Signals.of(Component.empty());
+
+    private final Computed<List<ImageRow>> filteredImages = Signals.computed(() -> {
+        String query = search.get().trim().toLowerCase(Locale.ROOT);
+        UUID selected = selectedImageId.get();
+        UUID displayed = displayedImageId.get();
+        return images.get().stream()
+                .filter(image -> query.isEmpty() || image.displayName().toLowerCase(Locale.ROOT).contains(query))
+                .map(image -> new ImageRow(image, image.imageId().equals(selected), image.imageId().equals(displayed)))
+                .toList();
+    });
+    private final Computed<GalleryState> galleryState = Signals.computed(() -> {
+        if (images.get().isEmpty()) return GalleryState.EMPTY;
+        return filteredImages.get().isEmpty() ? GalleryState.NO_MATCHES : GalleryState.RESULTS;
+    });
+
+    private Subscription aspectSubscription = Subscription.EMPTY;
+    private boolean applyingRemoteState;
 
     public ImageLoadScreen(BlockPos blockEntityPos) {
         super(Component.translatable("gui.simplyscreens.screen.title"));
@@ -70,192 +94,207 @@ public class ImageLoadScreen extends Screen {
 
     @Override
     protected void init() {
-        super.init();
+        aspectSubscription.close();
         fetchDataFromBlockEntity();
-
-        int guiLeft = (this.width - SCREEN_WIDTH) / 2;
-        int guiTop = (this.height - SCREEN_HEIGHT) / 2;
-
-        // Tab buttons at the top (Import is reached through the + button).
-        galleryTabButton = Button.builder(Component.literal("Gallery"), button -> switchTab(Tab.GALLERY))
-                .pos(guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.TAB_BUTTON_Y)
-                .size(78, ScreenGuiConstants.BUTTON_HEIGHT)
-                .build();
-        addRenderableWidget(galleryTabButton);
-
-        settingsTabButton = Button.builder(Component.literal("Settings"), button -> switchTab(Tab.SETTINGS))
-                .pos(guiLeft + 89, guiTop + ScreenGuiConstants.TAB_BUTTON_Y)
-                .size(78, ScreenGuiConstants.BUTTON_HEIGHT)
-                .build();
-        addRenderableWidget(settingsTabButton);
-
-        addImageButton = Button.builder(Component.literal("+"), button -> switchTab(Tab.IMPORT))
-                .pos(guiLeft + 150, guiTop + ScreenGuiConstants.SEARCH_BAR_Y)
-                .size(18, ScreenGuiConstants.BUTTON_HEIGHT)
-                .tooltip(Tooltip.create(Component.translatable("gui.simplyscreens.screen.add_image.tooltip")))
-                .build();
-        addRenderableWidget(addImageButton);
-
-        backButton = Button.builder(Component.literal("← Back"), button -> switchTab(Tab.GALLERY))
-                .pos(guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.SCREEN_ID_LABEL_Y)
-                .size(ScreenGuiConstants.REMOVE_BUTTON_WIDTH, ScreenGuiConstants.BUTTON_HEIGHT)
-                .build();
-        addRenderableWidget(backButton);
-
-        // Gallery Tab Components (y starts at 25)
-        searchBar = new EditBox(this.font, guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.SEARCH_BAR_Y, 138, ScreenGuiConstants.BUTTON_HEIGHT, Component.translatable("gui.simplyscreens.screen.search.placeholder"));
-        searchBar.setResponder(searchTerm -> {
-            if (this.imageListWidget != null) {
-                this.imageListWidget.filter(searchTerm);
-            }
+        super.init();
+        aspectSubscription = maintainAspectRatio.subscribe(value -> {
+            if (applyingRemoteState || !hasAnchor()) return;
+            PacketRegistries.sendToServer(new UpdateScreenAspectRatioC2SPacket(blockEntityPos, value));
         });
-        searchBar.setTooltip(Tooltip.create(Component.translatable("gui.simplyscreens.screen.search.tooltip")));
-        addRenderableWidget(searchBar);
-
-        imageListWidget = new ImageListWidget(guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.IMAGE_LIST_WIDGET_Y, ScreenGuiConstants.IMAGE_LIST_WIDTH, ScreenGuiConstants.IMAGE_LIST_HEIGHT, Component.literal(""), this::onImageSelected, initialLocalHash);
-        addRenderableWidget(imageListWidget);
-
-        selectButton = Button.builder(Component.translatable("gui.simplyscreens.screen.select"), button -> onSelect())
-                .pos(guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.SELECT_BUTTON_Y)
-                .size(ScreenGuiConstants.SELECT_BUTTON_WIDTH, ScreenGuiConstants.SELECT_BUTTON_HEIGHT)
-                .build();
-        selectButton.active = false;
-        addRenderableWidget(selectButton);
-
-        removeButton = Button.builder(Component.translatable("gui.simplyscreens.screen.remove"), button -> onRemove())
-                .pos(guiLeft + ScreenGuiConstants.MARGIN_X + ScreenGuiConstants.SELECT_BUTTON_WIDTH + 4, guiTop + ScreenGuiConstants.SELECT_BUTTON_Y)
-                .size(ScreenGuiConstants.REMOVE_BUTTON_WIDTH, ScreenGuiConstants.SELECT_BUTTON_HEIGHT)
-                .tooltip(Tooltip.create(Component.translatable("gui.simplyscreens.screen.remove.tooltip")))
-                .build();
-        removeButton.active = false;
-        addRenderableWidget(removeButton);
-
-        // Settings Tab Components
-        screenIdField = new EditBox(this.font, guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.SCREEN_ID_FIELD_Y, 100, ScreenGuiConstants.BUTTON_HEIGHT, Component.translatable("gui.simplyscreens.screen.id.placeholder"));
-        screenIdField.setValue(initialScreenId);
-        screenIdField.setMaxLength(com.nstut.simplyscreens.ScreenRegistryHelper.MAX_SCREEN_ID_LENGTH);
-        screenIdField.setTooltip(Tooltip.create(Component.translatable("gui.simplyscreens.screen.id.tooltip")));
-        addRenderableWidget(screenIdField);
-
-        linkScreenIdButton = Button.builder(Component.translatable("gui.simplyscreens.screen.link"), button -> onLinkScreenId())
-                .pos(guiLeft + 110, guiTop + ScreenGuiConstants.SCREEN_ID_FIELD_Y)
-                .size(58, ScreenGuiConstants.BUTTON_HEIGHT)
-                .build();
-        addRenderableWidget(linkScreenIdButton);
-
-        maintainAspectCheckbox = new Checkbox(guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.MAINTAIN_ASPECT_CHECKBOX_Y, 20, 20, Component.empty(), this.initialMaintainAspectRatio) {
-            @Override
-            public void onPress() {
-                super.onPress();
-                if (minecraft != null && minecraft.level != null) {
-                    BlockEntity blockEntity = minecraft.level.getBlockEntity(blockEntityPos);
-                    if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
-                        ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
-                        if (anchor != null) {
-                            PacketRegistries.sendToServer(new UpdateScreenAspectRatioC2SPacket(blockEntityPos, this.selected()));
-                        }
-                    }
-                }
-            }
-        };
-        maintainAspectCheckbox.setTooltip(Tooltip.create(Component.translatable("gui.simplyscreens.screen.maintain_aspect.tooltip")));
-        addRenderableWidget(maintainAspectCheckbox);
-
-        // Import Tab Components
-        uploadFromComputerButton = Button.builder(Component.literal("Upload"), button -> onUploadFromComputer())
-                .pos(guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + 80)
-                .size(ScreenGuiConstants.IMAGE_LIST_WIDTH, ScreenGuiConstants.SELECT_BUTTON_HEIGHT + 4)
-                .build();
-        uploadFromComputerButton.visible = !ClientServerConfig.disableUpload();
-        addRenderableWidget(uploadFromComputerButton);
-
-        urlField = new EditBox(this.font, guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + 130, 120, ScreenGuiConstants.URL_FIELD_HEIGHT, Component.translatable("gui.simplyscreens.screen.url.placeholder"));
-        urlField.setMaxLength(2048); // URLs can be very long
-        urlField.setTooltip(Tooltip.create(Component.translatable("gui.simplyscreens.screen.url.tooltip")));
-        addRenderableWidget(urlField);
-
-        downloadFromUrlButton = Button.builder(Component.literal("Load"), button -> onDownloadFromUrl())
-                .pos(guiLeft + ScreenGuiConstants.DOWNLOAD_BUTTON_X, guiTop + 130)
-                .size(ScreenGuiConstants.DOWNLOAD_BUTTON_WIDTH, ScreenGuiConstants.URL_FIELD_HEIGHT)
-                .build();
-        downloadFromUrlButton.visible = !ClientServerConfig.disableUrlDownload();
-        addRenderableWidget(downloadFromUrlButton);
-
-        updateTabVisibility();
-        setInitialFocus(searchBar);
-        imageListWidget.refresh();
+        refreshImageList();
     }
 
-    private void onRemove() {
-        ImageListWidget.ImageEntry selectedEntry = imageListWidget.getSelected();
-        if (selectedEntry != null) {
-            PacketRegistries.sendToServer(new RemoveImageC2SPacket(selectedEntry.getImageId()));
+    @Override
+    protected UIComponent buildUI() {
+        VStack panel = Ui.column(
+                buildHeader(),
+                Ui.tabs(tab)
+                        .tab(Tab.GALLERY, Component.translatable("gui.simplyscreens.tab.gallery"))
+                        .tab(Tab.SETTINGS, Component.translatable("gui.simplyscreens.tab.settings"))
+                        .tab(Tab.IMPORT, Component.translatable("gui.simplyscreens.tab.import")),
+                Ui.switcher(tab)
+                        .when(Tab.GALLERY, this::buildGallery)
+                        .when(Tab.SETTINGS, this::buildSettings)
+                        .when(Tab.IMPORT, this::buildImport),
+                Ui.text(() -> status.get())
+        ).gap(8);
+        panel.fillWidth();
+        panel.maxWidth(PANEL_WIDTH);
+        return Ui.padding(16, Ui.stack(panel).align(Alignment.CENTER, Alignment.CENTER));
+    }
+
+    private UIComponent buildHeader() {
+        return Ui.row(
+                Ui.column(
+                        Ui.heading(Component.translatable("gui.simplyscreens.screen.title")),
+                        Ui.text(this::displayedImageName)
+                ).gap(2).flex(),
+                buildThemeToggle()
+        ).gap(8).justify(Justification.SPACE_BETWEEN);
+    }
+
+    private UIComponent buildGallery() {
+        return Ui.column(
+                Ui.responsive(context -> {
+                    UIComponent searchField = Ui.textField(search)
+                            .placeholder(Component.translatable("gui.simplyscreens.screen.search.placeholder").getString())
+                            .maxLength(128)
+                            .flex();
+                    ButtonWidget refresh = Ui.button(
+                            Component.translatable("gui.simplyscreens.screen.refresh"), this::refreshImageList)
+                            .ghost().small();
+                    return context.width() < 240
+                            ? Ui.column(searchField, refresh).gap(6)
+                            : Ui.row(searchField, refresh).gap(6);
+                }),
+                Ui.switcher(galleryState)
+                        .when(GalleryState.EMPTY, this::buildEmptyGallery)
+                        .when(GalleryState.NO_MATCHES, this::buildNoMatches)
+                        .when(GalleryState.RESULTS, this::buildGalleryResults)
+        ).gap(8);
+    }
+
+    private UIComponent buildEmptyGallery() {
+        EmptyState empty = Ui.emptyState(Component.translatable("gui.simplyscreens.gallery.empty"));
+        if (!ClientServerConfig.disableUpload() || !ClientServerConfig.disableUrlDownload()) {
+            empty.action(Component.translatable("gui.simplyscreens.screen.add_image"), () -> tab.set(Tab.IMPORT));
         }
+        return empty;
     }
 
-    private void switchTab(Tab tab) {
-        this.currentTab = tab;
-        updateTabVisibility();
+    private UIComponent buildNoMatches() {
+        return Ui.column(
+                Ui.emptyState(Component.translatable("gui.simplyscreens.gallery.no_matches", search.get())),
+                Ui.button(Component.translatable("gui.simplyscreens.screen.clear_search"), () -> search.set(""))
+                        .ghost().small()
+        ).gap(6);
     }
 
-    private void updateTabVisibility() {
-        boolean isGallery = currentTab == Tab.GALLERY;
-        boolean isSettings = currentTab == Tab.SETTINGS;
-        boolean isImport = currentTab == Tab.IMPORT;
-
-        // Gallery tab
-        searchBar.visible = isGallery;
-        imageListWidget.visible = isGallery;
-        selectButton.visible = isGallery;
-        removeButton.visible = isGallery;
-        addImageButton.visible = isGallery;
-
-        // Settings tab
-        screenIdField.visible = isSettings;
-        linkScreenIdButton.visible = isSettings;
-        maintainAspectCheckbox.visible = isSettings;
-
-        // Upload tab
-        uploadFromComputerButton.visible = isImport && !ClientServerConfig.disableUpload();
-        urlField.visible = isImport && !ClientServerConfig.disableUrlDownload();
-        downloadFromUrlButton.visible = isImport && !ClientServerConfig.disableUrlDownload();
-        backButton.visible = isImport;
-
-        // Update tab button states (visual feedback)
-        galleryTabButton.active = !isGallery && !isImport;
-        settingsTabButton.active = !isSettings;
+    private UIComponent buildGalleryResults() {
+        return Ui.list(filteredImages, this::buildImageRow)
+                .key(row -> row.image().imageId())
+                .itemHeight(60)
+                .gap(6)
+                .height(Math.max(96, Math.min(210, height - 125)))
+                .fillWidth();
     }
 
+    private UIComponent buildImageRow(ImageRow row) {
+        ImageEntry image = row.image();
+        Card card = Ui.card().outlined(true).padding(8).selected(row.selected());
+        HStack actions = Ui.row().gap(5);
+        if (row.displayed()) {
+            actions.child(Ui.badge(Component.translatable("gui.simplyscreens.gallery.displayed"), Badge.Variant.SUCCESS));
+        } else if (row.selected()) {
+            actions.child(Ui.badge(Component.translatable("gui.simplyscreens.gallery.selected"), Badge.Variant.NEUTRAL));
+        }
+        if (!row.selected()) {
+            actions.child(Ui.button(Component.translatable("gui.simplyscreens.screen.choose"),
+                    () -> selectedImageId.set(image.imageId())).secondary().small());
+        } else if (!row.displayed()) {
+            actions.child(Ui.button(Component.translatable("gui.simplyscreens.screen.select"), this::onSelect)
+                    .primary().small());
+        }
+        actions.child(Ui.button(Component.translatable("gui.simplyscreens.screen.remove"),
+                () -> confirmRemove(image)).danger().small());
+        IconWidget thumbnail = IconWidget.custom(30,
+                graphics -> ClientImageManager.renderThumbnail(graphics, image.imageId(), 30));
+        UIComponent label = Ui.column(
+                Ui.text(Component.literal(image.displayName())),
+                Ui.text(Component.literal(image.imageId().toString()))
+        ).gap(2).flex();
+        card.addChild(Ui.responsive(context -> context.width() < 285
+                ? Ui.column(Ui.row(thumbnail, label).gap(6), actions).gap(5)
+                : Ui.row(thumbnail, label, actions).gap(8)));
+        return card;
+    }
 
-    private void onImageSelected(ImageListWidget.ImageEntry entry) {
-        selectButton.active = entry != null;
-        removeButton.active = entry != null;
+    private UIComponent buildSettings() {
+        Card card = Ui.card().outlined(true).padding(12);
+        card.addChild(Ui.column(
+                Ui.text(Component.translatable("gui.simplyscreens.screen.id.label")),
+                Ui.responsive(context -> {
+                    UIComponent idField = Ui.textField(screenId)
+                            .placeholder(Component.translatable("gui.simplyscreens.screen.id.placeholder").getString())
+                            .maxLength(ScreenRegistryHelper.MAX_SCREEN_ID_LENGTH)
+                            .flex();
+                    ButtonWidget link = Ui.button(
+                            Component.translatable("gui.simplyscreens.screen.link"), this::onLinkScreenId).primary();
+                    return context.width() < 240
+                            ? Ui.column(idField, link).gap(6)
+                            : Ui.row(idField, link).gap(6);
+                }),
+                Ui.divider(),
+                Ui.checkbox(Component.translatable("gui.simplyscreens.screen.maintain_aspect").getString(), maintainAspectRatio),
+                Ui.text(Component.translatable("gui.simplyscreens.screen.maintain_aspect.help"))
+        ).gap(8));
+        return card;
+    }
+
+    private UIComponent buildImport() {
+        VStack content = Ui.column().gap(10);
+        if (!ClientServerConfig.disableUpload()) {
+            content.child(Ui.card(Ui.column(
+                    Ui.heading(Component.translatable("gui.simplyscreens.import.computer")),
+                    Ui.text(Component.translatable("gui.simplyscreens.import.computer.help")),
+                    Ui.button(Component.translatable("gui.simplyscreens.screen.upload"), this::onUploadFromComputer)
+                            .primary()
+            ).gap(6)).outlined(true).padding(12));
+        }
+        if (!ClientServerConfig.disableUrlDownload()) {
+            content.child(Ui.card(Ui.column(
+                    Ui.heading(Component.translatable("gui.simplyscreens.import.url")),
+                    Ui.textField(imageUrl)
+                            .placeholder(Component.translatable("gui.simplyscreens.screen.url.placeholder").getString())
+                            .maxLength(2048)
+                            .fillWidth(),
+                    Ui.button(Component.translatable("gui.simplyscreens.screen.url.load"), this::onDownloadFromUrl)
+                            .secondary()
+            ).gap(6)).outlined(true).padding(12));
+        }
+        if (ClientServerConfig.disableUpload() && ClientServerConfig.disableUrlDownload()) {
+            content.child(Ui.emptyState(Component.translatable("gui.simplyscreens.import.disabled")));
+        }
+        return content;
     }
 
     private void onSelect() {
-        ImageListWidget.ImageEntry selectedEntry = imageListWidget.getSelected();
-        if (selectedEntry != null) {
-            sendScreenInputsToServer();
-            imageListWidget.setDisplayedImage(selectedEntry.getImageId());
-        }
+        UUID selected = selectedImageId.get();
+        if (selected == null || !hasAnchor()) return;
+        PacketRegistries.sendToServer(new UpdateScreenSelectedImageC2SPacket(blockEntityPos, selected));
+        displayedImageId.set(selected);
+        status.set(Component.translatable("gui.simplyscreens.status.selected"));
     }
 
     private void onLinkScreenId() {
-        String screenId = screenIdField.getValue();
-        if (screenId == null) screenId = "";
-        if (this.minecraft == null || this.minecraft.level == null) {
+        if (!hasAnchor()) return;
+        String normalized = ScreenRegistryHelper.normalizeScreenId(screenId.get());
+        if (!screenId.get().isBlank() && normalized.isEmpty()) {
+            showError(Component.translatable("gui.simplyscreens.screen.id.error.invalid"));
             return;
         }
+        screenId.set(normalized);
+        PacketRegistries.sendToServer(new UpdateScreenIdC2SPacket(blockEntityPos, normalized, selectedImageId.get()));
+        status.set(Component.translatable("gui.simplyscreens.status.linked"));
+    }
 
-        BlockEntity blockEntity = this.minecraft.level.getBlockEntity(blockEntityPos);
-        if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
-            ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
-            if (anchor != null) {
-                ImageListWidget.ImageEntry selectedEntry = imageListWidget.getSelected();
-                UUID selectedId = selectedEntry != null ? selectedEntry.getImageId() : null;
-                PacketRegistries.sendToServer(new UpdateScreenIdC2SPacket(blockEntityPos, screenId, selectedId));
-            }
-        }
+    private void confirmRemove(ImageEntry image) {
+        Card dialog = Ui.card().elevated(true).outlined(true).padding(14);
+        OverlayHandle[] handle = { null };
+        ButtonWidget cancel = Ui.button(Component.translatable("gui.simplyscreens.cancel"),
+                () -> { if (handle[0] != null) handle[0].close(); }).ghost();
+        ButtonWidget remove = Ui.button(Component.translatable("gui.simplyscreens.screen.remove"), () -> {
+            if (handle[0] != null) handle[0].close();
+            PacketRegistries.sendToServer(new RemoveImageC2SPacket(image.imageId()));
+            status.set(Component.translatable("gui.simplyscreens.status.removing", image.displayName()));
+        }).danger();
+        dialog.addChild(Ui.column(
+                Ui.heading(Component.translatable("gui.simplyscreens.remove.confirm.title")),
+                Ui.text(Component.translatable("gui.simplyscreens.remove.confirm.body", image.displayName())),
+                Ui.row(cancel, remove).gap(6)
+        ).gap(10));
+        dialog.width(250).minHeight(90);
+        handle[0] = Dialog.show(uiRuntime().overlays(), dialog);
     }
 
     private void onUploadFromComputer() {
@@ -265,171 +304,151 @@ public class ImageLoadScreen extends Screen {
             filters.put(stack.UTF8("*.jpg"));
             filters.put(stack.UTF8("*.jpeg"));
             filters.flip();
-
-            String filePath = TinyFileDialogs.tinyfd_openFileDialog(Component.translatable("gui.simplyscreens.screen.dialog.select_image").getString(), "", filters, Component.translatable("gui.simplyscreens.screen.dialog.image_files").getString(), false);
-
-            if (filePath != null) {
-                try {
-                    Path path = Paths.get(filePath);
-                    long fileSize = java.nio.file.Files.size(path);
-                    if (fileSize > ClientServerConfig.maxUploadSize()) {
-                        TinyFileDialogs.tinyfd_messageBox(Component.translatable("gui.simplyscreens.screen.dialog.upload_error").getString(), Component.translatable("gui.simplyscreens.screen.upload.error.size", ClientServerConfig.maxUploadSize() / 1024 / 1024).getString(), "ok", "error", true);
-                        return;
-                    }
-                    byte[] data = java.nio.file.Files.readAllBytes(path);
-
-                    if (data.length > ClientServerConfig.maxUploadSize()) {
-                        TinyFileDialogs.tinyfd_messageBox(Component.translatable("gui.simplyscreens.screen.dialog.upload_error").getString(), Component.translatable("gui.simplyscreens.screen.upload.error.size", ClientServerConfig.maxUploadSize() / 1024 / 1024).getString(), "ok", "error", true);
-                        return;
-                    }
-
-                    String fileName = path.getFileName().toString();
-
-                    UUID transactionId = UUID.randomUUID();
-                    int totalChunks = (int) Math.ceil((double) data.length / CHUNK_SIZE);
-
-                    for (int i = 0; i < totalChunks; i++) {
-                        int start = i * CHUNK_SIZE;
-                        int end = Math.min(data.length, start + CHUNK_SIZE);
-                        byte[] chunk = new byte[end - start];
-                        System.arraycopy(data, start, chunk, 0, chunk.length);
-
-                        PacketRegistries.sendToServer(new UploadImageChunkC2SPacket(blockEntityPos, transactionId, i, totalChunks, chunk, i == 0 ? fileName : null));
-                    }
-                    imageListWidget.refresh();
-                    switchTab(Tab.GALLERY);
-                } catch (java.io.IOException | SecurityException e) {
-                    SimplyScreens.LOGGER.error("Failed to read image file", e);
-                }
+            String filePath = TinyFileDialogs.tinyfd_openFileDialog(
+                    Component.translatable("gui.simplyscreens.screen.dialog.select_image").getString(),
+                    "", filters,
+                    Component.translatable("gui.simplyscreens.screen.dialog.image_files").getString(), false);
+            if (filePath == null) return;
+            if (!ImageImportSupport.isSupportedFile(filePath)) {
+                showError(Component.translatable("gui.simplyscreens.screen.upload.error.type"));
+                return;
             }
+            uploadFile(Paths.get(filePath));
         }
     }
 
-    @Override
-    public void render(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        int guiLeft = (this.width - SCREEN_WIDTH) / 2;
-        int guiTop = (this.height - SCREEN_HEIGHT) / 2;
-        this.renderBackground(guiGraphics);
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
-
-        // Title
-        guiGraphics.drawString(this.font, this.title, (this.width - this.font.width(this.title)) / 2, guiTop + 6, 0x404040, false);
-
-        // Tab labels based on current tab
-        if (currentTab == Tab.SETTINGS) {
-            guiGraphics.drawString(this.font, Component.translatable("gui.simplyscreens.screen.id.label"), guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + ScreenGuiConstants.SCREEN_ID_LABEL_Y, 0x404040, false);
-            guiGraphics.drawString(this.font, Component.translatable("gui.simplyscreens.screen.maintain_aspect"), guiLeft + ScreenGuiConstants.MAINTAIN_ASPECT_LABEL_X, guiTop + 82, 0x404040, false);
-        } else if (currentTab == Tab.IMPORT) {
-            guiGraphics.drawString(this.font, Component.literal("From Computer:"), guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + 68, 0x404040, false);
-            guiGraphics.drawString(this.font, Component.literal("From URL:"), guiLeft + ScreenGuiConstants.MARGIN_X, guiTop + 118, 0x404040, false);
-        }
-    }
-
-    @Override
-    public void renderBackground(GuiGraphics guiGraphics) {
-        super.renderBackground(guiGraphics);
-        int guiLeft = (this.width - SCREEN_WIDTH) / 2;
-        int guiTop = (this.height - SCREEN_HEIGHT) / 2;
-        guiGraphics.blit(BACKGROUND_TEXTURE, guiLeft, guiTop, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-    }
-
-    @Override
-    public void tick() {
-        super.tick();
-        searchBar.tick();
-        screenIdField.tick();
-        urlField.tick();
-        imageListWidget.tick();
-    }
-
-    private void fetchDataFromBlockEntity() {
-        if (this.minecraft != null && this.minecraft.level != null) {
-            BlockEntity blockEntity = this.minecraft.level.getBlockEntity(blockEntityPos);
-            if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
-                ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
-                if (anchor != null) {
-                    initialLocalHash = anchor.getImageId();
-                    initialScreenId = anchor.getScreenId() != null ? anchor.getScreenId() : "";
-                    initialMaintainAspectRatio = anchor.isMaintainAspectRatio();
-                }
+    private void uploadFile(Path path) {
+        try {
+            long fileSize = Files.size(path);
+            if (fileSize <= 0 || fileSize > ClientServerConfig.maxUploadSize()) {
+                showError(Component.translatable("gui.simplyscreens.screen.upload.error.size",
+                        ClientServerConfig.maxUploadSize() / 1024 / 1024));
+                return;
             }
-        }
-    }
-
-    private void sendScreenInputsToServer() {
-        ImageListWidget.ImageEntry selectedEntry = imageListWidget.getSelected();
-        if (selectedEntry != null) {
-            if (this.minecraft != null && this.minecraft.level != null) {
-                BlockEntity blockEntity = this.minecraft.level.getBlockEntity(blockEntityPos);
-                if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
-                    ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
-                    if (anchor != null) {
-                        PacketRegistries.sendToServer(new UpdateScreenSelectedImageC2SPacket(blockEntityPos, selectedEntry.getImageId()));
-                    }
-                }
+            byte[] data = Files.readAllBytes(path);
+            if (data.length > ClientServerConfig.maxUploadSize()) {
+                showError(Component.translatable("gui.simplyscreens.screen.upload.error.size",
+                        ClientServerConfig.maxUploadSize() / 1024 / 1024));
+                return;
             }
+            UUID transactionId = UUID.randomUUID();
+            int totalChunks = (int) Math.ceil((double) data.length / CHUNK_SIZE);
+            for (int index = 0; index < totalChunks; index++) {
+                int start = index * CHUNK_SIZE;
+                int end = Math.min(data.length, start + CHUNK_SIZE);
+                byte[] chunk = java.util.Arrays.copyOfRange(data, start, end);
+                PacketRegistries.sendToServer(new UploadImageChunkC2SPacket(
+                        blockEntityPos, transactionId, index, totalChunks, chunk,
+                        index == 0 ? path.getFileName().toString() : null));
+            }
+            tab.set(Tab.GALLERY);
+            status.set(Component.translatable("gui.simplyscreens.status.uploading"));
+        } catch (java.io.IOException | SecurityException exception) {
+            SimplyScreens.LOGGER.error("Failed to read image file", exception);
+            showError(Component.translatable("gui.simplyscreens.screen.upload.error.read"));
         }
-
     }
 
     private void onDownloadFromUrl() {
-        String url = urlField.getValue();
-        if (url == null || url.isEmpty()) {
-            return;
-        }
-
+        String url = imageUrl.get().trim();
         if (!ImageImportSupport.isHttpUrl(url)) {
-            TinyFileDialogs.tinyfd_messageBox(
-                    Component.translatable("gui.simplyscreens.screen.dialog.upload_error").getString(),
-                    Component.translatable("gui.simplyscreens.screen.url.error.invalid").getString(),
-                    "ok", "error", true);
+            showError(Component.translatable("gui.simplyscreens.screen.url.error.invalid"));
             return;
         }
+        PacketRegistries.sendToServer(new DownloadImageFromUrlC2SPacket(
+                blockEntityPos, url, ImageImportSupport.fileNameFromUrl(url)));
+        tab.set(Tab.GALLERY);
+        status.set(Component.translatable("gui.simplyscreens.status.downloading"));
+    }
 
-        String fileName = ImageImportSupport.fileNameFromUrl(url);
+    private void showError(Component message) {
+        status.set(message);
+        if (uiRuntime() != null) {
+            Toast.show(uiRuntime().overlays(), Toast.error(
+                    Component.translatable("gui.simplyscreens.error").getString(), message.getString()));
+        }
+    }
 
-        PacketRegistries.sendToServer(new DownloadImageFromUrlC2SPacket(blockEntityPos, url, fileName));
-
-        new Thread(() -> {
-            try {
-                Thread.sleep(2000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+    private Component displayedImageName() {
+        UUID displayed = displayedImageId.get();
+        if (displayed == null) return Component.translatable("gui.simplyscreens.gallery.none_displayed");
+        for (ImageEntry image : images.get()) {
+            if (image.imageId().equals(displayed)) {
+                return Component.translatable("gui.simplyscreens.gallery.now_displaying", image.displayName());
             }
-            if (minecraft != null) {
-                minecraft.execute(() -> {
-                    imageListWidget.refresh();
-                    switchTab(Tab.GALLERY);
-                });
+        }
+        return Component.translatable("gui.simplyscreens.gallery.now_displaying", displayed.toString());
+    }
+
+    private boolean hasAnchor() {
+        if (Minecraft.getInstance().level == null) return false;
+        BlockEntity blockEntity = Minecraft.getInstance().level.getBlockEntity(blockEntityPos);
+        return blockEntity instanceof ScreenBlockEntity screen && screen.getAnchorEntity() != null;
+    }
+
+    private void fetchDataFromBlockEntity() {
+        applyingRemoteState = true;
+        try {
+            if (Minecraft.getInstance().level == null) return;
+            BlockEntity blockEntity = Minecraft.getInstance().level.getBlockEntity(blockEntityPos);
+            if (blockEntity instanceof ScreenBlockEntity screen) {
+                ScreenBlockEntity anchor = screen.getAnchorEntity();
+                if (anchor != null) {
+                    displayedImageId.set(anchor.getImageId());
+                    selectedImageId.set(anchor.getImageId());
+                    screenId.set(anchor.getScreenId() != null ? anchor.getScreenId() : "");
+                    maintainAspectRatio.set(anchor.isMaintainAspectRatio());
+                }
             }
-        }, "SimplyScreens URL refresh").start();
+        } finally {
+            applyingRemoteState = false;
+        }
+    }
+
+    public void updateImageList(List<ImageMetadata> metadata) {
+        List<ImageEntry> next = new ArrayList<>();
+        if (metadata != null) {
+            for (ImageMetadata image : metadata) {
+                try {
+                    next.add(new ImageEntry(image.getName(), UUID.fromString(image.getId())));
+                } catch (IllegalArgumentException ignored) {
+                }
+            }
+        }
+        images.set(List.copyOf(next));
+        UUID selected = selectedImageId.get();
+        boolean selectionExists = selected != null && next.stream().anyMatch(image -> image.imageId().equals(selected));
+        if (!selectionExists) {
+            UUID displayed = displayedImageId.get();
+            selectedImageId.set(next.stream().anyMatch(image -> image.imageId().equals(displayed)) ? displayed : null);
+        }
+        status.set(Component.empty());
+    }
+
+    public void refreshImageList() {
+        PacketRegistries.sendToServer(new RequestImageListC2SPacket());
+    }
+
+    public boolean matchesScreenUpdate(BlockPos position, BlockPos anchorPosition) {
+        return blockEntityPos.equals(position) || blockEntityPos.equals(anchorPosition);
+    }
+
+    public void updateScreenState(UUID imageId, boolean maintainAspectRatio, String screenId) {
+        applyingRemoteState = true;
+        try {
+            displayedImageId.set(imageId);
+            this.maintainAspectRatio.set(maintainAspectRatio);
+            this.screenId.set(screenId != null ? screenId : "");
+        } finally {
+            applyingRemoteState = false;
+        }
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (this.minecraft == null) {
-            return false;
-        }
-
-        if (this.searchBar.isFocused() && this.searchBar.keyPressed(keyCode, scanCode, modifiers)) {
-            return true;
-        }
-
-        if (this.minecraft.options.keyInventory.matches(keyCode, scanCode)) {
-            this.onClose();
-            return true;
-        }
-
-        return super.keyPressed(keyCode, scanCode, modifiers);
-    }
-
-    @Override
-    public void onClose() {
-        super.onClose();
-        imageListWidget.close();
-    }
-
-    public ImageListWidget getImageListWidget() {
-        return imageListWidget;
+    public void removed() {
+        aspectSubscription.close();
+        galleryState.close();
+        filteredImages.close();
+        super.removed();
     }
 }

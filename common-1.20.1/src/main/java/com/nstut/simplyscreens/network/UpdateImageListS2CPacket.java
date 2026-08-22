@@ -45,7 +45,7 @@ public class UpdateImageListS2CPacket implements IPacket {
         context.get().queue(() -> {
             com.nstut.simplyscreens.helpers.ClientImageManager.updateImageCache(imageList);
             if (Minecraft.getInstance().screen instanceof ImageLoadScreen imageLoadScreen) {
-                imageLoadScreen.getImageListWidget().updateList(imageList);
+                imageLoadScreen.updateImageList(imageList);
             }
         });
     }

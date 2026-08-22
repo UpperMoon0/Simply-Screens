@@ -5,11 +5,11 @@ import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import com.nstut.simplyscreens.network.RequestImageDownloadC2SPacket;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
 
-import com.nstut.simplyscreens.client.gui.widgets.ImageListWidget;
-import com.nstut.simplyscreens.client.screens.ImageLoadScreen;
 
 import javax.imageio.ImageIO;
 import java.awt.Color;
@@ -67,14 +67,6 @@ public class ClientImageManager {
                 String fileExtension = EXTENSION_MAP.get(imageId);
 
                 saveImageToCache(imageId, fileExtension, imageData);
-
-                Minecraft mc = Minecraft.getInstance();
-                if (mc.screen instanceof ImageLoadScreen imageLoadScreen) {
-                    ImageListWidget imageListWidget = imageLoadScreen.getImageListWidget();
-                    if (imageListWidget != null) {
-                        imageListWidget.receiveImageData(imageId.toString(), imageData);
-                    }
-                }
 
             } catch (IOException e) {
                 SimplyScreens.LOGGER.error("Failed to reassemble image from chunks", e);
@@ -198,6 +190,15 @@ public class ClientImageManager {
             return location;
         }
         return null;
+    }
+
+    public static void renderThumbnail(GuiGraphicsExtractor graphics, UUID imageId, int size) {
+        Identifier location = getTextureLocation(imageId);
+        DynamicTexture texture = IN_MEMORY_CACHE.get(imageId);
+        NativeImage pixels = texture != null ? texture.getPixels() : null;
+        if (location == null || pixels == null) return;
+        graphics.blit(RenderPipelines.GUI_TEXTURED, location, 0, 0,
+                0, 0, size, size, pixels.getWidth(), pixels.getHeight());
     }
 
     private static NativeImage loadImage(InputStream inputStream, String extension) throws IOException {

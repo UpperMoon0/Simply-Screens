@@ -18,6 +18,7 @@ dependencies {
 
     // Architectury API. This is optional, and you can comment it out if you don't need it.
     modImplementation "dev.architectury:architectury:$architectury_api_version"
+    modCompileOnly 'com.nstut:openui-mc-fabric-1.20.1:0.0.4'
 
     // Gson for JSON serialization
     implementation "com.google.code.gson:gson:2.8.9"

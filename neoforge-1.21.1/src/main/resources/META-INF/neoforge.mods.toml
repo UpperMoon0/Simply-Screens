@@ -33,3 +33,10 @@ type = "required"
 versionRange = "[13.0.8,)"
 ordering = "AFTER"
 side = "BOTH"
+
+[[dependencies.simply_screens]]
+modId = "openui_mc"
+type = "required"
+versionRange = "[0.0.4,)"
+ordering = "AFTER"
+side = "CLIENT"

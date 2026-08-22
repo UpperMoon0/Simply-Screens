@@ -54,7 +54,7 @@ public class UpdateImageListS2CPacket implements CustomPacketPayload {
         context.queue(() -> {
             com.nstut.simplyscreens.helpers.ClientImageManager.updateImageCache(packet.getImageList());
             if (Minecraft.getInstance().screen instanceof com.nstut.simplyscreens.client.screens.ImageLoadScreen imageLoadScreen) {
-                imageLoadScreen.getImageListWidget().updateList(packet.getImageList());
+                imageLoadScreen.updateImageList(packet.getImageList());
             }
         });
     }

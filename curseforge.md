@@ -33,6 +33,7 @@ Simply Screens adds configurable screen blocks that display images from your loc
 
 - **Architectury API** matching your Minecraft version and loader
 - **Fabric API** on Fabric
+- **OpenUI MC 0.0.4 or newer** matching your Minecraft version and loader (client side)
 
 ## Configuration
 
