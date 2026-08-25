@@ -101,6 +101,19 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
+        liveJoinTestClient {
+            client()
+            gameDirectory = project.file("run/live-join/client")
+            systemProperty 'simplyscreens.liveJoinTest', 'true'
+            programArguments.addAll '--quickPlayMultiplayer', '127.0.0.1:25575'
+        }
+
+        liveJoinTestServer {
+            server()
+            gameDirectory = project.file("run/live-join/server")
+            programArgument '--nogui'
+        }
+
         // This run config launches GameTestServer and runs all registered gametests, then exits.
         // By default, the server will crash when no gametests are provided.
         // The gametest system is also enabled by default for other run configs under the /test command.

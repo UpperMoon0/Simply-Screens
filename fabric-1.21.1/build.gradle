@@ -7,6 +7,22 @@ architectury {
     fabric()
 }
 
+loom {
+    runs {
+        liveJoinTestClient {
+            client()
+            runDir("run/live-join/client")
+            property "simplyscreens.liveJoinTest", "true"
+            programArgs "--quickPlayMultiplayer", "127.0.0.1:25575"
+        }
+        liveJoinTestServer {
+            server()
+            runDir("run/live-join/server")
+            programArg "nogui"
+        }
+    }
+}
+
 configurations {
     common {
         canBeResolved = true
