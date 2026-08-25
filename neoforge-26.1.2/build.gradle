@@ -154,8 +154,8 @@ configurations {
 }
 
 dependencies {
-    implementation 'com.nstut:openui-mc-neoforge-26.1.2:0.0.4'
-    localRuntime 'com.nstut:openui-mc-neoforge-26.1.2:0.0.4'
+    implementation "com.nstut:openui-mc-neoforge-26.1.2:${project.openui_version}"
+    localRuntime "com.nstut:openui-mc-neoforge-26.1.2:${project.openui_version}"
     implementation "com.google.code.gson:gson:2.11.0"
     implementation "dev.architectury:architectury-neoforge:${architectury_api_version}"
     compileOnly "org.projectlombok:lombok:1.18.42"

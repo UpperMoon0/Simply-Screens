@@ -9,6 +9,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout OpenUI-MC
+        uses: actions/checkout@v4
+        with:
+          repository: UpperMoon0/OpenUI-MC
+          ref: main
+          path: OpenUI-MC
+      - name: Verify OpenUI-MC version alignment
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(sed -n 's/^openui_version[[:space:]]*=[[:space:]]*//p' gradle.properties | head -n1 | tr -d '\r' | xargs)"
+          actual="$(sed -n 's/^mod_version[[:space:]]*=[[:space:]]*//p' OpenUI-MC/gradle.properties | head -n1 | tr -d '\r' | xargs)"
+          if [[ -z "$expected" || -z "$actual" || "$actual" != "$expected" ]]; then
+            echo "OpenUI version mismatch: Simply Screens requires '$expected' but the checked-out source publishes '$actual'." >&2
+            exit 1
+          fi
+      # OpenUI's Gradle build requires Java 21 even when publishing Java 17 artifacts.
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: gradle }
+      - name: Install matching OpenUI-MC artifacts
+        run: |
+          chmod +x gradlew OpenUI-MC/gradlew
+          for target in \
+            ":fabric-1.20.1:publishToMavenLocal" \
+            ":forge-1.20.1:publishToMavenLocal" \
+            ":fabric-1.21.1:publishToMavenLocal" \
+            ":neoforge-1.21.1:publishToMavenLocal"; do
+            JAVA_HOME=$JAVA_HOME_21_X64 ./gradlew -p OpenUI-MC "$target" --no-daemon
+          done
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '21', cache: gradle }
       - run: chmod +x gradlew
@@ -30,6 +59,42 @@ jobs:
           - { java: 21, version: '26.1.2', platform: neoforge, project: neoforge-26.1.2, pattern: 'simply_screens-neoforge-26.1.2-*.jar' }
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout OpenUI-MC
+        uses: actions/checkout@v4
+        with:
+          repository: UpperMoon0/OpenUI-MC
+          ref: main
+          path: OpenUI-MC
+      - name: Verify OpenUI-MC version alignment
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(sed -n 's/^openui_version[[:space:]]*=[[:space:]]*//p' gradle.properties | head -n1 | tr -d '\r' | xargs)"
+          actual="$(sed -n 's/^mod_version[[:space:]]*=[[:space:]]*//p' OpenUI-MC/gradle.properties | head -n1 | tr -d '\r' | xargs)"
+          if [[ -z "$expected" || -z "$actual" || "$actual" != "$expected" ]]; then
+            echo "OpenUI version mismatch: Simply Screens requires '$expected' but the checked-out source publishes '$actual'." >&2
+            exit 1
+          fi
+      # OpenUI's Gradle build requires Java 21 even when publishing Java 17 artifacts.
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: gradle }
+      - name: Install matching OpenUI-MC artifacts
+        run: |
+          chmod +x OpenUI-MC/gradlew
+          if [[ "${{ matrix.project }}" == "neoforge-26.1.2" ]]; then
+            targets=(":neoforge-26.1.2:publishToMavenLocal")
+          else
+            # Legacy Gradle invocations configure all four legacy loader modules.
+            targets=(
+              ":fabric-1.20.1:publishToMavenLocal"
+              ":forge-1.20.1:publishToMavenLocal"
+              ":fabric-1.21.1:publishToMavenLocal"
+              ":neoforge-1.21.1:publishToMavenLocal"
+            )
+          fi
+          for target in "${targets[@]}"; do
+            JAVA_HOME=$JAVA_HOME_21_X64 ./gradlew -p OpenUI-MC "$target" --no-daemon
+          done
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '${{ matrix.java }}', cache: gradle }
       - run: chmod +x gradlew
@@ -89,9 +154,9 @@ jobs:
           changelog_path="changelog/${MOD_VERSION}.md"
           [[ -f "$changelog_path" ]] || { echo "Missing release changelog: $changelog_path" >&2; exit 1; }
           if [[ "$PLATFORM" == fabric ]]; then
-            relations='{"projects":[{"slug":"architectury-api","type":"requiredDependency"},{"slug":"fabric-api","type":"requiredDependency"}]}'
+            relations='{"projects":[{"slug":"architectury-api","type":"requiredDependency"},{"slug":"fabric-api","type":"requiredDependency"},{"slug":"openui-mc","projectID":1661978,"type":"requiredDependency"}]}'
           else
-            relations='{"projects":[{"slug":"architectury-api","type":"requiredDependency"}]}'
+            relations='{"projects":[{"slug":"architectury-api","type":"requiredDependency"},{"slug":"openui-mc","projectID":1661978,"type":"requiredDependency"}]}'
           fi
           tags="$(jq -cn --arg mc "$MINECRAFT_VERSION" --arg loader "$LOADER_NAME" --arg java "$JAVA_VERSION_NAME" '[$mc,$loader,$java,"Client","Server"]')"
           available="$(curl --fail-with-body --silent --show-error --header "X-Api-Token: $CURSEFORGE_API_TOKEN" https://minecraft.curseforge.com/api/game/versions)"
