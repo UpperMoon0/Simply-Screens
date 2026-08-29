@@ -195,7 +195,21 @@ public class ClientImageManager {
         DynamicTexture texture = IN_MEMORY_CACHE.get(imageId);
         NativeImage pixels = texture != null ? texture.getPixels() : null;
         if (location == null || pixels == null) return;
-        graphics.blit(location, 0, 0, 0, 0, size, size, pixels.getWidth(), pixels.getHeight());
+        int imageWidth = pixels.getWidth();
+        int imageHeight = pixels.getHeight();
+        if (imageWidth <= 0 || imageHeight <= 0 || size <= 0) return;
+
+        float scale = Math.min((float) size / imageWidth, (float) size / imageHeight);
+        int drawWidth = Math.max(1, Math.round(imageWidth * scale));
+        int drawHeight = Math.max(1, Math.round(imageHeight * scale));
+        int offsetX = (size - drawWidth) / 2;
+        int offsetY = (size - drawHeight) / 2;
+
+        graphics.pose().pushPose();
+        graphics.pose().translate(offsetX, offsetY, 0);
+        graphics.pose().scale(scale, scale, 1.0F);
+        graphics.blit(location, 0, 0, 0, 0, imageWidth, imageHeight, imageWidth, imageHeight);
+        graphics.pose().popPose();
     }
 
     private static NativeImage loadImage(InputStream inputStream, String extension) throws IOException {

@@ -52,7 +52,7 @@ import java.util.UUID;
 
 public class ImageLoadScreen extends SimplyScreensUiScreen {
     private static final int CHUNK_SIZE = com.nstut.simplyscreens.helpers.ChunkedFileTransfer.CHUNK_SIZE;
-    private static final int PANEL_WIDTH = 340;
+    private static final int PANEL_WIDTH = 360;
 
     private enum Tab { GALLERY, SETTINGS, IMPORT }
     private enum GalleryState { EMPTY, NO_MATCHES, RESULTS }
@@ -106,7 +106,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
 
     @Override
     protected UIComponent buildUI() {
-        VStack panel = Ui.column(
+        VStack content = Ui.column(
                 buildHeader(),
                 Ui.tabs(tab)
                         .tab(Tab.GALLERY, Component.translatable("gui.simplyscreens.tab.gallery"))
@@ -116,11 +116,18 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                         .when(Tab.GALLERY, this::buildGallery)
                         .when(Tab.SETTINGS, this::buildSettings)
                         .when(Tab.IMPORT, this::buildImport),
-                Ui.text(() -> status.get())
+                Ui.text(() -> status.get()).wrap().maxLines(2)
         ).gap(8);
-        panel.fillWidth();
-        panel.maxWidth(PANEL_WIDTH);
-        return Ui.padding(16, Ui.stack(panel).align(Alignment.CENTER, Alignment.CENTER));
+        content.fillWidth();
+
+        Card shell = Ui.card(content)
+                .outlined(true)
+                .elevated(true)
+                .hoverable(false)
+                .padding(12);
+        shell.fillWidth();
+        shell.maxWidth(PANEL_WIDTH);
+        return Ui.padding(12, Ui.stack(shell).align(Alignment.CENTER, Alignment.CENTER));
     }
 
     private UIComponent buildHeader() {
@@ -130,23 +137,19 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                         Ui.text(this::displayedImageName)
                 ).gap(2).flex(),
                 buildThemeToggle()
-        ).gap(8).justify(Justification.SPACE_BETWEEN);
+        ).gap(8).align(Alignment.CENTER).justify(Justification.SPACE_BETWEEN);
     }
 
     private UIComponent buildGallery() {
+        UIComponent searchField = Ui.textField(search)
+                .placeholder(Component.translatable("gui.simplyscreens.screen.search.placeholder").getString())
+                .maxLength(128)
+                .flex();
+        ButtonWidget refresh = Ui.button(
+                Component.translatable("gui.simplyscreens.screen.refresh"), this::refreshImageList)
+                .ghost().small();
         return Ui.column(
-                Ui.responsive(context -> {
-                    UIComponent searchField = Ui.textField(search)
-                            .placeholder(Component.translatable("gui.simplyscreens.screen.search.placeholder").getString())
-                            .maxLength(128)
-                            .flex();
-                    ButtonWidget refresh = Ui.button(
-                            Component.translatable("gui.simplyscreens.screen.refresh"), this::refreshImageList)
-                            .ghost().small();
-                    return context.width() < 240
-                            ? Ui.column(searchField, refresh).gap(6)
-                            : Ui.row(searchField, refresh).gap(6);
-                }),
+                Ui.row(searchField, refresh).gap(6).align(Alignment.CENTER),
                 Ui.switcher(galleryState)
                         .when(GalleryState.EMPTY, this::buildEmptyGallery)
                         .when(GalleryState.NO_MATCHES, this::buildNoMatches)
@@ -182,7 +185,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     private UIComponent buildImageRow(ImageRow row) {
         ImageEntry image = row.image();
         Card card = Ui.card().outlined(true).padding(8).selected(row.selected());
-        HStack actions = Ui.row().gap(5);
+        HStack actions = Ui.row().gap(5).align(Alignment.CENTER);
         if (row.displayed()) {
             actions.child(Ui.badge(Component.translatable("gui.simplyscreens.gallery.displayed"), Badge.Variant.SUCCESS));
         } else if (row.selected()) {
@@ -204,29 +207,30 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                 Ui.text(Component.literal(image.imageId().toString()))
         ).gap(2).flex();
         card.addChild(Ui.responsive(context -> context.width() < 285
-                ? Ui.column(Ui.row(thumbnail, label).gap(6), actions).gap(5)
-                : Ui.row(thumbnail, label, actions).gap(8)));
+                ? Ui.column(Ui.row(thumbnail, label).gap(6).align(Alignment.CENTER), actions).gap(5)
+                : Ui.row(thumbnail, label, actions).gap(8).align(Alignment.CENTER)));
         return card;
     }
 
     private UIComponent buildSettings() {
+        UIComponent idField = Ui.textField(screenId)
+                .placeholder(Component.translatable("gui.simplyscreens.screen.id.placeholder").getString())
+                .maxLength(ScreenRegistryHelper.MAX_SCREEN_ID_LENGTH)
+                .flex();
+        ButtonWidget link = Ui.button(
+                Component.translatable("gui.simplyscreens.screen.link"), this::onLinkScreenId).primary();
         Card card = Ui.card().outlined(true).padding(12);
         card.addChild(Ui.column(
                 Ui.text(Component.translatable("gui.simplyscreens.screen.id.label")),
-                Ui.responsive(context -> {
-                    UIComponent idField = Ui.textField(screenId)
-                            .placeholder(Component.translatable("gui.simplyscreens.screen.id.placeholder").getString())
-                            .maxLength(ScreenRegistryHelper.MAX_SCREEN_ID_LENGTH)
-                            .flex();
-                    ButtonWidget link = Ui.button(
-                            Component.translatable("gui.simplyscreens.screen.link"), this::onLinkScreenId).primary();
-                    return context.width() < 240
-                            ? Ui.column(idField, link).gap(6)
-                            : Ui.row(idField, link).gap(6);
-                }),
+                Ui.row(idField, link).gap(6).align(Alignment.CENTER),
                 Ui.divider(),
-                Ui.checkbox(Component.translatable("gui.simplyscreens.screen.maintain_aspect").getString(), maintainAspectRatio),
+                Ui.row(
+                        Ui.toggle(maintainAspectRatio),
+                        Ui.text(Component.translatable("gui.simplyscreens.screen.maintain_aspect"))
+                ).gap(7).align(Alignment.CENTER),
                 Ui.text(Component.translatable("gui.simplyscreens.screen.maintain_aspect.help"))
+                        .wrap()
+                        .maxLines(3)
         ).gap(8));
         return card;
     }
@@ -236,7 +240,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         if (!ClientServerConfig.disableUpload()) {
             content.child(Ui.card(Ui.column(
                     Ui.heading(Component.translatable("gui.simplyscreens.import.computer")),
-                    Ui.text(Component.translatable("gui.simplyscreens.import.computer.help")),
+                    Ui.text(Component.translatable("gui.simplyscreens.import.computer.help")).wrap().maxLines(3),
                     Ui.button(Component.translatable("gui.simplyscreens.screen.upload"), this::onUploadFromComputer)
                             .primary()
             ).gap(6)).outlined(true).padding(12));
