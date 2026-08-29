@@ -28,6 +28,6 @@
     "java": ">=21",
     "architectury": ">=13.0.8",
     "fabric-api": "*",
-    "openui_mc": ">=0.0.6"
+    "openui_mc": ">=0.0.7"
   }
 }

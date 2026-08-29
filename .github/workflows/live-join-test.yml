@@ -34,7 +34,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: UpperMoon0/OpenUI-MC
-          ref: main
+          # Keep CI reproducible and aligned with openui_version in gradle.properties.
+          ref: 82a5dd2f0e6c6027f20ca2acf049858f7f96f597
           path: OpenUI-MC
       - name: Verify OpenUI-MC version alignment
         shell: bash
