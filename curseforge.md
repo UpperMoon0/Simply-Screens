@@ -8,7 +8,7 @@ Simply Screens adds configurable screen blocks that display images from your loc
 - **Dynamic Multi-Block Displays:** Place multiple screen blocks together in a rectangular shape (up to 64x64 blocks). The screen automatically connects, detects its structure, and stretches or scales the image across all connected blocks.
 - **Synchronized Screen Networks:** Link multiple screens across your world using a shared **Screen ID** so all connected screens display the same image simultaneously.
 - **Aspect Ratio Control:** Toggle between stretching the image to fill the screen or maintaining its original aspect ratio.
-- **Local File Uploads:** Upload PNG, JPG, JPEG, GIF, WebP, and BMP images directly from your computer via an in-game file picker.
+- **Local File Uploads:** Upload PNG, JPG, and JPEG images directly from your computer via an in-game file picker.
 - **Safe Web Downloads:** Download images directly from URLs with built-in security protections.
 - **Multiplayer Synchronized:** Fully server-authoritative and dedicated-multiplayer ready with client-side synchronization and robust cross-chunk structure recovery.
 
@@ -33,7 +33,7 @@ Simply Screens adds configurable screen blocks that display images from your loc
 
 - **Architectury API** matching your Minecraft version and loader
 - **Fabric API** on Fabric
-- **OpenUI MC 0.0.4 or newer** matching your Minecraft version and loader (client side)
+- **OpenUI MC 0.0.8 or newer** matching your Minecraft version and loader (client side)
 
 ## Configuration
 

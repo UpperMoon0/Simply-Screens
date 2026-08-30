@@ -1,7 +1,7 @@
 modLoader = "javafml"
 loaderVersion = "[47,)"
 #issueTrackerURL = ""
-issueTrackerURL = "https://github.com/nstut/simply-screens/issues"
+issueTrackerURL = "https://github.com/UpperMoon0/Simply-Screens/issues"
 license = "MIT"
 
 [[mods]]

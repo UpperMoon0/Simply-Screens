@@ -2,7 +2,7 @@
 
 A Minecraft mod that adds configurable screen blocks capable of displaying images from local files or the web, supporting dynamic multi-block structures and synchronized screen networks.
 
-The client interface is powered by **OpenUI MC 0.0.4 or newer**, which is a required client-side dependency matching your Minecraft version and loader.
+The client interface is powered by **OpenUI MC 0.0.8 or newer**, which is a required client-side dependency matching your Minecraft version and loader.
 
 [![CurseForge](https://cf.way2muchnoise.eu/simply-screens.svg)](https://www.curseforge.com/minecraft/mc-mods/simply-screens)
 
@@ -51,4 +51,4 @@ Simply Screens uses Gradle with Architectury Loom:
 
 ## License
 
-This project is distributed under the terms of its repository license.
+This project is distributed under the MIT license.
