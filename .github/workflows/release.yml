@@ -215,8 +215,28 @@ jobs:
           available="$(curl --fail-with-body --silent --show-error --header "X-Api-Token: $CURSEFORGE_API_TOKEN" https://minecraft.curseforge.com/api/game/versions)"
           while IFS= read -r tag; do jq -e --arg tag "$tag" 'any(.[]; .name == $tag)' <<< "$available" >/dev/null || { echo "Unknown CurseForge tag: $tag" >&2; exit 1; }; done < <(jq -r '.[]' <<< "$tags")
           metadata="$(jq -cn --rawfile changelog "$changelog_path" --arg name "Simply Screens ${MOD_VERSION} - ${LOADER_NAME} ${MINECRAFT_VERSION}" --argjson tags "$tags" --argjson relations "$relations" '{changelog:$changelog,changelogType:"markdown",displayName:$name,gameVersionNames:$tags,releaseType:"release",relations:$relations}')"
-          response="$(curl --fail-with-body --silent --show-error --request POST --header "X-Api-Token: $CURSEFORGE_API_TOKEN" --form-string "metadata=$metadata" --form "file=@$JAR_PATH" https://minecraft.curseforge.com/api/projects/1188741/upload-file)"
-          echo "Published $JAR_PATH as CurseForge file $(jq -er '.id' <<< "$response")."
+          response_file="$(mktemp)"
+          http_status="$(curl --silent --show-error \
+            --retry 4 \
+            --retry-delay 5 \
+            --retry-all-errors \
+            --output "$response_file" \
+            --write-out '%{http_code}' \
+            --request POST \
+            --header "X-Api-Token: $CURSEFORGE_API_TOKEN" \
+            --form-string "metadata=$metadata" \
+            --form "file=@$JAR_PATH" \
+            https://minecraft.curseforge.com/api/projects/1188741/upload-file)"
+          response="$(<"$response_file")"
+          rm -f "$response_file"
+          if [[ "$http_status" =~ ^2 ]]; then
+            echo "Published $JAR_PATH as CurseForge file $(jq -er '.id' <<< "$response")."
+          elif grep -Eqi 'already|duplicate' <<< "$response"; then
+            echo "CurseForge already has $JAR_PATH; treating retry as successful."
+          else
+            echo "CurseForge upload failed for $JAR_PATH with HTTP $http_status: $response" >&2
+            exit 1
+          fi
 
   release:
     needs: [build, publish-curseforge, live-client]
