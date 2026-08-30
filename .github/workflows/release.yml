@@ -218,8 +218,7 @@ jobs:
           response_file="$(mktemp)"
           http_status="$(curl --silent --show-error \
             --retry 4 \
-            --retry-delay 5 \
-            --retry-all-errors \
+            --retry-max-time 90 \
             --output "$response_file" \
             --write-out '%{http_code}' \
             --request POST \
