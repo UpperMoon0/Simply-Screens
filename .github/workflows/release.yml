@@ -60,7 +60,7 @@ jobs:
         with:
           repository: UpperMoon0/OpenUI-MC
           # OpenUI 0.0.8, shared with Economy and Simply Speakers CI.
-          ref: e91aa0bd2102391119459a4daa7e0a6d37754987
+          ref: f3f1954621f32606e732dd47d1de0eb430cf1eba
           path: OpenUI-MC
       - name: Verify OpenUI-MC version alignment
         shell: bash
@@ -96,7 +96,6 @@ jobs:
 
   build:
     needs: verify
-    if: needs.version-change.outputs.changed == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -115,7 +114,7 @@ jobs:
         with:
           repository: UpperMoon0/OpenUI-MC
           # OpenUI 0.0.8, shared with Economy and Simply Speakers CI.
-          ref: e91aa0bd2102391119459a4daa7e0a6d37754987
+          ref: f3f1954621f32606e732dd47d1de0eb430cf1eba
           path: OpenUI-MC
       - name: Verify OpenUI-MC version alignment
         shell: bash

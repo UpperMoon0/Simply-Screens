@@ -36,7 +36,7 @@ jobs:
         with:
           repository: UpperMoon0/OpenUI-MC
           # Keep CI reproducible and aligned with openui_version in gradle.properties.
-          ref: e91aa0bd2102391119459a4daa7e0a6d37754987
+          ref: f3f1954621f32606e732dd47d1de0eb430cf1eba
           path: OpenUI-MC
       - name: Verify OpenUI-MC version alignment
         shell: bash

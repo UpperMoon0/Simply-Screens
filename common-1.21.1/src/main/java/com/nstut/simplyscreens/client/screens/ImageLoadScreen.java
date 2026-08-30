@@ -83,6 +83,8 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         if (images.get().isEmpty()) return GalleryState.EMPTY;
         return filteredImages.get().isEmpty() ? GalleryState.NO_MATCHES : GalleryState.RESULTS;
     });
+    private final Computed<String> noMatchesText = Signals.computed(() ->
+            Component.translatable("gui.simplyscreens.gallery.no_matches", search.get()).getString());
 
     private Subscription aspectSubscription = Subscription.EMPTY;
     private boolean applyingRemoteState;
@@ -171,8 +173,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
 
     private UIComponent buildNoMatches() {
         return Ui.column(
-                Ui.text(() -> Component.translatable("gui.simplyscreens.gallery.no_matches", search.get()))
-                        .wrap(),
+                Ui.text(noMatchesText).wrap(),
                 Ui.button(Component.translatable("gui.simplyscreens.screen.clear_search"), () -> search.set(""))
                         .ghost().small()
         ).gap(6);
