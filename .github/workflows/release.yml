@@ -62,8 +62,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: UpperMoon0/OpenUI-MC
-          # OpenUI 0.0.7, shared with Economy and Simply Speakers CI.
-          ref: 82a5dd2f0e6c6027f20ca2acf049858f7f96f597
+          # OpenUI 0.0.8, shared with Economy and Simply Speakers CI.
+          ref: d801bbadca8f70fdda014079db4aa380ebf71056
           path: OpenUI-MC
       - name: Verify OpenUI-MC version alignment
         shell: bash
@@ -116,8 +116,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: UpperMoon0/OpenUI-MC
-          # OpenUI 0.0.7, shared with Economy and Simply Speakers CI.
-          ref: 82a5dd2f0e6c6027f20ca2acf049858f7f96f597
+          # OpenUI 0.0.8, shared with Economy and Simply Speakers CI.
+          ref: d801bbadca8f70fdda014079db4aa380ebf71056
           path: OpenUI-MC
       - name: Verify OpenUI-MC version alignment
         shell: bash
