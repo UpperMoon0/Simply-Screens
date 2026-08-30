@@ -128,7 +128,9 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                 .padding(12);
         shell.fillWidth();
         shell.maxWidth(PANEL_WIDTH);
-        return Ui.padding(12, Ui.stack(shell).align(Alignment.CENTER, Alignment.CENTER));
+        return Ui.responsive(context -> context.height() < 150
+                ? Ui.padding(6, Ui.scroll(shell))
+                : Ui.padding(12, Ui.stack(shell).align(Alignment.CENTER, Alignment.CENTER)));
     }
 
     private UIComponent buildHeader() {
@@ -169,7 +171,8 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
 
     private UIComponent buildNoMatches() {
         return Ui.column(
-                Ui.emptyState(Component.translatable("gui.simplyscreens.gallery.no_matches", search.get())),
+                Ui.text(() -> Component.translatable("gui.simplyscreens.gallery.no_matches", search.get()))
+                        .wrap(),
                 Ui.button(Component.translatable("gui.simplyscreens.screen.clear_search"), () -> search.set(""))
                         .ghost().small()
         ).gap(6);
@@ -296,7 +299,9 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         }).danger();
         dialog.addChild(Ui.column(
                 Ui.heading(Component.translatable("gui.simplyscreens.remove.confirm.title")),
-                Ui.text(Component.translatable("gui.simplyscreens.remove.confirm.body", image.displayName())),
+                Ui.text(Component.translatable("gui.simplyscreens.remove.confirm.body", image.displayName()))
+                        .wrap()
+                        .maxLines(3),
                 Ui.row(cancel, remove).gap(6)
         ).gap(10));
         dialog.width(250).minHeight(90);
@@ -437,6 +442,12 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
 
     public boolean matchesScreenUpdate(BlockPos position, BlockPos anchorPosition) {
         return blockEntityPos.equals(position) || blockEntityPos.equals(anchorPosition);
+    }
+
+    /** Tab selector for the opt-in live-join UI smoke test. */
+    public void smokeSelectTab(int index) {
+        Tab[] values = Tab.values();
+        tab.set(values[Math.floorMod(index, values.length)]);
     }
 
     public void updateScreenState(UUID imageId, boolean maintainAspectRatio, String screenId) {

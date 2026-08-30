@@ -96,6 +96,7 @@ jobs:
 
   build:
     needs: verify
+    if: needs.version-change.outputs.changed == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -155,9 +156,15 @@ jobs:
             !${{ matrix.project }}/build/libs/*-dev-shadow.jar
           if-no-files-found: error
 
+  live-client:
+    name: Live client join gate
+    needs: version-change
+    if: needs.version-change.outputs.changed == 'true'
+    uses: ./.github/workflows/live-join-test.yml
+
   publish-curseforge:
     name: Publish ${{ matrix.platform }} ${{ matrix.version }} to CurseForge
-    needs: build
+    needs: [build, live-client]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     strategy:
@@ -213,7 +220,7 @@ jobs:
           echo "Published $JAR_PATH as CurseForge file $(jq -er '.id' <<< "$response")."
 
   release:
-    needs: [build, publish-curseforge]
+    needs: [build, publish-curseforge, live-client]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions: { contents: write }

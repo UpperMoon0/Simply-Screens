@@ -31,6 +31,9 @@ public class UpdateImageListS2CPacket implements IPacket {
 
     @Override
     public void write(FriendlyByteBuf buf) {
+        if (imageList.size() > 1024) {
+            SimplyScreens.LOGGER.warn("Image list truncated from {} to the 1024-entry protocol maximum; larger libraries need pagination", imageList.size());
+        }
         int size = Math.min(imageList.size(), 1024);
         buf.writeVarInt(size);
         for (ImageMetadata imageMetadata : imageList.subList(0, size)) {

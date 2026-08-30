@@ -1,5 +1,6 @@
 package com.nstut.simplyscreens.client.ui;
 
+import com.nstut.simplyscreens.SimplyScreens;
 import net.minecraft.client.Minecraft;
 
 import java.io.IOException;
@@ -44,7 +45,8 @@ public final class SimplyScreensUiPreferences {
             try (OutputStream output = Files.newOutputStream(file)) {
                 properties.store(output, "Simply Screens UI preferences");
             }
-        } catch (IOException ignored) {
+        } catch (IOException e) {
+            SimplyScreens.LOGGER.warn("Failed to persist Simply Screens UI preferences to {}", file, e);
         }
     }
 
@@ -53,7 +55,8 @@ public final class SimplyScreensUiPreferences {
         if (!Files.exists(file)) return properties;
         try (InputStream input = Files.newInputStream(file)) {
             properties.load(input);
-        } catch (IOException ignored) {
+        } catch (IOException e) {
+            SimplyScreens.LOGGER.warn("Failed to read Simply Screens UI preferences from {}; using defaults", file, e);
         }
         return properties;
     }

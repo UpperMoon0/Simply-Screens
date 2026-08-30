@@ -2,7 +2,7 @@
 
 A Minecraft mod that adds configurable screen blocks capable of displaying images from local files or the web, supporting dynamic multi-block structures and synchronized screen networks.
 
-The client interface is powered by **OpenUI MC 0.0.8 or newer**, which is a required client-side dependency matching your Minecraft version and loader.
+The client interface is powered by **OpenUI MC 0.0.8 or newer**, which is a required client-side dependency matching your Minecraft version and loader. On Fabric, the OpenUI dependency is declared for both sides because Fabric metadata cannot scope dependencies to the client, so a dedicated server also needs the OpenUI mod installed to satisfy metadata checks even though Simply Screens' server logic never uses it.
 
 [![CurseForge](https://cf.way2muchnoise.eu/simply-screens.svg)](https://www.curseforge.com/minecraft/mc-mods/simply-screens)
 

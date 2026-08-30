@@ -42,6 +42,12 @@ test {
     }
 }
 
+// OpenUI is compile-only for main sources, but the layout regression tests
+// build OpenUI component trees, so tests also need the remapped mod jar.
+configurations.testRuntimeClasspath {
+    extendsFrom(configurations.compileClasspath)
+}
+
 // Include common module classes in compile classpath
 sourceSets.main.compileClasspath += project(':common').sourceSets.main.output
 sourceSets.main.runtimeClasspath += project(':common').sourceSets.main.output

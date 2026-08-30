@@ -1,6 +1,7 @@
 name: Live client join test
 
 on:
+  workflow_call:
   workflow_dispatch:
   pull_request:
     paths:

@@ -80,10 +80,12 @@ public class ClientImageManager {
     public static void invalidateImage(UUID imageId) {
         if (imageId == null) return;
         DynamicTexture texture = IN_MEMORY_CACHE.remove(imageId);
-        if (texture != null) {
+        ResourceLocation location = TEXTURE_LOCATIONS.remove(imageId);
+        if (location != null) {
+            Minecraft.getInstance().getTextureManager().release(location);
+        } else if (texture != null) {
             texture.close();
         }
-        TEXTURE_LOCATIONS.remove(imageId);
         METADATA_CACHE.remove(imageId);
         CHUNK_MAP.remove(imageId);
         EXTENSION_MAP.remove(imageId);
@@ -275,8 +277,12 @@ public class ClientImageManager {
     }
 
     public static void clearCache() {
+        for (Map.Entry<UUID, ResourceLocation> entry : TEXTURE_LOCATIONS.entrySet()) {
+            Minecraft.getInstance().getTextureManager().release(entry.getValue());
+            IN_MEMORY_CACHE.remove(entry.getKey());
+        }
+        TEXTURE_LOCATIONS.clear();
         IN_MEMORY_CACHE.values().forEach(DynamicTexture::close);
         IN_MEMORY_CACHE.clear();
-        TEXTURE_LOCATIONS.clear();
     }
 }
