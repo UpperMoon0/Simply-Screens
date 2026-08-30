@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - gradle.properties
+  workflow_dispatch:
 
 concurrency:
   group: release-workflow
@@ -207,16 +208,35 @@ jobs:
           changelog_path="changelog/${MOD_VERSION}.md"
           [[ -f "$changelog_path" ]] || { echo "Missing release changelog: $changelog_path" >&2; exit 1; }
           if [[ "$PLATFORM" == fabric ]]; then
-            relations='{"projects":[{"slug":"architectury-api","type":"requiredDependency"},{"slug":"fabric-api","type":"requiredDependency"},{"slug":"openui-mc","projectID":1661978,"type":"requiredDependency"}]}'
+            relations='{"projects":[{"slug":"architectury-api","type":"requiredDependency"},{"slug":"fabric-api","type":"requiredDependency"},{"slug":"openui-mc","type":"requiredDependency"}]}'
           else
-            relations='{"projects":[{"slug":"architectury-api","type":"requiredDependency"},{"slug":"openui-mc","projectID":1661978,"type":"requiredDependency"}]}'
+            relations='{"projects":[{"slug":"architectury-api","type":"requiredDependency"},{"slug":"openui-mc","type":"requiredDependency"}]}'
           fi
           tags="$(jq -cn --arg mc "$MINECRAFT_VERSION" --arg loader "$LOADER_NAME" --arg java "$JAVA_VERSION_NAME" '[$mc,$loader,$java,"Client","Server"]')"
           available="$(curl --fail-with-body --silent --show-error --header "X-Api-Token: $CURSEFORGE_API_TOKEN" https://minecraft.curseforge.com/api/game/versions)"
           while IFS= read -r tag; do jq -e --arg tag "$tag" 'any(.[]; .name == $tag)' <<< "$available" >/dev/null || { echo "Unknown CurseForge tag: $tag" >&2; exit 1; }; done < <(jq -r '.[]' <<< "$tags")
           metadata="$(jq -cn --rawfile changelog "$changelog_path" --arg name "Simply Screens ${MOD_VERSION} - ${LOADER_NAME} ${MINECRAFT_VERSION}" --argjson tags "$tags" --argjson relations "$relations" '{changelog:$changelog,changelogType:"markdown",displayName:$name,gameVersionNames:$tags,releaseType:"release",relations:$relations}')"
-          response="$(curl --fail-with-body --silent --show-error --request POST --header "X-Api-Token: $CURSEFORGE_API_TOKEN" --form-string "metadata=$metadata" --form "file=@$JAR_PATH" https://minecraft.curseforge.com/api/projects/1188741/upload-file)"
-          echo "Published $JAR_PATH as CurseForge file $(jq -er '.id' <<< "$response")."
+          response_file="$(mktemp)"
+          http_status="$(curl --silent --show-error \
+            --retry 4 \
+            --retry-max-time 90 \
+            --output "$response_file" \
+            --write-out '%{http_code}' \
+            --request POST \
+            --header "X-Api-Token: $CURSEFORGE_API_TOKEN" \
+            --form-string "metadata=$metadata" \
+            --form "file=@$JAR_PATH" \
+            https://minecraft.curseforge.com/api/projects/1188741/upload-file)"
+          response="$(<"$response_file")"
+          rm -f "$response_file"
+          if [[ "$http_status" =~ ^2 ]]; then
+            echo "Published $JAR_PATH as CurseForge file $(jq -er '.id' <<< "$response")."
+          elif grep -Eqi 'already|duplicate' <<< "$response"; then
+            echo "CurseForge already has $JAR_PATH; treating retry as successful."
+          else
+            echo "CurseForge upload failed for $JAR_PATH with HTTP $http_status: $response" >&2
+            exit 1
+          fi
 
   release:
     needs: [build, publish-curseforge, live-client]
