@@ -115,7 +115,8 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                 Ui.switcher(tab)
                         .when(Tab.GALLERY, this::buildGallery)
                         .when(Tab.SETTINGS, this::buildSettings)
-                        .when(Tab.IMPORT, this::buildImport),
+                        .when(Tab.IMPORT, this::buildImport)
+                        .flex(),
                 Ui.text(() -> status.get()).wrap().maxLines(2)
         ).gap(8);
         content.fillWidth();
@@ -154,6 +155,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                         .when(GalleryState.EMPTY, this::buildEmptyGallery)
                         .when(GalleryState.NO_MATCHES, this::buildNoMatches)
                         .when(GalleryState.RESULTS, this::buildGalleryResults)
+                        .flex()
         ).gap(8);
     }
 
@@ -178,8 +180,8 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                 .key(row -> row.image().imageId())
                 .itemHeight(60)
                 .gap(6)
-                .height(Math.max(96, Math.min(210, height - 125)))
-                .fillWidth();
+                .fillWidth()
+                .fillHeight();
     }
 
     private UIComponent buildImageRow(ImageRow row) {
@@ -232,7 +234,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                         .wrap()
                         .maxLines(3)
         ).gap(8));
-        return card;
+        return Ui.scroll(card);
     }
 
     private UIComponent buildImport() {
@@ -259,7 +261,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         if (ClientServerConfig.disableUpload() && ClientServerConfig.disableUrlDownload()) {
             content.child(Ui.emptyState(Component.translatable("gui.simplyscreens.import.disabled")));
         }
-        return content;
+        return Ui.scroll(content);
     }
 
     private void onSelect() {

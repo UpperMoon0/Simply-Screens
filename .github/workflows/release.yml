@@ -78,6 +78,8 @@ jobs:
       # OpenUI's Gradle build requires Java 21 even when publishing Java 17 artifacts.
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '21', cache: gradle }
+      # Every root Gradle invocation configures all loader modules, including
+      # neoforge-26.1.2, so all five OpenUI artifacts must be installed.
       - name: Install matching OpenUI-MC artifacts
         run: |
           chmod +x gradlew OpenUI-MC/gradlew
@@ -85,7 +87,8 @@ jobs:
             ":fabric-1.20.1:publishToMavenLocal" \
             ":forge-1.20.1:publishToMavenLocal" \
             ":fabric-1.21.1:publishToMavenLocal" \
-            ":neoforge-1.21.1:publishToMavenLocal"; do
+            ":neoforge-1.21.1:publishToMavenLocal" \
+            ":neoforge-26.1.2:publishToMavenLocal"; do
             JAVA_HOME=$JAVA_HOME_21_X64 ./gradlew -p OpenUI-MC "$target" --no-daemon
           done
       - uses: actions/setup-java@v4
@@ -129,21 +132,17 @@ jobs:
       # OpenUI's Gradle build requires Java 21 even when publishing Java 17 artifacts.
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '21', cache: gradle }
+      # Every root Gradle invocation configures all loader modules, including
+      # neoforge-26.1.2, so all five OpenUI artifacts must be installed.
       - name: Install matching OpenUI-MC artifacts
         run: |
           chmod +x OpenUI-MC/gradlew
-          if [[ "${{ matrix.project }}" == "neoforge-26.1.2" ]]; then
-            targets=(":neoforge-26.1.2:publishToMavenLocal")
-          else
-            # Legacy Gradle invocations configure all four legacy loader modules.
-            targets=(
-              ":fabric-1.20.1:publishToMavenLocal"
-              ":forge-1.20.1:publishToMavenLocal"
-              ":fabric-1.21.1:publishToMavenLocal"
-              ":neoforge-1.21.1:publishToMavenLocal"
-            )
-          fi
-          for target in "${targets[@]}"; do
+          for target in \
+            ":fabric-1.20.1:publishToMavenLocal" \
+            ":forge-1.20.1:publishToMavenLocal" \
+            ":fabric-1.21.1:publishToMavenLocal" \
+            ":neoforge-1.21.1:publishToMavenLocal" \
+            ":neoforge-26.1.2:publishToMavenLocal"; do
             JAVA_HOME=$JAVA_HOME_21_X64 ./gradlew -p OpenUI-MC "$target" --no-daemon
           done
       - uses: actions/setup-java@v4
