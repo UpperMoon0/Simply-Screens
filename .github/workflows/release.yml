@@ -60,7 +60,7 @@ jobs:
         with:
           repository: UpperMoon0/OpenUI-MC
           # OpenUI 0.0.8, shared with Economy and Simply Speakers CI.
-          ref: c78235fa7194e295ed5e3e7e3f2aec1418efcfe5
+          ref: e91aa0bd2102391119459a4daa7e0a6d37754987
           path: OpenUI-MC
       - name: Verify OpenUI-MC version alignment
         shell: bash
@@ -114,7 +114,7 @@ jobs:
         with:
           repository: UpperMoon0/OpenUI-MC
           # OpenUI 0.0.8, shared with Economy and Simply Speakers CI.
-          ref: c78235fa7194e295ed5e3e7e3f2aec1418efcfe5
+          ref: e91aa0bd2102391119459a4daa7e0a6d37754987
           path: OpenUI-MC
       - name: Verify OpenUI-MC version alignment
         shell: bash
