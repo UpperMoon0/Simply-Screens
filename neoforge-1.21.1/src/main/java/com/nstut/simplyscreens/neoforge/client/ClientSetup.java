@@ -5,7 +5,11 @@ import com.nstut.simplyscreens.blocks.entities.BlockEntityRegistries;
 import com.nstut.simplyscreens.client.renderers.ScreenBlockEntityRenderer;
 import com.nstut.simplyscreens.helpers.ClientImageManager;
 import com.nstut.simplyscreens.client.ClientServerConfig;
+import com.nstut.simplyscreens.client.testing.UiSmokeTest;
 import com.nstut.simplyscreens.network.PacketRegistries;
+import com.nstut.simplyscreens.testing.LiveJoinTestProtocol;
+import dev.architectury.event.events.client.ClientTickEvent;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -19,7 +23,10 @@ public class ClientSetup {
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
         SimplyScreens.LOGGER.info("NeoForge ClientSetup.onClientSetup called");
-        
+
+        ClientTickEvent.CLIENT_POST.register(ClientSetup::onClientTick);
+        LiveJoinTestProtocol.startProbe();
+
         event.enqueueWork(() -> {
             SimplyScreens.LOGGER.info("NeoForge ClientSetup enqueueWork executing");
             
@@ -42,5 +49,21 @@ public class ClientSetup {
         SimplyScreens.LOGGER.info("Client disconnect event received");
         ClientImageManager.clearCache();
         ClientServerConfig.reset();
+    }
+
+    private static void onClientTick(Minecraft client) {
+        if (client.player == null || client.level == null) return;
+        if (LiveJoinTestProtocol.isEnabled() && !UiSmokeTest.tick(client)) return;
+        LiveJoinTestProtocol.markCompleted();
+        finishLiveJoinTest(client);
+    }
+
+    private static void finishLiveJoinTest(Minecraft client) {
+        if (LiveJoinTestProtocol.isEnabled()
+                && LiveJoinTestProtocol.passed()
+                && LiveJoinTestProtocol.markReported()) {
+            SimplyScreens.LOGGER.info(LiveJoinTestProtocol.PASS_MARKER);
+            LiveJoinTestProtocol.stopClient(client::stop);
+        }
     }
 }

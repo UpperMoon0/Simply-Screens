@@ -6,6 +6,19 @@ loom {
     forge {
         mixinConfig "simplyscreens.mixins.json"
     }
+    runs {
+        liveJoinTestClient {
+            client()
+            runDir("run/live-join/client")
+            property "simplyscreens.liveJoinTest", "true"
+            programArgs "--quickPlayMultiplayer", "127.0.0.1:25575"
+        }
+        liveJoinTestServer {
+            server()
+            runDir("run/live-join/server")
+            programArg "nogui"
+        }
+    }
 }
 
 architectury {
@@ -35,6 +48,13 @@ dependencies {
 
     // Architectury API for Forge 1.20.1 - use version from root version group
     modImplementation "dev.architectury:architectury-forge:$architectury_api_version"
+    // OpenUI's production Forge jar is SRG-named. Loom 1.11 incorrectly remaps
+    // it as an intermediary jar on the development classpath, corrupting its
+    // Minecraft type descriptors and causing a VerifyError when UiScreen loads.
+    // Use the published named development artifact for compilation and dev runs;
+    // mods.toml still declares the normal OpenUI mod for production installations.
+    compileOnly "com.nstut:openui-mc-forge-1.20.1:${project.openui_version}:dev-shadow"
+    runtimeOnly "com.nstut:openui-mc-forge-1.20.1:${project.openui_version}:dev-shadow"
 
     // Shared common module (pure Java, no MC dependencies)
     // The common classes are bundled via common-1.20.1's shadowBundle and available through transformProductionForge

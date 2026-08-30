@@ -18,6 +18,7 @@ dependencies {
 
     // Architectury API. This is optional, and you can comment it out if you don't need it.
     modImplementation "dev.architectury:architectury:$architectury_api_version"
+    modCompileOnly "com.nstut:openui-mc-fabric-1.20.1:${project.openui_version}"
 
     // Gson for JSON serialization
     implementation "com.google.code.gson:gson:2.8.9"
@@ -39,6 +40,12 @@ test {
         events "passed", "skipped", "failed"
         showStandardStreams = true
     }
+}
+
+// OpenUI is compile-only for main sources, but the layout regression tests
+// build OpenUI component trees, so tests also need the remapped mod jar.
+configurations.testRuntimeClasspath {
+    extendsFrom(configurations.compileClasspath)
 }
 
 // Include common module classes in compile classpath

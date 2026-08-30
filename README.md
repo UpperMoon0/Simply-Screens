@@ -2,6 +2,8 @@
 
 A Minecraft mod that adds configurable screen blocks capable of displaying images from local files or the web, supporting dynamic multi-block structures and synchronized screen networks.
 
+The client interface is powered by **OpenUI MC 0.0.8 or newer**, which is a required client-side dependency matching your Minecraft version and loader. On Fabric, the OpenUI dependency is declared for both sides because Fabric metadata cannot scope dependencies to the client, so a dedicated server also needs the OpenUI mod installed to satisfy metadata checks even though Simply Screens' server logic never uses it.
+
 [![CurseForge](https://cf.way2muchnoise.eu/simply-screens.svg)](https://www.curseforge.com/minecraft/mc-mods/simply-screens)
 
 ## Features
@@ -14,6 +16,7 @@ A Minecraft mod that adds configurable screen blocks capable of displaying image
   - Upload PNG, JPG, and JPEG images directly from your computer via an in-game file dialog.
   - Download images from web URLs with built-in SSRF and security filtering.
   - Browse, select, and manage server-stored images in the screen GUI.
+- **OpenUI Interface:** Responsive gallery, keyboard-friendly controls, removal confirmation, and a persisted live light/dark theme.
 - **Security & Hardening:**
   - Server-authoritative distance, permission, and ownership validation.
   - DNS/IP-level SSRF filtering against private, loopback, or cloud-metadata destinations.
@@ -48,4 +51,4 @@ Simply Screens uses Gradle with Architectury Loom:
 
 ## License
 
-This project is distributed under the terms of its repository license.
+This project is distributed under the MIT license.

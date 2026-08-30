@@ -1,0 +1,53 @@
+name: PR Tests
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: pr-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Run all tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout OpenUI-MC
+        uses: actions/checkout@v4
+        with:
+          repository: UpperMoon0/OpenUI-MC
+          # Keep CI reproducible and aligned with openui_version in gradle.properties.
+          ref: f3f1954621f32606e732dd47d1de0eb430cf1eba
+          path: OpenUI-MC
+      - name: Verify OpenUI-MC version alignment
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(sed -n 's/^openui_version[[:space:]]*=[[:space:]]*//p' gradle.properties | head -n1 | tr -d '\r' | xargs)"
+          actual="$(sed -n 's/^mod_version[[:space:]]*=[[:space:]]*//p' OpenUI-MC/gradle.properties | head -n1 | tr -d '\r' | xargs)"
+          if [[ -z "$expected" || -z "$actual" || "$actual" != "$expected" ]]; then
+            echo "OpenUI version mismatch: Simply Screens requires '$expected' but the checked-out source publishes '$actual'." >&2
+            exit 1
+          fi
+      # OpenUI's Gradle build requires Java 21 even when publishing Java 17 artifacts.
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: gradle }
+      # Every root Gradle invocation configures all loader modules, including
+      # neoforge-26.1.2, so all five OpenUI artifacts must be installed.
+      - name: Install matching OpenUI-MC artifacts
+        run: |
+          chmod +x gradlew OpenUI-MC/gradlew
+          for target in \
+            ":fabric-1.20.1:publishToMavenLocal" \
+            ":forge-1.20.1:publishToMavenLocal" \
+            ":fabric-1.21.1:publishToMavenLocal" \
+            ":neoforge-1.21.1:publishToMavenLocal" \
+            ":neoforge-26.1.2:publishToMavenLocal"; do
+            JAVA_HOME=$JAVA_HOME_21_X64 ./gradlew -p OpenUI-MC "$target" --no-daemon
+          done
+      - run: chmod +x gradlew
+      - name: Run all tests
+        run: ./gradlew testAllVersions --no-daemon

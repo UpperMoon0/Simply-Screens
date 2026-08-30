@@ -1,7 +1,7 @@
 modLoader = "javafml"
 loaderVersion = "[4,)"
 #issueTrackerURL = ""
-license = "Insert License Here"
+license = "MIT"
 
 [[mods]]
 modId = "simply_screens"
@@ -23,7 +23,7 @@ side = "BOTH"
 [[dependencies.simply_screens]]
 modId = "minecraft"
 type = "required"
-versionRange = "[1.21.1,)"
+versionRange = "[1.21.1,1.22)"
 ordering = "NONE"
 side = "BOTH"
 
@@ -33,3 +33,10 @@ type = "required"
 versionRange = "[13.0.8,)"
 ordering = "AFTER"
 side = "BOTH"
+
+[[dependencies.simply_screens]]
+modId = "openui_mc"
+type = "required"
+versionRange = "[0.0.8,)"
+ordering = "AFTER"
+side = "CLIENT"

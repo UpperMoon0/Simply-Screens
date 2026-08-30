@@ -3,12 +3,91 @@ name: Build and Release Mod
 on:
   push:
     branches: [main]
+    paths:
+      - gradle.properties
+
+concurrency:
+  group: release-workflow
+  cancel-in-progress: false
 
 jobs:
+  version-change:
+    name: Check mod version change
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.version.outputs.changed }}
+      value: ${{ steps.version.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compare mod_version with the previous revision
+        id: version
+        shell: bash
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          read_version() {
+            sed -n 's/^mod_version[[:space:]]*=[[:space:]]*//p' \
+              | head -n1 | tr -d '\r' | xargs
+          }
+
+          current="$(read_version < gradle.properties)"
+          [[ "$current" =~ ^[0-9A-Za-z][0-9A-Za-z._+-]*$ ]] \
+            || { echo "Invalid mod_version: $current" >&2; exit 1; }
+
+          changed=false
+          if [[ -z "${BEFORE_SHA:-}" || "$BEFORE_SHA" =~ ^0+$ ]]; then
+            changed=true
+          else
+            previous="$(git show "${BEFORE_SHA}:gradle.properties" | read_version)"
+            [[ "$current" != "$previous" ]] && changed=true
+            echo "mod_version: ${previous} -> ${current}"
+          fi
+
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          echo "value=$current" >> "$GITHUB_OUTPUT"
+
   verify:
+    needs: version-change
+    if: needs.version-change.outputs.changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout OpenUI-MC
+        uses: actions/checkout@v4
+        with:
+          repository: UpperMoon0/OpenUI-MC
+          # OpenUI 0.0.8, shared with Economy and Simply Speakers CI.
+          ref: f3f1954621f32606e732dd47d1de0eb430cf1eba
+          path: OpenUI-MC
+      - name: Verify OpenUI-MC version alignment
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(sed -n 's/^openui_version[[:space:]]*=[[:space:]]*//p' gradle.properties | head -n1 | tr -d '\r' | xargs)"
+          actual="$(sed -n 's/^mod_version[[:space:]]*=[[:space:]]*//p' OpenUI-MC/gradle.properties | head -n1 | tr -d '\r' | xargs)"
+          if [[ -z "$expected" || -z "$actual" || "$actual" != "$expected" ]]; then
+            echo "OpenUI version mismatch: Simply Screens requires '$expected' but the checked-out source publishes '$actual'." >&2
+            exit 1
+          fi
+      # OpenUI's Gradle build requires Java 21 even when publishing Java 17 artifacts.
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: gradle }
+      # Every root Gradle invocation configures all loader modules, including
+      # neoforge-26.1.2, so all five OpenUI artifacts must be installed.
+      - name: Install matching OpenUI-MC artifacts
+        run: |
+          chmod +x gradlew OpenUI-MC/gradlew
+          for target in \
+            ":fabric-1.20.1:publishToMavenLocal" \
+            ":forge-1.20.1:publishToMavenLocal" \
+            ":fabric-1.21.1:publishToMavenLocal" \
+            ":neoforge-1.21.1:publishToMavenLocal" \
+            ":neoforge-26.1.2:publishToMavenLocal"; do
+            JAVA_HOME=$JAVA_HOME_21_X64 ./gradlew -p OpenUI-MC "$target" --no-daemon
+          done
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '21', cache: gradle }
       - run: chmod +x gradlew
@@ -30,6 +109,39 @@ jobs:
           - { java: 21, version: '26.1.2', platform: neoforge, project: neoforge-26.1.2, pattern: 'simply_screens-neoforge-26.1.2-*.jar' }
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout OpenUI-MC
+        uses: actions/checkout@v4
+        with:
+          repository: UpperMoon0/OpenUI-MC
+          # OpenUI 0.0.8, shared with Economy and Simply Speakers CI.
+          ref: f3f1954621f32606e732dd47d1de0eb430cf1eba
+          path: OpenUI-MC
+      - name: Verify OpenUI-MC version alignment
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(sed -n 's/^openui_version[[:space:]]*=[[:space:]]*//p' gradle.properties | head -n1 | tr -d '\r' | xargs)"
+          actual="$(sed -n 's/^mod_version[[:space:]]*=[[:space:]]*//p' OpenUI-MC/gradle.properties | head -n1 | tr -d '\r' | xargs)"
+          if [[ -z "$expected" || -z "$actual" || "$actual" != "$expected" ]]; then
+            echo "OpenUI version mismatch: Simply Screens requires '$expected' but the checked-out source publishes '$actual'." >&2
+            exit 1
+          fi
+      # OpenUI's Gradle build requires Java 21 even when publishing Java 17 artifacts.
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: gradle }
+      # Every root Gradle invocation configures all loader modules, including
+      # neoforge-26.1.2, so all five OpenUI artifacts must be installed.
+      - name: Install matching OpenUI-MC artifacts
+        run: |
+          chmod +x OpenUI-MC/gradlew
+          for target in \
+            ":fabric-1.20.1:publishToMavenLocal" \
+            ":forge-1.20.1:publishToMavenLocal" \
+            ":fabric-1.21.1:publishToMavenLocal" \
+            ":neoforge-1.21.1:publishToMavenLocal" \
+            ":neoforge-26.1.2:publishToMavenLocal"; do
+            JAVA_HOME=$JAVA_HOME_21_X64 ./gradlew -p OpenUI-MC "$target" --no-daemon
+          done
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '${{ matrix.java }}', cache: gradle }
       - run: chmod +x gradlew
@@ -43,9 +155,15 @@ jobs:
             !${{ matrix.project }}/build/libs/*-dev-shadow.jar
           if-no-files-found: error
 
+  live-client:
+    name: Live client join gate
+    needs: version-change
+    if: needs.version-change.outputs.changed == 'true'
+    uses: ./.github/workflows/live-join-test.yml
+
   publish-curseforge:
     name: Publish ${{ matrix.platform }} ${{ matrix.version }} to CurseForge
-    needs: build
+    needs: [build, live-client]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     strategy:
@@ -89,9 +207,9 @@ jobs:
           changelog_path="changelog/${MOD_VERSION}.md"
           [[ -f "$changelog_path" ]] || { echo "Missing release changelog: $changelog_path" >&2; exit 1; }
           if [[ "$PLATFORM" == fabric ]]; then
-            relations='{"projects":[{"slug":"architectury-api","type":"requiredDependency"},{"slug":"fabric-api","type":"requiredDependency"}]}'
+            relations='{"projects":[{"slug":"architectury-api","type":"requiredDependency"},{"slug":"fabric-api","type":"requiredDependency"},{"slug":"openui-mc","projectID":1661978,"type":"requiredDependency"}]}'
           else
-            relations='{"projects":[{"slug":"architectury-api","type":"requiredDependency"}]}'
+            relations='{"projects":[{"slug":"architectury-api","type":"requiredDependency"},{"slug":"openui-mc","projectID":1661978,"type":"requiredDependency"}]}'
           fi
           tags="$(jq -cn --arg mc "$MINECRAFT_VERSION" --arg loader "$LOADER_NAME" --arg java "$JAVA_VERSION_NAME" '[$mc,$loader,$java,"Client","Server"]')"
           available="$(curl --fail-with-body --silent --show-error --header "X-Api-Token: $CURSEFORGE_API_TOKEN" https://minecraft.curseforge.com/api/game/versions)"
@@ -101,7 +219,7 @@ jobs:
           echo "Published $JAR_PATH as CurseForge file $(jq -er '.id' <<< "$response")."
 
   release:
-    needs: [build, publish-curseforge]
+    needs: [build, publish-curseforge, live-client]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions: { contents: write }

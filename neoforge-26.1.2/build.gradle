@@ -67,6 +67,7 @@ sourceSets.main.java.srcDir('../common/src/main/java')
 sourceSets.test.java.srcDir('../common/src/test/java')
 
 repositories {
+    mavenLocal()
     maven { url = 'https://maven.architectury.dev/' }
 }
 
@@ -98,6 +99,19 @@ neoForge {
             server()
             programArgument '--nogui'
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        liveJoinTestClient {
+            client()
+            gameDirectory = project.file("run/live-join/client")
+            systemProperty 'simplyscreens.liveJoinTest', 'true'
+            programArguments.addAll '--quickPlayMultiplayer', '127.0.0.1:25575'
+        }
+
+        liveJoinTestServer {
+            server()
+            gameDirectory = project.file("run/live-join/server")
+            programArgument '--nogui'
         }
 
         // This run config launches GameTestServer and runs all registered gametests, then exits.
@@ -153,6 +167,8 @@ configurations {
 }
 
 dependencies {
+    implementation "com.nstut:openui-mc-neoforge-26.1.2:${project.openui_version}"
+    localRuntime "com.nstut:openui-mc-neoforge-26.1.2:${project.openui_version}"
     implementation "com.google.code.gson:gson:2.11.0"
     implementation "dev.architectury:architectury-neoforge:${architectury_api_version}"
     compileOnly "org.projectlombok:lombok:1.18.42"

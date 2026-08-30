@@ -34,6 +34,9 @@ public class UpdateImageListS2CPacket implements CustomPacketPayload {
     }
 
     public void write(RegistryFriendlyByteBuf buf) {
+        if (imageList.size() > 1024) {
+            SimplyScreens.LOGGER.warn("Image list truncated from {} to the 1024-entry protocol maximum; larger libraries need pagination", imageList.size());
+        }
         int size = Math.min(imageList.size(), 1024);
         buf.writeVarInt(size);
         for (ImageMetadata metadata : imageList.subList(0, size)) {
@@ -54,7 +57,7 @@ public class UpdateImageListS2CPacket implements CustomPacketPayload {
         context.queue(() -> {
             com.nstut.simplyscreens.helpers.ClientImageManager.updateImageCache(packet.getImageList());
             if (Minecraft.getInstance().screen instanceof com.nstut.simplyscreens.client.screens.ImageLoadScreen imageLoadScreen) {
-                imageLoadScreen.getImageListWidget().updateList(packet.getImageList());
+                imageLoadScreen.updateImageList(packet.getImageList());
             }
         });
     }

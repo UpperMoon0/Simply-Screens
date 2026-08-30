@@ -5,11 +5,10 @@ import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import com.nstut.simplyscreens.network.RequestImageDownloadC2SPacket;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.ResourceLocation;
 
-import com.nstut.simplyscreens.client.gui.widgets.ImageListWidget;
-import com.nstut.simplyscreens.client.screens.ImageLoadScreen;
 
 import javax.imageio.ImageIO;
 import java.awt.Color;
@@ -68,14 +67,6 @@ public class ClientImageManager {
 
                 saveImageToCache(imageId, fileExtension, imageData);
 
-                Minecraft mc = Minecraft.getInstance();
-                if (mc.screen instanceof ImageLoadScreen imageLoadScreen) {
-                    ImageListWidget imageListWidget = imageLoadScreen.getImageListWidget();
-                    if (imageListWidget != null) {
-                        imageListWidget.receiveImageData(imageId.toString(), imageData);
-                    }
-                }
-
             } catch (IOException e) {
                 SimplyScreens.LOGGER.error("Failed to reassemble image from chunks", e);
             } finally {
@@ -89,10 +80,12 @@ public class ClientImageManager {
     public static void invalidateImage(UUID imageId) {
         if (imageId == null) return;
         DynamicTexture texture = IN_MEMORY_CACHE.remove(imageId);
-        if (texture != null) {
+        ResourceLocation location = TEXTURE_LOCATIONS.remove(imageId);
+        if (location != null) {
+            Minecraft.getInstance().getTextureManager().release(location);
+        } else if (texture != null) {
             texture.close();
         }
-        TEXTURE_LOCATIONS.remove(imageId);
         METADATA_CACHE.remove(imageId);
         CHUNK_MAP.remove(imageId);
         EXTENSION_MAP.remove(imageId);
@@ -199,6 +192,28 @@ public class ClientImageManager {
         return null;
     }
 
+    public static void renderThumbnail(GuiGraphics graphics, UUID imageId, int size) {
+        ResourceLocation location = getTextureLocation(imageId);
+        DynamicTexture texture = IN_MEMORY_CACHE.get(imageId);
+        NativeImage pixels = texture != null ? texture.getPixels() : null;
+        if (location == null || pixels == null) return;
+        int imageWidth = pixels.getWidth();
+        int imageHeight = pixels.getHeight();
+        if (imageWidth <= 0 || imageHeight <= 0 || size <= 0) return;
+
+        float scale = Math.min((float) size / imageWidth, (float) size / imageHeight);
+        int drawWidth = Math.max(1, Math.round(imageWidth * scale));
+        int drawHeight = Math.max(1, Math.round(imageHeight * scale));
+        int offsetX = (size - drawWidth) / 2;
+        int offsetY = (size - drawHeight) / 2;
+
+        graphics.pose().pushPose();
+        graphics.pose().translate(offsetX, offsetY, 0);
+        graphics.pose().scale(scale, scale, 1.0F);
+        graphics.blit(location, 0, 0, 0, 0, imageWidth, imageHeight, imageWidth, imageHeight);
+        graphics.pose().popPose();
+    }
+
     private static NativeImage loadImage(InputStream inputStream, String extension) throws IOException {
         if ("png".equals(extension)) {
             return NativeImage.read(inputStream);
@@ -262,8 +277,12 @@ public class ClientImageManager {
     }
 
     public static void clearCache() {
+        for (Map.Entry<UUID, ResourceLocation> entry : TEXTURE_LOCATIONS.entrySet()) {
+            Minecraft.getInstance().getTextureManager().release(entry.getValue());
+            IN_MEMORY_CACHE.remove(entry.getKey());
+        }
+        TEXTURE_LOCATIONS.clear();
         IN_MEMORY_CACHE.values().forEach(DynamicTexture::close);
         IN_MEMORY_CACHE.clear();
-        TEXTURE_LOCATIONS.clear();
     }
 }
