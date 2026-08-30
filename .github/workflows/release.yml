@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - gradle.properties
-  workflow_dispatch:
 
 concurrency:
   group: release-workflow
@@ -39,9 +38,7 @@ jobs:
             || { echo "Invalid mod_version: $current" >&2; exit 1; }
 
           changed=false
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            changed=true
-          elif [[ -z "${BEFORE_SHA:-}" || "$BEFORE_SHA" =~ ^0+$ ]]; then
+          if [[ -z "${BEFORE_SHA:-}" || "$BEFORE_SHA" =~ ^0+$ ]]; then
             changed=true
           else
             previous="$(git show "${BEFORE_SHA}:gradle.properties" | read_version)"
@@ -63,7 +60,7 @@ jobs:
         with:
           repository: UpperMoon0/OpenUI-MC
           # OpenUI 0.0.8, shared with Economy and Simply Speakers CI.
-          ref: d801bbadca8f70fdda014079db4aa380ebf71056
+          ref: 27ad8583a926e3cee84aa35d935f72c3635450b9
           path: OpenUI-MC
       - name: Verify OpenUI-MC version alignment
         shell: bash
@@ -117,7 +114,7 @@ jobs:
         with:
           repository: UpperMoon0/OpenUI-MC
           # OpenUI 0.0.8, shared with Economy and Simply Speakers CI.
-          ref: d801bbadca8f70fdda014079db4aa380ebf71056
+          ref: 27ad8583a926e3cee84aa35d935f72c3635450b9
           path: OpenUI-MC
       - name: Verify OpenUI-MC version alignment
         shell: bash

@@ -205,8 +205,8 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         IconWidget thumbnail = IconWidget.custom(30,
                 graphics -> ClientImageManager.renderThumbnail(graphics, image.imageId(), 30));
         UIComponent label = Ui.column(
-                Ui.text(Component.literal(image.displayName())),
-                Ui.text(Component.literal(image.imageId().toString()))
+                Ui.text(Component.literal(image.displayName())).ellipsis(),
+                Ui.text(Component.literal(image.imageId().toString())).ellipsis()
         ).gap(2).flex();
         card.addChild(Ui.responsive(context -> context.width() < 285
                 ? Ui.column(Ui.row(thumbnail, label).gap(6).align(Alignment.CENTER), actions).gap(5)
