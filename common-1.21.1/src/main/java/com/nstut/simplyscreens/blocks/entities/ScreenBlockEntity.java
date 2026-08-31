@@ -7,7 +7,6 @@ import com.nstut.simplyscreens.ScreenAnchorPromotion;
 import com.nstut.simplyscreens.ScreenStructureDetector;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.ScreenBlock;
-import com.nstut.simplyscreens.network.ClientPacketHandler;
 import lombok.Getter;
 import lombok.Setter;
 import java.util.UUID;
@@ -58,7 +57,7 @@ public class ScreenBlockEntity extends BlockEntity {
         super.loadAdditional(tag, provider);
         readPersistentData(tag);
         if (level != null && level.isClientSide) {
-            ClientPacketHandler.handleBlockEntityUpdate(this);
+            ScreenBlockEntityClientUpdates.notifyUpdated(this);
         }
     }
 

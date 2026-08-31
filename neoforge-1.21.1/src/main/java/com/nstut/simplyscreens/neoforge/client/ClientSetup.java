@@ -2,12 +2,14 @@ package com.nstut.simplyscreens.neoforge.client;
 
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.BlockEntityRegistries;
+import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntityClientUpdates;
 import com.nstut.simplyscreens.client.compat.sable.ClientScreenSpatialResolver;
 import com.nstut.simplyscreens.client.renderers.ScreenBlockEntityRenderer;
 import com.nstut.simplyscreens.helpers.ClientImageManager;
 import com.nstut.simplyscreens.client.ClientServerConfig;
 import com.nstut.simplyscreens.client.testing.UiSmokeTest;
 import com.nstut.simplyscreens.network.PacketRegistries;
+import com.nstut.simplyscreens.network.ClientPacketHandler;
 import com.nstut.simplyscreens.testing.LiveJoinTestProtocol;
 import dev.architectury.event.events.client.ClientTickEvent;
 import net.minecraft.client.Minecraft;
@@ -34,6 +36,8 @@ public class ClientSetup {
             
             ClientImageManager.initialize();
             SimplyScreens.LOGGER.info("ClientImageManager initialized");
+
+            ScreenBlockEntityClientUpdates.register(ClientPacketHandler::handleBlockEntityUpdate);
             
             BlockEntityRenderers.register(BlockEntityRegistries.SCREEN.get(), ScreenBlockEntityRenderer::new);
             SimplyScreens.LOGGER.info("BlockEntityRenderer registered");
