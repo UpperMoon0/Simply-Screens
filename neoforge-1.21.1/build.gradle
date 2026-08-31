@@ -62,13 +62,20 @@ dependencies {
     common(project(path: ':common-1.21.1', configuration: 'namedElements')) { transitive false }
     shadowBundle project(path: ':common-1.21.1', configuration: 'transformProductionNeoForge')
 
-    // Optional local Sable runtime for manual moving-sublevel integration tests.
-    // These sibling build outputs are never bundled in release jars.
+    // Local integration-test mods. These are attached automatically when the
+    // sibling source checkouts have been built and are never bundled in releases.
     def localSableJar = rootProject.file('../sable/neoforge/build/libs/sable-neoforge-1.21.1-2.0.5.jar')
     def localSableRapierJar = rootProject.file('../sable/sable_rapier/build/libs/sable-sable_rapier-1.21.1-2.0.5.jar')
+    def localAeronauticsJars = [
+            rootProject.file('../Simulated-Project/simulated/neoforge/build/libs/simulated-neoforge-1.21.1-1.3.1.jar'),
+            rootProject.file('../Simulated-Project/aeronautics/neoforge/build/libs/aeronautics-neoforge-1.21.1-1.3.1.jar'),
+            rootProject.file('../Simulated-Project/offroad/neoforge/build/libs/offroad-neoforge-1.21.1-1.3.1.jar')
+    ]
     if (localSableJar.exists()) {
         modLocalRuntime files(localSableJar)
         if (localSableRapierJar.exists()) {
+            // Loom does not expose the Rapier JarJar nested in the remapped
+            // local Sable jar, so place its service provider on the classpath.
             runtimeOnly files(localSableRapierJar)
         }
         modLocalRuntime("com.simibubi.create:create-1.21.1:6.0.10-280") { transitive = false }
@@ -81,6 +88,11 @@ dependencies {
         }
         forgeRuntimeLibrary "gg.moonflower:molang-compiler:3.1.1.19"
         forgeRuntimeLibrary "io.github.ocelot:glsl-processor:0.2.3"
+    }
+    // Load the component jars directly. Loom remaps local runtime mods, but
+    // cannot reliably rediscover the JarJar modules nested in the bundled jar.
+    if (localSableJar.exists() && localAeronauticsJars.every { it.exists() }) {
+        modLocalRuntime files(localAeronauticsJars)
     }
 }
 
