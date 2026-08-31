@@ -12,6 +12,7 @@ import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simplyscreens.client.compat.sable.ClientScreenSpatialResolver;
 import com.nstut.simplyscreens.helpers.ClientImageManager;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -34,6 +35,7 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
     private static final float BASE_OFFSET = 0.501f;
     private static final Map<BlockPos, Long> LAST_DRAW_LOG_NANOS = new ConcurrentHashMap<>();
     private static final FrameRenderClaims<Object> FRAME_RENDER_CLAIMS = new FrameRenderClaims<>();
+    private static final FrameVisibilityCache<Object> FRAME_VANILLA_VISIBILITY = new FrameVisibilityCache<>();
 
     public ScreenBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
     }
@@ -41,16 +43,19 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
     /** Clears logical-screen ownership before each real world render pass. */
     public static void beginRenderFrame() {
         FRAME_RENDER_CLAIMS.clearValues();
+        FRAME_VANILLA_VISIBILITY.clearValues();
     }
 
     /** Drops render claims belonging to a level the client just left. */
     public static void clearLevel(ClientLevel level) {
         FRAME_RENDER_CLAIMS.removeLevel(level);
+        FRAME_VANILLA_VISIBILITY.removeLevel(level);
     }
 
     /** Releases level identities when the client leaves a world. */
     public static void clearCaches() {
         FRAME_RENDER_CLAIMS.clear();
+        FRAME_VANILLA_VISIBILITY.clear();
         LAST_DRAW_LOG_NANOS.clear();
     }
 
@@ -128,6 +133,17 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
             Boolean sableVisibility = ClientScreenSpatialResolver.isWithinRenderDistance(
                     clientLevel, blockEntity, anchor, getViewDistance());
             if (sableVisibility != null) return sableVisibility;
+            byte cached = FRAME_VANILLA_VISIBILITY.get(clientLevel, anchor.asLong());
+            if (cached != FrameVisibilityCache.UNCACHED) return cached == FrameVisibilityCache.VISIBLE;
+
+            BlockPos farCorner = getFarCorner(blockEntity);
+            boolean visible = ScreenVisibility.isWithinDistance(
+                    cameraPosition.x, cameraPosition.y, cameraPosition.z,
+                    anchor.getX(), anchor.getY(), anchor.getZ(),
+                    farCorner.getX(), farCorner.getY(), farCorner.getZ(),
+                    getViewDistance());
+            FRAME_VANILLA_VISIBILITY.put(clientLevel, anchor.asLong(), visible);
+            return visible;
         }
         BlockPos farCorner = getFarCorner(blockEntity);
         return ScreenVisibility.isWithinDistance(
@@ -247,6 +263,40 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
 
         void clearValues() {
             levels.values().forEach(LongOpenHashSet::clear);
+        }
+
+        void removeLevel(L levelIdentity) {
+            levels.remove(levelIdentity);
+        }
+
+        void clear() {
+            levels.clear();
+        }
+    }
+
+    static final class FrameVisibilityCache<L> {
+        static final byte UNCACHED = 0;
+        static final byte VISIBLE = 1;
+        static final byte HIDDEN = 2;
+
+        private final Map<L, Long2ByteOpenHashMap> levels = new IdentityHashMap<>();
+
+        byte get(L levelIdentity, long anchor) {
+            Long2ByteOpenHashMap visibility = levels.get(levelIdentity);
+            return visibility == null ? UNCACHED : visibility.get(anchor);
+        }
+
+        void put(L levelIdentity, long anchor, boolean visible) {
+            Long2ByteOpenHashMap levelVisibility = levels.computeIfAbsent(levelIdentity, ignored -> {
+                Long2ByteOpenHashMap created = new Long2ByteOpenHashMap();
+                created.defaultReturnValue(UNCACHED);
+                return created;
+            });
+            levelVisibility.put(anchor, visible ? VISIBLE : HIDDEN);
+        }
+
+        void clearValues() {
+            levels.values().forEach(Long2ByteOpenHashMap::clear);
         }
 
         void removeLevel(L levelIdentity) {
