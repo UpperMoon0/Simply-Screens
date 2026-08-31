@@ -197,11 +197,9 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         } else if (row.selected()) {
             actions.child(Ui.badge(Component.translatable("gui.simplyscreens.gallery.selected"), Badge.Variant.NEUTRAL));
         }
-        if (!row.selected()) {
-            actions.child(Ui.button(Component.translatable("gui.simplyscreens.screen.choose"),
-                    () -> selectedImageId.set(image.imageId())).secondary().small());
-        } else if (!row.displayed()) {
-            actions.child(Ui.button(Component.translatable("gui.simplyscreens.screen.select"), this::onSelect)
+        if (!row.displayed()) {
+            actions.child(Ui.button(Component.translatable("gui.simplyscreens.screen.select"),
+                    () -> selectImage(image.imageId()))
                     .primary().small());
         }
         actions.child(Ui.button(Component.translatable("gui.simplyscreens.screen.remove"),
@@ -268,11 +266,11 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         return Ui.scroll(content);
     }
 
-    private void onSelect() {
-        UUID selected = selectedImageId.get();
-        if (selected == null || !hasAnchor()) return;
-        PacketRegistries.sendToServer(new UpdateScreenSelectedImageC2SPacket(blockEntityPos, selected));
-        displayedImageId.set(selected);
+    private void selectImage(UUID imageId) {
+        if (imageId == null || !hasAnchor()) return;
+        selectedImageId.set(imageId);
+        PacketRegistries.sendToServer(new UpdateScreenSelectedImageC2SPacket(blockEntityPos, imageId));
+        displayedImageId.set(imageId);
         status.set(Component.translatable("gui.simplyscreens.status.selected"));
     }
 
@@ -284,7 +282,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
             return;
         }
         screenId.set(normalized);
-        PacketRegistries.sendToServer(new UpdateScreenIdC2SPacket(blockEntityPos, normalized, selectedImageId.get()));
+        PacketRegistries.sendToServer(new UpdateScreenIdC2SPacket(blockEntityPos, normalized, displayedImageId.get()));
         status.set(Component.translatable("gui.simplyscreens.status.linked"));
     }
 
@@ -455,6 +453,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         applyingRemoteState = true;
         try {
             displayedImageId.set(imageId);
+            selectedImageId.set(imageId);
             this.maintainAspectRatio.set(maintainAspectRatio);
             this.screenId.set(screenId != null ? screenId : "");
         } finally {

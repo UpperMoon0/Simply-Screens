@@ -13,6 +13,7 @@ import com.nstut.simplyscreens.network.ClientPacketHandler;
 import com.nstut.simplyscreens.testing.LiveJoinTestProtocol;
 import dev.architectury.event.events.client.ClientTickEvent;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -21,6 +22,7 @@ import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.level.LevelEvent;
 
 @EventBusSubscriber(modid = SimplyScreens.MOD_ID, value = Dist.CLIENT)
 public class ClientSetup {
@@ -47,6 +49,7 @@ public class ClientSetup {
             SimplyScreens.LOGGER.info("S2C Packets registered");
             
             NeoForge.EVENT_BUS.addListener(ClientSetup::onClientDisconnect);
+            NeoForge.EVENT_BUS.addListener(ClientSetup::onLevelUnload);
             NeoForge.EVENT_BUS.addListener(ClientSetup::onRenderLevelStage);
             SimplyScreens.LOGGER.info("Client disconnect listener added");
         });
@@ -55,12 +58,22 @@ public class ClientSetup {
     public static void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
         SimplyScreens.LOGGER.info("Client disconnect event received");
         ClientImageManager.clearCache();
+        ClientScreenSpatialResolver.clearCaches();
+        ScreenBlockEntityRenderer.clearCaches();
         ClientServerConfig.reset();
+    }
+
+    public static void onLevelUnload(LevelEvent.Unload event) {
+        if (event.getLevel() instanceof ClientLevel clientLevel) {
+            ClientScreenSpatialResolver.clearLevel(clientLevel);
+            ScreenBlockEntityRenderer.clearLevel(clientLevel);
+        }
     }
 
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
         if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_SKY) {
             ClientScreenSpatialResolver.beginRenderFrame();
+            ScreenBlockEntityRenderer.beginRenderFrame();
         }
     }
 

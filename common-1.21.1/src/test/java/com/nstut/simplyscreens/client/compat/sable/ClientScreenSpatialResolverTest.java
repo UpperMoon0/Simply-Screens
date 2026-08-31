@@ -1,13 +1,14 @@
 package com.nstut.simplyscreens.client.compat.sable;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.Test;
-import net.minecraft.core.BlockPos;
-
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 class ClientScreenSpatialResolverTest {
     @Test
@@ -17,43 +18,114 @@ class ClientScreenSpatialResolverTest {
     }
 
     @Test
-    void visibilityIsComputedOncePerLogicalScreenPerRenderFrame() {
-        Object levelIdentity = new Object();
-        BlockPos anchor = new BlockPos(1, 2, 3);
-        BlockPos farCorner = new BlockPos(4, 5, 6);
-        AtomicInteger computations = new AtomicInteger();
+    void primitiveCacheSeparatesLevelsAndClearsBetweenFrames() {
+        Object firstLevel = new Object();
+        Object secondLevel = new Object();
+        long anchor = new BlockPos(10, 20, 30).asLong();
+        ClientScreenSpatialResolver.FrameVisibilityCache<Object> cache =
+                new ClientScreenSpatialResolver.FrameVisibilityCache<>();
 
-        ClientScreenSpatialResolver.beginRenderFrame();
-        assertEquals(Boolean.TRUE, ClientScreenSpatialResolver.cachedVisibility(
-                levelIdentity, anchor, farCorner, 64, () -> computations.incrementAndGet() > 0));
-        assertEquals(Boolean.TRUE, ClientScreenSpatialResolver.cachedVisibility(
-                levelIdentity, anchor, farCorner, 64, () -> computations.incrementAndGet() > 0));
-        assertEquals(1, computations.get());
+        assertEquals(ClientScreenSpatialResolver.UNCACHED, cache.get(firstLevel, anchor));
+        cache.put(firstLevel, anchor, Boolean.TRUE);
+        cache.put(secondLevel, anchor, Boolean.FALSE);
+        assertEquals(ClientScreenSpatialResolver.VISIBLE, cache.get(firstLevel, anchor));
+        assertEquals(ClientScreenSpatialResolver.HIDDEN, cache.get(secondLevel, anchor));
 
-        ClientScreenSpatialResolver.beginRenderFrame();
-        assertEquals(Boolean.TRUE, ClientScreenSpatialResolver.cachedVisibility(
-                levelIdentity, anchor, farCorner, 64, () -> computations.incrementAndGet() > 0));
-        assertEquals(2, computations.get());
+        cache.clearValues();
+        assertEquals(ClientScreenSpatialResolver.UNCACHED, cache.get(firstLevel, anchor));
     }
 
     @Test
-    void vanillaFallbackIsAlsoCachedWithinFrame() {
-        Object levelIdentity = new Object();
-        BlockPos anchor = BlockPos.ZERO;
-        BlockPos farCorner = BlockPos.ZERO;
-        AtomicInteger computations = new AtomicInteger();
+    void primitiveCacheEvictsRemovedLevel() {
+        Object firstLevel = new Object();
+        Object secondLevel = new Object();
+        long anchor = new BlockPos(10, 20, 30).asLong();
+        ClientScreenSpatialResolver.FrameVisibilityCache<Object> cache =
+                new ClientScreenSpatialResolver.FrameVisibilityCache<>();
 
-        ClientScreenSpatialResolver.beginRenderFrame();
-        assertNull(ClientScreenSpatialResolver.cachedVisibility(
-                levelIdentity, anchor, farCorner, 64, () -> {
-                    computations.incrementAndGet();
-                    return null;
-                }));
-        assertNull(ClientScreenSpatialResolver.cachedVisibility(
-                levelIdentity, anchor, farCorner, 64, () -> {
-                    computations.incrementAndGet();
-                    return null;
-                }));
-        assertEquals(1, computations.get());
+        cache.put(firstLevel, anchor, Boolean.TRUE);
+        cache.put(secondLevel, anchor, Boolean.FALSE);
+
+        cache.removeLevel(firstLevel);
+
+        assertEquals(ClientScreenSpatialResolver.UNCACHED, cache.get(firstLevel, anchor));
+        assertEquals(ClientScreenSpatialResolver.HIDDEN, cache.get(secondLevel, anchor));
+    }
+
+    @Test
+    void primitiveCachePreservesNullableVanillaFallback() {
+        Object level = new Object();
+        long anchor = new BlockPos(1, 2, 3).asLong();
+        ClientScreenSpatialResolver.FrameVisibilityCache<Object> cache =
+                new ClientScreenSpatialResolver.FrameVisibilityCache<>();
+
+        cache.put(level, anchor, null);
+        byte cached = cache.get(level, anchor);
+        assertEquals(ClientScreenSpatialResolver.VANILLA, cached);
+        assertNull(ClientScreenSpatialResolver.decode(cached));
+    }
+
+    @Test
+    void cullGeometryCacheEvictsRemovedLevel() {
+        Object firstLevel = new Object();
+        Object secondLevel = new Object();
+        BlockPos anchor = new BlockPos(10, 20, 30);
+        long key = anchor.asLong();
+        ClientScreenSpatialResolver.CullGeometryCache<Object> cache =
+                new ClientScreenSpatialResolver.CullGeometryCache<>();
+
+        cache.get(firstLevel, key, anchor, 32, 16, Direction.NORTH);
+        cache.get(secondLevel, key, anchor, 32, 16, Direction.NORTH);
+
+        cache.removeLevel(firstLevel);
+
+        ClientScreenSpatialResolver.CullGeometry recreated =
+                cache.get(firstLevel, key, anchor, 32, 16, Direction.NORTH);
+        assertNotSame(recreated, cache.get(secondLevel, key, anchor, 32, 16, Direction.NORTH));
+    }
+
+    @Test
+    void cullGeometryIsReusedUntilStructureSignatureChanges() {
+        Object level = new Object();
+        BlockPos anchor = new BlockPos(10, 20, 30);
+        long key = anchor.asLong();
+        ClientScreenSpatialResolver.CullGeometryCache<Object> cache =
+                new ClientScreenSpatialResolver.CullGeometryCache<>();
+
+        ClientScreenSpatialResolver.CullGeometry first =
+                cache.get(level, key, anchor, 32, 16, Direction.NORTH);
+        assertSame(first, cache.get(level, key, anchor, 32, 16, Direction.NORTH));
+
+        ClientScreenSpatialResolver.CullGeometry resized =
+                cache.get(level, key, anchor, 33, 16, Direction.NORTH);
+        assertNotSame(first, resized);
+        assertNotSame(resized, cache.get(level, key, anchor, 33, 16, Direction.SOUTH));
+    }
+
+    @Test
+    void cullGeometryStoresCenterAndConservativeBaseRadius() {
+        ClientScreenSpatialResolver.CullGeometry geometry = ClientScreenSpatialResolver.calculateGeometry(
+                new BlockPos(2, 4, 6), 3, 2, Direction.NORTH);
+
+        assertEquals(1.5, geometry.localCenter().x);
+        assertEquals(5.0, geometry.localCenter().y);
+        assertEquals(6.5, geometry.localCenter().z);
+        assertEquals(Math.sqrt(3.5), geometry.baseRadius());
+    }
+
+    @Test
+    void cullGeometryPrunesScreensNotSeenInTheCurrentRenderSession() {
+        Object level = new Object();
+        BlockPos anchor = new BlockPos(10, 20, 30);
+        long key = anchor.asLong();
+        ClientScreenSpatialResolver.CullGeometryCache<Object> cache =
+                new ClientScreenSpatialResolver.CullGeometryCache<>();
+
+        ClientScreenSpatialResolver.CullGeometry first =
+                cache.get(level, key, anchor, 2, 2, Direction.NORTH);
+        cache.beginFrame();
+        cache.beginFrame();
+
+        assertNotSame(first, cache.get(level, key, anchor, 2, 2, Direction.NORTH));
     }
 }
