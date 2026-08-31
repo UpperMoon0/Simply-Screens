@@ -5,13 +5,17 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import com.nstut.simplyscreens.Config;
-import com.nstut.simplyscreens.ScreenTileLayout;
 import com.nstut.simplyscreens.ScreenVisibility;
 import com.nstut.simplyscreens.SimplyScreens;
-import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simplyscreens.blocks.ScreenBlock;
+import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simplyscreens.client.compat.sable.ClientScreenSpatialResolver;
 import com.nstut.simplyscreens.helpers.ClientImageManager;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import java.util.IdentityHashMap;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -24,55 +28,81 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
-import java.util.UUID;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBlockEntity> {
     private static final int FULL_BRIGHTNESS = 15728880;
     private static final float BASE_OFFSET = 0.501f;
     private static final Map<BlockPos, Long> LAST_DRAW_LOG_NANOS = new ConcurrentHashMap<>();
+    private static final FrameRenderClaims<Object> FRAME_RENDER_CLAIMS = new FrameRenderClaims<>();
 
     public ScreenBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
+    }
+
+    /** Clears logical-screen ownership before each real world render pass. */
+    public static void beginRenderFrame() {
+        FRAME_RENDER_CLAIMS.clearValues();
+    }
+
+    /** Releases level identities when the client leaves a world. */
+    public static void clearCaches() {
+        FRAME_RENDER_CLAIMS.clear();
+        LAST_DRAW_LOG_NANOS.clear();
     }
 
     @Override
     public void render(@NotNull ScreenBlockEntity blockEntity, float partialTicks, @NotNull PoseStack poseStack,
                        @NotNull MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
-        ScreenBlockEntity anchor = blockEntity.isAnchor() ? blockEntity : blockEntity.getAnchorEntity();
-        ScreenBlockEntity renderData = anchor != null ? anchor : blockEntity;
-        if (renderData.getResolvedImageId() == null || blockEntity.getAnchorPos() == null) return;
+        BlockPos anchorPos = blockEntity.getAnchorPos();
+        Object levelIdentity = blockEntity.getLevel();
+        UUID localImageId = blockEntity.getResolvedImageId();
+        if (anchorPos == null || levelIdentity == null || localImageId == null
+                || !FRAME_RENDER_CLAIMS.claim(levelIdentity, anchorPos.asLong())) return;
 
+        ScreenBlockEntity loadedAnchor = blockEntity.isAnchor() ? blockEntity : blockEntity.getAnchorEntity();
+        ScreenBlockEntity renderData = loadedAnchor != null ? loadedAnchor : blockEntity;
         UUID imageId = renderData.getResolvedImageId();
-        ResourceLocation texture = ClientImageManager.getTextureLocation(imageId);
-        if (texture == null) return;
+        if (imageId == null) imageId = localImageId;
 
-        if (!blockEntity.isAnchor()) {
-            BlockPos anchorPos = blockEntity.getAnchorPos();
-            if (anchorPos == null) return;
-            BlockPos currentPos = blockEntity.getBlockPos();
-            // The elected child renders in its own coordinate space, so move back to the logical anchor first.
-            poseStack.translate(
-                    anchorPos.getX() - currentPos.getX(),
-                    anchorPos.getY() - currentPos.getY(),
-                    anchorPos.getZ() - currentPos.getZ());
-        }
+        ResourceLocation texture = ClientImageManager.getTextureLocation(imageId);
+        DynamicTexture imageTexture = ClientImageManager.getImageTexture(imageId);
+        if (texture == null || imageTexture == null) return;
 
         BlockState blockState = blockEntity.getBlockState();
-        Direction facing = blockState.hasProperty(ScreenBlock.FACING) ?
-            blockState.getValue(ScreenBlock.FACING) : Direction.NORTH;
+        Direction facing = blockState.hasProperty(ScreenBlock.FACING)
+                ? blockState.getValue(ScreenBlock.FACING) : Direction.NORTH;
+        float displayWidth = renderData.getScreenWidth();
+        float displayHeight = renderData.getScreenHeight();
+        if (renderData.isMaintainAspectRatio()) {
+            NativeImage image = imageTexture.getPixels();
+            if (image == null || image.getWidth() <= 0 || image.getHeight() <= 0) {
+                displayWidth = 1.0f;
+                displayHeight = 1.0f;
+            } else {
+                float imageAspect = (float) image.getWidth() / image.getHeight();
+                float screenAspect = (float) renderData.getScreenWidth() / renderData.getScreenHeight();
+                if (imageAspect > screenAspect) {
+                    displayHeight = displayWidth / imageAspect;
+                } else {
+                    displayWidth = displayHeight * imageAspect;
+                }
+            }
+        }
 
-        DynamicTexture imageTexture = ClientImageManager.getImageTexture(imageId);
-        if (imageTexture == null) return;
-        float[] scales = calculateScalingFactors(imageTexture, renderData.getScreenWidth(), renderData.getScreenHeight(),
-                renderData.isMaintainAspectRatio());
-        ScreenTileLayout.Tile tile = calculateTile(blockEntity, renderData, facing, scales[0], scales[1]);
-        if (tile.isEmpty()) return;
-
-        debugDraw(blockEntity, texture, facing);
-
-        prepareRenderingTransform(poseStack, renderData, facing);
-        renderTextureQuad(texture, tile, poseStack, bufferSource, packedOverlay);
+        poseStack.pushPose();
+        try {
+            if (!blockEntity.isAnchor()) {
+                BlockPos currentPos = blockEntity.getBlockPos();
+                poseStack.translate(
+                        anchorPos.getX() - currentPos.getX(),
+                        anchorPos.getY() - currentPos.getY(),
+                        anchorPos.getZ() - currentPos.getZ());
+            }
+            prepareRenderingTransform(poseStack, renderData, facing);
+            debugDraw(blockEntity, anchorPos, texture, facing);
+            renderTextureQuad(texture, displayWidth, displayHeight, poseStack, bufferSource, packedOverlay);
+        } finally {
+            poseStack.popPose();
+        }
     }
 
     @Override
@@ -105,12 +135,7 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
     private static BlockPos getFarCorner(ScreenBlockEntity blockEntity) {
         Direction facing = blockEntity.getBlockState().hasProperty(ScreenBlock.FACING)
                 ? blockEntity.getBlockState().getValue(ScreenBlock.FACING) : Direction.NORTH;
-        Direction widthDirection = switch (facing) {
-            case NORTH, UP, DOWN -> Direction.WEST;
-            case SOUTH -> Direction.EAST;
-            case WEST -> Direction.SOUTH;
-            case EAST -> Direction.NORTH;
-        };
+        Direction widthDirection = getWidthDirection(facing);
         Direction heightDirection = facing.getAxis().isHorizontal()
                 ? Direction.UP : facing == Direction.UP ? Direction.SOUTH : Direction.NORTH;
         return blockEntity.getAnchorPos()
@@ -118,20 +143,20 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
                 .relative(heightDirection, blockEntity.getScreenHeight() - 1);
     }
 
-    private static void debugDraw(ScreenBlockEntity entity, ResourceLocation texture, Direction facing) {
+    private static void debugDraw(ScreenBlockEntity owner, BlockPos anchor,
+                                  ResourceLocation texture, Direction facing) {
         if (!Config.DEBUG_RENDERING) return;
-        BlockPos owner = entity.getBlockPos();
         long now = System.nanoTime();
-        Long lastLog = LAST_DRAW_LOG_NANOS.get(owner);
+        Long lastLog = LAST_DRAW_LOG_NANOS.get(anchor);
         if (lastLog != null && now - lastLog < 1_000_000_000L) return;
-        LAST_DRAW_LOG_NANOS.put(owner, now);
-        BlockPos anchor = entity.getAnchorPos();
+        LAST_DRAW_LOG_NANOS.put(anchor, now);
+        BlockPos ownerPos = owner.getBlockPos();
         SimplyScreens.LOGGER.info("Screen render draw owner={} anchor={} offset=({}, {}, {}) image={} texture={} size={}x{} facing={} geometrySubmitted=true",
-                owner, anchor,
-                anchor == null ? 0 : anchor.getX() - owner.getX(),
-                anchor == null ? 0 : anchor.getY() - owner.getY(),
-                anchor == null ? 0 : anchor.getZ() - owner.getZ(),
-                entity.getResolvedImageId(), texture, entity.getScreenWidth(), entity.getScreenHeight(), facing);
+                ownerPos, anchor,
+                anchor.getX() - ownerPos.getX(),
+                anchor.getY() - ownerPos.getY(),
+                anchor.getZ() - ownerPos.getZ(),
+                owner.getResolvedImageId(), texture, owner.getScreenWidth(), owner.getScreenHeight(), facing);
     }
 
     private static Direction getWidthDirection(Direction facing) {
@@ -143,51 +168,21 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         };
     }
 
-    private static ScreenTileLayout.Tile calculateTile(ScreenBlockEntity entity, ScreenBlockEntity anchor,
-                                                        Direction facing, float imageWidth, float imageHeight) {
-        Direction width = getWidthDirection(facing);
-        Direction height = facing.getAxis().isHorizontal()
-                ? Direction.UP : facing == Direction.UP ? Direction.SOUTH : Direction.NORTH;
-        BlockPos current = entity.getBlockPos();
-        BlockPos origin = entity.getAnchorPos();
-        int dx = current.getX() - origin.getX();
-        int dy = current.getY() - origin.getY();
-        int dz = current.getZ() - origin.getZ();
-        int widthIndex = dx * width.getStepX() + dy * width.getStepY() + dz * width.getStepZ();
-        int heightIndex = dx * height.getStepX() + dy * height.getStepY() + dz * height.getStepZ();
-        return ScreenTileLayout.calculate(anchor.getScreenWidth(), anchor.getScreenHeight(),
-                widthIndex, heightIndex, imageWidth, imageHeight);
-    }
-
-
-    private void prepareRenderingTransform(PoseStack poseStack, ScreenBlockEntity blockEntity, Direction facing) {
-        poseStack.pushPose();
-
-        // Center on block
+    private static void prepareRenderingTransform(PoseStack poseStack, ScreenBlockEntity screen, Direction facing) {
         poseStack.translate(0.5, 0.5, 0.5);
-
-        // Apply facing rotation
         applyFacingRotation(poseStack, facing);
-
-        // Move to front face with direction-aware offset
-        float frontOffset = calculateFrontOffset(facing);
-        poseStack.translate(0, 0, frontOffset);
-
-        // Adjust for screen structure size
-        centerOnScreenStructure(poseStack, blockEntity, facing);
-
+        poseStack.translate(0, 0, calculateFrontOffset(facing));
+        poseStack.translate(-(screen.getScreenWidth() - 1) / 2f, (screen.getScreenHeight() - 1) / 2f, 0);
     }
 
-    private float calculateFrontOffset(Direction facing) {
+    private static float calculateFrontOffset(Direction facing) {
         return switch (facing) {
             case NORTH, SOUTH -> -BASE_OFFSET;
             default -> BASE_OFFSET;
         };
     }
 
-    private void applyFacingRotation(PoseStack poseStack, Direction facing) {
-        // This method applies additional rotations and flips based on the screen's facing direction.
-        // This is an intentional and required feature for the screen to function as intended.
+    private static void applyFacingRotation(PoseStack poseStack, Direction facing) {
         switch (facing) {
             case NORTH:
                 break;
@@ -213,81 +208,44 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         }
     }
 
-    private void centerOnScreenStructure(PoseStack poseStack, ScreenBlockEntity blockEntity, Direction facing) {
-        float centerX;
-        float centerY;
-
-        if (facing.getAxis().isHorizontal()) {
-            // Horizontal screen: width is along x or z, height is vertical (y-axis)
-            centerX = -(blockEntity.getScreenWidth() - 1) / 2f;
-            centerY = (blockEntity.getScreenHeight() - 1) / 2f;
-        } else {
-            // Vertical screens (UP/DOWN): width is x-axis, height is z-axis
-            centerX = -(blockEntity.getScreenWidth() - 1) / 2f;
-            centerY = (blockEntity.getScreenHeight() - 1) / 2f;
-        }
-
-        poseStack.translate(centerX, centerY, 0);
-    }
-
-    private float[] calculateScalingFactors(DynamicTexture texture, int width, int height, boolean keepAspect) {
-        if (!keepAspect) {
-            return new float[]{width, height};
-        }
-
-        NativeImage image = texture.getPixels();
-        if (image == null) return new float[]{1, 1};
-
-        float imageAspect = (float) image.getWidth() / image.getHeight();
-        float screenAspect = (float) width / height;
-
-        return imageAspect > screenAspect ?
-                new float[]{width, width / imageAspect} :
-                new float[]{height * imageAspect, height};
-    }
-
-    private void renderTextureQuad(ResourceLocation texture, ScreenTileLayout.Tile tile, PoseStack poseStack,
-                                   MultiBufferSource bufferSource, int packedOverlay) {
-        VertexConsumer vertexBuffer = bufferSource.getBuffer(RenderType.text(texture));
+    private static void renderTextureQuad(ResourceLocation texture, float width, float height,
+                                          PoseStack poseStack, MultiBufferSource bufferSource, int packedOverlay) {
+        VertexConsumer consumer = bufferSource.getBuffer(RenderType.text(texture));
         PoseStack.Pose pose = poseStack.last();
+        float minX = -width * 0.5f;
+        float maxX = width * 0.5f;
+        float minY = -height * 0.5f;
+        float maxY = height * 0.5f;
 
-        buildTexturedQuad(vertexBuffer, pose, packedOverlay, tile);
-        poseStack.popPose();
+        addVertex(consumer, pose, packedOverlay, minX, maxY, 1.0f, 0.0f);
+        addVertex(consumer, pose, packedOverlay, maxX, maxY, 0.0f, 0.0f);
+        addVertex(consumer, pose, packedOverlay, maxX, minY, 0.0f, 1.0f);
+        addVertex(consumer, pose, packedOverlay, minX, minY, 1.0f, 1.0f);
     }
 
-    private void buildTexturedQuad(VertexConsumer consumer, PoseStack.Pose pose, int overlay, ScreenTileLayout.Tile tile) {
-        // The UV coordinates are intentionally flipped horizontally (U is swapped)
-        // to ensure the image displays correctly on the screen. This is not a bug.
-        // Top-right vertex
-        consumer.addVertex(pose.pose(), tile.minX(), tile.maxY(), 0)
+    private static void addVertex(VertexConsumer consumer, PoseStack.Pose pose, int overlay,
+                                  float x, float y, float u, float v) {
+        consumer.addVertex(pose.pose(), x, y, 0)
                 .setColor(255, 255, 255, 255)
-                .setUv(tile.maxU(), tile.minV())
+                .setUv(u, v)
                 .setOverlay(overlay)
                 .setUv2(FULL_BRIGHTNESS & 0xFFFF, FULL_BRIGHTNESS >> 16)
                 .setNormal(0, 0, 1);
+    }
 
-        // Top-left vertex
-        consumer.addVertex(pose.pose(), tile.maxX(), tile.maxY(), 0)
-                .setColor(255, 255, 255, 255)
-                .setUv(tile.minU(), tile.minV())
-                .setOverlay(overlay)
-                .setUv2(FULL_BRIGHTNESS & 0xFFFF, FULL_BRIGHTNESS >> 16)
-                .setNormal(0, 0, 1);
+    static final class FrameRenderClaims<L> {
+        private final Map<L, LongOpenHashSet> levels = new IdentityHashMap<>();
 
-        // Bottom-left vertex
-        consumer.addVertex(pose.pose(), tile.maxX(), tile.minY(), 0)
-                .setColor(255, 255, 255, 255)
-                .setUv(tile.minU(), tile.maxV())
-                .setOverlay(overlay)
-                .setUv2(FULL_BRIGHTNESS & 0xFFFF, FULL_BRIGHTNESS >> 16)
-                .setNormal(0, 0, 1);
+        boolean claim(L levelIdentity, long anchor) {
+            return levels.computeIfAbsent(levelIdentity, ignored -> new LongOpenHashSet()).add(anchor);
+        }
 
-        // Bottom-right vertex
-        consumer.addVertex(pose.pose(), tile.minX(), tile.minY(), 0)
-                .setColor(255, 255, 255, 255)
-                .setUv(tile.maxU(), tile.maxV())
-                .setOverlay(overlay)
-                .setUv2(FULL_BRIGHTNESS & 0xFFFF, FULL_BRIGHTNESS >> 16)
-                .setNormal(0, 0, 1);
+        void clearValues() {
+            levels.values().forEach(LongOpenHashSet::clear);
+        }
+
+        void clear() {
+            levels.clear();
+        }
     }
 }

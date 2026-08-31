@@ -8,6 +8,7 @@ import dev.ryanhcode.sable.companion.SableCompanion;
 import dev.ryanhcode.sable.companion.SubLevelAccess;
 import dev.ryanhcode.sable.companion.math.Pose3dc;
 import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import net.minecraft.client.Minecraft;
@@ -27,12 +28,19 @@ public final class ClientScreenSpatialResolver {
 
     private static final SableCompanion SABLE = SableCompanion.INSTANCE;
     private static final FrameVisibilityCache<ClientLevel> FRAME_VISIBILITY = new FrameVisibilityCache<>();
+    private static final CullGeometryCache<ClientLevel> CULL_GEOMETRY = new CullGeometryCache<>();
 
     private ClientScreenSpatialResolver() {}
 
     /** Starts a real world-render pass, discarding results from the previous pass. */
     public static void beginRenderFrame() {
+        FRAME_VISIBILITY.clearValues();
+    }
+
+    /** Releases level-scoped caches when the client leaves a world. */
+    public static void clearCaches() {
         FRAME_VISIBILITY.clear();
+        CULL_GEOMETRY.clear();
     }
 
     /**
@@ -49,35 +57,25 @@ public final class ClientScreenSpatialResolver {
         byte cached = FRAME_VISIBILITY.get(level, key);
         if (cached != UNCACHED) return decode(cached);
 
-        Boolean visibility = resolveVisibility(level, screen, anchor, viewDistance);
+        Boolean visibility = resolveVisibility(level, screen, anchor, key, viewDistance);
         FRAME_VISIBILITY.put(level, key, visibility);
         return visibility;
     }
 
     private static @Nullable Boolean resolveVisibility(ClientLevel level, ScreenBlockEntity screen,
-                                                        BlockPos anchor, int viewDistance) {
+                                                        BlockPos anchor, long anchorKey, int viewDistance) {
         SubLevelAccess subLevel = SABLE.getContaining(level, anchor);
         if (!(subLevel instanceof ClientSubLevelAccess clientSubLevel)) {
             return SABLE.isInPlotGrid(level, anchor) ? Boolean.FALSE : null;
         }
 
-        BlockPos farCorner = getFarCorner(screen, anchor);
-        double minX = Math.min(anchor.getX(), farCorner.getX());
-        double minY = Math.min(anchor.getY(), farCorner.getY());
-        double minZ = Math.min(anchor.getZ(), farCorner.getZ());
-        double maxX = Math.max(anchor.getX(), farCorner.getX()) + 1.0;
-        double maxY = Math.max(anchor.getY(), farCorner.getY()) + 1.0;
-        double maxZ = Math.max(anchor.getZ(), farCorner.getZ()) + 1.0;
-
-        Vec3 localCenter = new Vec3(
-                (minX + maxX) * 0.5,
-                (minY + maxY) * 0.5,
-                (minZ + maxZ) * 0.5);
-        double radius = localCenter.distanceTo(new Vec3(maxX, maxY, maxZ));
+        Direction facing = getFacing(screen);
+        CullGeometry geometry = CULL_GEOMETRY.get(level, anchorKey, anchor,
+                screen.getScreenWidth(), screen.getScreenHeight(), facing);
         Pose3dc renderPose = clientSubLevel.renderPose();
-        Vec3 renderCenter = renderPose.transformPosition(localCenter);
+        Vec3 renderCenter = renderPose.transformPosition(geometry.localCenter());
         Vec3 camera = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
-        double renderDistance = viewDistance + scaledRadius(radius, renderPose.scale());
+        double renderDistance = viewDistance + scaledRadius(geometry.baseRadius(), renderPose.scale());
         return camera.distanceToSqr(renderCenter) <= renderDistance * renderDistance;
     }
 
@@ -87,19 +85,47 @@ public final class ClientScreenSpatialResolver {
         return radius * maxScale;
     }
 
-    private static BlockPos getFarCorner(ScreenBlockEntity screen, BlockPos anchor) {
-        Direction facing = screen.getBlockState().hasProperty(ScreenBlock.FACING)
+    private static Direction getFacing(ScreenBlockEntity screen) {
+        return screen.getBlockState().hasProperty(ScreenBlock.FACING)
                 ? screen.getBlockState().getValue(ScreenBlock.FACING) : Direction.NORTH;
-        Direction widthDirection = switch (facing) {
+    }
+
+    private static Direction getWidthDirection(Direction facing) {
+        return switch (facing) {
             case NORTH, UP, DOWN -> Direction.WEST;
             case SOUTH -> Direction.EAST;
             case WEST -> Direction.SOUTH;
             case EAST -> Direction.NORTH;
         };
-        Direction heightDirection = facing.getAxis().isHorizontal()
+    }
+
+    private static Direction getHeightDirection(Direction facing) {
+        return facing.getAxis().isHorizontal()
                 ? Direction.UP : facing == Direction.UP ? Direction.SOUTH : Direction.NORTH;
-        return anchor.relative(widthDirection, screen.getScreenWidth() - 1)
-                .relative(heightDirection, screen.getScreenHeight() - 1);
+    }
+
+    static CullGeometry calculateGeometry(BlockPos anchor, int width, int height, Direction facing) {
+        Direction widthDirection = getWidthDirection(facing);
+        Direction heightDirection = getHeightDirection(facing);
+        int widthOffset = Math.max(0, width - 1);
+        int heightOffset = Math.max(0, height - 1);
+        double farX = anchor.getX() + widthDirection.getStepX() * widthOffset
+                + heightDirection.getStepX() * heightOffset;
+        double farY = anchor.getY() + widthDirection.getStepY() * widthOffset
+                + heightDirection.getStepY() * heightOffset;
+        double farZ = anchor.getZ() + widthDirection.getStepZ() * widthOffset
+                + heightDirection.getStepZ() * heightOffset;
+        double minX = Math.min(anchor.getX(), farX);
+        double minY = Math.min(anchor.getY(), farY);
+        double minZ = Math.min(anchor.getZ(), farZ);
+        double maxX = Math.max(anchor.getX(), farX) + 1.0;
+        double maxY = Math.max(anchor.getY(), farY) + 1.0;
+        double maxZ = Math.max(anchor.getZ(), farZ) + 1.0;
+        Vec3 center = new Vec3((minX + maxX) * 0.5, (minY + maxY) * 0.5, (minZ + maxZ) * 0.5);
+        double dx = maxX - center.x;
+        double dy = maxY - center.y;
+        double dz = maxZ - center.z;
+        return new CullGeometry(width, height, facing, center, Math.sqrt(dx * dx + dy * dy + dz * dz));
     }
 
     static @Nullable Boolean decode(byte state) {
@@ -128,8 +154,37 @@ public final class ClientScreenSpatialResolver {
             levelVisibility.put(anchor, visibility == null ? VANILLA : visibility ? VISIBLE : HIDDEN);
         }
 
+        void clearValues() {
+            levels.values().forEach(Long2ByteOpenHashMap::clear);
+        }
+
         void clear() {
             levels.clear();
+        }
+    }
+
+    static final class CullGeometryCache<L> {
+        private final Map<L, Long2ObjectOpenHashMap<CullGeometry>> levels = new IdentityHashMap<>();
+
+        CullGeometry get(L levelIdentity, long anchorKey, BlockPos anchor,
+                         int width, int height, Direction facing) {
+            Long2ObjectOpenHashMap<CullGeometry> levelGeometry =
+                    levels.computeIfAbsent(levelIdentity, ignored -> new Long2ObjectOpenHashMap<>());
+            CullGeometry cached = levelGeometry.get(anchorKey);
+            if (cached != null && cached.matches(width, height, facing)) return cached;
+            CullGeometry calculated = calculateGeometry(anchor, width, height, facing);
+            levelGeometry.put(anchorKey, calculated);
+            return calculated;
+        }
+
+        void clear() {
+            levels.clear();
+        }
+    }
+
+    record CullGeometry(int width, int height, Direction facing, Vec3 localCenter, double baseRadius) {
+        boolean matches(int expectedWidth, int expectedHeight, Direction expectedFacing) {
+            return width == expectedWidth && height == expectedHeight && facing == expectedFacing;
         }
     }
 

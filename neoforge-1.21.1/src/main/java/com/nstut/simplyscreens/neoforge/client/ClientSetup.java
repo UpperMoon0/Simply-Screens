@@ -55,12 +55,15 @@ public class ClientSetup {
     public static void onClientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
         SimplyScreens.LOGGER.info("Client disconnect event received");
         ClientImageManager.clearCache();
+        ClientScreenSpatialResolver.clearCaches();
+        ScreenBlockEntityRenderer.clearCaches();
         ClientServerConfig.reset();
     }
 
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
         if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_SKY) {
             ClientScreenSpatialResolver.beginRenderFrame();
+            ScreenBlockEntityRenderer.beginRenderFrame();
         }
     }
 

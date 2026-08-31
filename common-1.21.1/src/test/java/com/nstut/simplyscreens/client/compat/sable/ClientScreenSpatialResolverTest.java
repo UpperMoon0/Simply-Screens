@@ -1,11 +1,14 @@
 package com.nstut.simplyscreens.client.compat.sable;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 class ClientScreenSpatialResolverTest {
     @Test
@@ -28,7 +31,7 @@ class ClientScreenSpatialResolverTest {
         assertEquals(ClientScreenSpatialResolver.VISIBLE, cache.get(firstLevel, anchor));
         assertEquals(ClientScreenSpatialResolver.HIDDEN, cache.get(secondLevel, anchor));
 
-        cache.clear();
+        cache.clearValues();
         assertEquals(ClientScreenSpatialResolver.UNCACHED, cache.get(firstLevel, anchor));
     }
 
@@ -43,5 +46,34 @@ class ClientScreenSpatialResolverTest {
         byte cached = cache.get(level, anchor);
         assertEquals(ClientScreenSpatialResolver.VANILLA, cached);
         assertNull(ClientScreenSpatialResolver.decode(cached));
+    }
+
+    @Test
+    void cullGeometryIsReusedUntilStructureSignatureChanges() {
+        Object level = new Object();
+        BlockPos anchor = new BlockPos(10, 20, 30);
+        long key = anchor.asLong();
+        ClientScreenSpatialResolver.CullGeometryCache<Object> cache =
+                new ClientScreenSpatialResolver.CullGeometryCache<>();
+
+        ClientScreenSpatialResolver.CullGeometry first =
+                cache.get(level, key, anchor, 32, 16, Direction.NORTH);
+        assertSame(first, cache.get(level, key, anchor, 32, 16, Direction.NORTH));
+
+        ClientScreenSpatialResolver.CullGeometry resized =
+                cache.get(level, key, anchor, 33, 16, Direction.NORTH);
+        assertNotSame(first, resized);
+        assertNotSame(resized, cache.get(level, key, anchor, 33, 16, Direction.SOUTH));
+    }
+
+    @Test
+    void cullGeometryStoresCenterAndConservativeBaseRadius() {
+        ClientScreenSpatialResolver.CullGeometry geometry = ClientScreenSpatialResolver.calculateGeometry(
+                new BlockPos(2, 4, 6), 3, 2, Direction.NORTH);
+
+        assertEquals(1.5, geometry.localCenter().x);
+        assertEquals(5.0, geometry.localCenter().y);
+        assertEquals(6.5, geometry.localCenter().z);
+        assertEquals(Math.sqrt(3.5), geometry.baseRadius());
     }
 }

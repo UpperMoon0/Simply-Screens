@@ -23,9 +23,14 @@ public class ClientSetup implements ClientModInitializer {
         ClientImageManager.initialize();
         ScreenBlockEntityClientUpdates.register(ClientPacketHandler::handleBlockEntityUpdate);
         BlockEntityRenderers.register(BlockEntityRegistries.SCREEN.get(), ScreenBlockEntityRenderer::new);
-        WorldRenderEvents.START.register(context -> ClientScreenSpatialResolver.beginRenderFrame());
+        WorldRenderEvents.START.register(context -> {
+            ClientScreenSpatialResolver.beginRenderFrame();
+            ScreenBlockEntityRenderer.beginRenderFrame();
+        });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             ClientImageManager.clearCache();
+            ClientScreenSpatialResolver.clearCaches();
+            ScreenBlockEntityRenderer.clearCaches();
             ClientServerConfig.reset();
         });
 
