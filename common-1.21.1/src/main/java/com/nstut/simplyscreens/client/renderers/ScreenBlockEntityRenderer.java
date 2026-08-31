@@ -89,12 +89,12 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
     public boolean shouldRender(ScreenBlockEntity blockEntity, Vec3 cameraPosition) {
         BlockPos anchor = blockEntity.getAnchorPos();
         if (anchor == null) return false;
-        BlockPos farCorner = getFarCorner(blockEntity);
         if (blockEntity.getLevel() instanceof ClientLevel clientLevel) {
             Boolean sableVisibility = ClientScreenSpatialResolver.isWithinRenderDistance(
-                    clientLevel, anchor, farCorner, getViewDistance());
+                    clientLevel, blockEntity, anchor, getViewDistance());
             if (sableVisibility != null) return sableVisibility;
         }
+        BlockPos farCorner = getFarCorner(blockEntity);
         return ScreenVisibility.isWithinDistance(
                 cameraPosition.x, cameraPosition.y, cameraPosition.z,
                 anchor.getX(), anchor.getY(), anchor.getZ(),
