@@ -43,6 +43,11 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         FRAME_RENDER_CLAIMS.clearValues();
     }
 
+    /** Drops render claims belonging to a level the client just left. */
+    public static void clearLevel(ClientLevel level) {
+        FRAME_RENDER_CLAIMS.removeLevel(level);
+    }
+
     /** Releases level identities when the client leaves a world. */
     public static void clearCaches() {
         FRAME_RENDER_CLAIMS.clear();
@@ -242,6 +247,10 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
 
         void clearValues() {
             levels.values().forEach(LongOpenHashSet::clear);
+        }
+
+        void removeLevel(L levelIdentity) {
+            levels.remove(levelIdentity);
         }
 
         void clear() {

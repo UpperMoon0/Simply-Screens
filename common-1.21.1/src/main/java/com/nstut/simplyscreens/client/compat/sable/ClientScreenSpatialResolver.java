@@ -37,6 +37,12 @@ public final class ClientScreenSpatialResolver {
         FRAME_VISIBILITY.clearValues();
     }
 
+    /** Drops all cache entries belonging to a level the client just left. */
+    public static void clearLevel(ClientLevel level) {
+        FRAME_VISIBILITY.removeLevel(level);
+        CULL_GEOMETRY.removeLevel(level);
+    }
+
     /** Releases level-scoped caches when the client leaves a world. */
     public static void clearCaches() {
         FRAME_VISIBILITY.clear();
@@ -158,6 +164,10 @@ public final class ClientScreenSpatialResolver {
             levels.values().forEach(Long2ByteOpenHashMap::clear);
         }
 
+        void removeLevel(L levelIdentity) {
+            levels.remove(levelIdentity);
+        }
+
         void clear() {
             levels.clear();
         }
@@ -175,6 +185,10 @@ public final class ClientScreenSpatialResolver {
             CullGeometry calculated = calculateGeometry(anchor, width, height, facing);
             levelGeometry.put(anchorKey, calculated);
             return calculated;
+        }
+
+        void removeLevel(L levelIdentity) {
+            levels.remove(levelIdentity);
         }
 
         void clear() {

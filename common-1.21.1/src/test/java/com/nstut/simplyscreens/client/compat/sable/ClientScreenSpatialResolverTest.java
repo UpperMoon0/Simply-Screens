@@ -36,6 +36,23 @@ class ClientScreenSpatialResolverTest {
     }
 
     @Test
+    void primitiveCacheEvictsRemovedLevel() {
+        Object firstLevel = new Object();
+        Object secondLevel = new Object();
+        long anchor = new BlockPos(10, 20, 30).asLong();
+        ClientScreenSpatialResolver.FrameVisibilityCache<Object> cache =
+                new ClientScreenSpatialResolver.FrameVisibilityCache<>();
+
+        cache.put(firstLevel, anchor, Boolean.TRUE);
+        cache.put(secondLevel, anchor, Boolean.FALSE);
+
+        cache.removeLevel(firstLevel);
+
+        assertEquals(ClientScreenSpatialResolver.UNCACHED, cache.get(firstLevel, anchor));
+        assertEquals(ClientScreenSpatialResolver.HIDDEN, cache.get(secondLevel, anchor));
+    }
+
+    @Test
     void primitiveCachePreservesNullableVanillaFallback() {
         Object level = new Object();
         long anchor = new BlockPos(1, 2, 3).asLong();
@@ -46,6 +63,25 @@ class ClientScreenSpatialResolverTest {
         byte cached = cache.get(level, anchor);
         assertEquals(ClientScreenSpatialResolver.VANILLA, cached);
         assertNull(ClientScreenSpatialResolver.decode(cached));
+    }
+
+    @Test
+    void cullGeometryCacheEvictsRemovedLevel() {
+        Object firstLevel = new Object();
+        Object secondLevel = new Object();
+        BlockPos anchor = new BlockPos(10, 20, 30);
+        long key = anchor.asLong();
+        ClientScreenSpatialResolver.CullGeometryCache<Object> cache =
+                new ClientScreenSpatialResolver.CullGeometryCache<>();
+
+        cache.get(firstLevel, key, anchor, 32, 16, Direction.NORTH);
+        cache.get(secondLevel, key, anchor, 32, 16, Direction.NORTH);
+
+        cache.removeLevel(firstLevel);
+
+        ClientScreenSpatialResolver.CullGeometry recreated =
+                cache.get(firstLevel, key, anchor, 32, 16, Direction.NORTH);
+        assertNotSame(recreated, cache.get(secondLevel, key, anchor, 32, 16, Direction.NORTH));
     }
 
     @Test

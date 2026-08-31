@@ -20,4 +20,20 @@ class ScreenBlockEntityRendererTest {
         claims.clearValues();
         assertTrue(claims.claim(firstLevel, 42L));
     }
+
+    @Test
+    void claimsEvictRemovedLevel() {
+        Object firstLevel = new Object();
+        Object secondLevel = new Object();
+        ScreenBlockEntityRenderer.FrameRenderClaims<Object> claims =
+                new ScreenBlockEntityRenderer.FrameRenderClaims<>();
+
+        assertTrue(claims.claim(firstLevel, 42L));
+        assertTrue(claims.claim(secondLevel, 42L));
+
+        claims.removeLevel(firstLevel);
+
+        assertTrue(claims.claim(firstLevel, 42L));
+        assertFalse(claims.claim(secondLevel, 42L));
+    }
 }
