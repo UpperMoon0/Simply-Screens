@@ -29,5 +29,8 @@
     "architectury": ">=13.0.8",
     "fabric-api": "*",
     "openui_mc": ">=0.0.8"
+  },
+  "suggests": {
+    "sable": "=2.0.5"
   }
 }

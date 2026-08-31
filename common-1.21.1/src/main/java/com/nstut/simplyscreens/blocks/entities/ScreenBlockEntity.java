@@ -7,9 +7,6 @@ import com.nstut.simplyscreens.ScreenAnchorPromotion;
 import com.nstut.simplyscreens.ScreenStructureDetector;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.ScreenBlock;
-import com.nstut.simplyscreens.network.PacketRegistries;
-import com.nstut.simplyscreens.network.UpdateScreenS2CPacket;
-import net.minecraft.server.level.ServerPlayer;
 import lombok.Getter;
 import lombok.Setter;
 import java.util.UUID;
@@ -17,7 +14,6 @@ import java.util.HashSet;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -60,6 +56,9 @@ public class ScreenBlockEntity extends BlockEntity {
     protected void loadAdditional(@NotNull CompoundTag tag, HolderLookup.Provider provider) {
         super.loadAdditional(tag, provider);
         readPersistentData(tag);
+        if (level != null && level.isClientSide) {
+            ScreenBlockEntityClientUpdates.notifyUpdated(this);
+        }
     }
 
     private void writePersistentData(CompoundTag tag) {
@@ -114,13 +113,9 @@ public class ScreenBlockEntity extends BlockEntity {
 
     private void updateClients() {
         if (level != null && !level.isClientSide) {
-            UUID resolvedImageId = getResolvedImageId();
-            UpdateScreenS2CPacket packet = new UpdateScreenS2CPacket(worldPosition, anchorPos, resolvedImageId, maintainAspectRatio, screenId, screenWidth, screenHeight);
-            if (level instanceof ServerLevel serverLevel) {
-                for (ServerPlayer player : serverLevel.getChunkSource().chunkMap.getPlayers(new ChunkPos(worldPosition), false)) {
-                    PacketRegistries.sendToPlayer(player, packet);
-                }
-            }
+            setChanged();
+            BlockState state = getBlockState();
+            level.sendBlockUpdated(worldPosition, state, state, Block.UPDATE_CLIENTS);
         }
     }
 
@@ -887,13 +882,6 @@ public class ScreenBlockEntity extends BlockEntity {
             newAnchor.updateScreenStructure();
             newAnchor.markForRenderUpdate();
 
-            if (level instanceof ServerLevel serverLevel) {
-                for (ServerPlayer player : serverLevel.getChunkSource().chunkMap.getPlayers(new ChunkPos(newAnchorPos), false)) {
-                    PacketRegistries.sendToPlayer(player, new UpdateScreenS2CPacket(
-                            newAnchorPos, newAnchorPos, imageId, maintainAspectRatio, screenId,
-                            promotion.width(), promotion.height()));
-                }
-            }
         }
 
         for (int w = 0; w < oldWidth; w++) {

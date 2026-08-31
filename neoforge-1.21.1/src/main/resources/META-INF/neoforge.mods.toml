@@ -40,3 +40,10 @@ type = "required"
 versionRange = "[0.0.8,)"
 ordering = "AFTER"
 side = "CLIENT"
+
+[[dependencies.simply_screens]]
+modId = "sable"
+type = "optional"
+versionRange = "[2.0.5]"
+ordering = "AFTER"
+side = "BOTH"

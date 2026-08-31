@@ -10,7 +10,9 @@ import com.nstut.simplyscreens.ScreenVisibility;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simplyscreens.blocks.ScreenBlock;
+import com.nstut.simplyscreens.client.compat.sable.ClientScreenSpatialResolver;
 import com.nstut.simplyscreens.helpers.ClientImageManager;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -88,6 +90,11 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         BlockPos anchor = blockEntity.getAnchorPos();
         if (anchor == null) return false;
         BlockPos farCorner = getFarCorner(blockEntity);
+        if (blockEntity.getLevel() instanceof ClientLevel clientLevel) {
+            Boolean sableVisibility = ClientScreenSpatialResolver.isWithinRenderDistance(
+                    clientLevel, anchor, farCorner, getViewDistance());
+            if (sableVisibility != null) return sableVisibility;
+        }
         return ScreenVisibility.isWithinDistance(
                 cameraPosition.x, cameraPosition.y, cameraPosition.z,
                 anchor.getX(), anchor.getY(), anchor.getZ(),

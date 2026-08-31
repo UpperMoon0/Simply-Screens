@@ -39,6 +39,20 @@ public class ClientPacketHandler {
         if (screenId != null) screen.setScreenId(screenId);
     }
 
+    /** Keeps an open configuration screen reactive after vanilla block-entity sync. */
+    public static void handleBlockEntityUpdate(ScreenBlockEntity screen) {
+        notifyOpenScreen(Minecraft.getInstance().screen, screen);
+    }
+
+    static void notifyOpenScreen(Screen currentScreen, ScreenBlockEntity screen) {
+        BlockPos anchorPos = screen.getAnchorPos();
+        if (anchorPos != null && currentScreen instanceof ImageLoadScreen imageLoadScreen
+                && imageLoadScreen.matchesScreenUpdate(screen.getBlockPos(), anchorPos)) {
+            imageLoadScreen.updateScreenState(
+                    screen.getResolvedImageId(), screen.isMaintainAspectRatio(), screen.getScreenId());
+        }
+    }
+
     public static void handleInvalidateImage(UUID imageId) {
         ClientImageManager.invalidateImage(imageId);
     }
