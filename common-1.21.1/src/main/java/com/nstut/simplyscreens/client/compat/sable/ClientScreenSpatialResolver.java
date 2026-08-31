@@ -9,6 +9,8 @@ import dev.ryanhcode.sable.companion.SubLevelAccess;
 import dev.ryanhcode.sable.companion.math.Pose3dc;
 import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongIterator;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import net.minecraft.client.Minecraft;
@@ -35,6 +37,7 @@ public final class ClientScreenSpatialResolver {
     /** Starts a real world-render pass, discarding results from the previous pass. */
     public static void beginRenderFrame() {
         FRAME_VISIBILITY.clearValues();
+        CULL_GEOMETRY.beginFrame();
     }
 
     /** Drops all cache entries belonging to a level the client just left. */
@@ -175,11 +178,13 @@ public final class ClientScreenSpatialResolver {
 
     static final class CullGeometryCache<L> {
         private final Map<L, Long2ObjectOpenHashMap<CullGeometry>> levels = new IdentityHashMap<>();
+        private final Map<L, LongOpenHashSet> seenThisFrame = new IdentityHashMap<>();
 
         CullGeometry get(L levelIdentity, long anchorKey, BlockPos anchor,
                          int width, int height, Direction facing) {
             Long2ObjectOpenHashMap<CullGeometry> levelGeometry =
                     levels.computeIfAbsent(levelIdentity, ignored -> new Long2ObjectOpenHashMap<>());
+            seenThisFrame.computeIfAbsent(levelIdentity, ignored -> new LongOpenHashSet()).add(anchorKey);
             CullGeometry cached = levelGeometry.get(anchorKey);
             if (cached != null && cached.matches(width, height, facing)) return cached;
             CullGeometry calculated = calculateGeometry(anchor, width, height, facing);
@@ -187,12 +192,26 @@ public final class ClientScreenSpatialResolver {
             return calculated;
         }
 
+        void beginFrame() {
+            for (Map.Entry<L, Long2ObjectOpenHashMap<CullGeometry>> entry : levels.entrySet()) {
+                LongOpenHashSet seen = seenThisFrame.get(entry.getKey());
+                if (seen == null) continue;
+                LongIterator iterator = entry.getValue().keySet().iterator();
+                while (iterator.hasNext()) {
+                    if (!seen.contains(iterator.nextLong())) iterator.remove();
+                }
+                seen.clear();
+            }
+        }
+
         void removeLevel(L levelIdentity) {
             levels.remove(levelIdentity);
+            seenThisFrame.remove(levelIdentity);
         }
 
         void clear() {
             levels.clear();
+            seenThisFrame.clear();
         }
     }
 

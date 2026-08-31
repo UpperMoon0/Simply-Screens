@@ -112,4 +112,20 @@ class ClientScreenSpatialResolverTest {
         assertEquals(6.5, geometry.localCenter().z);
         assertEquals(Math.sqrt(3.5), geometry.baseRadius());
     }
+
+    @Test
+    void cullGeometryPrunesScreensNotSeenInTheCurrentRenderSession() {
+        Object level = new Object();
+        BlockPos anchor = new BlockPos(10, 20, 30);
+        long key = anchor.asLong();
+        ClientScreenSpatialResolver.CullGeometryCache<Object> cache =
+                new ClientScreenSpatialResolver.CullGeometryCache<>();
+
+        ClientScreenSpatialResolver.CullGeometry first =
+                cache.get(level, key, anchor, 2, 2, Direction.NORTH);
+        cache.beginFrame();
+        cache.beginFrame();
+
+        assertNotSame(first, cache.get(level, key, anchor, 2, 2, Direction.NORTH));
+    }
 }
