@@ -2,6 +2,7 @@ package com.nstut.simplyscreens.neoforge.client;
 
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.BlockEntityRegistries;
+import com.nstut.simplyscreens.client.compat.sable.ClientScreenSpatialResolver;
 import com.nstut.simplyscreens.client.renderers.ScreenBlockEntityRenderer;
 import com.nstut.simplyscreens.helpers.ClientImageManager;
 import com.nstut.simplyscreens.client.ClientServerConfig;
@@ -16,6 +17,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.common.NeoForge;
 
 @EventBusSubscriber(modid = SimplyScreens.MOD_ID, value = Dist.CLIENT)
@@ -41,6 +43,7 @@ public class ClientSetup {
             SimplyScreens.LOGGER.info("S2C Packets registered");
             
             NeoForge.EVENT_BUS.addListener(ClientSetup::onClientDisconnect);
+            NeoForge.EVENT_BUS.addListener(ClientSetup::onRenderLevelStage);
             SimplyScreens.LOGGER.info("Client disconnect listener added");
         });
     }
@@ -49,6 +52,12 @@ public class ClientSetup {
         SimplyScreens.LOGGER.info("Client disconnect event received");
         ClientImageManager.clearCache();
         ClientServerConfig.reset();
+    }
+
+    public static void onRenderLevelStage(RenderLevelStageEvent event) {
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_SKY) {
+            ClientScreenSpatialResolver.beginRenderFrame();
+        }
     }
 
     private static void onClientTick(Minecraft client) {
