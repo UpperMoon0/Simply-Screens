@@ -18,6 +18,8 @@ from pathlib import Path
 PASS_MARKER = "SIMPLYSCREENS_LIVE_JOIN_TEST_PASS"
 SERVER_READY_MARKERS = ("Done (", "For help, type \"help\"")
 DEFAULT_TIMEOUT = 360
+CLIENT_START_ATTEMPTS = 3
+CLIENT_RETRY_DELAY = 5
 TARGETS = {
     "fabric-1.20.1": "fabric-1.20.1",
     "forge-1.20.1": "forge-1.20.1",
@@ -149,8 +151,16 @@ def run_target(root: Path, target: str, timeout: int) -> None:
     prepare_server(root / module)
     prepare_client(root / module)
 
-    compile_cmd = command(root, f":{module}:classes")
-    subprocess.run(compile_cmd, cwd=root, check=True)
+    # Build the production artifact first so PR CI verifies the exact jar shape
+    # that users receive, then assert the removed empty mixin metadata cannot
+    # regress before starting the live client/server smoke test.
+    build_cmd = command(root, f":{module}:build")
+    subprocess.run(build_cmd, cwd=root, check=True)
+    subprocess.run(
+        [sys.executable, str(root / "tools" / "assert_production_jar.py"), "--module", module],
+        cwd=root,
+        check=True,
+    )
 
     server = popen(command(root, f":{module}:runLiveJoinTestServer"), root)
     server_output = OutputPump(server, f"{target}/server")
@@ -166,17 +176,39 @@ def run_target(root: Path, target: str, timeout: int) -> None:
                 raise RuntimeError("DISPLAY is unset and xvfb-run is not installed")
             client_cmd = [xvfb, "-a", *client_cmd]
 
-        client = popen(client_cmd, root)
-        client_output = OutputPump(client, f"{target}/client")
-        if client_output.wait_for((PASS_MARKER,), timeout) is None:
-            raise RuntimeError(f"{target}: client did not report a successful live join")
-        try:
-            exit_code = client.wait(timeout=60)
-        except subprocess.TimeoutExpired as exc:
-            raise RuntimeError(f"{target}: client passed but did not exit") from exc
-        if exit_code != 0:
-            raise RuntimeError(f"{target}: client exited with code {exit_code} after passing")
-        print(f"{target}: PASS", flush=True)
+        for attempt in range(1, CLIENT_START_ATTEMPTS + 1):
+            client = popen(client_cmd, root)
+            client_output = OutputPump(client, f"{target}/client")
+            if client_output.wait_for((PASS_MARKER,), timeout) is not None:
+                try:
+                    exit_code = client.wait(timeout=60)
+                except subprocess.TimeoutExpired as exc:
+                    raise RuntimeError(f"{target}: client passed but did not exit") from exc
+                if exit_code != 0:
+                    raise RuntimeError(f"{target}: client exited with code {exit_code} after passing")
+                print(f"{target}: PASS", flush=True)
+                break
+
+            # A still-running client used the whole join timeout, which is a real
+            # live-join failure. Only retry clients that exited early, such as a
+            # transient Loom downloadAssets/network failure during startup.
+            exit_code = client.poll()
+            if exit_code is None:
+                raise RuntimeError(f"{target}: client did not report a successful live join")
+            if attempt == CLIENT_START_ATTEMPTS:
+                raise RuntimeError(
+                    f"{target}: client exited before successful live join "
+                    f"after {CLIENT_START_ATTEMPTS} attempts (last exit code {exit_code})"
+                )
+
+            print(
+                f"{target}: client exited before join (code {exit_code}); "
+                f"retrying {attempt + 1}/{CLIENT_START_ATTEMPTS}",
+                flush=True,
+            )
+            stop_tree(client)
+            client = None
+            time.sleep(CLIENT_RETRY_DELAY)
     finally:
         if client is not None:
             stop_tree(client)

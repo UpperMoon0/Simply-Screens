@@ -53,8 +53,6 @@ configurations.testRuntimeClasspath {
 // Resources in common module are already in 1.21.1 format
 processResources {
     from(project(':common').sourceSets.main.resources) {
-        // Exclude the mixin JSON from common module - use version-specific one
-        exclude 'simplyscreens.mixins.json'
     }
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
