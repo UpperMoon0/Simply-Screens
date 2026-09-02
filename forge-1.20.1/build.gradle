@@ -3,9 +3,6 @@ plugins {
 }
 
 loom {
-    forge {
-        mixinConfig "simplyscreens.mixins.json"
-    }
     runs {
         liveJoinTestClient {
             client()
