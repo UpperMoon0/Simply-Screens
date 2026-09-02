@@ -147,6 +147,8 @@ jobs:
         with: { distribution: temurin, java-version: '${{ matrix.java }}', cache: gradle }
       - run: chmod +x gradlew
       - run: ./gradlew :${{ matrix.project }}:build
+      - name: Assert production jar has no obsolete mixin metadata
+        run: python3 tools/assert_production_jar.py --module "${{ matrix.project }}"
       - uses: actions/upload-artifact@v4
         with:
           name: simply-screens-${{ matrix.platform }}-${{ matrix.version }}

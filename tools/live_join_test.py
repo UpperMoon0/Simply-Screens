@@ -149,8 +149,16 @@ def run_target(root: Path, target: str, timeout: int) -> None:
     prepare_server(root / module)
     prepare_client(root / module)
 
-    compile_cmd = command(root, f":{module}:classes")
-    subprocess.run(compile_cmd, cwd=root, check=True)
+    # Build the production artifact first so PR CI verifies the exact jar shape
+    # that users receive, then assert the removed empty mixin metadata cannot
+    # regress before starting the live client/server smoke test.
+    build_cmd = command(root, f":{module}:build")
+    subprocess.run(build_cmd, cwd=root, check=True)
+    subprocess.run(
+        [sys.executable, str(root / "tools" / "assert_production_jar.py"), "--module", module],
+        cwd=root,
+        check=True,
+    )
 
     server = popen(command(root, f":{module}:runLiveJoinTestServer"), root)
     server_output = OutputPump(server, f"{target}/server")

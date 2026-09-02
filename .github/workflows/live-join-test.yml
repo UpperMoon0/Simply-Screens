@@ -14,6 +14,7 @@ on:
       - "neoforge-1.21.1/**"
       - "neoforge-26.1.2/**"
       - "tools/live_join_test.py"
+      - "tools/assert_production_jar.py"
       - ".github/workflows/live-join-test.yml"
 
 jobs:
