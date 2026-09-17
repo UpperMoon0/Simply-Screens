@@ -76,8 +76,8 @@ The server imports a deterministic magenta PNG with the production image manager
 - Every supported loader/version target; all six facings.
 - 2×2 and 8×8 screens at 8, 32, 64 and 160 blocks; frontal and 60-degree oblique views.
 - A red foreground occluder covering half the screen, separately for every facing.
-- A resource/shader reload case for every facing, with eight samples before and eight after successful reload.
-- Sixteen scheduled samples per scene after warm-up; a small deterministic yaw sweep changes raster alignment. Every sample must pass, not just three eventually good frames.
+- A resource/shader reload case for every facing, with four samples before and four after successful reload.
+- Four samples per normal scene, one for each unique sub-degree raster alignment. Each camera offset is armed first and captured only after a subsequent real renderer submission; there is no fixed warm-up or inter-sample sleep. Every sample must pass.
 
 The oracle projects the independently specified full-cube front surface using the recorded camera. It checks magenta in exposed screen interiors and red in covered interiors, excludes silhouette edges, and rejects insufficient pixel coverage or image color outside the expected silhouette. It never finds the expected region by searching for the image color itself. The error budget is 0.5% per region per sample; the worst sample determines the scene result. A missing texture, missing screen, stalled capture, crash or stale frame is not a successful visual check.
 

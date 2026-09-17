@@ -3,9 +3,15 @@ from itertools import product
 
 TARGETS = ("fabric-1.20.1", "forge-1.20.1", "fabric-1.21.1", "neoforge-1.21.1", "neoforge-26.1.2")
 FACES = ("NORTH", "SOUTH", "EAST", "WEST", "UP", "DOWN")
-SAMPLES = 16
+# Four samples cover every unique sub-degree raster alignment used by the
+# framebuffer oracle. Reload cases repeat the same four after the reload.
+SAMPLES = 4
 NF26_TARGET = "neoforge-26.1.2"
 PLAIN_COMPARISONS = ("plain", "original", "single-plain", "tiled-offset")
+
+
+def sample_count(case):
+    return SAMPLES * (2 if case.get("reload") else 1)
 
 
 def variants(target):

@@ -19,7 +19,7 @@ import time
 import uuid
 
 import live_join_test as live
-from visual_cases import TARGETS, SAMPLES, cases, expected_outcome, variants, classify_nf26, NF26_TARGET
+from visual_cases import TARGETS, SAMPLES, sample_count, cases, expected_outcome, variants, classify_nf26, NF26_TARGET
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULES = ("common-1.20.1", "common-1.21.1", "neoforge-26.1.2")
@@ -132,6 +132,7 @@ def instrument(stage):
         drivers.mkdir(parents=True)
         for name in ("VisualServer", "VisualClient"):
             source = (stage / "tools/visual" / (name+".java")).read_text(encoding="utf-8")
+            source = source.replace("__BASE_SAMPLES__", str(SAMPLES))
             source = source.replace("__TELEPORT__", "player.teleportTo(level, eye.x, eye.y-player.getEyeHeight(), eye.z, Set.of(), yaw, pitch" + (", true" if new else "") + ");")
             source = source.replace("__CAMERA_POSITION__", "camera.position()" if new else "camera.getPosition()")
             source = source.replace("__CAMERA_YAW__", "camera.yRot()" if new else "camera.getYRot()")
@@ -263,15 +264,16 @@ def run_variant(stage, target, variant, directory, probe=False):
                             or (c["size"] == 8 and c["distance"] == 8 and c["angle"] == 0)
                             or (c["size"] == 2 and c["distance"] == 160)]
             for case in selected:
+                count = sample_count(case)
                 atomic_json(directory / "request.json", case)
-                wait_until(lambda: (directory / f'{case["id"]}-{SAMPLES-1:02d}.json').exists(), directory, server, client, 240)
+                wait_until(lambda: (directory / f'{case["id"]}-{count-1:02d}.json').exists(), directory, server, client, 240)
                 frames = []
-                for index in range(SAMPLES):
+                for index in range(count):
                     stem = f'{case["id"]}-{index:02d}'
                     frame = json.loads((directory / (stem+".json")).read_text())
                     if any(frame.get(k) != v for k,v in case.items()) or frame["sample"] != index or frame["submissions"] <= 0:
                         raise RuntimeError("frame belongs to a different/incomplete scenario")
-                    if case.get("reload") and frame.get("reloaded") != (index >= 8):
+                    if case.get("reload") and frame.get("reloaded") != (index >= SAMPLES):
                         raise RuntimeError("missing before/after resource reload evidence")
                     identity = {k: frame.get(k) for k in ("graphicsVendor", "graphicsRenderer", "graphicsVersion")}
                     if not all(identity.values()) or (graphics is not None and graphics != identity):
