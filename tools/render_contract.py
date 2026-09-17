@@ -46,20 +46,60 @@ RENDERERS = (
     RendererContract(
         "1.21.1",
         Path("common-1.21.1/src/main/java/com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer.java"),
-        "RenderType.textPolygonOffset(texture)",
+        "ScreenRenderTypes.textPolygonOffset(texture)",
         "RenderType.text(texture)",
         FIXED_SWITCH_OFFSET,
     ),
     RendererContract(
         "26.1.2",
         Path("neoforge-26.1.2/src/main/java/com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer.java"),
-        "RenderTypes.textPolygonOffset(state.texture)",
+        "ScreenRenderTypes.textPolygonOffset(state.texture)",
         "RenderTypes.text(state.texture)",
         (
             "state.facing == Direction.NORTH || state.facing == Direction.SOUTH ? -BASE_OFFSET : BASE_OFFSET",
         ),
     ),
 )
+
+DEPTH_HELPERS = {
+    "1.21.1": (
+        Path("common-1.21.1/src/main/java/com/nstut/simplyscreens/client/renderers/ScreenRenderTypes.java"),
+        (
+            "VIEW_SCALE = 0.99975586F",
+            "RenderSystem.polygonOffset(-1.0F, -10.0F);",
+            "RenderSystem.enablePolygonOffset();",
+            "modelView.scale(VIEW_SCALE, VIEW_SCALE, VIEW_SCALE);",
+            "RenderSystem.applyModelViewMatrix();",
+            "RenderSystem.disablePolygonOffset();",
+        ),
+    ),
+    "26.1.2": (
+        Path("neoforge-26.1.2/src/main/java/com/nstut/simplyscreens/client/renderers/ScreenRenderTypes.java"),
+        (
+            "RenderPipelines.TEXT_POLYGON_OFFSET",
+            "LayeringTransform.VIEW_OFFSET_Z_LAYERING",
+        ),
+    ),
+}
+
+
+def verify_depth_helper(root: Path, contract: RendererContract) -> list[str]:
+    helper = DEPTH_HELPERS.get(contract.name)
+    if helper is None:
+        return []
+    path, required = helper
+    if not (root / path).is_file():
+        return [f"{contract.name}: missing screen depth helper {path}"]
+    text = (root / path).read_text(encoding="utf-8")
+    text = re.sub(r"/\*.*?\*/|//[^\n]*", "", text, flags=re.S)
+    text = re.sub(r"\s+", " ", text)
+    errors = []
+    for fragment in required:
+        if fragment not in text:
+            errors.append(f"{contract.name}: screen depth helper lost required render state: {fragment}")
+    if "textSeeThrough" in text or "text_see_through" in text:
+        errors.append(f"{contract.name}: depth helper must preserve normal world occlusion")
+    return errors
 
 
 def verify_renderer(root: Path, contract: RendererContract) -> list[str]:
@@ -144,6 +184,7 @@ def verify(root: Path = ROOT) -> list[str]:
     errors.extend(verify_screen_model(root))
     for contract in RENDERERS:
         errors.extend(verify_renderer(root, contract))
+        errors.extend(verify_depth_helper(root, contract))
     return errors
 
 
@@ -161,7 +202,7 @@ def main() -> int:
 
     print("SIMPLYSCREENS_RENDER_CONTRACT_PASS")
     print(
-        "All supported renderers keep the image plane fixed at 0.501 and use vanilla polygon-offset text depth ordering."
+        "All supported renderers keep the image plane fixed at 0.501 and use polygon offset; 1.21.1+ also use vanilla view-Z layering."
     )
     return 0
 

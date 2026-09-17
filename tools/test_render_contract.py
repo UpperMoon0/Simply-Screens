@@ -46,6 +46,10 @@ class RenderContractTest(unittest.TestCase):
                 f"  void draw() {{ Object type = {contract.polygon_offset_call}; }}\n"
                 "}\n",
             )
+            helper = render_contract.DEPTH_HELPERS.get(contract.name)
+            if helper is not None:
+                helper_path, required = helper
+                self._write(helper_path, "\n".join(required) + "\n")
 
     def test_valid_contract_passes(self) -> None:
         self.assertEqual([], render_contract.verify(self.root))
@@ -108,6 +112,18 @@ class RenderContractTest(unittest.TestCase):
         path.write_text(path.read_text(encoding="utf-8") + "\nRenderTypes.textSeeThrough(texture);\n", encoding="utf-8")
         errors = render_contract.verify(self.root)
         self.assertTrue(any("occlusion" in error for error in errors), errors)
+
+
+    def test_modern_depth_helper_requires_view_offset_and_polygon_bias(self) -> None:
+        for name in ("1.21.1", "26.1.2"):
+            with self.subTest(version=name):
+                self._write_valid_tree()
+                helper_path, required = render_contract.DEPTH_HELPERS[name]
+                path = self.root / helper_path
+                text = path.read_text(encoding="utf-8")
+                path.write_text(text.replace(required[-1], ""), encoding="utf-8")
+                errors = render_contract.verify(self.root)
+                self.assertTrue(any("depth helper" in error for error in errors), errors)
 
     def test_model_geometry_change_forces_contract_review(self) -> None:
         path = self.root / render_contract.MODEL_PATH

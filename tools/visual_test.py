@@ -206,8 +206,29 @@ def instrument(stage):
         replace_once(package / "client/testing/UiSmokeTest.java", "public static boolean tick(Minecraft client) {",
                      "public static boolean tick(Minecraft client) {\n        if (System.getenv(\"SS_VISUAL_DIR\") != null) return com.nstut.simplyscreens.testing.visual.VisualClient.tick(client);")
         renderer = package / "client/renderers/ScreenBlockEntityRenderer.java"
-        anchor = "debugDraw(state);" if new else "PoseStack.Pose pose = poseStack.last();"
-        replace_once(renderer, anchor, anchor+"\n        com.nstut.simplyscreens.testing.visual.VisualClient.submitted();")
+        if module == "common-1.20.1":
+            anchor = "debugDraw(blockEntity, texture, facing);"
+            submitted = (
+                "com.nstut.simplyscreens.testing.visual.VisualClient.submittedTile(facing, "
+                "renderData.getScreenWidth(), renderData.getScreenHeight(), "
+                "blockEntity.getAnchorPos().getX(), blockEntity.getAnchorPos().getY(), blockEntity.getAnchorPos().getZ(), "
+                "blockEntity.getBlockPos().getX(), blockEntity.getBlockPos().getY(), blockEntity.getBlockPos().getZ());"
+            )
+        elif module == "common-1.21.1":
+            anchor = "debugDraw(blockEntity, anchorPos, texture, facing);"
+            submitted = (
+                "com.nstut.simplyscreens.testing.visual.VisualClient.submittedScreen(facing, "
+                "renderData.getScreenWidth(), renderData.getScreenHeight(), "
+                "anchorPos.getX(), anchorPos.getY(), anchorPos.getZ());"
+            )
+        else:
+            anchor = "debugDraw(state);"
+            submitted = (
+                "com.nstut.simplyscreens.testing.visual.VisualClient.submittedScreen(state.facing, state.width, state.height, "
+                "state.blockPos.getX() + state.anchorOffsetX, state.blockPos.getY() + state.anchorOffsetY, "
+                "state.blockPos.getZ() + state.anchorOffsetZ);"
+            )
+        replace_once(renderer, anchor, anchor + "\n        " + submitted)
     instrument_visual_render_events(stage)
 
 
@@ -240,7 +261,13 @@ def set_variant(stage, originals, target, variant):
         text = renderer.read_text(encoding="utf-8")
         if text.count("debugDraw(state);") != 1:
             raise RuntimeError("original renderer instrumentation anchor changed")
-        text = text.replace("debugDraw(state);", "debugDraw(state);\n        com.nstut.simplyscreens.testing.visual.VisualClient.submitted();", 1)
+        text = text.replace(
+            "debugDraw(state);",
+            "debugDraw(state);\n        com.nstut.simplyscreens.testing.visual.VisualClient.submittedTile(state.facing, state.width, state.height, "
+            "state.blockPos.getX() + state.anchorOffsetX, state.blockPos.getY() + state.anchorOffsetY, "
+            "state.blockPos.getZ() + state.anchorOffsetZ, state.blockPos.getX(), state.blockPos.getY(), state.blockPos.getZ());",
+            1,
+        )
         if variant == "tiled-offset":
             if text.count("RenderTypes.text(state.texture)") != 1:
                 raise RuntimeError("original renderer render-type anchor changed")
@@ -249,11 +276,20 @@ def set_variant(stage, originals, target, variant):
         return
 
     if variant in ("plain", "single-plain", "see-through"):
-        replacement = ".textSeeThrough(" if variant == "see-through" else ".text("
+        see_through = variant == "see-through"
         for relative in renderer_paths:
             path = stage / relative
             source = path.read_text(encoding="utf-8")
-            source = source.replace(".textPolygonOffset(", replacement)
+            module = relative.parts[0]
+            if module == "common-1.21.1":
+                replacement = "RenderType.textSeeThrough(" if see_through else "RenderType.text("
+                source = source.replace("ScreenRenderTypes.textPolygonOffset(", replacement)
+            elif module == "neoforge-26.1.2":
+                replacement = "RenderTypes.textSeeThrough(" if see_through else "RenderTypes.text("
+                source = source.replace("ScreenRenderTypes.textPolygonOffset(", replacement)
+            else:
+                replacement = ".textSeeThrough(" if see_through else ".text("
+                source = source.replace(".textPolygonOffset(", replacement)
             path.write_text(source, encoding="utf-8")
 
 

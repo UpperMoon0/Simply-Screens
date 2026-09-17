@@ -28,6 +28,8 @@ public final class VisualClient {
     private static String current = "";
     private static int ticks, sample, stableFrames, frameSubmissions;
     private static long submissions;
+    private static boolean frameUnexpectedSubmission, frameSingleScreen, frameTileScreen;
+    private static final java.util.Set<Long> frameTileOwners = new java.util.HashSet<>();
     private static JsonObject scene;
     private static java.util.concurrent.CompletableFuture<Void> reload;
     private static boolean reloaded, sampleArmed;
@@ -37,12 +39,36 @@ public final class VisualClient {
     /** Called at the first world-render stage, before block-entity geometry is submitted. */
     public static void beginRenderFrame() {
         frameSubmissions = 0;
+        frameUnexpectedSubmission = false;
+        frameSingleScreen = false;
+        frameTileScreen = false;
+        frameTileOwners.clear();
     }
 
-    /** Called only when the screen renderer actually submits/buffers image geometry. */
-    public static void submitted() {
+    /** Records a legacy per-cell image submission and proves it belongs to this fixture. */
+    public static void submittedTile(Direction facing, int width, int height,
+                                     int anchorX, int anchorY, int anchorZ,
+                                     int ownerX, int ownerY, int ownerZ) {
         submissions++;
         frameSubmissions++;
+        frameTileScreen = true;
+        if (!submissionMatchesScene(facing, width, height, anchorX, anchorY, anchorZ)
+                || !ownerBelongsToScene(ownerX, ownerY, ownerZ)) {
+            frameUnexpectedSubmission = true;
+            return;
+        }
+        frameTileOwners.add(new BlockPos(ownerX, ownerY, ownerZ).asLong());
+    }
+
+    /** Records a single-quad logical-screen submission and proves it belongs to this fixture. */
+    public static void submittedScreen(Direction facing, int width, int height,
+                                       int anchorX, int anchorY, int anchorZ) {
+        submissions++;
+        frameSubmissions++;
+        frameSingleScreen = true;
+        if (!submissionMatchesScene(facing, width, height, anchorX, anchorY, anchorZ)) {
+            frameUnexpectedSubmission = true;
+        }
     }
 
     /** Client-tick phase: acknowledge the complete fixture and request the next camera sample. */
@@ -135,7 +161,7 @@ public final class VisualClient {
     public static void afterRender(Minecraft mc) {
         try {
             if (!sampleArmed || capturing.get() || scene == null || mc.player == null || mc.level == null) return;
-            if (frameSubmissions <= 0) {
+            if (!frameMatchesCurrentFixture()) {
                 clearObservedStability();
                 return;
             }
@@ -183,6 +209,44 @@ public final class VisualClient {
         }
     }
 
+
+    private static boolean frameMatchesCurrentFixture() {
+        if (scene == null || frameUnexpectedSubmission || frameSubmissions <= 0
+                || (frameSingleScreen && frameTileScreen)) return false;
+        int size = scene.get("size").getAsInt();
+        if (frameSingleScreen) return frameSubmissions == 1;
+        return frameTileScreen && frameSubmissions == size * size && frameTileOwners.size() == size * size;
+    }
+
+    private static boolean submissionMatchesScene(Direction facing, int width, int height,
+                                                  int anchorX, int anchorY, int anchorZ) {
+        return scene != null
+                && facing == Direction.valueOf(scene.get("facing").getAsString())
+                && width == scene.get("size").getAsInt()
+                && height == scene.get("size").getAsInt()
+                && anchorX == 0 && anchorY == 128 && anchorZ == 0;
+    }
+
+    private static boolean ownerBelongsToScene(int ownerX, int ownerY, int ownerZ) {
+        if (scene == null) return false;
+        BlockPos anchor = new BlockPos(0, 128, 0);
+        Direction facing = Direction.valueOf(scene.get("facing").getAsString());
+        Direction width = switch (facing) {
+            case NORTH, UP, DOWN -> Direction.WEST;
+            case SOUTH -> Direction.EAST;
+            case WEST -> Direction.SOUTH;
+            case EAST -> Direction.NORTH;
+        };
+        Direction height = facing.getAxis().isHorizontal() ? Direction.UP
+                : facing == Direction.UP ? Direction.SOUTH : Direction.NORTH;
+        int size = scene.get("size").getAsInt();
+        BlockPos owner = new BlockPos(ownerX, ownerY, ownerZ);
+        for (int x = 0; x < size; x++) for (int y = 0; y < size; y++) {
+            if (owner.equals(anchor.relative(width, x).relative(height, y))) return true;
+        }
+        return false;
+    }
+
     private static float requestedYaw() {
         return scene.get("yaw").getAsFloat() + (sample % BASE_SAMPLES - (BASE_SAMPLES - 1) / 2.0f) * 0.025f;
     }
@@ -215,6 +279,10 @@ public final class VisualClient {
     private static void resetStability() {
         sampleArmed = false;
         frameSubmissions = 0;
+        frameUnexpectedSubmission = false;
+        frameSingleScreen = false;
+        frameTileScreen = false;
+        frameTileOwners.clear();
         clearObservedStability();
     }
 
