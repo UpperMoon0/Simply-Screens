@@ -3,7 +3,7 @@
 
 This is deliberately a source contract rather than a fake unit rendering test: the
 three supported Minecraft renderer APIs are different, while the regression is a
-single render-state choice that must remain consistent across them.
+small render-state/geometry invariant that must remain consistent across them.
 """
 
 from __future__ import annotations
@@ -27,7 +27,13 @@ class RendererContract:
     path: Path
     polygon_offset_call: str
     plain_text_call: str
+    fixed_offset_fragments: tuple[str, ...]
 
+
+FIXED_SWITCH_OFFSET = (
+    "case NORTH, SOUTH -> -BASE_OFFSET;",
+    "default -> BASE_OFFSET;",
+)
 
 RENDERERS = (
     RendererContract(
@@ -35,18 +41,23 @@ RENDERERS = (
         Path("common-1.20.1/src/main/java/com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer.java"),
         "RenderType.textPolygonOffset(texture)",
         "RenderType.text(texture)",
+        FIXED_SWITCH_OFFSET,
     ),
     RendererContract(
         "1.21.1",
         Path("common-1.21.1/src/main/java/com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer.java"),
         "RenderType.textPolygonOffset(texture)",
         "RenderType.text(texture)",
+        FIXED_SWITCH_OFFSET,
     ),
     RendererContract(
         "26.1.2",
         Path("neoforge-26.1.2/src/main/java/com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer.java"),
         "RenderTypes.textPolygonOffset(state.texture)",
         "RenderTypes.text(state.texture)",
+        (
+            "state.facing == Direction.NORTH || state.facing == Direction.SOUTH ? -BASE_OFFSET : BASE_OFFSET",
+        ),
     ),
 )
 
@@ -69,6 +80,14 @@ def verify_renderer(root: Path, contract: RendererContract) -> list[str]:
                 f"{contract.name}: BASE_OFFSET must remain {EXPECTED_OFFSET:.3f}f, found {offset:.6g}f; "
                 "fix depth ordering with render state, not visible geometric separation"
             )
+
+    for fragment in contract.fixed_offset_fragments:
+        if fragment not in text:
+            errors.append(
+                f"{contract.name}: image-plane transform must remain a fixed BASE_OFFSET; "
+                "do not scale physical separation with camera distance"
+            )
+            break
 
     if contract.polygon_offset_call not in text:
         errors.append(
@@ -138,7 +157,7 @@ def main() -> int:
 
     print("SIMPLYSCREENS_RENDER_CONTRACT_PASS")
     print(
-        "All supported renderers keep the image plane flush at 0.501 and use vanilla polygon-offset text depth ordering."
+        "All supported renderers keep the image plane fixed at 0.501 and use vanilla polygon-offset text depth ordering."
     )
     return 0
 
