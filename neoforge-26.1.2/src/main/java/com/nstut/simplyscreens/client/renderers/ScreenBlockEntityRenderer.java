@@ -91,7 +91,7 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
         applyFacingRotation(poseStack, state.facing);
         poseStack.translate(0, 0, state.facing == Direction.NORTH || state.facing == Direction.SOUTH ? -BASE_OFFSET : BASE_OFFSET);
         poseStack.translate(-(state.width - 1) / 2f, (state.height - 1) / 2f, 0);
-        collector.submitCustomGeometry(poseStack, RenderTypes.text(state.texture),
+        collector.submitCustomGeometry(poseStack, RenderTypes.textPolygonOffset(state.texture),
                 (pose, consumer) -> buildTexturedQuad(consumer, pose, state));
         poseStack.popPose();
     }
