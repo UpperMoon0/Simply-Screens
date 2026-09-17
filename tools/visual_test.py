@@ -19,11 +19,17 @@ import time
 import uuid
 
 import live_join_test as live
-from visual_cases import TARGETS, SAMPLES, cases, expected_outcome
+from visual_cases import TARGETS, SAMPLES, cases, expected_outcome, variants, classify_nf26, NF26_TARGET
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULES = ("common-1.20.1", "common-1.21.1", "neoforge-26.1.2")
 PACKAGE = Path("src/main/java/com/nstut/simplyscreens")
+NF26_CONTROL = Path("tools/visual_controls/neoforge-26.1.2")
+NF26_CONTROL_FILES = {
+    Path("neoforge-26.1.2/src/main/java/com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderer.java"): "ScreenBlockEntityRenderer.java",
+    Path("neoforge-26.1.2/src/main/java/com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderState.java"): "ScreenBlockEntityRenderState.java",
+    Path("neoforge-26.1.2/src/main/java/com/nstut/simplyscreens/neoforge/SimplyScreensClient.java"): "SimplyScreensClient.java",
+}
 TARGET_PROJECTS = {
     "fabric-1.20.1": {"common", "common-1.20.1", "fabric-1.20.1"},
     "forge-1.20.1": {"common", "common-1.20.1", "forge-1.20.1"},
@@ -142,11 +148,49 @@ def instrument(stage):
         replace_once(renderer, anchor, anchor+"\n        com.nstut.simplyscreens.testing.visual.VisualClient.submitted();")
 
 
-def set_variant(stage, originals, variant):
-    for module, source in originals.items():
-        if variant != "fixed":
-            source = source.replace(".textPolygonOffset(", ".text(" if variant == "plain" else ".textSeeThrough(")
-        (stage / module / PACKAGE / "client/renderers/ScreenBlockEntityRenderer.java").write_text(source, encoding="utf-8")
+def verify_nf26_control(stage):
+    manifest = json.loads((stage / NF26_CONTROL / "manifest.json").read_text(encoding="utf-8"))
+    if manifest.get("source_commit") != "1ec1058a8026294df8bd34ed21e6852d0244f26c":
+        raise RuntimeError("NeoForge 26 original-control provenance changed")
+    expected_files = set(NF26_CONTROL_FILES.values())
+    if set(manifest.get("files", {})) != expected_files:
+        raise RuntimeError("NeoForge 26 original-control manifest is incomplete")
+    for name, expected in manifest["files"].items():
+        actual = hashlib.sha256((stage / NF26_CONTROL / name).read_bytes()).hexdigest()
+        if actual != expected:
+            raise RuntimeError(f"NeoForge 26 original-control fixture drifted: {name}")
+
+
+def set_variant(stage, originals, target, variant):
+    for relative, source in originals.items():
+        path = stage / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(source, encoding="utf-8")
+
+    renderer_paths = [Path(module) / PACKAGE / "client/renderers/ScreenBlockEntityRenderer.java" for module in MODULES]
+    if target == NF26_TARGET and variant in ("original", "tiled-offset"):
+        verify_nf26_control(stage)
+        for relative, fixture_name in NF26_CONTROL_FILES.items():
+            (stage / relative).write_bytes((stage / NF26_CONTROL / fixture_name).read_bytes())
+        renderer = stage / "neoforge-26.1.2" / PACKAGE / "client/renderers/ScreenBlockEntityRenderer.java"
+        text = renderer.read_text(encoding="utf-8")
+        if text.count("debugDraw(state);") != 1:
+            raise RuntimeError("original renderer instrumentation anchor changed")
+        text = text.replace("debugDraw(state);", "debugDraw(state);\n        com.nstut.simplyscreens.testing.visual.VisualClient.submitted();", 1)
+        if variant == "tiled-offset":
+            if text.count("RenderTypes.text(state.texture)") != 1:
+                raise RuntimeError("original renderer render-type anchor changed")
+            text = text.replace("RenderTypes.text(state.texture)", "RenderTypes.textPolygonOffset(state.texture)", 1)
+        renderer.write_text(text, encoding="utf-8")
+        return
+
+    if variant in ("plain", "single-plain", "see-through"):
+        replacement = ".textSeeThrough(" if variant == "see-through" else ".text("
+        for relative in renderer_paths:
+            path = stage / relative
+            source = path.read_text(encoding="utf-8")
+            source = source.replace(".textPolygonOffset(", replacement)
+            path.write_text(source, encoding="utf-8")
 
 
 def health(directory, server, client):
@@ -271,7 +315,9 @@ def run(root, target, compile_only=False, probe=False):
         receipt["source_sha256"] = snapshot(root, stage)
         scope_gradle(stage, target)
         instrument(stage)
-        originals = {m: (stage / m / PACKAGE / "client/renderers/ScreenBlockEntityRenderer.java").read_text() for m in MODULES}
+        mutable = [Path(m) / PACKAGE / "client/renderers/ScreenBlockEntityRenderer.java" for m in MODULES]
+        mutable += list(NF26_CONTROL_FILES.keys())[1:]
+        originals = {relative: (stage / relative).read_text(encoding="utf-8") for relative in mutable}
         # Fixed viewport is also passed to the launcher (options alone do not resize the window).
         for target_name in TARGETS:
             build = stage / target_name / "build.gradle"
@@ -280,17 +326,23 @@ def run(root, target, compile_only=False, probe=False):
             else:
                 replace_once(build, 'programArgs "--quickPlayMultiplayer", "127.0.0.1:25575"', 'programArgs "--quickPlayMultiplayer", "127.0.0.1:25575", "--width", "1920", "--height", "1080"')
         if compile_only:
-            subprocess.run(live.command(stage, f":{target}:classes"), cwd=stage, check=True)
+            for variant in variants(target):
+                set_variant(stage, originals, target, variant)
+                subprocess.run(live.command(stage, f":{target}:classes"), cwd=stage, check=True)
+                receipt["variants"][variant] = "compiled"
             receipt["status"] = "compile-only"
         else:
-            for variant in ("fixed", "plain", "see-through"):
-                set_variant(stage, originals, variant)
-                run_variant(stage, target, variant, evidence / variant, probe)
+            variant_results = {}
+            for variant in variants(target):
+                set_variant(stage, originals, target, variant)
+                variant_results[variant] = run_variant(stage, target, variant, evidence / variant, probe)
                 graphics = json.loads((evidence / variant / "graphics.json").read_text())
                 if "graphics" in receipt and receipt["graphics"] != graphics:
                     raise RuntimeError("negative control ran on a different graphics backend")
                 receipt["graphics"] = graphics
                 receipt["variants"][variant] = "diagnostic" if probe else "pass"
+            if target == NF26_TARGET and not probe:
+                receipt["nf26_diagnosis"] = classify_nf26(variant_results)
             receipt["status"] = "probe-only" if probe else "pass"
     except BaseException as exc:
         receipt["status"] = "fail"
@@ -309,8 +361,11 @@ def verify_receipts(directory, head):
     for r in receipts:
         if r.get("head") != head or r.get("dirty") is not False or r.get("status") != "pass":
             raise ValueError("stale, dirty or failed visual receipt")
-        if r.get("variants") != {v:"pass" for v in ("fixed", "plain", "see-through")}:
+        expected_variants = {v:"pass" for v in variants(r["target"])}
+        if r.get("variants") != expected_variants:
             raise ValueError("missing negative controls")
+        if r["target"] == NF26_TARGET and not r.get("nf26_diagnosis"):
+            raise ValueError("missing NeoForge 26 isolation diagnosis")
 
 
 def main():

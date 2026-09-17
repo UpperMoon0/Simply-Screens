@@ -4,8 +4,8 @@ import tempfile
 import unittest
 from unittest.mock import Mock
 
-from visual_cases import TARGETS, FACES, cases, expected_outcome
-from visual_test import atomic_json, checkout_lock, health, scope_gradle, verify_receipts, wait_until
+from visual_cases import TARGETS, FACES, cases, expected_outcome, variants, classify_nf26, NF26_TARGET
+from visual_test import atomic_json, checkout_lock, health, scope_gradle, verify_receipts, wait_until, verify_nf26_control, ROOT
 from compiled_render_contract import verify_dump
 
 
@@ -36,8 +36,10 @@ class EvidenceTests(unittest.TestCase):
         far_small_oblique = [c for c in cases() if c["size"] == 2 and c["distance"] == 160 and c["angle"] != 0]
         self.assertEqual(len(FACES), len(far_small_oblique))
         self.assertTrue(all(c["angle"] == 30 for c in far_small_oblique))
-        for variant in ("fixed", "plain", "see-through"):
-            self.assertEqual(len(cases(variant)), len({c["id"] for c in cases(variant)}))
+        self.assertEqual(("fixed", "original", "single-plain", "tiled-offset", "see-through"), variants(NF26_TARGET))
+        for target in TARGETS:
+            for variant in variants(target):
+                self.assertEqual(len(cases(variant)), len({c["id"] for c in cases(variant)}))
 
     def test_fixed_requires_every_frame_and_every_case(self):
         good = {c["id"]: dict(status="pass", occlusion_errors=0) for c in cases()}
@@ -50,20 +52,46 @@ class EvidenceTests(unittest.TestCase):
             expected_outcome("fixed", good)
 
     def test_original_must_reproduce_but_near_reference_must_pass(self):
-        result = {c["id"]: dict(status="pass") for c in cases("plain")}
+        result = {c["id"]: dict(status="pass") for c in cases("original")}
         with self.assertRaisesRegex(ValueError, "INCONCLUSIVE"):
-            expected_outcome("plain", result)
-        far = next(c["id"] for c in cases("plain") if c["distance"] == 160)
+            expected_outcome("original", result)
+        far = next(c["id"] for c in cases("original") if c["distance"] == 160)
         result[far]["status"] = "pixel-failure"
-        expected_outcome("plain", result)
+        expected_outcome("original", result)
         result[far]["status"] = "crash"
         with self.assertRaisesRegex(ValueError, "invalid"):
-            expected_outcome("plain", result)
+            expected_outcome("original", result)
         result[far]["status"] = "pixel-failure"
-        near = next(c["id"] for c in cases("plain") if c["distance"] == 8)
+        near = next(c["id"] for c in cases("original") if c["distance"] == 8)
         result[near]["status"] = "pixel-failure"
         with self.assertRaisesRegex(ValueError, "near reference"):
-            expected_outcome("plain", result)
+            expected_outcome("original", result)
+
+    def test_nf26_2x2_classification(self):
+        def result(name, far_failure):
+            data = {c["id"]: dict(status="pass") for c in cases(name)}
+            if far_failure:
+                far = next(c["id"] for c in cases(name) if c["distance"] == 160)
+                data[far]["status"] = "pixel-failure"
+            return data
+        base = {
+            "fixed": result("fixed", False),
+            "original": result("original", True),
+            "single-plain": result("single-plain", True),
+            "tiled-offset": result("tiled-offset", False),
+        }
+        self.assertTrue(classify_nf26(base).startswith("depth-state:"))
+        base["single-plain"] = result("single-plain", False)
+        base["tiled-offset"] = result("tiled-offset", True)
+        self.assertTrue(classify_nf26(base).startswith("topology:"))
+        base["single-plain"] = result("single-plain", True)
+        self.assertTrue(classify_nf26(base).startswith("combined:"))
+        base["single-plain"] = result("single-plain", False)
+        base["tiled-offset"] = result("tiled-offset", False)
+        self.assertTrue(classify_nf26(base).startswith("non-unique:"))
+
+    def test_nf26_original_control_fixture_is_hash_locked(self):
+        verify_nf26_control(ROOT)
 
     def test_failure_and_server_exit_override_available_frames(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -84,8 +112,11 @@ class EvidenceTests(unittest.TestCase):
             for target in TARGETS:
                 path = root / target / "result.json"
                 path.parent.mkdir()
-                atomic_json(path, dict(target=target, head="abc", dirty=False, status="pass",
-                                       variants={v:"pass" for v in ("fixed", "plain", "see-through")}))
+                payload = dict(target=target, head="abc", dirty=False, status="pass",
+                               variants={v:"pass" for v in variants(target)})
+                if target == NF26_TARGET:
+                    payload["nf26_diagnosis"] = "depth-state: test"
+                atomic_json(path, payload)
             verify_receipts(root, "abc")
             path = root / TARGETS[0] / "result.json"
             original = json.loads(path.read_text())

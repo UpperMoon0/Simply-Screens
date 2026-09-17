@@ -81,15 +81,17 @@ The server imports a deterministic magenta PNG with the production image manager
 
 The oracle projects the independently specified full-cube front surface using the recorded camera. It checks magenta in exposed screen interiors and red in covered interiors, excludes silhouette edges, and rejects insufficient pixel coverage or image color outside the expected silhouette. It never finds the expected region by searching for the image color itself. The error budget is 0.5% per region per sample; the worst sample determines the scene result. A missing texture, missing screen, stalled capture, crash or stale frame is not a successful visual check.
 
-Each target must run three isolated variants, reusing compiled outputs but starting fresh worlds/processes:
+Each target runs isolated variants, reusing compiled outputs but starting fresh worlds/processes:
 
 1. **Fixed**: all 108 scenarios and every sample pass.
-2. **Plain text negative control**: the same physical geometry with only the render call changed back. Every near reference must pass, and at least one 64/160-block scenario must show pixel corruption. If both versions look correct, the harness fails with **INCONCLUSIVE**; it has not reproduced issue #8 on that backend.
+2. **Plain text negative control**: for 1.20.1/1.21.1 targets, the same physical geometry with only the render call changed back. Every near reference must pass, and at least one 64/160-block scenario must show pixel corruption.
 3. **See-through negative control**: every foreground case must show substantial occlusion failure. A crash cannot satisfy this control.
+
+NeoForge 26.1.2 additionally runs a hash-locked 2x2 isolation matrix because its fix changed both render state and submission topology. The **original** control is the exact three-file renderer/state/client implementation from `main` at `1ec1058a8026294df8bd34ed21e6852d0244f26c`, with only the visual submission counter injected into the disposable snapshot. It must reproduce the far-distance failure. **single-plain** uses the new single-quad ownership path with plain text depth state; **tiled-offset** uses the original per-tile topology with polygon-offset depth state. The receipt classifies which independent change removes the corruption, or records that both or either is sufficient, rather than assuming a root cause in advance.
 
 The enlarged-offset mutation is rejected by the fast source/compiled contract, not by changing geometry to make the pixel reproduction easier. Negative controls mutate only the disposable snapshot. No assertion failure is retried into a pass.
 
-`--compile-only` compiles the instrumented target; `--probe` runs a diagnostic subset covering the north-facing distance sweep, other facings, small far screens, occlusion and reload. Both deliberately produce non-passing receipts and cannot satisfy the merge gate.
+`--compile-only` compiles every required instrumented/control variant for the selected target; `--probe` runs a diagnostic subset covering the north-facing distance sweep, other facings, small far screens, occlusion and reload. Both deliberately produce non-passing receipts and cannot satisfy the merge gate.
 
 ## Evidence and limits
 
