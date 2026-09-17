@@ -37,10 +37,12 @@ class RenderContractTest(unittest.TestCase):
         }
         self._write(render_contract.MODEL_PATH, json.dumps(model))
         for contract in render_contract.RENDERERS:
+            fixed_offset = "\n".join(contract.fixed_offset_fragments)
             self._write(
                 contract.path,
                 "public final class ScreenBlockEntityRenderer {\n"
                 "  private static final float BASE_OFFSET = 0.501f;\n"
+                f"  // {fixed_offset}\n"
                 f"  void draw() {{ Object type = {contract.polygon_offset_call}; }}\n"
                 "}\n",
             )
@@ -69,6 +71,19 @@ class RenderContractTest(unittest.TestCase):
         )
         errors = render_contract.verify(self.root)
         self.assertTrue(any("render state" in error for error in errors), errors)
+
+    def test_camera_dependent_physical_offset_is_rejected(self) -> None:
+        contract = render_contract.RENDERERS[0]
+        path = self.root / contract.path
+        original = contract.fixed_offset_fragments[-1]
+        path.write_text(
+            path.read_text(encoding="utf-8").replace(
+                original, "default -> BASE_OFFSET + cameraDistance * 0.001f;"
+            ),
+            encoding="utf-8",
+        )
+        errors = render_contract.verify(self.root)
+        self.assertTrue(any("camera distance" in error for error in errors), errors)
 
     def test_see_through_rendering_is_rejected(self) -> None:
         contract = render_contract.RENDERERS[2]
