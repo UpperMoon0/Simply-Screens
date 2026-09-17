@@ -73,11 +73,14 @@ def measure(path, frame):
     crop = rgb[y0:y1, x0:x1]
     r,g,b = crop[...,0],crop[...,1],crop[...,2]
     magenta = (r > 80) & (b > 80) & (r > g*2) & (b > g*2)
-    red = (r > 25) & (r > g*1.5) & (r > b*1.5)
     if np.count_nonzero(outside) >= 4 and np.mean(magenta[outside]) > 0.1:
         raise ValueError("image outside expected silhouette; invalid camera/fixture or misplaced geometry")
     image_error = float(np.mean(~magenta[exposed]))
-    occlusion_error = float(np.mean(~red[hidden])) if frame["occluded"] else 0.0
+    # Occlusion is a depth contract: fail only when the screen image leaks into a
+    # geometrically hidden region. Do not require the covering world pixels to be
+    # a particular color; lighting, face shading and neighboring geometry can
+    # legitimately make a red-concrete fixture non-red at some hidden pixels.
+    occlusion_error = float(np.mean(magenta[hidden])) if frame["occluded"] else 0.0
     return dict(image_errors=image_error, occlusion_errors=occlusion_error,
                 exposed_pixels=int(exposed.sum()), occluded_pixels=int(hidden.sum()),
                 status="pass" if image_error <= 0.005 and occlusion_error <= 0.005 else "pixel-failure")

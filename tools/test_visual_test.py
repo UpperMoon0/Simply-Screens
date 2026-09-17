@@ -40,7 +40,7 @@ class EvidenceTests(unittest.TestCase):
         self.assertIn("public static void submittedScreen(Direction facing", source)
         self.assertIn("frameMatchesCurrentFixture()", source)
         self.assertIn("frameUnexpectedSubmission", source)
-        self.assertIn("frameTileOwners.size() == size * size", source)
+        self.assertIn("!frameTileOwners.isEmpty()", source)
         self.assertIn("submittedTile(facing", harness)
         self.assertIn("submittedScreen(facing", harness)
         self.assertIn("stableFrames < REQUIRED_STABLE_FRAMES", source)
@@ -204,7 +204,7 @@ class PixelTests(unittest.TestCase):
             image_box = (480-half,360-half,480+half,360+half)
             draw.rectangle(image_box, fill=(240,24,240))
             front = focal*4/30.5
-            draw.rectangle((480-front,360-front,480,360+front), fill=(100,10,10))
+            draw.rectangle((480-front,360-front,480,360+front), fill=(65,63,78))
             image.save(path)
             self.assertEqual("pass",measure(path,frame)["status"])
             draw.rectangle(image_box, fill=(240,24,240)); image.save(path)

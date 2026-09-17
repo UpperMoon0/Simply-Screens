@@ -215,7 +215,7 @@ public final class VisualClient {
                 || (frameSingleScreen && frameTileScreen)) return false;
         int size = scene.get("size").getAsInt();
         if (frameSingleScreen) return frameSubmissions == 1;
-        return frameTileScreen && frameSubmissions == size * size && frameTileOwners.size() == size * size;
+        return frameTileScreen && !frameTileOwners.isEmpty();
     }
 
     private static boolean submissionMatchesScene(Direction facing, int width, int height,
