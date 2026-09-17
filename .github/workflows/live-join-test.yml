@@ -17,13 +17,6 @@ on:
       - "tools/assert_production_jar.py"
       - ".github/workflows/live-join-test.yml"
 
-permissions:
-  contents: read
-
-concurrency:
-  group: live-join-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
   live-join:
     timeout-minutes: 25
@@ -39,8 +32,6 @@ jobs:
           - target: neoforge-26.1.2
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Checkout OpenUI-MC
         uses: actions/checkout@v4
         with:
@@ -84,7 +75,7 @@ jobs:
           done
       - name: Run automatic real-client join test
         run: python3 tools/live_join_test.py --target "${{ matrix.target }}"
-      - name: Upload test diagnostics
+      - name: Upload test logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -92,6 +83,4 @@ jobs:
           path: |
             ${{ matrix.target }}/run/live-join/client/logs
             ${{ matrix.target }}/run/live-join/server/logs
-            ${{ matrix.target }}/run/live-join/client/crash-reports
-            ${{ matrix.target }}/run/live-join/server/crash-reports
           if-no-files-found: ignore

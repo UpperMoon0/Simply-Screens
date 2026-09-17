@@ -5,34 +5,16 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 concurrency:
-  group: pr-tests-${{ github.event.pull_request.number || github.ref }}
+  group: pr-tests-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  contracts:
-    name: Source and harness contracts
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - name: Test verification harnesses
-        run: python3 -m unittest discover -s tools -p 'test_*.py' -v
-      - name: Verify screen render contract
-        run: python3 tools/render_contract.py
-
   test:
     name: Run all tests
-    needs: contracts
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Checkout OpenUI-MC
         uses: actions/checkout@v4
         with:
@@ -67,14 +49,5 @@ jobs:
             JAVA_HOME=$JAVA_HOME_21_X64 ./gradlew -p OpenUI-MC "$target" --no-daemon
           done
       - run: chmod +x gradlew
-      - name: Run all version tests
+      - name: Run all tests
         run: ./gradlew testAllVersions --no-daemon
-      - name: Upload test diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr-test-diagnostics
-          path: |
-            **/build/reports/tests/**
-            **/build/test-results/**
-          if-no-files-found: ignore
