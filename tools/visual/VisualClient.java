@@ -20,12 +20,17 @@ public final class VisualClient {
     private static final int VIEWPORT_WIDTH = 960;
     private static final int VIEWPORT_HEIGHT = 720;
     private static final int BASE_SAMPLES = __BASE_SAMPLES__;
+    private static final int REQUIRED_STABLE_SUBMISSIONS = 3;
+    private static final double CAMERA_POSITION_EPSILON = 0.01;
+    private static final float CAMERA_ANGLE_EPSILON = 0.005f;
     private static String current = "";
-    private static int ticks, sample;
+    private static int ticks, sample, stableSubmissions;
     private static long submissions, lastSubmission;
     private static JsonObject scene;
     private static java.util.concurrent.CompletableFuture<Void> reload;
     private static boolean reloaded, sampleArmed;
+    private static Vec3 stableCameraPosition;
+    private static float stableCameraYaw, stableCameraPitch;
     public static void submitted() { submissions++; }
 
     public static boolean tick(Minecraft mc) {
@@ -36,7 +41,7 @@ public final class VisualClient {
             if (!ready.get("id").getAsString().equals(current)) {
                 if (capturing.get()) return false;
                 current = ready.get("id").getAsString(); scene = ready;
-                ticks = 0; sample = 0; lastSubmission = submissions; sampleArmed = false;
+                ticks = 0; sample = 0; resetStability();
                 reload = null; reloaded = false;
             }
             mc.options.hideGui = true;
@@ -58,8 +63,7 @@ public final class VisualClient {
                 reload.join(); // Failure is fatal, never treated as a completed reload.
                 reloaded = true;
                 ticks = 0;
-                sampleArmed = false;
-                lastSubmission = submissions;
+                resetStability();
                 return false;
             }
             if (!(mc.level.getBlockEntity(new BlockPos(0,128,0)) instanceof ScreenBlockEntity screen)) return false;
@@ -75,29 +79,48 @@ public final class VisualClient {
             mc.player.setYRot(yaw);
             mc.player.setXRot(scene.get("pitch").getAsFloat());
             if (mc.screen != null || mc.getOverlay() != null) {
-                sampleArmed = false;
-                lastSubmission = submissions;
+                resetStability();
                 return false;
             }
-            // Arm after changing the camera, then require a subsequent real render.
-            // This replaces arbitrary 100-tick/6-tick sleeps with the event that the
-            // screenshot actually depends on, without weakening the submission gate.
+            // Camera rotation is applied during the client tick, while the renderer can
+            // still expose the previous/interpolated camera for the next submission.
+            // Require three consecutive rendered observations that both match the
+            // requested sample and remain stable before admitting a screenshot.
             if (!sampleArmed) {
                 sampleArmed = true;
+                stableSubmissions = 0;
+                stableCameraPosition = null;
                 lastSubmission = submissions;
                 return false;
             }
             if (submissions <= lastSubmission) return false;
-            sampleArmed = false;
             lastSubmission = submissions;
+            var camera = mc.gameRenderer.getMainCamera();
+            Vec3 cameraPosition = __CAMERA_POSITION__;
+            float cameraYaw = __CAMERA_YAW__;
+            float cameraPitch = __CAMERA_PITCH__;
+            if (!cameraMatches(cameraPosition, cameraYaw, cameraPitch, expected, yaw, scene.get("pitch").getAsFloat())) {
+                stableSubmissions = 0;
+                stableCameraPosition = null;
+                return false;
+            }
+            if (stableCameraPosition != null && !cameraStable(cameraPosition, cameraYaw, cameraPitch)) {
+                stableSubmissions = 0;
+            }
+            stableCameraPosition = cameraPosition;
+            stableCameraYaw = cameraYaw;
+            stableCameraPitch = cameraPitch;
+            stableSubmissions++;
+            if (stableSubmissions < REQUIRED_STABLE_SUBMISSIONS) return false;
+            sampleArmed = false;
+            stableSubmissions = 0;
+            stableCameraPosition = null;
             capturing.set(true);
             int index = sample++;
             JsonObject frame = scene.deepCopy();
-            var camera = mc.gameRenderer.getMainCamera();
-            Vec3 eye = __CAMERA_POSITION__;
-            frame.add("camera", JSON.toJsonTree(new double[]{eye.x, eye.y, eye.z}));
-            frame.addProperty("cameraYaw", __CAMERA_YAW__);
-            frame.addProperty("cameraPitch", __CAMERA_PITCH__);
+            frame.add("camera", JSON.toJsonTree(new double[]{cameraPosition.x, cameraPosition.y, cameraPosition.z}));
+            frame.addProperty("cameraYaw", cameraYaw);
+            frame.addProperty("cameraPitch", cameraPitch);
             frame.addProperty("fov", 70);
             frame.addProperty("sample", index);
             frame.addProperty("reloaded", reloaded);
@@ -112,6 +135,30 @@ public final class VisualClient {
             fail(failure);
             return false;
         }
+    }
+
+    private static void resetStability() {
+        sampleArmed = false;
+        stableSubmissions = 0;
+        stableCameraPosition = null;
+        lastSubmission = submissions;
+    }
+
+    private static boolean cameraMatches(Vec3 position, float yaw, float pitch, Vec3 expectedPosition, float expectedYaw, float expectedPitch) {
+        return position.distanceTo(expectedPosition) <= CAMERA_POSITION_EPSILON
+                && angleDistance(yaw, expectedYaw) <= CAMERA_ANGLE_EPSILON
+                && angleDistance(pitch, expectedPitch) <= CAMERA_ANGLE_EPSILON;
+    }
+
+    private static boolean cameraStable(Vec3 position, float yaw, float pitch) {
+        return position.distanceTo(stableCameraPosition) <= CAMERA_POSITION_EPSILON
+                && angleDistance(yaw, stableCameraYaw) <= CAMERA_ANGLE_EPSILON
+                && angleDistance(pitch, stableCameraPitch) <= CAMERA_ANGLE_EPSILON;
+    }
+
+    private static float angleDistance(float a, float b) {
+        float delta = Math.abs((a - b) % 360.0f);
+        return delta > 180.0f ? 360.0f - delta : delta;
     }
 
     private static void save(com.mojang.blaze3d.platform.NativeImage pixels, JsonObject frame, String stem) {

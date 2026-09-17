@@ -30,6 +30,14 @@ class EvidenceTests(unittest.TestCase):
                 root_mc = (root / "gradle.properties").read_text().strip()
                 self.assertEqual("minecraft_version = 1.20.1" if target.endswith("1.20.1") else "minecraft_version = 1.21.1", root_mc)
 
+    def test_visual_client_requires_stable_rendered_camera_before_capture(self):
+        source = (ROOT / "tools/visual/VisualClient.java").read_text()
+        self.assertIn("REQUIRED_STABLE_SUBMISSIONS = 3", source)
+        self.assertIn("cameraMatches(cameraPosition, cameraYaw, cameraPitch", source)
+        self.assertIn("cameraStable(cameraPosition, cameraYaw, cameraPitch)", source)
+        self.assertIn("stableSubmissions < REQUIRED_STABLE_SUBMISSIONS", source)
+        self.assertGreaterEqual(source.count("resetStability();"), 3)
+
     def test_unique_manifest_and_full_matrix(self):
         self.assertEqual(5, len(TARGETS))
         self.assertEqual(108, len(cases()))
