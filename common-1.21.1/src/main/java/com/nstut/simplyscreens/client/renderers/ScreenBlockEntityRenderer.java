@@ -231,7 +231,7 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
 
     private static void renderTextureQuad(ResourceLocation texture, float width, float height,
                                           PoseStack poseStack, MultiBufferSource bufferSource, int packedOverlay) {
-        VertexConsumer consumer = bufferSource.getBuffer(RenderType.text(texture));
+        VertexConsumer consumer = bufferSource.getBuffer(RenderType.textPolygonOffset(texture));
         PoseStack.Pose pose = poseStack.last();
         float minX = -width * 0.5f;
         float maxX = width * 0.5f;
