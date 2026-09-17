@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail CI if a production Simply Screens jar contains obsolete mixin metadata."""
+"""Fail CI for obsolete mixin metadata or accidentally packaged visual drivers."""
 
 from __future__ import annotations
 
@@ -26,6 +26,7 @@ def obsolete_entries(jar: Path) -> list[str]:
         entry
         for entry in entries
         if Path(entry).name == "simplyscreens.mixins.json"
+        or entry.startswith("com/nstut/simplyscreens/testing/visual/")
         or (
             Path(entry).name.lower().endswith("refmap.json")
             and ("simply_screens" in Path(entry).name.lower() or "simplyscreens" in Path(entry).name.lower())
@@ -48,12 +49,12 @@ def main() -> int:
     jar = jars[0]
     obsolete = obsolete_entries(jar)
     if obsolete:
-        print(f"Obsolete Simply Screens mixin metadata found in {jar}:", file=sys.stderr)
+        print(f"Forbidden Simply Screens production entries found in {jar}:", file=sys.stderr)
         for entry in obsolete:
             print(f"  - {entry}", file=sys.stderr)
         return 1
 
-    print(f"{jar}: no obsolete Simply Screens mixin config/refmap entries")
+    print(f"{jar}: no obsolete mixin metadata or test-only visual drivers")
     return 0
 
 

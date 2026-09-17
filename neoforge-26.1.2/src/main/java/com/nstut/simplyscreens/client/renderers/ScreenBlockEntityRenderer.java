@@ -5,7 +5,6 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import com.nstut.simplyscreens.Config;
-import com.nstut.simplyscreens.ScreenTileLayout;
 import com.nstut.simplyscreens.ScreenVisibility;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.ScreenBlock;
@@ -22,16 +21,36 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.Vec3;
 
-import java.util.UUID;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBlockEntity, ScreenBlockEntityRenderState> {
     private static final int FULL_BRIGHTNESS = 15728880;
     private static final float BASE_OFFSET = 0.501f;
     private static final Map<BlockPos, Long> LAST_DRAW_LOG_NANOS = new ConcurrentHashMap<>();
+    private static final FrameRenderClaims<Object> FRAME_RENDER_CLAIMS = new FrameRenderClaims<>();
 
     public ScreenBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
+    }
+
+    /** Clears logical-screen ownership before each rendered frame. */
+    public static void beginRenderFrame() {
+        FRAME_RENDER_CLAIMS.clearValues();
+    }
+
+    /** Drops render claims belonging to an unloaded client level. */
+    public static void clearLevel(Object levelIdentity) {
+        FRAME_RENDER_CLAIMS.removeLevel(levelIdentity);
+    }
+
+    /** Releases level identities when the client leaves a world. */
+    public static void clearCaches() {
+        FRAME_RENDER_CLAIMS.clear();
+        LAST_DRAW_LOG_NANOS.clear();
     }
 
     @Override
@@ -57,6 +76,9 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
         state.anchorOffsetY = anchorPos == null ? 0 : anchorPos.getY() - entity.getBlockPos().getY();
         state.anchorOffsetZ = anchorPos == null ? 0 : anchorPos.getZ() - entity.getBlockPos().getZ();
         state.texture = imageId == null ? null : ClientImageManager.getTextureLocation(imageId);
+        state.levelIdentity = entity.getLevel();
+        state.anchorKey = anchorPos == null ? 0L : anchorPos.asLong();
+        state.visible = state.visible && state.levelIdentity != null;
         state.scaleX = state.width;
         state.scaleY = state.height;
         if (imageId != null && renderData.isMaintainAspectRatio()) {
@@ -69,21 +91,12 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
                 else state.scaleX = state.height * imageAspect;
             }
         }
-        ScreenTileLayout.Tile tile = calculateTile(entity, renderData, state.facing, state.scaleX, state.scaleY);
-        state.visible = state.visible && !tile.isEmpty();
-        state.tileMinX = tile.minX();
-        state.tileMaxX = tile.maxX();
-        state.tileMinY = tile.minY();
-        state.tileMaxY = tile.maxY();
-        state.tileMinU = tile.minU();
-        state.tileMaxU = tile.maxU();
-        state.tileMinV = tile.minV();
-        state.tileMaxV = tile.maxV();
     }
 
     @Override
     public void submit(ScreenBlockEntityRenderState state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
-        if (!state.visible || state.texture == null) return;
+        if (!state.visible || state.texture == null
+                || !FRAME_RENDER_CLAIMS.claim(state.levelIdentity, state.anchorKey)) return;
         debugDraw(state);
         poseStack.pushPose();
         poseStack.translate(state.anchorOffsetX, state.anchorOffsetY, state.anchorOffsetZ);
@@ -108,10 +121,14 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
     }
 
     private static void buildTexturedQuad(VertexConsumer consumer, PoseStack.Pose pose, ScreenBlockEntityRenderState state) {
-        vertex(consumer, pose, state.tileMinX, state.tileMaxY, state.tileMaxU, state.tileMinV);
-        vertex(consumer, pose, state.tileMaxX, state.tileMaxY, state.tileMinU, state.tileMinV);
-        vertex(consumer, pose, state.tileMaxX, state.tileMinY, state.tileMinU, state.tileMaxV);
-        vertex(consumer, pose, state.tileMinX, state.tileMinY, state.tileMaxU, state.tileMaxV);
+        float minX = -state.scaleX * 0.5f;
+        float maxX = state.scaleX * 0.5f;
+        float minY = -state.scaleY * 0.5f;
+        float maxY = state.scaleY * 0.5f;
+        vertex(consumer, pose, minX, maxY, 1.0f, 0.0f);
+        vertex(consumer, pose, maxX, maxY, 0.0f, 0.0f);
+        vertex(consumer, pose, maxX, minY, 0.0f, 1.0f);
+        vertex(consumer, pose, minX, minY, 1.0f, 1.0f);
     }
 
     private static void vertex(VertexConsumer consumer, PoseStack.Pose pose, float x, float y, float u, float v) {
@@ -169,29 +186,24 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
                 state.texture, state.width, state.height, state.facing);
     }
 
-    private static Direction getWidthDirection(Direction facing) {
-        return switch (facing) {
-            case NORTH, UP, DOWN -> Direction.WEST;
-            case SOUTH -> Direction.EAST;
-            case WEST -> Direction.SOUTH;
-            case EAST -> Direction.NORTH;
-        };
-    }
+    static final class FrameRenderClaims<L> {
+        private final Map<L, Set<Long>> levels = new IdentityHashMap<>();
 
-    private static ScreenTileLayout.Tile calculateTile(ScreenBlockEntity entity, ScreenBlockEntity anchor,
-                                                        Direction facing, float imageWidth, float imageHeight) {
-        Direction width = getWidthDirection(facing);
-        Direction height = facing.getAxis().isHorizontal()
-                ? Direction.UP : facing == Direction.UP ? Direction.SOUTH : Direction.NORTH;
-        BlockPos current = entity.getBlockPos();
-        BlockPos origin = entity.getAnchorPos();
-        int dx = current.getX() - origin.getX();
-        int dy = current.getY() - origin.getY();
-        int dz = current.getZ() - origin.getZ();
-        int widthIndex = dx * width.getStepX() + dy * width.getStepY() + dz * width.getStepZ();
-        int heightIndex = dx * height.getStepX() + dy * height.getStepY() + dz * height.getStepZ();
-        return ScreenTileLayout.calculate(anchor.getScreenWidth(), anchor.getScreenHeight(),
-                widthIndex, heightIndex, imageWidth, imageHeight);
+        boolean claim(L levelIdentity, long anchor) {
+            return levels.computeIfAbsent(levelIdentity, ignored -> new HashSet<>()).add(anchor);
+        }
+
+        void clearValues() {
+            levels.values().forEach(Set::clear);
+        }
+
+        void removeLevel(L levelIdentity) {
+            levels.remove(levelIdentity);
+        }
+
+        void clear() {
+            levels.clear();
+        }
     }
 
 }

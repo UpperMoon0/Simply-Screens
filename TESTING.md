@@ -89,7 +89,7 @@ Each target must run three isolated variants, reusing compiled outputs but start
 
 The enlarged-offset mutation is rejected by the fast source/compiled contract, not by changing geometry to make the pixel reproduction easier. Negative controls mutate only the disposable snapshot. No assertion failure is retried into a pass.
 
-`--compile-only` compiles the instrumented target; `--probe` runs a small north-facing diagnostic subset. Both deliberately produce non-passing receipts and cannot satisfy the merge gate.
+`--compile-only` compiles the instrumented target; `--probe` runs a diagnostic subset covering the north-facing distance sweep, other facings, small far screens, occlusion and reload. Both deliberately produce non-passing receipts and cannot satisfy the merge gate.
 
 ## Evidence and limits
 

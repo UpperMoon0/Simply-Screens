@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from unittest.mock import Mock
 
-from visual_cases import TARGETS, cases, expected_outcome
+from visual_cases import TARGETS, FACES, cases, expected_outcome
 from visual_test import atomic_json, checkout_lock, health, scope_gradle, verify_receipts, wait_until
 from compiled_render_contract import verify_dump
 
@@ -33,6 +33,9 @@ class EvidenceTests(unittest.TestCase):
     def test_unique_manifest_and_full_matrix(self):
         self.assertEqual(5, len(TARGETS))
         self.assertEqual(108, len(cases()))
+        far_small_oblique = [c for c in cases() if c["size"] == 2 and c["distance"] == 160 and c["angle"] != 0]
+        self.assertEqual(len(FACES), len(far_small_oblique))
+        self.assertTrue(all(c["angle"] == 30 for c in far_small_oblique))
         for variant in ("fixed", "plain", "see-through"):
             self.assertEqual(len(cases(variant)), len({c["id"] for c in cases(variant)}))
 

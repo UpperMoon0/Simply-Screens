@@ -11,6 +11,12 @@ def cases(variant="fixed"):
     # Near reference and far negative controls use identical scenes/settings.
     combinations = product(FACES, (2, 8), (8, 32, 64, 160), (0, 60))
     for face, size, distance, angle in combinations:
+        # A 2x2 screen at 160 blocks and 60 degrees is only ~3 pixels wide at the
+        # fixed 960x720 viewport; after silhouette-edge erosion it has no independent
+        # interior samples. Keep the far oblique coverage, but use 30 degrees so the
+        # oracle retains a meaningful interior without lowering its sample floor.
+        if size == 2 and distance == 160 and angle == 60:
+            angle = 30
         if variant == "plain" and (size != 8 or distance not in (8, 64, 160)):
             continue
         if variant == "see-through":

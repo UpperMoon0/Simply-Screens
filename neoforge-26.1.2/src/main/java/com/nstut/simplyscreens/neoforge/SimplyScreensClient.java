@@ -10,6 +10,7 @@ import com.nstut.simplyscreens.network.PacketRegistries;
 import com.nstut.simplyscreens.testing.LiveJoinTestProtocol;
 import dev.architectury.event.events.client.ClientTickEvent;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -18,7 +19,9 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.level.LevelEvent;
 
 @Mod(value = SimplyScreens.MOD_ID, dist = Dist.CLIENT)
 @EventBusSubscriber(modid = SimplyScreens.MOD_ID, value = Dist.CLIENT)
@@ -35,6 +38,8 @@ public final class SimplyScreensClient {
             BlockEntityRenderers.register(BlockEntityRegistries.SCREEN.get(), ScreenBlockEntityRenderer::new);
             PacketRegistries.registerS2CPackets();
             NeoForge.EVENT_BUS.addListener(SimplyScreensClient::clientDisconnect);
+            NeoForge.EVENT_BUS.addListener(SimplyScreensClient::levelUnload);
+            NeoForge.EVENT_BUS.addListener(SimplyScreensClient::renderLevelAfterSky);
         });
     }
 
@@ -54,7 +59,18 @@ public final class SimplyScreensClient {
         }
     }
 
+    private static void renderLevelAfterSky(RenderLevelStageEvent.AfterSky event) {
+        ScreenBlockEntityRenderer.beginRenderFrame();
+    }
+
+    private static void levelUnload(LevelEvent.Unload event) {
+        if (event.getLevel() instanceof ClientLevel clientLevel) {
+            ScreenBlockEntityRenderer.clearLevel(clientLevel);
+        }
+    }
+
     private static void clientDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
+        ScreenBlockEntityRenderer.clearCaches();
         ClientImageManager.clearCache();
         ClientServerConfig.reset();
     }

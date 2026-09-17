@@ -201,6 +201,7 @@ def run_variant(stage, target, variant, directory, probe=False):
     if os.name != "nt" and not os.environ.get("DISPLAY"):
         client_cmd = ["xvfb-run", "-a", "-s", "-screen 0 1920x1080x24", *client_cmd]
     results = {}
+    graphics = None
     server = client = None
     with (directory / "server-process.log").open("w", encoding="utf-8") as server_log, (directory / "client-process.log").open("w", encoding="utf-8") as client_log:
         try:
@@ -213,8 +214,10 @@ def run_variant(stage, target, variant, directory, probe=False):
             client = launch(client_cmd, stage, client_log, env)
             selected = cases(variant)
             if probe:
-                selected = [c for c in selected if c["facing"] == "NORTH" and c["size"] == 8
-                            and (c["occluded"] or c["distance"] in (8,64,160))]
+                selected = [c for c in selected if c["occluded"] or c.get("reload")
+                            or (c["facing"] == "NORTH" and c["size"] == 8 and c["distance"] in (8,64,160))
+                            or (c["size"] == 8 and c["distance"] == 8 and c["angle"] == 0)
+                            or (c["size"] == 2 and c["distance"] == 160)]
             for case in selected:
                 atomic_json(directory / "request.json", case)
                 wait_until(lambda: (directory / f'{case["id"]}-{SAMPLES-1:02d}.json').exists(), directory, server, client, 240)
@@ -226,6 +229,11 @@ def run_variant(stage, target, variant, directory, probe=False):
                         raise RuntimeError("frame belongs to a different/incomplete scenario")
                     if case.get("reload") and frame.get("reloaded") != (index >= 8):
                         raise RuntimeError("missing before/after resource reload evidence")
+                    identity = {k: frame.get(k) for k in ("graphicsVendor", "graphicsRenderer", "graphicsVersion")}
+                    if not all(identity.values()) or (graphics is not None and graphics != identity):
+                        raise RuntimeError("missing or changing graphics backend identity")
+                    graphics = identity
+                    atomic_json(directory / "graphics.json", graphics)
                     frames.append(measure(directory / (stem+".png"), frame))
                 result = dict(status="pass" if all(f["status"] == "pass" for f in frames) else "pixel-failure",
                               image_errors=max(f["image_errors"] for f in frames),
@@ -278,6 +286,10 @@ def run(root, target, compile_only=False, probe=False):
             for variant in ("fixed", "plain", "see-through"):
                 set_variant(stage, originals, variant)
                 run_variant(stage, target, variant, evidence / variant, probe)
+                graphics = json.loads((evidence / variant / "graphics.json").read_text())
+                if "graphics" in receipt and receipt["graphics"] != graphics:
+                    raise RuntimeError("negative control ran on a different graphics backend")
+                receipt["graphics"] = graphics
                 receipt["variants"][variant] = "diagnostic" if probe else "pass"
             receipt["status"] = "probe-only" if probe else "pass"
     except BaseException as exc:
