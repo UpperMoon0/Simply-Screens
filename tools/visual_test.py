@@ -124,6 +124,67 @@ def replace_once(path, old, new):
     path.write_text(text.replace(old,new), encoding="utf-8")
 
 
+def instrument_visual_render_events(stage):
+    """Capture only after the rendered world is actually in the main framebuffer."""
+    registrations = {
+        "fabric-1.20.1": (
+            PACKAGE / "fabric/client/ClientSetup.java",
+            "BlockEntityRenderers.register(BlockEntityRegistries.SCREEN.get(), ScreenBlockEntityRenderer::new);",
+            "BlockEntityRenderers.register(BlockEntityRegistries.SCREEN.get(), ScreenBlockEntityRenderer::new);\n"
+            "        net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.START.register(context -> com.nstut.simplyscreens.testing.visual.VisualClient.beginRenderFrame());\n"
+            "        net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.END.register(context -> com.nstut.simplyscreens.testing.visual.VisualClient.afterRender(net.minecraft.client.Minecraft.getInstance()));",
+        ),
+        "fabric-1.21.1": (
+            PACKAGE / "fabric/client/ClientSetup.java",
+            "BlockEntityRenderers.register(BlockEntityRegistries.SCREEN.get(), ScreenBlockEntityRenderer::new);",
+            "BlockEntityRenderers.register(BlockEntityRegistries.SCREEN.get(), ScreenBlockEntityRenderer::new);\n"
+            "        net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.START.register(context -> com.nstut.simplyscreens.testing.visual.VisualClient.beginRenderFrame());\n"
+            "        net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.END.register(context -> com.nstut.simplyscreens.testing.visual.VisualClient.afterRender(net.minecraft.client.Minecraft.getInstance()));",
+        ),
+        "forge-1.20.1": (
+            PACKAGE / "forge/client/ClientSetup.java",
+            "MinecraftForge.EVENT_BUS.addListener(ClientSetup::onClientDisconnect);",
+            "MinecraftForge.EVENT_BUS.addListener(ClientSetup::onClientDisconnect);\n"
+            "            MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.client.event.RenderLevelStageEvent visualEvent) -> {\n"
+            "                if (System.getenv(\"SS_VISUAL_DIR\") == null) return;\n"
+            "                if (visualEvent.getStage() == net.minecraftforge.client.event.RenderLevelStageEvent.Stage.AFTER_SKY)\n"
+            "                    com.nstut.simplyscreens.testing.visual.VisualClient.beginRenderFrame();\n"
+            "                else if (visualEvent.getStage() == net.minecraftforge.client.event.RenderLevelStageEvent.Stage.AFTER_LEVEL)\n"
+            "                    com.nstut.simplyscreens.testing.visual.VisualClient.afterRender(Minecraft.getInstance());\n"
+            "            });",
+        ),
+        "neoforge-1.21.1": (
+            PACKAGE / "neoforge/client/ClientSetup.java",
+            "NeoForge.EVENT_BUS.addListener(ClientSetup::onRenderLevelStage);",
+            "NeoForge.EVENT_BUS.addListener(ClientSetup::onRenderLevelStage);\n"
+            "            NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.RenderLevelStageEvent visualEvent) -> {\n"
+            "                if (System.getenv(\"SS_VISUAL_DIR\") == null) return;\n"
+            "                if (visualEvent.getStage() == net.neoforged.neoforge.client.event.RenderLevelStageEvent.Stage.AFTER_SKY)\n"
+            "                    com.nstut.simplyscreens.testing.visual.VisualClient.beginRenderFrame();\n"
+            "                else if (visualEvent.getStage() == net.neoforged.neoforge.client.event.RenderLevelStageEvent.Stage.AFTER_LEVEL)\n"
+            "                    com.nstut.simplyscreens.testing.visual.VisualClient.afterRender(Minecraft.getInstance());\n"
+            "            });",
+        ),
+    }
+    for target, (relative, old, new) in registrations.items():
+        replace_once(stage / target / relative, old, new)
+    instrument_nf26_visual_events(stage)
+
+
+def instrument_nf26_visual_events(stage):
+    path = stage / "neoforge-26.1.2" / PACKAGE / "neoforge/SimplyScreensClient.java"
+    text = path.read_text(encoding="utf-8")
+    if "VisualClient.afterRender" in text:
+        return
+    old = "PacketRegistries.registerS2CPackets();"
+    if text.count(old) != 1:
+        raise RuntimeError(f"instrumentation anchor changed: {path}: {old}")
+    new = old + "\n" \
+        "            NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.RenderLevelStageEvent.AfterSky visualEvent) -> com.nstut.simplyscreens.testing.visual.VisualClient.beginRenderFrame());\n" \
+        "            NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.RenderLevelStageEvent.AfterLevel visualEvent) -> com.nstut.simplyscreens.testing.visual.VisualClient.afterRender(Minecraft.getInstance()));"
+    path.write_text(text.replace(old, new), encoding="utf-8")
+
+
 def instrument(stage):
     for module in MODULES:
         new = module == "neoforge-26.1.2"
@@ -147,6 +208,7 @@ def instrument(stage):
         renderer = package / "client/renderers/ScreenBlockEntityRenderer.java"
         anchor = "debugDraw(state);" if new else "PoseStack.Pose pose = poseStack.last();"
         replace_once(renderer, anchor, anchor+"\n        com.nstut.simplyscreens.testing.visual.VisualClient.submitted();")
+    instrument_visual_render_events(stage)
 
 
 def verify_nf26_control(stage):
@@ -173,6 +235,7 @@ def set_variant(stage, originals, target, variant):
         verify_nf26_control(stage)
         for relative, fixture_name in NF26_CONTROL_FILES.items():
             (stage / relative).write_bytes((stage / NF26_CONTROL / fixture_name).read_bytes())
+        instrument_nf26_visual_events(stage)
         renderer = stage / "neoforge-26.1.2" / PACKAGE / "client/renderers/ScreenBlockEntityRenderer.java"
         text = renderer.read_text(encoding="utf-8")
         if text.count("debugDraw(state);") != 1:
