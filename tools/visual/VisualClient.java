@@ -102,6 +102,10 @@ public final class VisualClient {
             // Spectator flight otherwise expands the effective FOV (70 -> 77),
             // invalidating independently projected masks even when standing still.
             mc.options.fovEffectScale().set(0.0);
+            // The upward-facing fixture puts distant cameras above the cloud layer.
+            // Clouds and their fog are unrelated occluders; only the explicit
+            // foreground blocks belong to this depth-regression scene.
+            mc.options.cloudStatus().set(net.minecraft.client.CloudStatus.OFF);
             Config.VIEW_DISTANCE = 512;
             if (mc.getWindow().getWidth() != VIEWPORT_WIDTH || mc.getWindow().getHeight() != VIEWPORT_HEIGHT) {
                 mc.getWindow().setWindowed(VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
@@ -233,6 +237,7 @@ public final class VisualClient {
             frame.addProperty("cameraYaw", cameraYaw);
             frame.addProperty("cameraPitch", cameraPitch);
             frame.addProperty("fov", 70);
+            frame.addProperty("clouds", mc.options.cloudStatus().get().name());
             frame.addProperty("sample", index);
             frame.addProperty("reloaded", reloaded);
             frame.addProperty("submissions", submissions);

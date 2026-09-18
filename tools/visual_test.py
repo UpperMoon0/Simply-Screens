@@ -448,6 +448,8 @@ def run_variant(stage, target, variant, directory, probe=False):
                         raise RuntimeError("frame belongs to a different/incomplete scenario")
                     if case.get("reload") and frame.get("reloaded") != (index >= SAMPLES):
                         raise RuntimeError("missing before/after resource reload evidence")
+                    if frame.get("clouds") != "OFF":
+                        raise RuntimeError("cloud rendering/fog invalidates the visual fixture")
                     identity = {k: frame.get(k) for k in ("graphicsVendor", "graphicsRenderer", "graphicsVersion")}
                     if not all(identity.values()) or (graphics is not None and graphics != identity):
                         raise RuntimeError("missing or changing graphics backend identity")
