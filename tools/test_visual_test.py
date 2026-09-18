@@ -45,6 +45,7 @@ class EvidenceTests(unittest.TestCase):
         self.assertIn("submittedScreen(facing", harness)
         self.assertIn("stableFrames < REQUIRED_STABLE_FRAMES", source)
         self.assertIn("sceneSynchronized(mc, image)", source)
+        self.assertIn("catch (NoSuchFileException transientSceneGap)", source)
         self.assertIn("cameraMatches(cameraPosition, cameraYaw, cameraPitch", source)
         self.assertIn("cameraStable(cameraPosition, cameraYaw, cameraPitch)", source)
         self.assertIn("WorldRenderEvents.END", harness)

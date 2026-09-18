@@ -6,29 +6,22 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
-import org.joml.Matrix4fStack;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Screen image render state: vanilla text polygon offset plus vanilla view-Z layering. */
+/** Screen image render state: stronger depth-only polygon bias with no projected-geometry shift. */
 public final class ScreenRenderTypes extends RenderStateShard {
-    private static final float VIEW_SCALE = 0.99975586F;
+    private static final float DEPTH_BIAS_FACTOR = -1.0F;
+    private static final float DEPTH_BIAS_UNITS = -16.0F;
     private static final Map<ResourceLocation, RenderType> TYPES = new ConcurrentHashMap<>();
     private static final LayeringStateShard SCREEN_LAYERING = new LayeringStateShard(
-            "simply_screens_polygon_view_offset",
+            "simply_screens_polygon_offset",
             () -> {
-                RenderSystem.polygonOffset(-1.0F, -10.0F);
+                RenderSystem.polygonOffset(DEPTH_BIAS_FACTOR, DEPTH_BIAS_UNITS);
                 RenderSystem.enablePolygonOffset();
-                Matrix4fStack modelView = RenderSystem.getModelViewStack();
-                modelView.pushMatrix();
-                modelView.scale(VIEW_SCALE, VIEW_SCALE, VIEW_SCALE);
-                RenderSystem.applyModelViewMatrix();
             },
             () -> {
-                Matrix4fStack modelView = RenderSystem.getModelViewStack();
-                modelView.popMatrix();
-                RenderSystem.applyModelViewMatrix();
                 RenderSystem.polygonOffset(0.0F, 0.0F);
                 RenderSystem.disablePolygonOffset();
             });

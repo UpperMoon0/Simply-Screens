@@ -65,19 +65,20 @@ DEPTH_HELPERS = {
     "1.21.1": (
         Path("common-1.21.1/src/main/java/com/nstut/simplyscreens/client/renderers/ScreenRenderTypes.java"),
         (
-            "VIEW_SCALE = 0.99975586F",
-            "RenderSystem.polygonOffset(-1.0F, -10.0F);",
+            "DEPTH_BIAS_FACTOR = -1.0F",
+            "DEPTH_BIAS_UNITS = -16.0F",
+            "RenderSystem.polygonOffset(DEPTH_BIAS_FACTOR, DEPTH_BIAS_UNITS);",
             "RenderSystem.enablePolygonOffset();",
-            "modelView.scale(VIEW_SCALE, VIEW_SCALE, VIEW_SCALE);",
-            "RenderSystem.applyModelViewMatrix();",
             "RenderSystem.disablePolygonOffset();",
         ),
     ),
     "26.1.2": (
         Path("neoforge-26.1.2/src/main/java/com/nstut/simplyscreens/client/renderers/ScreenRenderTypes.java"),
         (
-            "RenderPipelines.TEXT_POLYGON_OFFSET",
-            "LayeringTransform.VIEW_OFFSET_Z_LAYERING",
+            "DEPTH_BIAS_FACTOR = -1.0F",
+            "DEPTH_BIAS_UNITS = -16.0F",
+            "new DepthStencilState(CompareOp.LESS_THAN_OR_EQUAL, true, DEPTH_BIAS_FACTOR, DEPTH_BIAS_UNITS)",
+            ".sortOnUpload()",
         ),
     ),
 }
@@ -202,7 +203,7 @@ def main() -> int:
 
     print("SIMPLYSCREENS_RENDER_CONTRACT_PASS")
     print(
-        "All supported renderers keep the image plane fixed at 0.501 and use polygon offset; 1.21.1+ also use vanilla view-Z layering."
+        "All supported renderers keep the image plane fixed at 0.501 and use polygon offset; 1.21.1+ use stronger depth-only polygon bias without view-Z scaling."
     )
     return 0
 

@@ -76,7 +76,13 @@ public final class VisualClient {
         try {
             if (Files.exists(DIR.resolve("finish.txt"))) return true;
             if (mc.player == null || mc.level == null || !Files.exists(DIR.resolve("server-ready.json"))) return false;
-            JsonObject ready = JsonParser.parseString(Files.readString(DIR.resolve("server-ready.json"))).getAsJsonObject();
+            String readyJson;
+            try {
+                readyJson = Files.readString(DIR.resolve("server-ready.json"));
+            } catch (NoSuchFileException transientSceneGap) {
+                return false;
+            }
+            JsonObject ready = JsonParser.parseString(readyJson).getAsJsonObject();
             if (!ready.get("id").getAsString().equals(current)) {
                 if (capturing.get()) return false;
                 current = ready.get("id").getAsString();
