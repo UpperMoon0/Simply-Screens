@@ -114,7 +114,7 @@ class RenderContractTest(unittest.TestCase):
         self.assertTrue(any("occlusion" in error for error in errors), errors)
 
 
-    def test_modern_depth_helper_requires_stronger_depth_only_polygon_bias(self) -> None:
+    def test_modern_depth_helper_requires_expected_version_specific_bias(self) -> None:
         for name in ("1.21.1", "26.1.2"):
             with self.subTest(version=name):
                 self._write_valid_tree()
