@@ -59,7 +59,16 @@ jobs:
           chmod +x gradlew
       - name: Verify production artifact before test-only instrumentation
         run: |
-          ./gradlew :${{ matrix.target }}:build --no-daemon
+          for attempt in 1 2 3; do
+            if ./gradlew :${{ matrix.target }}:build --no-daemon; then
+              break
+            fi
+            if [ "$attempt" = 3 ]; then
+              exit 1
+            fi
+            echo "Gradle production build failed; retrying after transient repository/build setup failure ($attempt/3)."
+            sleep $((attempt * 5))
+          done
           python tools/assert_production_jar.py --module '${{ matrix.target }}'
       - name: Fixed renderer and required negative controls
         env:

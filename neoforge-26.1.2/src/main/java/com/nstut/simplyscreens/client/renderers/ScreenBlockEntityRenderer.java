@@ -29,6 +29,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBlockEntity, ScreenBlockEntityRenderState> {
+    private static final int SCREEN_SUBMIT_ORDER = 1;
     private static final int FULL_BRIGHTNESS = 15728880;
     private static final float BASE_OFFSET = 0.501f;
     private static final Map<BlockPos, Long> LAST_DRAW_LOG_NANOS = new ConcurrentHashMap<>();
@@ -108,7 +109,7 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
         applyFacingRotation(poseStack, state.facing);
         poseStack.translate(0, 0, state.facing == Direction.NORTH || state.facing == Direction.SOUTH ? -BASE_OFFSET : BASE_OFFSET);
         poseStack.translate(-(state.width - 1) / 2f, (state.height - 1) / 2f, 0);
-        collector.submitCustomGeometry(poseStack, ScreenRenderTypes.textPolygonOffset(state.texture),
+        collector.order(SCREEN_SUBMIT_ORDER).submitCustomGeometry(poseStack, ScreenRenderTypes.textPolygonOffset(state.texture),
                 (pose, consumer) -> buildTexturedQuad(consumer, pose, state));
         poseStack.popPose();
     }

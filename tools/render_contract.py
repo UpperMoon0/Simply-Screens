@@ -20,6 +20,7 @@ MODEL_PATH = Path("common/src/main/resources/assets/simply_screens/models/block/
 OFFSET_RE = re.compile(r"BASE_OFFSET\s*=\s*([0-9.]+)f\s*;")
 EXPECTED_OFFSET = 0.501
 NF26_ANCHOR_ONLY = "state.anchorOffsetX != 0 || state.anchorOffsetY != 0 || state.anchorOffsetZ != 0"
+NF26_ORDERED_SUBMIT = "collector.order(SCREEN_SUBMIT_ORDER).submitCustomGeometry"
 
 
 @dataclass(frozen=True)
@@ -148,6 +149,10 @@ def verify_renderer(root: Path, contract: RendererContract) -> list[str]:
     if contract.name == "26.1.2" and NF26_ANCHOR_ONLY not in text:
         errors.append(
             "26.1.2: the full logical screen must be submitted only from its anchor tile"
+        )
+    if contract.name == "26.1.2" and NF26_ORDERED_SUBMIT not in text:
+        errors.append(
+            "26.1.2: screen custom geometry must use a dedicated ordered submit bucket"
         )
 
     return errors

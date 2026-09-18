@@ -43,7 +43,7 @@ class RenderContractTest(unittest.TestCase):
                 "public final class ScreenBlockEntityRenderer {\n"
                 "  private static final float BASE_OFFSET = 0.501f;\n"
                 f"  {fixed_offset}\n"
-                + (f"  boolean anchorOnly() {{ return {render_contract.NF26_ANCHOR_ONLY}; }}\n" if contract.name == "26.1.2" else "")
+                + (f"  boolean anchorOnly() {{ return {render_contract.NF26_ANCHOR_ONLY}; }}\n  void ordered() {{ {render_contract.NF26_ORDERED_SUBMIT}; }}\n" if contract.name == "26.1.2" else "")
                 + f"  void draw() {{ Object type = {contract.polygon_offset_call}; }}\n"
                 + "}\n",
             )
@@ -126,6 +126,14 @@ class RenderContractTest(unittest.TestCase):
                 errors = render_contract.verify(self.root)
                 self.assertTrue(any("depth helper" in error for error in errors), errors)
 
+
+    def test_neoforge_26_requires_dedicated_submit_order(self) -> None:
+        contract = next(c for c in render_contract.RENDERERS if c.name == "26.1.2")
+        path = self.root / contract.path
+        text = path.read_text(encoding="utf-8").replace(render_contract.NF26_ORDERED_SUBMIT, "collector.submitCustomGeometry")
+        path.write_text(text, encoding="utf-8")
+        errors = render_contract.verify(self.root)
+        self.assertTrue(any("ordered submit bucket" in error for error in errors), errors)
 
     def test_neoforge_26_requires_anchor_only_submission(self) -> None:
         contract = next(c for c in render_contract.RENDERERS if c.name == "26.1.2")
