@@ -27,13 +27,14 @@ public final class VisualClient {
     private static final double CAMERA_POSITION_EPSILON = 0.01;
     private static final float CAMERA_ANGLE_EPSILON = 0.005f;
     private static String current = "";
+    private static String waitingFor = "scene";
     private static int ticks, sample, stableFrames, frameSubmissions;
     private static long submissions;
     private static boolean frameUnexpectedSubmission, frameSingleScreen, frameTileScreen;
     private static final java.util.Set<Long> frameTileOwners = new java.util.HashSet<>();
     private static JsonObject scene;
     private static java.util.concurrent.CompletableFuture<Void> reload;
-    private static boolean reloaded, sampleArmed;
+    private static boolean reloaded, sampleArmed, terrainRebuilt;
     private static Vec3 stableCameraPosition;
     private static float stableCameraYaw, stableCameraPitch;
 
@@ -93,6 +94,7 @@ public final class VisualClient {
                 resetStability();
                 reload = null;
                 reloaded = false;
+                terrainRebuilt = false;
             }
             mc.options.hideGui = true;
             mc.options.bobView().set(false);
@@ -107,22 +109,27 @@ public final class VisualClient {
                 return false;
             }
             int totalSamples = scene.has("reload") ? BASE_SAMPLES * 2 : BASE_SAMPLES;
-            if (++ticks > 1200 && sample < totalSamples) throw new IllegalStateException("fixture/sample deadline exceeded: " + current);
+            if (++ticks > 1200 && sample < totalSamples) throw new IllegalStateException(
+                    "fixture/sample deadline exceeded: " + current + "; waiting for " + waitingFor
+                            + "; sample=" + sample + "; eye=" + mc.player.getEyePosition());
             if (scene.has("reload") && sample == BASE_SAMPLES && !reloaded && !capturing.get()) {
                 if (reload == null) reload = mc.reloadResourcePacks();
                 if (!reload.isDone()) return false;
                 reload.join(); // Failure is fatal, never treated as a completed reload.
                 reloaded = true;
+                terrainRebuilt = false;
                 ticks = 0;
                 resetStability();
                 return false;
             }
             if (!(mc.level.getBlockEntity(sceneAnchor()) instanceof ScreenBlockEntity screen)) {
+                waitingFor = "screen block entity at " + sceneAnchor();
                 resetStability();
                 return false;
             }
             UUID image = UUID.fromString(scene.get("image").getAsString());
             if (!image.equals(screen.getResolvedImageId()) || ClientImageManager.getTextureLocation(image) == null) {
+                waitingFor = "fixture image/texture";
                 resetStability();
                 return false;
             }
@@ -130,6 +137,16 @@ public final class VisualClient {
             // remote client those packets can still be in flight. Do not arm sample 0
             // until every cell carries the new logical screen state.
             if (!sceneSynchronized(mc, image)) {
+                waitingFor = "all screen cells to synchronize";
+                resetStability();
+                return false;
+            }
+            // Block entities synchronize before the asynchronous terrain mesh does.
+            // Discard the previous scene's compiled geometry once, then wait for the
+            // new mesh before measuring pixels. A resource reload needs the same gate.
+            if (!terrainRebuilt) {
+                mc.levelRenderer.allChanged();
+                terrainRebuilt = true;
                 resetStability();
                 return false;
             }
@@ -137,6 +154,7 @@ public final class VisualClient {
             Vec3 actualEye = mc.player.getEyePosition();
             Vec3 expected = new Vec3(expectedEye.get(0).getAsDouble(), expectedEye.get(1).getAsDouble(), expectedEye.get(2).getAsDouble());
             if (actualEye.distanceTo(expected) > 0.05) {
+                waitingFor = "teleport to " + expected;
                 resetStability();
                 return false;
             }
@@ -146,6 +164,9 @@ public final class VisualClient {
             mc.player.setYRot(yaw);
             mc.player.setXRot(scene.get("pitch").getAsFloat());
             if (mc.screen != null || mc.getOverlay() != null) {
+                waitingFor = "GUI/overlay to close (screen="
+                        + (mc.screen == null ? "none" : mc.screen.getClass().getName())
+                        + ", overlay=" + (mc.getOverlay() == null ? "none" : mc.getOverlay().getClass().getName()) + ")";
                 resetStability();
                 return false;
             }
@@ -169,6 +190,13 @@ public final class VisualClient {
         try {
             if (!sampleArmed || capturing.get() || scene == null || mc.player == null || mc.level == null) return;
             if (!frameMatchesCurrentFixture()) {
+                waitingFor = "matching renderer submissions (count=" + frameSubmissions
+                        + ", unexpected=" + frameUnexpectedSubmission + ")";
+                clearObservedStability();
+                return;
+            }
+            if (!terrainReady(mc)) {
+                waitingFor = "terrain rebuild";
                 clearObservedStability();
                 return;
             }
@@ -181,6 +209,7 @@ public final class VisualClient {
             float cameraYaw = __CAMERA_YAW__;
             float cameraPitch = __CAMERA_PITCH__;
             if (!cameraMatches(cameraPosition, cameraYaw, cameraPitch, expected, yaw, pitch)) {
+                waitingFor = "camera alignment";
                 clearObservedStability();
                 return;
             }
@@ -286,6 +315,32 @@ public final class VisualClient {
                     || cell.getScreenHeight() != size
                     || !cell.getBlockState().hasProperty(ScreenBlock.FACING)
                     || cell.getBlockState().getValue(ScreenBlock.FACING) != facing) return false;
+        }
+        return true;
+    }
+
+    private static boolean terrainReady(Minecraft mc) {
+        if (!__TERRAIN_IDLE__) return false;
+        BlockPos anchor = sceneAnchor();
+        Direction facing = Direction.valueOf(scene.get("facing").getAsString());
+        // Include the neighboring section on each side for cross-chunk fixtures
+        // without requiring unrelated, potentially occluded world sections.
+        Direction width = switch (facing) {
+            case NORTH, UP, DOWN -> Direction.WEST;
+            case SOUTH -> Direction.EAST;
+            case WEST -> Direction.SOUTH;
+            case EAST -> Direction.NORTH;
+        };
+        Direction height = facing.getAxis().isHorizontal() ? Direction.UP
+                : facing == Direction.UP ? Direction.SOUTH : Direction.NORTH;
+        int size = scene.get("size").getAsInt();
+        for (int x = 0; x < size; x++) for (int y = 0; y < size; y++) {
+            BlockPos pos = anchor.relative(width, x).relative(height, y);
+            if (!__SECTION_COMPILED__) return false;
+            if (scene.get("occluded").getAsBoolean() && x < size / 2) {
+                pos = pos.relative(facing);
+                if (!__SECTION_COMPILED__) return false;
+            }
         }
         return true;
     }

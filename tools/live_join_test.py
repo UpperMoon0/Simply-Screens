@@ -140,7 +140,9 @@ def prepare_client(module_dir: Path) -> None:
         "narrator:0\n"
         "narratorHotkey:false\n"
         "onboardAccessibility:false\n"
-        "skipMultiplayerWarning:true\n",
+        "skipMultiplayerWarning:true\n"
+        # An unfocused test window must not open the pause menu and block capture.
+        "pauseOnLostFocus:false\n",
         encoding="utf-8",
     )
 

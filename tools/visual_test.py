@@ -19,7 +19,7 @@ import time
 import uuid
 
 import live_join_test as live
-from visual_cases import TARGETS, SAMPLES, sample_count, cases, expected_outcome, variants, classify_nf26, NF26_TARGET
+from visual_cases import TARGETS, SAMPLES, sample_count, cases, expected_outcome, variants, NF26_TARGET
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULES = ("common-1.20.1", "common-1.21.1", "neoforge-26.1.2")
@@ -34,9 +34,13 @@ NF26_WORLD_MODELS = (
     Path("neoforge-26.1.2/src/main/resources/assets/simply_screens/models/block/screen.json"),
     Path("neoforge-26.1.2/src/main/resources/assets/simply_screens/models/block/screen_anchor.json"),
 )
+COMMON_WORLD_MODEL_PATHS = (
+    Path("common/src/main/resources/assets/simply_screens/models/block/screen.json"),
+    Path("common/src/main/resources/assets/simply_screens/models/block/screen_anchor.json"),
+)
 COMMON_WORLD_MODELS = {
-    NF26_WORLD_MODELS[0]: Path("common/src/main/resources/assets/simply_screens/models/block/screen.json"),
-    NF26_WORLD_MODELS[1]: Path("common/src/main/resources/assets/simply_screens/models/block/screen_anchor.json"),
+    NF26_WORLD_MODELS[0]: COMMON_WORLD_MODEL_PATHS[0],
+    NF26_WORLD_MODELS[1]: COMMON_WORLD_MODEL_PATHS[1],
 }
 TARGET_PROJECTS = {
     "fabric-1.20.1": {"common", "common-1.20.1", "fabric-1.20.1"},
@@ -206,6 +210,10 @@ def instrument(stage):
             source = source.replace("__CAMERA_POSITION__", "camera.position()" if new else "camera.getPosition()")
             source = source.replace("__CAMERA_YAW__", "camera.yRot()" if new else "camera.getYRot()")
             source = source.replace("__CAMERA_PITCH__", "camera.xRot()" if new else "camera.getXRot()")
+            legacy = module == "common-1.20.1"
+            source = source.replace("__TERRAIN_IDLE__", "mc.levelRenderer.hasRenderedAllChunks()" if legacy else "mc.levelRenderer.hasRenderedAllSections()")
+            compiled = "isChunkCompiled" if legacy else "isSectionCompiledAndVisible" if new else "isSectionCompiled"
+            source = source.replace("__SECTION_COMPILED__", f"mc.levelRenderer.{compiled}(pos)")
             capture = "Screenshot.takeScreenshot(mc.getMainRenderTarget(), pixels -> save(pixels, frame, stem));" if new else "save(Screenshot.takeScreenshot(mc.getMainRenderTarget()), frame, stem);"
             source = source.replace("__CAPTURE__", capture)
             (drivers / (name+".java")).write_text(source, encoding="utf-8")
@@ -253,11 +261,31 @@ def verify_nf26_control(stage):
             raise RuntimeError(f"NeoForge 26 original-control fixture drifted: {name}")
 
 
+def _coplanar_control_model(source):
+    model = json.loads(source)
+    elements = model.get("elements", [])
+    body = next((element for element in elements
+                 if element.get("from") == [0, 0, 0] and element.get("to") == [16, 16, 16]), None)
+    if body is None:
+        raise RuntimeError("cannot reconstruct coplanar control model: full block body missing")
+    body = json.loads(json.dumps(body))
+    body.setdefault("faces", {})["north"] = {"texture": "#front", "cullface": "north"}
+    model["elements"] = [body]
+    return json.dumps(model, indent=2) + "\n"
+
+
+def restore_common_control_models(stage):
+    for model in COMMON_WORLD_MODEL_PATHS:
+        path = stage / model
+        path.write_text(_coplanar_control_model(path.read_text(encoding="utf-8")), encoding="utf-8")
+
+
 def restore_nf26_control_models(stage):
     for local_model, common_model in COMMON_WORLD_MODELS.items():
         destination = stage / local_model
         destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text((stage / common_model).read_text(encoding="utf-8"), encoding="utf-8")
+        source = (stage / common_model).read_text(encoding="utf-8")
+        destination.write_text(_coplanar_control_model(source), encoding="utf-8")
 
 
 def set_variant(stage, originals, target, variant):
@@ -267,11 +295,15 @@ def set_variant(stage, originals, target, variant):
         path.write_text(source, encoding="utf-8")
 
     renderer_paths = [Path(module) / PACKAGE / "client/renderers/ScreenBlockEntityRenderer.java" for module in MODULES]
-    if target == NF26_TARGET and variant != "fixed":
-        # Negative controls must reproduce the old coplanar backing geometry;
-        # otherwise the production model fix would mask the renderer regression.
+    if target != NF26_TARGET and variant == "plain":
+        # Plain is the common broken baseline: no depth protection and the old
+        # coplanar backing, so the far-distance oracle must reproduce corruption.
+        restore_common_control_models(stage)
+    if target == NF26_TARGET and variant == "plain":
+        # NF26 changed renderer topology while fixing the bug. Adapt its hash-locked
+        # pre-fix renderer to the same public "plain" semantic instead of exposing
+        # target-specific diagnostic variants in the required suite.
         restore_nf26_control_models(stage)
-    if target == NF26_TARGET and variant in ("original", "tiled-offset"):
         verify_nf26_control(stage)
         for relative, fixture_name in NF26_CONTROL_FILES.items():
             (stage / relative).write_bytes((stage / NF26_CONTROL / fixture_name).read_bytes())
@@ -279,7 +311,7 @@ def set_variant(stage, originals, target, variant):
         renderer = stage / "neoforge-26.1.2" / PACKAGE / "client/renderers/ScreenBlockEntityRenderer.java"
         text = renderer.read_text(encoding="utf-8")
         if text.count("debugDraw(state);") != 1:
-            raise RuntimeError("original renderer instrumentation anchor changed")
+            raise RuntimeError("plain renderer instrumentation anchor changed")
         text = text.replace(
             "debugDraw(state);",
             "debugDraw(state);\n        com.nstut.simplyscreens.testing.visual.VisualClient.submittedTile(state.facing, state.width, state.height, "
@@ -287,14 +319,10 @@ def set_variant(stage, originals, target, variant):
             "state.blockPos.getZ() + state.anchorOffsetZ, state.blockPos.getX(), state.blockPos.getY(), state.blockPos.getZ());",
             1,
         )
-        if variant == "tiled-offset":
-            if text.count("RenderTypes.text(state.texture)") != 1:
-                raise RuntimeError("original renderer render-type anchor changed")
-            text = text.replace("RenderTypes.text(state.texture)", "RenderTypes.textPolygonOffset(state.texture)", 1)
         renderer.write_text(text, encoding="utf-8")
         return
 
-    if variant in ("plain", "single-plain", "see-through"):
+    if variant in ("plain", "see-through"):
         see_through = variant == "see-through"
         for relative in renderer_paths:
             path = stage / relative
@@ -465,6 +493,7 @@ def run(root, target, compile_only=False, probe=False):
         mutable = [Path(m) / PACKAGE / "client/renderers/ScreenBlockEntityRenderer.java" for m in MODULES]
         mutable += list(NF26_CONTROL_FILES.keys())[1:]
         mutable += list(NF26_WORLD_MODELS)
+        mutable += list(COMMON_WORLD_MODEL_PATHS)
         originals = {relative: (stage / relative).read_text(encoding="utf-8") for relative in mutable}
         # Fixed viewport is also passed to the launcher (options alone do not resize the window).
         for target_name in TARGETS:
@@ -480,17 +509,14 @@ def run(root, target, compile_only=False, probe=False):
                 receipt["variants"][variant] = "compiled"
             receipt["status"] = "compile-only"
         else:
-            variant_results = {}
             for variant in variants(target):
                 set_variant(stage, originals, target, variant)
-                variant_results[variant] = run_variant(stage, target, variant, evidence / variant, probe)
+                run_variant(stage, target, variant, evidence / variant, probe)
                 graphics = json.loads((evidence / variant / "graphics.json").read_text())
                 if "graphics" in receipt and receipt["graphics"] != graphics:
                     raise RuntimeError("negative control ran on a different graphics backend")
                 receipt["graphics"] = graphics
                 receipt["variants"][variant] = "diagnostic" if probe else "pass"
-            if target == NF26_TARGET and not probe:
-                receipt["nf26_diagnosis"] = classify_nf26(variant_results)
             receipt["status"] = "probe-only" if probe else "pass"
     except BaseException as exc:
         receipt["status"] = "fail"
@@ -512,8 +538,6 @@ def verify_receipts(directory, head):
         expected_variants = {v:"pass" for v in variants(r["target"])}
         if r.get("variants") != expected_variants:
             raise ValueError("missing negative controls")
-        if r["target"] == NF26_TARGET and not r.get("nf26_diagnosis"):
-            raise ValueError("missing NeoForge 26 isolation diagnosis")
 
 
 def main():

@@ -17,6 +17,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_PATH = Path("common/src/main/resources/assets/simply_screens/models/block/screen.json")
+COMMON_ANCHOR_MODEL_PATH = Path("common/src/main/resources/assets/simply_screens/models/block/screen_anchor.json")
+COMMON_ITEM_BLOCK_MODEL_PATH = Path("common/src/main/resources/assets/simply_screens/models/block/screen_item.json")
+COMMON_ITEM_MODEL_PATH = Path("common/src/main/resources/assets/simply_screens/models/item/screen.json")
 NF26_MODEL_PATH = Path("neoforge-26.1.2/src/main/resources/assets/simply_screens/models/block/screen.json")
 NF26_ANCHOR_MODEL_PATH = Path("neoforge-26.1.2/src/main/resources/assets/simply_screens/models/block/screen_anchor.json")
 NF26_ITEM_BLOCK_MODEL_PATH = Path("neoforge-26.1.2/src/main/resources/assets/simply_screens/models/block/screen_item.json")
@@ -167,33 +170,53 @@ def verify_renderer(root: Path, contract: RendererContract) -> list[str]:
 
 
 def verify_screen_model(root: Path) -> list[str]:
-    path = root / MODEL_PATH
-    if not path.is_file():
-        return [f"missing screen model {MODEL_PATH}"]
+    errors: list[str] = []
+    for path in (MODEL_PATH, COMMON_ANCHOR_MODEL_PATH):
+        full = root / path
+        if not full.is_file():
+            errors.append(f"missing screen model {path}")
+            continue
+        try:
+            model = json.loads(full.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            errors.append(f"cannot parse screen model {path}: {exc}")
+            continue
+        elements = model.get("elements")
+        if not isinstance(elements, list):
+            errors.append(f"{path.name}: screen model must declare explicit recessed-front geometry")
+            continue
+        body = next((e for e in elements if e.get("from") == [0, 0, 0] and e.get("to") == [16, 16, 16]), None)
+        if body is None:
+            errors.append(f"{path.name}: screen model geometry changed from the full 0..16 cube; re-evaluate the 0.501 render-plane contract")
+        elif "north" in body.get("faces", {}):
+            errors.append(f"{path.name}: body must not keep a coplanar authored front face")
+        backing = next((e for e in elements if e.get("from") == [0, 0, 1] and e.get("to") == [16, 16, 1.001]), None)
+        if backing is None or backing.get("faces", {}).get("north", {}).get("texture") != "#front":
+            errors.append(f"{path.name}: authored front texture must be recessed by 1/16 block")
 
-    try:
-        model = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        return [f"cannot parse screen model: {exc}"]
+    item_path = root / COMMON_ITEM_BLOCK_MODEL_PATH
+    if not item_path.is_file():
+        errors.append(f"missing item model {COMMON_ITEM_BLOCK_MODEL_PATH}")
+    else:
+        try:
+            item_model = json.loads(item_path.read_text(encoding="utf-8"))
+            full = next((e for e in item_model.get("elements", []) if e.get("from") == [0, 0, 0] and e.get("to") == [16, 16, 16]), None)
+            if full is None or full.get("faces", {}).get("north", {}).get("texture") != "#front":
+                errors.append("shared item model must retain the full authored front face")
+        except (OSError, json.JSONDecodeError) as exc:
+            errors.append(f"cannot parse item model {COMMON_ITEM_BLOCK_MODEL_PATH}: {exc}")
 
-    elements = model.get("elements")
-    if not isinstance(elements, list):
-        return ["screen model must declare explicit full-cube geometry"]
-
-    full_cube = None
-    for element in elements:
-        if element.get("from") == [0, 0, 0] and element.get("to") == [16, 16, 16]:
-            full_cube = element
-            break
-    if full_cube is None:
-        return [
-            "screen model geometry changed from the full 0..16 cube; re-evaluate the 0.501 render-plane contract"
-        ]
-
-    north = full_cube.get("faces", {}).get("north", {})
-    if north.get("texture") != "#front":
-        return ["screen model's authored north face must remain the front surface for this contract"]
-    return []
+    item_wrapper = root / COMMON_ITEM_MODEL_PATH
+    if not item_wrapper.is_file():
+        errors.append(f"missing item model wrapper {COMMON_ITEM_MODEL_PATH}")
+    else:
+        try:
+            wrapper = json.loads(item_wrapper.read_text(encoding="utf-8"))
+            if wrapper.get("parent") != "simply_screens:block/screen_item":
+                errors.append("shared item model wrapper must use the full screen_item model")
+        except (OSError, json.JSONDecodeError) as exc:
+            errors.append(f"cannot parse item model wrapper {COMMON_ITEM_MODEL_PATH}: {exc}")
+    return errors
 
 
 
@@ -268,7 +291,7 @@ def main() -> int:
 
     print("SIMPLYSCREENS_RENDER_CONTRACT_PASS")
     print(
-        "All supported renderers keep the image plane fixed at 0.501 and use polygon offset; 1.21.1 and 26.1.2 use depth-only bias, with 26.1.2 backed by a recessed static front face."
+        "All supported renderers keep the image plane fixed at 0.501 and use polygon offset; shared world models use a recessed static front face, and 1.21.1/26.1.2 use depth-only bias."
     )
     return 0
 

@@ -4,8 +4,8 @@ import tempfile
 import unittest
 from unittest.mock import Mock
 
-from visual_cases import TARGETS, FACES, SAMPLES, sample_count, cases, expected_outcome, variants, classify_nf26, NF26_TARGET, NEAR_REFERENCE_FACES
-from visual_test import atomic_json, checkout_lock, health, scope_gradle, verify_receipts, wait_until, verify_nf26_control, restore_nf26_control_models, NF26_WORLD_MODELS, COMMON_WORLD_MODELS, ROOT
+from visual_cases import TARGETS, FACES, SAMPLES, sample_count, cases, expected_outcome, variants, NF26_TARGET, NEAR_REFERENCE_FACES
+from visual_test import atomic_json, checkout_lock, health, scope_gradle, verify_receipts, wait_until, verify_nf26_control, restore_common_control_models, restore_nf26_control_models, NF26_WORLD_MODELS, COMMON_WORLD_MODELS, COMMON_WORLD_MODEL_PATHS, ROOT
 from compiled_render_contract import verify_dump
 
 
@@ -30,11 +30,16 @@ class EvidenceTests(unittest.TestCase):
                 root_mc = (root / "gradle.properties").read_text().strip()
                 self.assertEqual("minecraft_version = 1.20.1" if target.endswith("1.20.1") else "minecraft_version = 1.21.1", root_mc)
 
-    def test_depth_fixture_avoids_chunk_boundary_but_keeps_explicit_cross_chunk_cases(self):
+    def test_depth_fixture_isolates_faces_and_keeps_explicit_cross_chunk_cases(self):
         server = (ROOT / "tools/visual/VisualServer.java").read_text()
-        self.assertIn("new BlockPos(crossChunk ? 0 : 8, 128, 8)", server)
-        # At the default anchor every size-8 footprint stays within x/z 0..15
-        # for all six facings (west/east and north/south extents are at most 7).
+        self.assertIn("BlockPos anchor = fixtureAnchor(facing, crossChunk);", server)
+        self.assertIn("lane * 32 + (crossChunk ? 0 : 8)", server)
+        # Six deterministic face lanes are separated by two chunks. A normal size-8
+        # footprint starts at local x/z 8, so +/-7 cells remain inside that lane's
+        # chunk instead of depending on a neighboring chunk rebuild.
+        anchors = [lane * 32 + 8 for lane in range(6)]
+        self.assertEqual(6, len(set(anchors)))
+        self.assertTrue(all(anchor % 16 == 8 for anchor in anchors))
         self.assertTrue(8 - 7 >= 0 and 8 + 7 <= 15)
         self.assertEqual(2, sum(1 for c in cases() if c.get("crossChunk")))
 
@@ -85,7 +90,7 @@ class EvidenceTests(unittest.TestCase):
         cross_chunk = [c for c in cases() if c.get("crossChunk")]
         self.assertEqual({"NORTH-cross-chunk", "UP-cross-chunk"}, {c["id"] for c in cross_chunk})
         self.assertTrue(all(not c["occluded"] for c in cross_chunk))
-        self.assertEqual(("fixed", "original", "single-plain", "tiled-offset", "see-through"), variants(NF26_TARGET))
+        self.assertTrue(all(variants(target) == ("fixed", "plain", "see-through") for target in TARGETS))
         for target in TARGETS:
             for variant in variants(target):
                 self.assertEqual(len(cases(variant)), len({c["id"] for c in cases(variant)}))
@@ -100,67 +105,59 @@ class EvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing"):
             expected_outcome("fixed", good)
 
-    def test_original_must_reproduce_but_near_reference_must_pass(self):
-        result = {c["id"]: dict(status="pass") for c in cases("original")}
+    def test_plain_must_reproduce_but_near_reference_must_pass(self):
+        result = {c["id"]: dict(status="pass") for c in cases("plain")}
         with self.assertRaisesRegex(ValueError, "INCONCLUSIVE"):
-            expected_outcome("original", result)
-        far = next(c["id"] for c in cases("original") if c["distance"] == 160)
+            expected_outcome("plain", result)
+        far = next(c["id"] for c in cases("plain") if c["distance"] == 160)
         result[far]["status"] = "pixel-failure"
-        expected_outcome("original", result)
+        expected_outcome("plain", result)
         result[far]["status"] = "crash"
         with self.assertRaisesRegex(ValueError, "invalid"):
-            expected_outcome("original", result)
+            expected_outcome("plain", result)
         result[far]["status"] = "pixel-failure"
-        # Horizontal faces can already z-fight in a deliberately broken plain renderer;
-        # they are not part of the clean near-reference contract.
-        horizontal_near = next(c["id"] for c in cases("original")
+        # Horizontal faces can already z-fight in the deliberately broken plain
+        # renderer; cardinal near-reference cases remain the clean comparison.
+        horizontal_near = next(c["id"] for c in cases("plain")
                                if c["distance"] == 8 and c["facing"] == "UP" and c["angle"] == 0)
         result[horizontal_near]["status"] = "pixel-failure"
-        expected_outcome("original", result)
+        expected_outcome("plain", result)
         result[horizontal_near]["status"] = "pass"
 
-        cardinal_near = next(c["id"] for c in cases("original")
+        cardinal_near = next(c["id"] for c in cases("plain")
                              if c["distance"] == 8 and c["angle"] == 0
                              and c["facing"] in NEAR_REFERENCE_FACES)
         result[cardinal_near]["status"] = "pixel-failure"
         with self.assertRaisesRegex(ValueError, "near reference"):
-            expected_outcome("original", result)
+            expected_outcome("plain", result)
 
-    def test_nf26_2x2_classification(self):
-        def result(name, far_failure):
-            data = {c["id"]: dict(status="pass") for c in cases(name)}
-            if far_failure:
-                far = next(c["id"] for c in cases(name) if c["distance"] == 160)
-                data[far]["status"] = "pixel-failure"
-            return data
-        base = {
-            "fixed": result("fixed", False),
-            "original": result("original", True),
-            "single-plain": result("single-plain", True),
-            "tiled-offset": result("tiled-offset", False),
-        }
-        self.assertTrue(classify_nf26(base).startswith("depth-state:"))
-        base["single-plain"] = result("single-plain", False)
-        base["tiled-offset"] = result("tiled-offset", True)
-        self.assertTrue(classify_nf26(base).startswith("topology:"))
-        base["single-plain"] = result("single-plain", True)
-        self.assertTrue(classify_nf26(base).startswith("combined:"))
-        base["single-plain"] = result("single-plain", False)
-        base["tiled-offset"] = result("tiled-offset", False)
-        self.assertTrue(classify_nf26(base).startswith("non-unique:"))
-
-    def test_nf26_negative_controls_restore_coplanar_world_models(self):
+    def test_negative_controls_reconstruct_coplanar_world_models(self):
         with tempfile.TemporaryDirectory() as directory:
             stage = Path(directory)
-            for index, local_model in enumerate(NF26_WORLD_MODELS):
-                common_model = COMMON_WORLD_MODELS[local_model]
+            for index, common_model in enumerate(COMMON_WORLD_MODEL_PATHS):
+                model = {
+                    "textures": {"front": "#front", "marker": f"case-{index}"},
+                    "elements": [
+                        {"from": [0, 0, 0], "to": [16, 16, 16], "faces": {"south": {"texture": "#front"}}},
+                        {"from": [0, 0, 1], "to": [16, 16, 1.001], "faces": {"north": {"texture": "#front"}}},
+                    ],
+                }
                 (stage / common_model).parent.mkdir(parents=True, exist_ok=True)
-                (stage / common_model).write_text(f"coplanar-{index}", encoding="utf-8")
+                (stage / common_model).write_text(json.dumps(model), encoding="utf-8")
+            for local_model in NF26_WORLD_MODELS:
                 (stage / local_model).parent.mkdir(parents=True, exist_ok=True)
-                (stage / local_model).write_text(f"recessed-{index}", encoding="utf-8")
+                (stage / local_model).write_text("{}", encoding="utf-8")
+
+            restore_common_control_models(stage)
             restore_nf26_control_models(stage)
-            for index, local_model in enumerate(NF26_WORLD_MODELS):
-                self.assertEqual(f"coplanar-{index}", (stage / local_model).read_text(encoding="utf-8"))
+
+            for model_path in (*COMMON_WORLD_MODEL_PATHS, *NF26_WORLD_MODELS):
+                model = json.loads((stage / model_path).read_text(encoding="utf-8"))
+                self.assertEqual(1, len(model["elements"]))
+                body = model["elements"][0]
+                self.assertEqual([0, 0, 0], body["from"])
+                self.assertEqual([16, 16, 16], body["to"])
+                self.assertEqual("#front", body["faces"]["north"]["texture"])
 
     def test_nf26_original_control_fixture_is_hash_locked(self):
         verify_nf26_control(ROOT)
@@ -186,8 +183,6 @@ class EvidenceTests(unittest.TestCase):
                 path.parent.mkdir()
                 payload = dict(target=target, head="abc", dirty=False, status="pass",
                                variants={v:"pass" for v in variants(target)})
-                if target == NF26_TARGET:
-                    payload["nf26_diagnosis"] = "depth-state: test"
                 atomic_json(path, payload)
             verify_receipts(root, "abc")
             path = root / TARGETS[0] / "result.json"

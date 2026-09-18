@@ -57,11 +57,12 @@ public final class VisualServer {
                     : facing == Direction.UP ? Direction.SOUTH : Direction.NORTH;
             int size = request.get("size").getAsInt();
             boolean crossChunk = request.has("crossChunk") && request.get("crossChunk").getAsBoolean();
-            // Keep the depth/occlusion fixture inside one terrain chunk so the pixel
-            // oracle measures screen depth, not neighboring-chunk mesh culling.
-            // Dedicated crossChunk scenarios below still verify that the anchor-owned
-            // image spans chunk boundaries correctly.
-            BlockPos anchor = new BlockPos(crossChunk ? 0 : 8, 128, 8);
+            // Give each orientation its own spatial lane. Reusing one anchor across
+            // perpendicular planes can leave an asynchronously rebuilt chunk mesh from
+            // the previous scene intersecting the next screen even after the block
+            // entities are synchronized. Normal scenes stay inside one chunk; explicit
+            // crossChunk scenes use the boundary of the same orientation lane.
+            BlockPos anchor = fixtureAnchor(facing, crossChunk);
             JsonArray boxes = new JsonArray();
             for (int x = 0; x < size; x++) for (int y = 0; y < size; y++) {
                 BlockPos pos = anchor.relative(width, x).relative(height, y);
@@ -108,6 +109,18 @@ public final class VisualServer {
         } catch (Throwable failure) {
             try { Files.writeString(DIR.resolve("server-fail.txt"), failure.toString()); } catch (Exception ignored) { }
         }
+    }
+
+    private static BlockPos fixtureAnchor(Direction facing, boolean crossChunk) {
+        int lane = switch (facing) {
+            case NORTH -> 0;
+            case SOUTH -> 1;
+            case EAST -> 2;
+            case WEST -> 3;
+            case UP -> 4;
+            case DOWN -> 5;
+        };
+        return new BlockPos(lane * 32 + (crossChunk ? 0 : 8), 128, 8);
     }
 
     private static void write(String name, JsonObject value) throws Exception {

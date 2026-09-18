@@ -52,6 +52,7 @@ class LiveJoinHarnessTest(unittest.TestCase):
             self.assertIn("narrator:0", options)
             self.assertIn("onboardAccessibility:false", options)
             self.assertIn("skipMultiplayerWarning:true", options)
+            self.assertIn("pauseOnLostFocus:false", options)
 
 
 if __name__ == "__main__":

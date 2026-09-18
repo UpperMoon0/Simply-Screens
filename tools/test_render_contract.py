@@ -28,14 +28,20 @@ class RenderContractTest(unittest.TestCase):
         model = {
             "textures": {"front": "simply_screens:block/screen_front"},
             "elements": [
-                {
-                    "from": [0, 0, 0],
-                    "to": [16, 16, 16],
-                    "faces": {"north": {"texture": "#front"}},
-                }
+                {"from": [0, 0, 0], "to": [16, 16, 16], "faces": {"south": {"texture": "#front"}}},
+                {"from": [0, 0, 1], "to": [16, 16, 1.001], "faces": {"north": {"texture": "#front"}}},
             ],
         }
         self._write(render_contract.MODEL_PATH, json.dumps(model))
+        self._write(render_contract.COMMON_ANCHOR_MODEL_PATH, json.dumps(model))
+        shared_item = {
+            "textures": {"front": "simply_screens:block/screen_front"},
+            "elements": [
+                {"from": [0, 0, 0], "to": [16, 16, 16], "faces": {"north": {"texture": "#front"}}}
+            ],
+        }
+        self._write(render_contract.COMMON_ITEM_BLOCK_MODEL_PATH, json.dumps(shared_item))
+        self._write(render_contract.COMMON_ITEM_MODEL_PATH, json.dumps({"parent": "simply_screens:block/screen_item"}))
         nf26_world = {
             "textures": {"front": "simply_screens:block/screen_front"},
             "elements": [
@@ -160,6 +166,22 @@ class RenderContractTest(unittest.TestCase):
         errors = render_contract.verify(self.root)
         self.assertTrue(any("anchor tile" in error for error in errors), errors)
 
+
+    def test_shared_world_model_rejects_coplanar_front_face(self) -> None:
+        path = self.root / render_contract.MODEL_PATH
+        model = json.loads(path.read_text(encoding="utf-8"))
+        model["elements"][0]["faces"]["north"] = {"texture": "#front"}
+        path.write_text(json.dumps(model), encoding="utf-8")
+        errors = render_contract.verify(self.root)
+        self.assertTrue(any("coplanar" in error for error in errors), errors)
+
+    def test_shared_world_model_requires_recessed_backing(self) -> None:
+        path = self.root / render_contract.MODEL_PATH
+        model = json.loads(path.read_text(encoding="utf-8"))
+        model["elements"][1]["from"] = [0, 0, 0]
+        path.write_text(json.dumps(model), encoding="utf-8")
+        errors = render_contract.verify(self.root)
+        self.assertTrue(any("recessed" in error for error in errors), errors)
 
     def test_neoforge_26_rejects_coplanar_world_front_face(self) -> None:
         path = self.root / render_contract.NF26_MODEL_PATH
