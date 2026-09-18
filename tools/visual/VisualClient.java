@@ -233,12 +233,12 @@ public final class VisualClient {
                 && facing == Direction.valueOf(scene.get("facing").getAsString())
                 && width == scene.get("size").getAsInt()
                 && height == scene.get("size").getAsInt()
-                && anchorX == 0 && anchorY == 128 && anchorZ == 0;
+                && new BlockPos(anchorX, anchorY, anchorZ).equals(sceneAnchor());
     }
 
     private static boolean ownerBelongsToScene(int ownerX, int ownerY, int ownerZ) {
         if (scene == null) return false;
-        BlockPos anchor = new BlockPos(0, 128, 0);
+        BlockPos anchor = sceneAnchor();
         Direction facing = Direction.valueOf(scene.get("facing").getAsString());
         Direction width = switch (facing) {
             case NORTH, UP, DOWN -> Direction.WEST;
@@ -256,12 +256,17 @@ public final class VisualClient {
         return false;
     }
 
+    private static BlockPos sceneAnchor() {
+        JsonArray anchor = scene.getAsJsonArray("anchor");
+        return new BlockPos(anchor.get(0).getAsInt(), anchor.get(1).getAsInt(), anchor.get(2).getAsInt());
+    }
+
     private static float requestedYaw() {
         return scene.get("yaw").getAsFloat() + (sample % BASE_SAMPLES - (BASE_SAMPLES - 1) / 2.0f) * 0.025f;
     }
 
     private static boolean sceneSynchronized(Minecraft mc, UUID image) {
-        BlockPos anchor = new BlockPos(0, 128, 0);
+        BlockPos anchor = sceneAnchor();
         Direction facing = Direction.valueOf(scene.get("facing").getAsString());
         Direction width = switch (facing) {
             case NORTH, UP, DOWN -> Direction.WEST;

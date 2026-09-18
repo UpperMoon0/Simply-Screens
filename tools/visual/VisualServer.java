@@ -97,6 +97,7 @@ public final class VisualServer {
             ready.addProperty("image", image.toString());
             ready.addProperty("yaw", yaw);
             ready.addProperty("pitch", pitch);
+            ready.add("anchor", JSON.toJsonTree(new int[]{anchor.getX(), anchor.getY(), anchor.getZ()}));
             ready.add("center", JSON.toJsonTree(new double[]{center.x, center.y, center.z}));
             ready.add("normal", JSON.toJsonTree(new double[]{normal.x, normal.y, normal.z}));
             ready.add("right", JSON.toJsonTree(new double[]{right.x, right.y, right.z}));
