@@ -43,8 +43,9 @@ class RenderContractTest(unittest.TestCase):
                 "public final class ScreenBlockEntityRenderer {\n"
                 "  private static final float BASE_OFFSET = 0.501f;\n"
                 f"  {fixed_offset}\n"
-                f"  void draw() {{ Object type = {contract.polygon_offset_call}; }}\n"
-                "}\n",
+                + (f"  boolean anchorOnly() {{ return {render_contract.NF26_ANCHOR_ONLY}; }}\n" if contract.name == "26.1.2" else "")
+                + f"  void draw() {{ Object type = {contract.polygon_offset_call}; }}\n"
+                + "}\n",
             )
             helper = render_contract.DEPTH_HELPERS.get(contract.name)
             if helper is not None:
@@ -124,6 +125,15 @@ class RenderContractTest(unittest.TestCase):
                 path.write_text(text.replace(required[-1], ""), encoding="utf-8")
                 errors = render_contract.verify(self.root)
                 self.assertTrue(any("depth helper" in error for error in errors), errors)
+
+
+    def test_neoforge_26_requires_anchor_only_submission(self) -> None:
+        contract = next(c for c in render_contract.RENDERERS if c.name == "26.1.2")
+        path = self.root / contract.path
+        text = path.read_text(encoding="utf-8").replace(render_contract.NF26_ANCHOR_ONLY, "false")
+        path.write_text(text, encoding="utf-8")
+        errors = render_contract.verify(self.root)
+        self.assertTrue(any("anchor tile" in error for error in errors), errors)
 
     def test_model_geometry_change_forces_contract_review(self) -> None:
         path = self.root / render_contract.MODEL_PATH

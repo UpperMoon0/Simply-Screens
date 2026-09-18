@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MODEL_PATH = Path("common/src/main/resources/assets/simply_screens/models/block/screen.json")
 OFFSET_RE = re.compile(r"BASE_OFFSET\s*=\s*([0-9.]+)f\s*;")
 EXPECTED_OFFSET = 0.501
+NF26_ANCHOR_ONLY = "state.anchorOffsetX != 0 || state.anchorOffsetY != 0 || state.anchorOffsetZ != 0"
 
 
 @dataclass(frozen=True)
@@ -77,7 +78,6 @@ DEPTH_HELPERS = {
         (
             "RenderPipelines.TEXT_POLYGON_OFFSET",
             "LayeringTransform.VIEW_OFFSET_Z_LAYERING",
-            ".sortOnUpload()",
         ),
     ),
 }
@@ -145,6 +145,10 @@ def verify_renderer(root: Path, contract: RendererContract) -> list[str]:
         errors.append(
             f"{contract.name}: see-through text rendering would break normal world occlusion"
         )
+    if contract.name == "26.1.2" and NF26_ANCHOR_ONLY not in text:
+        errors.append(
+            "26.1.2: the full logical screen must be submitted only from its anchor tile"
+        )
 
     return errors
 
@@ -202,7 +206,7 @@ def main() -> int:
 
     print("SIMPLYSCREENS_RENDER_CONTRACT_PASS")
     print(
-        "All supported renderers keep the image plane fixed at 0.501 and use polygon offset; 1.21.1 uses stronger depth-only bias; 26.1.2 uses vanilla polygon bias plus view-Z layering and sorted upload."
+        "All supported renderers keep the image plane fixed at 0.501 and use polygon offset; 1.21.1 uses stronger depth-only bias; 26.1.2 uses vanilla polygon bias plus view-Z layering."
     )
     return 0
 

@@ -24,7 +24,6 @@ public final class ScreenRenderTypes {
                 .withTexture("Sampler0", texture)
                 .useLightmap()
                 .setLayeringTransform(LayeringTransform.VIEW_OFFSET_Z_LAYERING)
-                .sortOnUpload()
                 .createRenderSetup();
         return RenderType.create("simply_screens_screen", setup);
     }

@@ -95,7 +95,11 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
 
     @Override
     public void submit(ScreenBlockEntityRenderState state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
+        // The full logical screen must always be submitted from the anchor tile.
+        // Letting whichever tile renders first own the frame changes the PoseStack
+        // origin across frames and can perturb queued custom geometry on 26.1.2.
         if (!state.visible || state.texture == null
+                || state.anchorOffsetX != 0 || state.anchorOffsetY != 0 || state.anchorOffsetZ != 0
                 || !FRAME_RENDER_CLAIMS.claim(state.levelIdentity, state.anchorKey)) return;
         debugDraw(state);
         poseStack.pushPose();
