@@ -23,6 +23,7 @@ public final class VisualClient {
     private static final int VIEWPORT_HEIGHT = 720;
     private static final int BASE_SAMPLES = __BASE_SAMPLES__;
     private static final int REQUIRED_STABLE_FRAMES = 3;
+    private static final int REQUIRED_FIRST_SAMPLE_STABLE_FRAMES = 5;
     private static final double CAMERA_POSITION_EPSILON = 0.01;
     private static final float CAMERA_ANGLE_EPSILON = 0.005f;
     private static String current = "";
@@ -190,7 +191,9 @@ public final class VisualClient {
             stableCameraYaw = cameraYaw;
             stableCameraPitch = cameraPitch;
             stableFrames++;
-            if (stableFrames < REQUIRED_STABLE_FRAMES) return;
+            int requiredStableFrames = sample % BASE_SAMPLES == 0
+                    ? REQUIRED_FIRST_SAMPLE_STABLE_FRAMES : REQUIRED_STABLE_FRAMES;
+            if (stableFrames < requiredStableFrames) return;
 
             sampleArmed = false;
             clearObservedStability();
@@ -204,7 +207,7 @@ public final class VisualClient {
             frame.addProperty("sample", index);
             frame.addProperty("reloaded", reloaded);
             frame.addProperty("submissions", submissions);
-            frame.addProperty("stableRenderFrames", REQUIRED_STABLE_FRAMES);
+            frame.addProperty("stableRenderFrames", requiredStableFrames);
             frame.addProperty("graphicsVendor", org.lwjgl.opengl.GL11.glGetString(org.lwjgl.opengl.GL11.GL_VENDOR));
             frame.addProperty("graphicsRenderer", org.lwjgl.opengl.GL11.glGetString(org.lwjgl.opengl.GL11.GL_RENDERER));
             frame.addProperty("graphicsVersion", org.lwjgl.opengl.GL11.glGetString(org.lwjgl.opengl.GL11.GL_VERSION));
