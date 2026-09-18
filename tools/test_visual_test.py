@@ -59,6 +59,8 @@ class EvidenceTests(unittest.TestCase):
         self.assertIn("private static BlockPos sceneAnchor()", source)
         self.assertIn('scene.getAsJsonArray("anchor")', source)
         self.assertNotIn("anchorX == 0 && anchorY == 128 && anchorZ == 0", source)
+        self.assertNotIn("new BlockPos(0,128,0)", source.replace(" ", ""))
+        self.assertIn("mc.level.getBlockEntity(sceneAnchor())", source)
         server = (ROOT / "tools/visual/VisualServer.java").read_text()
         self.assertIn('ready.add("anchor"', server)
         self.assertIn("catch (NoSuchFileException transientSceneGap)", source)

@@ -117,7 +117,7 @@ public final class VisualClient {
                 resetStability();
                 return false;
             }
-            if (!(mc.level.getBlockEntity(new BlockPos(0,128,0)) instanceof ScreenBlockEntity screen)) {
+            if (!(mc.level.getBlockEntity(sceneAnchor()) instanceof ScreenBlockEntity screen)) {
                 resetStability();
                 return false;
             }
