@@ -56,7 +56,12 @@ public final class VisualServer {
             Direction height = facing.getAxis().isHorizontal() ? Direction.UP
                     : facing == Direction.UP ? Direction.SOUTH : Direction.NORTH;
             int size = request.get("size").getAsInt();
-            BlockPos anchor = new BlockPos(0, 128, 0);
+            boolean crossChunk = request.has("crossChunk") && request.get("crossChunk").getAsBoolean();
+            // Keep the depth/occlusion fixture inside one terrain chunk so the pixel
+            // oracle measures screen depth, not neighboring-chunk mesh culling.
+            // Dedicated crossChunk scenarios below still verify that the anchor-owned
+            // image spans chunk boundaries correctly.
+            BlockPos anchor = new BlockPos(crossChunk ? 0 : 8, 128, 8);
             JsonArray boxes = new JsonArray();
             for (int x = 0; x < size; x++) for (int y = 0; y < size; y++) {
                 BlockPos pos = anchor.relative(width, x).relative(height, y);

@@ -46,6 +46,11 @@ def cases(variant="fixed"):
         for face in FACES:
             result.append(dict(id=f"{face}-reload", facing=face, size=8,
                                distance=32, angle=0, occluded=False, reload=True))
+        # Preserve explicit chunk-boundary coverage without making the depth/occlusion
+        # oracle depend on whether a neighboring terrain chunk has rebuilt this frame.
+        for face in ("NORTH", "UP"):
+            result.append(dict(id=f"{face}-cross-chunk", facing=face, size=8,
+                               distance=32, angle=0, occluded=False, crossChunk=True))
     return result
 
 
