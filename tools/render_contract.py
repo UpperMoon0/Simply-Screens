@@ -75,8 +75,11 @@ DEPTH_HELPERS = {
     "26.1.2": (
         Path("neoforge-26.1.2/src/main/java/com/nstut/simplyscreens/client/renderers/ScreenRenderTypes.java"),
         (
-            "RenderPipelines.TEXT_POLYGON_OFFSET",
+            "DEPTH_BIAS_FACTOR = -1.0F",
+            "DEPTH_BIAS_UNITS = -16.0F",
+            "new DepthStencilState(CompareOp.LESS_THAN_OR_EQUAL, true, DEPTH_BIAS_FACTOR, DEPTH_BIAS_UNITS)",
             "LayeringTransform.VIEW_OFFSET_Z_LAYERING",
+            ".sortOnUpload()",
         ),
     ),
 }
@@ -201,7 +204,7 @@ def main() -> int:
 
     print("SIMPLYSCREENS_RENDER_CONTRACT_PASS")
     print(
-        "All supported renderers keep the image plane fixed at 0.501 and use polygon offset; 1.21.1 uses stronger depth-only bias, while 26.1.2 combines polygon bias with vanilla view-Z layering."
+        "All supported renderers keep the image plane fixed at 0.501 and use polygon offset; 1.21.1 uses stronger depth-only bias; 26.1.2 uses stronger polygon bias plus vanilla view-Z layering."
     )
     return 0
 
