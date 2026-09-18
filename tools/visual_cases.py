@@ -8,6 +8,7 @@ FACES = ("NORTH", "SOUTH", "EAST", "WEST", "UP", "DOWN")
 SAMPLES = 4
 NF26_TARGET = "neoforge-26.1.2"
 PLAIN_COMPARISONS = ("plain", "original", "single-plain", "tiled-offset")
+NEAR_REFERENCE_FACES = ("NORTH", "SOUTH", "EAST", "WEST")
 
 
 def sample_count(case):
@@ -59,7 +60,11 @@ def expected_outcome(variant, results):
         if any(r["status"] != "pass" for r in results.values()):
             raise ValueError("fixed renderer failed the pixel contract")
     elif variant in PLAIN_COMPARISONS:
-        near = [r for c in cases(variant) if c["distance"] == 8 for r in [results[c["id"]]]]
+        near = [
+            results[c["id"]]
+            for c in cases(variant)
+            if c["distance"] == 8 and c["angle"] == 0 and c["facing"] in NEAR_REFERENCE_FACES
+        ]
         if any(r["status"] != "pass" for r in near):
             raise ValueError(f"{variant} near reference failed; invalid comparison")
         far = [r for c in cases(variant) if c["distance"] >= 64 for r in [results[c["id"]]]]

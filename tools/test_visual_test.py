@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from unittest.mock import Mock
 
-from visual_cases import TARGETS, FACES, SAMPLES, sample_count, cases, expected_outcome, variants, classify_nf26, NF26_TARGET
+from visual_cases import TARGETS, FACES, SAMPLES, sample_count, cases, expected_outcome, variants, classify_nf26, NF26_TARGET, NEAR_REFERENCE_FACES
 from visual_test import atomic_json, checkout_lock, health, scope_gradle, verify_receipts, wait_until, verify_nf26_control, ROOT
 from compiled_render_contract import verify_dump
 
@@ -93,8 +93,18 @@ class EvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "invalid"):
             expected_outcome("original", result)
         result[far]["status"] = "pixel-failure"
-        near = next(c["id"] for c in cases("original") if c["distance"] == 8)
-        result[near]["status"] = "pixel-failure"
+        # Horizontal faces can already z-fight in a deliberately broken plain renderer;
+        # they are not part of the clean near-reference contract.
+        horizontal_near = next(c["id"] for c in cases("original")
+                               if c["distance"] == 8 and c["facing"] == "UP" and c["angle"] == 0)
+        result[horizontal_near]["status"] = "pixel-failure"
+        expected_outcome("original", result)
+        result[horizontal_near]["status"] = "pass"
+
+        cardinal_near = next(c["id"] for c in cases("original")
+                             if c["distance"] == 8 and c["angle"] == 0
+                             and c["facing"] in NEAR_REFERENCE_FACES)
+        result[cardinal_near]["status"] = "pixel-failure"
         with self.assertRaisesRegex(ValueError, "near reference"):
             expected_outcome("original", result)
 
