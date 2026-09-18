@@ -323,6 +323,33 @@ def launch(command, stage, log, env):
     return subprocess.Popen(command, **kwargs)
 
 
+def remove_runtime_when_quiet(runtime, timeout=20.0, quiet_period=0.75):
+    """Remove a stopped Minecraft runtime after late child/file-system activity settles."""
+    deadline = time.monotonic() + timeout
+    quiet_since = None
+    while True:
+        if runtime.exists():
+            quiet_since = None
+            try:
+                shutil.rmtree(runtime)
+            except FileNotFoundError:
+                pass
+            except OSError:
+                if time.monotonic() >= deadline:
+                    raise
+                time.sleep(0.1)
+                continue
+        else:
+            now = time.monotonic()
+            if quiet_since is None:
+                quiet_since = now
+            elif now - quiet_since >= quiet_period:
+                return
+        if time.monotonic() >= deadline:
+            raise RuntimeError(f"runtime did not remain removed: {runtime}")
+        time.sleep(0.1)
+
+
 def run_variant(stage, target, variant, directory, probe=False):
     from PIL import Image
     from visual_pixels import measure
@@ -332,7 +359,7 @@ def run_variant(stage, target, variant, directory, probe=False):
     runtime = (stage / target / "run/live-join").resolve()
     if not runtime.is_relative_to(stage.resolve()):
         raise RuntimeError("unsafe runtime cleanup")
-    if runtime.exists(): shutil.rmtree(runtime)
+    remove_runtime_when_quiet(runtime)
     live.prepare_server(stage / target)
     live.prepare_client(stage / target)
     with (runtime / "server/server.properties").open("a") as file:

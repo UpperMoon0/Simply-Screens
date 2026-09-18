@@ -45,6 +45,8 @@ class EvidenceTests(unittest.TestCase):
         self.assertIn("submittedScreen(facing", harness)
         self.assertIn("REQUIRED_FIRST_SAMPLE_STABLE_FRAMES = 5", source)
         self.assertIn("stableFrames < requiredStableFrames", source)
+        self.assertIn("def remove_runtime_when_quiet", harness)
+        self.assertIn("remove_runtime_when_quiet(runtime)", harness)
         self.assertIn("sceneSynchronized(mc, image)", source)
         self.assertIn("catch (NoSuchFileException transientSceneGap)", source)
         self.assertIn("cameraMatches(cameraPosition, cameraYaw, cameraPitch", source)
