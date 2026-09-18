@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "simply_screens:block/screen"
+    "model": "simply_screens:block/screen_item"
   }
 }

@@ -36,6 +36,23 @@ class RenderContractTest(unittest.TestCase):
             ],
         }
         self._write(render_contract.MODEL_PATH, json.dumps(model))
+        nf26_world = {
+            "textures": {"front": "simply_screens:block/screen_front"},
+            "elements": [
+                {"from": [0, 0, 0], "to": [16, 16, 16], "faces": {"south": {"texture": "#front"}}},
+                {"from": [0, 0, 1], "to": [16, 16, 1.001], "faces": {"north": {"texture": "#front"}}},
+            ],
+        }
+        self._write(render_contract.NF26_MODEL_PATH, json.dumps(nf26_world))
+        self._write(render_contract.NF26_ANCHOR_MODEL_PATH, json.dumps(nf26_world))
+        nf26_item = {
+            "textures": {"front": "simply_screens:block/screen_front"},
+            "elements": [
+                {"from": [0, 0, 0], "to": [16, 16, 16], "faces": {"north": {"texture": "#front"}}}
+            ],
+        }
+        self._write(render_contract.NF26_ITEM_BLOCK_MODEL_PATH, json.dumps(nf26_item))
+        self._write(render_contract.NF26_ITEM_DEF_PATH, json.dumps({"model": {"model": "simply_screens:block/screen_item"}}))
         for contract in render_contract.RENDERERS:
             fixed_offset = "\n".join(contract.fixed_offset_fragments)
             self._write(
@@ -142,6 +159,30 @@ class RenderContractTest(unittest.TestCase):
         path.write_text(text, encoding="utf-8")
         errors = render_contract.verify(self.root)
         self.assertTrue(any("anchor tile" in error for error in errors), errors)
+
+
+    def test_neoforge_26_rejects_coplanar_world_front_face(self) -> None:
+        path = self.root / render_contract.NF26_MODEL_PATH
+        model = json.loads(path.read_text(encoding="utf-8"))
+        model["elements"][0]["faces"]["north"] = {"texture": "#front"}
+        path.write_text(json.dumps(model), encoding="utf-8")
+        errors = render_contract.verify(self.root)
+        self.assertTrue(any("coplanar" in error for error in errors), errors)
+
+    def test_neoforge_26_requires_recessed_backing_face(self) -> None:
+        path = self.root / render_contract.NF26_MODEL_PATH
+        model = json.loads(path.read_text(encoding="utf-8"))
+        model["elements"][1]["from"] = [0, 0, 0]
+        path.write_text(json.dumps(model), encoding="utf-8")
+        errors = render_contract.verify(self.root)
+        self.assertTrue(any("recessed" in error for error in errors), errors)
+
+    def test_neoforge_26_rejects_view_z_layering(self) -> None:
+        helper_path, _ = render_contract.DEPTH_HELPERS["26.1.2"]
+        path = self.root / helper_path
+        path.write_text(path.read_text(encoding="utf-8") + "\nLayeringTransform.VIEW_OFFSET_Z_LAYERING;\n", encoding="utf-8")
+        errors = render_contract.verify(self.root)
+        self.assertTrue(any("view-Z" in error for error in errors), errors)
 
     def test_model_geometry_change_forces_contract_review(self) -> None:
         path = self.root / render_contract.MODEL_PATH

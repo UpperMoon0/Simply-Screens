@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import Mock
 
 from visual_cases import TARGETS, FACES, SAMPLES, sample_count, cases, expected_outcome, variants, classify_nf26, NF26_TARGET, NEAR_REFERENCE_FACES
-from visual_test import atomic_json, checkout_lock, health, scope_gradle, verify_receipts, wait_until, verify_nf26_control, ROOT
+from visual_test import atomic_json, checkout_lock, health, scope_gradle, verify_receipts, wait_until, verify_nf26_control, restore_nf26_control_models, NF26_WORLD_MODELS, COMMON_WORLD_MODELS, ROOT
 from compiled_render_contract import verify_dump
 
 
@@ -130,6 +130,19 @@ class EvidenceTests(unittest.TestCase):
         base["single-plain"] = result("single-plain", False)
         base["tiled-offset"] = result("tiled-offset", False)
         self.assertTrue(classify_nf26(base).startswith("non-unique:"))
+
+    def test_nf26_negative_controls_restore_coplanar_world_models(self):
+        with tempfile.TemporaryDirectory() as directory:
+            stage = Path(directory)
+            for index, local_model in enumerate(NF26_WORLD_MODELS):
+                common_model = COMMON_WORLD_MODELS[local_model]
+                (stage / common_model).parent.mkdir(parents=True, exist_ok=True)
+                (stage / common_model).write_text(f"coplanar-{index}", encoding="utf-8")
+                (stage / local_model).parent.mkdir(parents=True, exist_ok=True)
+                (stage / local_model).write_text(f"recessed-{index}", encoding="utf-8")
+            restore_nf26_control_models(stage)
+            for index, local_model in enumerate(NF26_WORLD_MODELS):
+                self.assertEqual(f"coplanar-{index}", (stage / local_model).read_text(encoding="utf-8"))
 
     def test_nf26_original_control_fixture_is_hash_locked(self):
         verify_nf26_control(ROOT)

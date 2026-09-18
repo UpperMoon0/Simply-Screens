@@ -30,6 +30,14 @@ NF26_CONTROL_FILES = {
     Path("neoforge-26.1.2/src/main/java/com/nstut/simplyscreens/client/renderers/ScreenBlockEntityRenderState.java"): "ScreenBlockEntityRenderState.java",
     Path("neoforge-26.1.2/src/main/java/com/nstut/simplyscreens/neoforge/SimplyScreensClient.java"): "SimplyScreensClient.java",
 }
+NF26_WORLD_MODELS = (
+    Path("neoforge-26.1.2/src/main/resources/assets/simply_screens/models/block/screen.json"),
+    Path("neoforge-26.1.2/src/main/resources/assets/simply_screens/models/block/screen_anchor.json"),
+)
+COMMON_WORLD_MODELS = {
+    NF26_WORLD_MODELS[0]: Path("common/src/main/resources/assets/simply_screens/models/block/screen.json"),
+    NF26_WORLD_MODELS[1]: Path("common/src/main/resources/assets/simply_screens/models/block/screen_anchor.json"),
+}
 TARGET_PROJECTS = {
     "fabric-1.20.1": {"common", "common-1.20.1", "fabric-1.20.1"},
     "forge-1.20.1": {"common", "common-1.20.1", "forge-1.20.1"},
@@ -245,6 +253,13 @@ def verify_nf26_control(stage):
             raise RuntimeError(f"NeoForge 26 original-control fixture drifted: {name}")
 
 
+def restore_nf26_control_models(stage):
+    for local_model, common_model in COMMON_WORLD_MODELS.items():
+        destination = stage / local_model
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text((stage / common_model).read_text(encoding="utf-8"), encoding="utf-8")
+
+
 def set_variant(stage, originals, target, variant):
     for relative, source in originals.items():
         path = stage / relative
@@ -252,6 +267,10 @@ def set_variant(stage, originals, target, variant):
         path.write_text(source, encoding="utf-8")
 
     renderer_paths = [Path(module) / PACKAGE / "client/renderers/ScreenBlockEntityRenderer.java" for module in MODULES]
+    if target == NF26_TARGET and variant != "fixed":
+        # Negative controls must reproduce the old coplanar backing geometry;
+        # otherwise the production model fix would mask the renderer regression.
+        restore_nf26_control_models(stage)
     if target == NF26_TARGET and variant in ("original", "tiled-offset"):
         verify_nf26_control(stage)
         for relative, fixture_name in NF26_CONTROL_FILES.items():
@@ -445,6 +464,7 @@ def run(root, target, compile_only=False, probe=False):
         instrument(stage)
         mutable = [Path(m) / PACKAGE / "client/renderers/ScreenBlockEntityRenderer.java" for m in MODULES]
         mutable += list(NF26_CONTROL_FILES.keys())[1:]
+        mutable += list(NF26_WORLD_MODELS)
         originals = {relative: (stage / relative).read_text(encoding="utf-8") for relative in mutable}
         # Fixed viewport is also passed to the launcher (options alone do not resize the window).
         for target_name in TARGETS:
