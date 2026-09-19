@@ -54,21 +54,27 @@ public final class VisualClient {
         submissions++;
         frameSubmissions++;
         frameTileScreen = true;
+        BlockPos owner = new BlockPos(ownerX, ownerY, ownerZ);
         if (!submissionMatchesScene(facing, width, height, anchorX, anchorY, anchorZ)
-                || !ownerBelongsToScene(ownerX, ownerY, ownerZ)) {
+                || !ownerBelongsToScene(ownerX, ownerY, ownerZ)
+                || (anchorUnloadedScenario() && owner.equals(sceneAnchor()))) {
             frameUnexpectedSubmission = true;
             return;
         }
-        frameTileOwners.add(new BlockPos(ownerX, ownerY, ownerZ).asLong());
+        frameTileOwners.add(owner.asLong());
     }
 
     /** Records a single-quad logical-screen submission and proves it belongs to this fixture. */
     public static void submittedScreen(Direction facing, int width, int height,
-                                       int anchorX, int anchorY, int anchorZ) {
+                                       int anchorX, int anchorY, int anchorZ,
+                                       int ownerX, int ownerY, int ownerZ) {
         submissions++;
         frameSubmissions++;
         frameSingleScreen = true;
-        if (!submissionMatchesScene(facing, width, height, anchorX, anchorY, anchorZ)) {
+        BlockPos owner = new BlockPos(ownerX, ownerY, ownerZ);
+        if (!submissionMatchesScene(facing, width, height, anchorX, anchorY, anchorZ)
+                || !ownerBelongsToScene(ownerX, ownerY, ownerZ)
+                || (anchorUnloadedScenario() && owner.equals(sceneAnchor()))) {
             frameUnexpectedSubmission = true;
         }
     }
@@ -126,22 +132,20 @@ public final class VisualClient {
                 resetStability();
                 return false;
             }
-            if (!(mc.level.getBlockEntity(sceneAnchor()) instanceof ScreenBlockEntity screen)) {
-                waitingFor = "screen block entity at " + sceneAnchor();
-                resetStability();
-                return false;
-            }
             UUID image = UUID.fromString(scene.get("image").getAsString());
-            if (!image.equals(screen.getResolvedImageId()) || ClientImageManager.getTextureLocation(image) == null) {
-                waitingFor = "fixture image/texture";
+            if (ClientImageManager.getTextureLocation(image) == null) {
+                waitingFor = "fixture texture";
                 resetStability();
                 return false;
             }
             // A ready JSON is emitted in the same server tick as the block updates. On a
-            // remote client those packets can still be in flight. Do not arm sample 0
-            // until every cell carries the new logical screen state.
+            // remote client those packets can still be in flight. For the anchor-unloaded
+            // regression, synchronization additionally proves the anchor chunk is gone
+            // while at least one child chunk and its replicated logical-screen data remain.
             if (!sceneSynchronized(mc, image)) {
-                waitingFor = "all screen cells to synchronize";
+                waitingFor = anchorUnloadedScenario()
+                        ? "anchor chunk unload with synchronized child cells"
+                        : "all screen cells to synchronize";
                 resetStability();
                 return false;
             }
@@ -242,6 +246,10 @@ public final class VisualClient {
             frame.addProperty("reloaded", reloaded);
             frame.addProperty("submissions", submissions);
             frame.addProperty("stableRenderFrames", requiredStableFrames);
+            if (anchorUnloadedScenario()) {
+                frame.addProperty("anchorChunkLoaded", chunkLoaded(mc, sceneAnchor()));
+                frame.add("loadedCells", loadedScreenCells(mc));
+            }
             frame.addProperty("graphicsVendor", org.lwjgl.opengl.GL11.glGetString(org.lwjgl.opengl.GL11.GL_VENDOR));
             frame.addProperty("graphicsRenderer", org.lwjgl.opengl.GL11.glGetString(org.lwjgl.opengl.GL11.GL_RENDERER));
             frame.addProperty("graphicsVersion", org.lwjgl.opengl.GL11.glGetString(org.lwjgl.opengl.GL11.GL_VERSION));
@@ -274,14 +282,8 @@ public final class VisualClient {
         if (scene == null) return false;
         BlockPos anchor = sceneAnchor();
         Direction facing = Direction.valueOf(scene.get("facing").getAsString());
-        Direction width = switch (facing) {
-            case NORTH, UP, DOWN -> Direction.WEST;
-            case SOUTH -> Direction.EAST;
-            case WEST -> Direction.SOUTH;
-            case EAST -> Direction.NORTH;
-        };
-        Direction height = facing.getAxis().isHorizontal() ? Direction.UP
-                : facing == Direction.UP ? Direction.SOUTH : Direction.NORTH;
+        Direction width = widthDirection(facing);
+        Direction height = heightDirection(facing);
         int size = scene.get("size").getAsInt();
         BlockPos owner = new BlockPos(ownerX, ownerY, ownerZ);
         for (int x = 0; x < size; x++) for (int y = 0; y < size; y++) {
@@ -301,18 +303,16 @@ public final class VisualClient {
 
     private static boolean sceneSynchronized(Minecraft mc, UUID image) {
         BlockPos anchor = sceneAnchor();
+        if (anchorUnloadedScenario() && chunkLoaded(mc, anchor)) return false;
         Direction facing = Direction.valueOf(scene.get("facing").getAsString());
-        Direction width = switch (facing) {
-            case NORTH, UP, DOWN -> Direction.WEST;
-            case SOUTH -> Direction.EAST;
-            case WEST -> Direction.SOUTH;
-            case EAST -> Direction.NORTH;
-        };
-        Direction height = facing.getAxis().isHorizontal() ? Direction.UP
-                : facing == Direction.UP ? Direction.SOUTH : Direction.NORTH;
+        Direction width = widthDirection(facing);
+        Direction height = heightDirection(facing);
         int size = scene.get("size").getAsInt();
+        int loadedCells = 0;
         for (int x = 0; x < size; x++) for (int y = 0; y < size; y++) {
             BlockPos pos = anchor.relative(width, x).relative(height, y);
+            if (anchorUnloadedScenario() && !chunkLoaded(mc, pos)) continue;
+            loadedCells++;
             if (!(mc.level.getBlockEntity(pos) instanceof ScreenBlockEntity cell)) return false;
             if (!image.equals(cell.getResolvedImageId())
                     || !anchor.equals(cell.getAnchorPos())
@@ -321,23 +321,61 @@ public final class VisualClient {
                     || !cell.getBlockState().hasProperty(ScreenBlock.FACING)
                     || cell.getBlockState().getValue(ScreenBlock.FACING) != facing) return false;
         }
-        return true;
+        return !anchorUnloadedScenario() || loadedCells > 0;
     }
 
-    private static boolean terrainReady(Minecraft mc) {
-        if (!__TERRAIN_IDLE__) return false;
+    private static JsonArray loadedScreenCells(Minecraft mc) {
+        JsonArray cells = new JsonArray();
         BlockPos anchor = sceneAnchor();
         Direction facing = Direction.valueOf(scene.get("facing").getAsString());
-        // Include the neighboring section on each side for cross-chunk fixtures
-        // without requiring unrelated, potentially occluded world sections.
-        Direction width = switch (facing) {
+        Direction width = widthDirection(facing);
+        Direction height = heightDirection(facing);
+        int size = scene.get("size").getAsInt();
+        for (int x = 0; x < size; x++) for (int y = 0; y < size; y++) {
+            BlockPos pos = anchor.relative(width, x).relative(height, y);
+            if (!chunkLoaded(mc, pos) || !(mc.level.getBlockEntity(pos) instanceof ScreenBlockEntity)) continue;
+            cells.add(JSON.toJsonTree(new int[]{x, y}));
+        }
+        return cells;
+    }
+
+    private static boolean chunkLoaded(Minecraft mc, BlockPos pos) {
+        return __CHUNK_LOADED__;
+    }
+
+    private static boolean anchorUnloadedScenario() {
+        return scene != null && scene.has("anchorUnloaded") && scene.get("anchorUnloaded").getAsBoolean();
+    }
+
+    private static Direction widthDirection(Direction facing) {
+        return switch (facing) {
             case NORTH, UP, DOWN -> Direction.WEST;
             case SOUTH -> Direction.EAST;
             case WEST -> Direction.SOUTH;
             case EAST -> Direction.NORTH;
         };
-        Direction height = facing.getAxis().isHorizontal() ? Direction.UP
+    }
+
+    private static Direction heightDirection(Direction facing) {
+        return facing.getAxis().isHorizontal() ? Direction.UP
                 : facing == Direction.UP ? Direction.SOUTH : Direction.NORTH;
+    }
+
+    private static boolean terrainReady(Minecraft mc) {
+        if (!__TERRAIN_IDLE__) return false;
+        // In the anchor-unloaded regression, frameMatchesCurrentFixture() already
+        // proves that a retained child from a renderable section submitted the logical
+        // screen. Requiring every retained child section to be "visible" is invalid:
+        // NF26's isSectionCompiledAndVisible() includes a frustum/visibility threshold,
+        // so off-screen retained child sections can never satisfy it. The empty global
+        // rebuild queue plus the observed child submission is the correct readiness gate.
+        if (anchorUnloadedScenario()) return true;
+        BlockPos anchor = sceneAnchor();
+        Direction facing = Direction.valueOf(scene.get("facing").getAsString());
+        // Include the neighboring section on each side for cross-chunk fixtures
+        // without requiring unrelated, potentially occluded world sections.
+        Direction width = widthDirection(facing);
+        Direction height = heightDirection(facing);
         int size = scene.get("size").getAsInt();
         for (int x = 0; x < size; x++) for (int y = 0; y < size; y++) {
             BlockPos pos = anchor.relative(width, x).relative(height, y);

@@ -60,12 +60,17 @@ public final class VisualServer {
                     : facing == Direction.UP ? Direction.SOUTH : Direction.NORTH;
             int size = request.get("size").getAsInt();
             boolean crossChunk = request.has("crossChunk") && request.get("crossChunk").getAsBoolean();
+            boolean anchorUnloaded = request.has("anchorUnloaded") && request.get("anchorUnloaded").getAsBoolean();
+            // The fallback regression uses a real server chunk radius: the camera is
+            // chosen so child screen chunks remain sent while the anchor chunk is
+            // outside radius 3 and is explicitly forgotten by the client.
+            server.getPlayerList().setViewDistance(anchorUnloaded ? 3 : 16);
             // Give each orientation its own spatial lane. Reusing one anchor across
             // perpendicular planes can leave an asynchronously rebuilt chunk mesh from
             // the previous scene intersecting the next screen even after the block
             // entities are synchronized. Normal scenes stay inside one chunk; explicit
             // crossChunk scenes use the boundary of the same orientation lane.
-            BlockPos anchor = fixtureAnchor(facing, crossChunk);
+            BlockPos anchor = fixtureAnchor(facing, crossChunk || anchorUnloaded);
             JsonArray boxes = new JsonArray();
             for (int x = 0; x < size; x++) for (int y = 0; y < size; y++) {
                 BlockPos pos = anchor.relative(width, x).relative(height, y);
@@ -97,6 +102,11 @@ public final class VisualServer {
             float pitch = (float)-Math.toDegrees(Math.asin(look.y));
             // Teleport through the real server connection; the client must acknowledge the fixture.
             __TELEPORT__
+            // Radius changes resize the client cache but can retain old chunks inside
+            // its view+3 storage ring. Explicitly send the same vanilla forget packet
+            // used by normal server chunk tracking, after teleporting so the anchor is
+            // genuinely outside the advertised radius and will not be resent.
+            __FORGET_ANCHOR__
             JsonObject ready = request.deepCopy();
             ready.addProperty("image", image.toString());
             ready.addProperty("yaw", yaw);

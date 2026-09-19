@@ -54,6 +54,8 @@ def cases(variant="fixed"):
         for face in ("NORTH", "UP"):
             result.append(dict(id=f"{face}-cross-chunk", facing=face, size=8,
                                distance=32, angle=0, occluded=False, crossChunk=True))
+        result.append(dict(id="NORTH-anchor-unloaded", facing="NORTH", size=64,
+                           distance=32, angle=45, occluded=False, anchorUnloaded=True, maxPixelDistance=32))
         result.append(dict(id="NORTH-alpha", facing="NORTH", size=8,
                            distance=32, angle=0, occluded=False, alpha=True))
     return result

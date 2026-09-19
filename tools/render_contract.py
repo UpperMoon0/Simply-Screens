@@ -26,7 +26,12 @@ NF26_ITEM_BLOCK_MODEL_PATH = Path("neoforge-26.1.2/src/main/resources/assets/sim
 NF26_ITEM_DEF_PATH = Path("neoforge-26.1.2/src/main/resources/assets/simply_screens/items/screen.json")
 OFFSET_RE = re.compile(r"BASE_OFFSET\s*=\s*([0-9.]+)f\s*;")
 EXPECTED_OFFSET = 0.501
-NF26_ANCHOR_ONLY = "state.anchorOffsetX != 0 || state.anchorOffsetY != 0 || state.anchorOffsetZ != 0"
+NF26_ANCHOR_FALLBACK = (
+    "!anchorEntityLoaded || (anchorOffsetX == 0 && anchorOffsetY == 0 && anchorOffsetZ == 0)"
+)
+NF26_OWNERSHIP_PATH = Path("neoforge-26.1.2/src/main/java/com/nstut/simplyscreens/client/renderers/LogicalScreenOwnership.java")
+NF26_OWNERSHIP_CALL = "LogicalScreenOwnership.canOwn("
+NF26_ANCHOR_LOADED_STATE = "state.anchorEntityLoaded = anchor != null"
 NF26_ORDERED_SUBMIT = "collector.order(SCREEN_SUBMIT_ORDER).submitCustomGeometry"
 
 
@@ -159,10 +164,23 @@ def verify_renderer(root: Path, contract: RendererContract) -> list[str]:
         errors.append(
             f"{contract.name}: see-through text rendering would break normal world occlusion"
         )
-    if contract.name == "26.1.2" and NF26_ANCHOR_ONLY not in text:
-        errors.append(
-            "26.1.2: the full logical screen must be submitted only from its anchor tile"
-        )
+    if contract.name == "26.1.2":
+        if NF26_OWNERSHIP_CALL not in text:
+            errors.append(
+                "26.1.2: renderer must use the anchor-preferred child-fallback ownership gate"
+            )
+        if NF26_ANCHOR_LOADED_STATE not in text:
+            errors.append(
+                "26.1.2: render state must record whether the anchor entity was loaded"
+            )
+        ownership = root / NF26_OWNERSHIP_PATH
+        ownership_text = ownership.read_text(encoding="utf-8") if ownership.is_file() else ""
+        ownership_text = re.sub(r"/\*.*?\*/|//[^\n]*", "", ownership_text, flags=re.S)
+        ownership_text = re.sub(r"\s+", " ", ownership_text)
+        if NF26_ANCHOR_FALLBACK not in ownership_text:
+            errors.append(
+                "26.1.2: child submission must defer to a loaded anchor but fall back when the anchor chunk is unavailable"
+            )
     if contract.name == "26.1.2" and NF26_ORDERED_SUBMIT not in text:
         errors.append(
             "26.1.2: screen custom geometry must use a dedicated ordered submit bucket"

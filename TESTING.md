@@ -14,7 +14,7 @@ python3 tools/render_contract.py
 `render_contract.py` is the regression gate for the world-space image layer. It verifies every supported renderer implementation:
 
 - keeps the physical image plane at `BASE_OFFSET = 0.501f` so it remains visually flush with the screen block;
-- uses vanilla's polygon-offset text render type instead of normal text depth state;
+- uses a text-compatible polygon-offset render path instead of normal text depth state (vanilla `textPolygonOffset` on 1.20.1, custom equivalent render state/pipeline on 1.21.1 and 26.1.2);
 - does not use see-through rendering, which would allow images to draw through real occluders;
 - remains paired with the current full block body plus the authored front texture recessed by 1/16 block, avoiding a coplanar model face.
 
@@ -28,7 +28,7 @@ Run:
 ./gradlew testAllVersions --no-daemon
 ```
 
-This covers shared logic plus version-specific renderer/cache/UI/network behavior. It also compile-checks the Minecraft-specific render APIs used by all supported source sets. After compilation run `python3 tools/compiled_render_contract.py`. It inspects the actual renderer bytecode with the JDK's `javap`: the image submission must consume the polygon-offset type, plain/see-through calls are rejected, and the compiled physical offset remains `0.501f`. Comments cannot satisfy this check.
+This covers shared logic plus version-specific renderer/cache/UI/network behavior. It also compile-checks the Minecraft-specific render APIs used by all supported source sets. After compilation run `python3 tools/compiled_render_contract.py`. It inspects the actual renderer bytecode with the JDK's `javap`: the image submission must consume the version-appropriate polygon-offset text path, plain/see-through calls are rejected, and the compiled physical offset remains `0.501f`. Comments cannot satisfy this check.
 
 ## 3. Real client/server integration
 

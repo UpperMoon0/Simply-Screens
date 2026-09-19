@@ -43,7 +43,7 @@ class EvidenceTests(unittest.TestCase):
 
     def test_depth_fixture_isolates_faces_and_keeps_explicit_cross_chunk_cases(self):
         server = (ROOT / "tools/visual/VisualServer.java").read_text()
-        self.assertIn("BlockPos anchor = fixtureAnchor(facing, crossChunk);", server)
+        self.assertIn("BlockPos anchor = fixtureAnchor(facing, crossChunk || anchorUnloaded);", server)
         self.assertIn("lane * 32 + (crossChunk ? 0 : 8)", server)
         # Six deterministic face lanes are separated by two chunks. A normal size-8
         # footprint starts at local x/z 8, so +/-7 cells remain inside that lane's
@@ -53,6 +53,36 @@ class EvidenceTests(unittest.TestCase):
         self.assertTrue(all(anchor % 16 == 8 for anchor in anchors))
         self.assertTrue(8 - 7 >= 0 and 8 + 7 <= 15)
         self.assertEqual(2, sum(1 for c in cases() if c.get("crossChunk")))
+        anchor_unloaded = [c for c in cases() if c.get("anchorUnloaded")]
+        self.assertEqual(["NORTH-anchor-unloaded"], [c["id"] for c in anchor_unloaded])
+        self.assertEqual(
+            (64, 32, 45, 32),
+            (anchor_unloaded[0]["size"], anchor_unloaded[0]["distance"],
+             anchor_unloaded[0]["angle"], anchor_unloaded[0]["maxPixelDistance"]),
+        )
+
+    def test_anchor_unloaded_fixture_excludes_anchor_and_requires_child_rendering(self):
+        server = (ROOT / "tools/visual/VisualServer.java").read_text()
+        client = (ROOT / "tools/visual/VisualClient.java").read_text()
+        pixels = (ROOT / "tools/visual_pixels.py").read_text()
+        harness = (ROOT / "tools/visual_test.py").read_text()
+        self.assertIn("setViewDistance(anchorUnloaded ? 3 : 16)", server)
+        self.assertIn("__FORGET_ANCHOR__", server)
+        self.assertIn("fixtureAnchor(facing, crossChunk || anchorUnloaded)", server)
+        self.assertIn("anchorUnloadedScenario() && chunkLoaded(mc, anchor)", client)
+        self.assertIn("return __CHUNK_LOADED__;", client)
+        self.assertIn("loadedCells > 0", client)
+        self.assertIn("owner.equals(sceneAnchor())", client)
+        self.assertIn('frame.addProperty("anchorChunkLoaded", chunkLoaded(mc, sceneAnchor()))', client)
+        self.assertIn('frame.add("loadedCells", loadedScreenCells(mc))', client)
+        self.assertIn('frame.get("anchorChunkLoaded") is not False', harness)
+        self.assertIn("if (anchorUnloadedScenario()) return true;", client)
+        self.assertIn('frame.get("loadedCells", [])', pixels)
+        self.assertIn('frame.get("maxPixelDistance")', pixels)
+        self.assertIn('np.linalg.norm(hit - eye, axis=-1)', pixels)
+        self.assertIn("blockEntity.getBlockPos().getX()", harness)
+        self.assertIn("state.blockPos.getX()", harness)
+        self.assertIn("ClientboundForgetLevelChunkPacket", harness)
 
     def test_visual_client_captures_only_after_stable_completed_render_frames(self):
         source = (ROOT / "tools/visual/VisualClient.java").read_text()
@@ -76,7 +106,8 @@ class EvidenceTests(unittest.TestCase):
         self.assertIn('scene.getAsJsonArray("anchor")', source)
         self.assertNotIn("anchorX == 0 && anchorY == 128 && anchorZ == 0", source)
         self.assertNotIn("new BlockPos(0,128,0)", source.replace(" ", ""))
-        self.assertIn("mc.level.getBlockEntity(sceneAnchor())", source)
+        self.assertIn("sceneSynchronized(mc, image)", source)
+        self.assertIn("chunkLoaded(mc, anchor)", source)
         self.assertIn("mc.options.cloudStatus().set(net.minecraft.client.CloudStatus.OFF);", source)
         self.assertIn('frame.addProperty("clouds", mc.options.cloudStatus().get().name());', source)
         self.assertIn('if frame.get("clouds") != "OFF":', harness)
@@ -92,7 +123,7 @@ class EvidenceTests(unittest.TestCase):
 
     def test_unique_manifest_and_full_matrix(self):
         self.assertEqual(5, len(TARGETS))
-        self.assertEqual(111, len(cases()))
+        self.assertEqual(112, len(cases()))
         self.assertEqual(4, SAMPLES)
         regular = next(c for c in cases() if not c.get("reload"))
         reload_case = next(c for c in cases() if c.get("reload"))

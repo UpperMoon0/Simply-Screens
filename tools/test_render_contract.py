@@ -59,6 +59,9 @@ class RenderContractTest(unittest.TestCase):
         }
         self._write(render_contract.NF26_ITEM_BLOCK_MODEL_PATH, json.dumps(nf26_item))
         self._write(render_contract.NF26_ITEM_DEF_PATH, json.dumps({"model": {"model": "simply_screens:block/screen_item"}}))
+        self._write(render_contract.NF26_OWNERSHIP_PATH,
+                    "final class LogicalScreenOwnership { boolean canOwn() { return "
+                    + render_contract.NF26_ANCHOR_FALLBACK + "; } }\n")
         for contract in render_contract.RENDERERS:
             fixed_offset = "\n".join(contract.fixed_offset_fragments)
             self._write(
@@ -66,7 +69,12 @@ class RenderContractTest(unittest.TestCase):
                 "public final class ScreenBlockEntityRenderer {\n"
                 "  private static final float BASE_OFFSET = 0.501f;\n"
                 f"  {fixed_offset}\n"
-                + (f"  boolean anchorOnly() {{ return {render_contract.NF26_ANCHOR_ONLY}; }}\n  void ordered() {{ {render_contract.NF26_ORDERED_SUBMIT}; }}\n" if contract.name == "26.1.2" else "")
+                + (
+                    f"  void ownership() {{ {render_contract.NF26_OWNERSHIP_CALL}true, 0, 0, 0); }}\n"
+                    f"  void extract() {{ {render_contract.NF26_ANCHOR_LOADED_STATE}; }}\n"
+                    f"  void ordered() {{ {render_contract.NF26_ORDERED_SUBMIT}; }}\n"
+                    if contract.name == "26.1.2" else ""
+                )
                 + f"  void draw() {{ Object type = {contract.polygon_offset_call}; }}\n"
                 + "}\n",
             )
@@ -158,14 +166,20 @@ class RenderContractTest(unittest.TestCase):
         errors = render_contract.verify(self.root)
         self.assertTrue(any("ordered submit bucket" in error for error in errors), errors)
 
-    def test_neoforge_26_requires_anchor_only_submission(self) -> None:
+    def test_neoforge_26_requires_anchor_loaded_state(self) -> None:
         contract = next(c for c in render_contract.RENDERERS if c.name == "26.1.2")
         path = self.root / contract.path
-        text = path.read_text(encoding="utf-8").replace(render_contract.NF26_ANCHOR_ONLY, "false")
+        text = path.read_text(encoding="utf-8").replace(render_contract.NF26_ANCHOR_LOADED_STATE, "")
         path.write_text(text, encoding="utf-8")
         errors = render_contract.verify(self.root)
-        self.assertTrue(any("anchor tile" in error for error in errors), errors)
+        self.assertTrue(any("anchor entity was loaded" in error for error in errors), errors)
 
+    def test_neoforge_26_requires_anchor_preferred_child_fallback(self) -> None:
+        path = self.root / render_contract.NF26_OWNERSHIP_PATH
+        text = path.read_text(encoding="utf-8").replace(render_contract.NF26_ANCHOR_FALLBACK, "false")
+        path.write_text(text, encoding="utf-8")
+        errors = render_contract.verify(self.root)
+        self.assertTrue(any("fall back" in error for error in errors), errors)
 
     def test_shared_world_model_rejects_coplanar_front_face(self) -> None:
         path = self.root / render_contract.MODEL_PATH

@@ -200,6 +200,7 @@ def instrument_nf26_visual_events(stage):
 def instrument(stage):
     for module in MODULES:
         new = module == "neoforge-26.1.2"
+        legacy = module == "common-1.20.1"
         package = stage / module / PACKAGE
         drivers = package / "testing/visual"
         drivers.mkdir(parents=True)
@@ -207,13 +208,31 @@ def instrument(stage):
             source = (stage / "tools/visual" / (name+".java")).read_text(encoding="utf-8")
             source = source.replace("__BASE_SAMPLES__", str(SAMPLES))
             source = source.replace("__TELEPORT__", "player.teleportTo(level, eye.x, eye.y-player.getEyeHeight(), eye.z, Set.of(), yaw, pitch" + (", true" if new else "") + ");")
+            if legacy:
+                forget_anchor = (
+                    "if (anchorUnloaded) player.connection.send(new net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket("
+                    "anchor.getX() >> 4, anchor.getZ() >> 4));"
+                )
+            else:
+                forget_anchor = (
+                    "if (anchorUnloaded) player.connection.send(new net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket("
+                    "new net.minecraft.world.level.ChunkPos(anchor.getX() >> 4, anchor.getZ() >> 4)));"
+                )
+            source = source.replace("__FORGET_ANCHOR__", forget_anchor)
             source = source.replace("__CAMERA_POSITION__", "camera.position()" if new else "camera.getPosition()")
             source = source.replace("__CAMERA_YAW__", "camera.yRot()" if new else "camera.getYRot()")
             source = source.replace("__CAMERA_PITCH__", "camera.xRot()" if new else "camera.getXRot()")
-            legacy = module == "common-1.20.1"
             source = source.replace("__TERRAIN_IDLE__", "mc.levelRenderer.hasRenderedAllChunks()" if legacy else "mc.levelRenderer.hasRenderedAllSections()")
             compiled = "isChunkCompiled" if legacy else "isSectionCompiledAndVisible" if new else "isSectionCompiled"
             source = source.replace("__SECTION_COMPILED__", f"mc.levelRenderer.{compiled}(pos)")
+            chunk_status = (
+                "net.minecraft.world.level.chunk.ChunkStatus.FULL" if legacy
+                else "net.minecraft.world.level.chunk.status.ChunkStatus.FULL"
+            )
+            source = source.replace(
+                "__CHUNK_LOADED__",
+                f"mc.level.getChunkSource().getChunk(pos.getX() >> 4, pos.getZ() >> 4, {chunk_status}, false) != null",
+            )
             capture = "Screenshot.takeScreenshot(mc.getMainRenderTarget(), pixels -> save(pixels, frame, stem));" if new else "save(Screenshot.takeScreenshot(mc.getMainRenderTarget()), frame, stem);"
             source = source.replace("__CAPTURE__", capture)
             (drivers / (name+".java")).write_text(source, encoding="utf-8")
@@ -235,14 +254,15 @@ def instrument(stage):
             submitted = (
                 "com.nstut.simplyscreens.testing.visual.VisualClient.submittedScreen(facing, "
                 "renderData.getScreenWidth(), renderData.getScreenHeight(), "
-                "anchorPos.getX(), anchorPos.getY(), anchorPos.getZ());"
+                "anchorPos.getX(), anchorPos.getY(), anchorPos.getZ(), "
+                "blockEntity.getBlockPos().getX(), blockEntity.getBlockPos().getY(), blockEntity.getBlockPos().getZ());"
             )
         else:
             anchor = "debugDraw(state);"
             submitted = (
                 "com.nstut.simplyscreens.testing.visual.VisualClient.submittedScreen(state.facing, state.width, state.height, "
                 "state.blockPos.getX() + state.anchorOffsetX, state.blockPos.getY() + state.anchorOffsetY, "
-                "state.blockPos.getZ() + state.anchorOffsetZ);"
+                "state.blockPos.getZ() + state.anchorOffsetZ, state.blockPos.getX(), state.blockPos.getY(), state.blockPos.getZ());"
             )
         replace_once(renderer, anchor, anchor + "\n        " + submitted)
     instrument_visual_render_events(stage)
@@ -458,6 +478,9 @@ def run_variant(stage, target, variant, directory, probe=False):
                         raise RuntimeError("missing before/after resource reload evidence")
                     if frame.get("clouds") != "OFF":
                         raise RuntimeError("cloud rendering/fog invalidates the visual fixture")
+                    if case.get("anchorUnloaded"):
+                        if frame.get("anchorChunkLoaded") is not False or not frame.get("loadedCells"):
+                            raise RuntimeError("anchor-unloaded evidence did not exclude anchor while retaining child cells")
                     identity = {k: frame.get(k) for k in ("graphicsVendor", "graphicsRenderer", "graphicsVersion")}
                     if not all(identity.values()) or (graphics is not None and graphics != identity):
                         raise RuntimeError("missing or changing graphics backend identity")

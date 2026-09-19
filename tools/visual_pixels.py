@@ -55,8 +55,33 @@ def measure(path, frame):
         depth = ((center-eye) @ normal) / denom
     hit = eye + depth[...,None]*rays
     delta = hit-center
-    mask = (depth > 0) & (np.abs(delta @ right) < frame["size"]*0.46) & (np.abs(delta @ up) < frame["size"]*0.46)
-    outside = (np.abs(delta @ right) > frame["size"]*0.55) | (np.abs(delta @ up) > frame["size"]*0.55)
+    local_right = delta @ right
+    local_up = delta @ up
+    full_mask = (depth > 0) & (np.abs(local_right) < frame["size"]*0.46) & (np.abs(local_up) < frame["size"]*0.46)
+    if frame.get("anchorUnloaded"):
+        loaded = np.zeros((frame["size"], frame["size"]), dtype=bool)
+        for cell_x, cell_y in frame.get("loadedCells", []):
+            loaded[cell_x, cell_y] = True
+        if not loaded.any():
+            raise ValueError("anchor-unloaded fixture has no loaded child cells")
+        cell_x = local_right + (frame["size"] - 1) / 2.0
+        cell_y = local_up + (frame["size"] - 1) / 2.0
+        ix = np.rint(cell_x).astype(int)
+        iy = np.rint(cell_y).astype(int)
+        in_bounds = (ix >= 0) & (ix < frame["size"]) & (iy >= 0) & (iy < frame["size"])
+        cell_interior = (np.abs(cell_x - ix) < 0.46) & (np.abs(cell_y - iy) < 0.46)
+        clipped_x = np.clip(ix, 0, frame["size"] - 1)
+        clipped_y = np.clip(iy, 0, frame["size"] - 1)
+        mask = full_mask & in_bounds & cell_interior & loaded[clipped_x, clipped_y]
+    else:
+        mask = full_mask
+    if frame.get("maxPixelDistance") is not None:
+        # Some fixtures deliberately lower the server view distance to exercise
+        # chunk-unload behavior. Exclude plane samples beyond the fixture's declared
+        # fog-safe distance without inspecting rendered colors.
+        plane_distance = np.linalg.norm(hit - eye, axis=-1)
+        mask &= plane_distance < float(frame["maxPixelDistance"])
+    outside = (np.abs(local_right) > frame["size"]*0.55) | (np.abs(local_up) > frame["size"]*0.55)
     covered = np.zeros(mask.shape, dtype=bool)
     for box in frame["occluders"]:
         with np.errstate(divide="ignore", invalid="ignore"):
