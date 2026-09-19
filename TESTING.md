@@ -77,6 +77,7 @@ The server imports deterministic opaque-magenta and alpha-stripe PNGs with the p
 - 2×2 and 8×8 screens at 8, 32, 64 and 160 blocks; frontal and 60-degree oblique views.
 - A red foreground occluder covering half the screen, separately for every facing.
 - A resource/shader reload case for every facing, with four samples before and four after successful reload.
+- Cross-chunk boundary cases plus two ownership regressions: a real two-phase anchor-unload case that first synchronizes the complete screen at view distance 16 and then relies on server chunk tracking at distance 3, and a forced-child-owner case that keeps the real anchor block entity loaded while omitting its submission.
 - A transparent/semi-transparent alpha case that checks a fully transparent stripe, a 50% alpha stripe, and an opaque reference in the same frame.
 - Four samples per normal scene, one for each unique sub-degree raster alignment. Each camera offset is armed first and captured only after a subsequent real renderer submission; there is no fixed warm-up or inter-sample sleep. Every sample must pass.
 
@@ -84,7 +85,7 @@ The oracle projects the independently specified screen plane from recorded fixtu
 
 Each target runs isolated variants, reusing compiled outputs but starting fresh worlds/processes:
 
-1. **Fixed**: all 111 scenarios and every sample pass, including the alpha/blending scene.
+1. **Fixed**: all 113 scenarios and every sample pass, including the alpha/blending and anchor-fallback scenes.
 2. **Plain text negative control**: for 1.20.1/1.21.1 targets, the renderer is changed back to plain text depth state and the disposable snapshot also restores the original coplanar authored front model so the old conflict remains reproducible. Every near reference must pass, and at least one 64/160-block scenario must show pixel corruption.
 3. **See-through negative control**: every foreground case must show substantial occlusion failure. A crash cannot satisfy this control.
 

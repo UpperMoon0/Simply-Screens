@@ -56,10 +56,30 @@ class EvidenceTests(unittest.TestCase):
         anchor_unloaded = [c for c in cases() if c.get("anchorUnloaded")]
         self.assertEqual(["NORTH-anchor-unloaded"], [c["id"] for c in anchor_unloaded])
         self.assertEqual(
-            (64, 32, 45, 32),
+            (64, 40, 60, 32),
             (anchor_unloaded[0]["size"], anchor_unloaded[0]["distance"],
              anchor_unloaded[0]["angle"], anchor_unloaded[0]["maxPixelDistance"]),
         )
+        # Match vanilla ChunkTrackingView.contains(..., includeNeighbors=true):
+        # view distance 3 keeps a two-chunk neighbor buffer. The fixture camera
+        # must put anchor chunk (0,0) outside that set while retaining child
+        # chunks -1..-4 on z=0.
+        import math
+        center_x, center_z = -31.0, 8.0
+        angle = math.radians(anchor_unloaded[0]["angle"])
+        distance = anchor_unloaded[0]["distance"]
+        eye_x = center_x - distance * math.sin(angle)
+        eye_z = center_z - distance * math.cos(angle)
+        player_chunk = (math.floor(eye_x / 16), math.floor(eye_z / 16))
+        self.assertEqual((-5, -1), player_chunk)
+
+        def tracked(chunk):
+            dx = max(0, abs(chunk[0] - player_chunk[0]) - 2)
+            dz = max(0, abs(chunk[1] - player_chunk[1]) - 2)
+            return dx * dx + dz * dz < 3 * 3
+
+        self.assertFalse(tracked((0, 0)))
+        self.assertTrue(all(tracked((x, 0)) for x in (-1, -2, -3, -4)))
         anchor_loaded = [c for c in cases() if c.get("anchorLoadedFallback")]
         self.assertEqual(["NORTH-anchor-loaded-fallback"], [c["id"] for c in anchor_loaded])
         self.assertEqual(
@@ -72,12 +92,19 @@ class EvidenceTests(unittest.TestCase):
         client = (ROOT / "tools/visual/VisualClient.java").read_text()
         pixels = (ROOT / "tools/visual_pixels.py").read_text()
         harness = (ROOT / "tools/visual_test.py").read_text()
-        self.assertIn("setViewDistance(anchorUnloaded ? 3 : 16)", server)
-        self.assertIn("__FORGET_ANCHOR__", server)
+        self.assertIn("server.getPlayerList().setViewDistance(16);", server)
+        self.assertIn("server.getPlayerList().setViewDistance(3);", server)
+        self.assertIn('DIR.resolve("anchor-sync-ack.txt")', server)
+        self.assertIn('DIR.resolve("anchor-radius-reduced.txt")', server)
+        self.assertNotIn("__FORGET_ANCHOR__", server)
+        self.assertNotIn("ClientboundForgetLevelChunkPacket", harness)
         self.assertIn("fixtureAnchor(facing, crossChunk || anchorUnloaded)", server)
-        self.assertIn("anchorUnloadedScenario() && chunkLoaded(mc, anchor)", client)
+        self.assertIn('Path ack = DIR.resolve("anchor-sync-ack.txt")', client)
+        self.assertIn("Files.writeString(ack, current", client)
+        self.assertIn('"pre-unload anchor chunk to be loaded"', client)
+        self.assertIn('"anchor chunk to unload after server view-distance reduction"', client)
+        self.assertIn('"at least one loaded child screen cell after anchor unload"', client)
         self.assertIn("return __CHUNK_LOADED__;", client)
-        self.assertIn("loadedCells > 0", client)
         self.assertIn("owner.equals(sceneAnchor())", client)
         self.assertIn('frame.addProperty("anchorChunkLoaded", chunkLoaded(mc, sceneAnchor()))', client)
         self.assertIn('frame.add("loadedCells", loadedScreenCells(mc))', client)
@@ -88,7 +115,6 @@ class EvidenceTests(unittest.TestCase):
         self.assertIn('np.linalg.norm(hit - eye, axis=-1)', pixels)
         self.assertIn("blockEntity.getBlockPos().getX()", harness)
         self.assertIn("state.blockPos.getX()", harness)
-        self.assertIn("ClientboundForgetLevelChunkPacket", harness)
         self.assertIn("VisualClient.skipAnchorOwner(blockEntity.isAnchor())", harness)
         self.assertIn("state.anchorOffsetX == 0", harness)
         self.assertIn("anchorLoadedFallbackScenario()", client)

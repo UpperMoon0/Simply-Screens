@@ -208,17 +208,6 @@ def instrument(stage):
             source = (stage / "tools/visual" / (name+".java")).read_text(encoding="utf-8")
             source = source.replace("__BASE_SAMPLES__", str(SAMPLES))
             source = source.replace("__TELEPORT__", "player.teleportTo(level, eye.x, eye.y-player.getEyeHeight(), eye.z, Set.of(), yaw, pitch" + (", true" if new else "") + ");")
-            if legacy:
-                forget_anchor = (
-                    "if (anchorUnloaded) player.connection.send(new net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket("
-                    "anchor.getX() >> 4, anchor.getZ() >> 4));"
-                )
-            else:
-                forget_anchor = (
-                    "if (anchorUnloaded) player.connection.send(new net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket("
-                    "new net.minecraft.world.level.ChunkPos(anchor.getX() >> 4, anchor.getZ() >> 4)));"
-                )
-            source = source.replace("__FORGET_ANCHOR__", forget_anchor)
             source = source.replace("__CAMERA_POSITION__", "camera.position()" if new else "camera.getPosition()")
             source = source.replace("__CAMERA_YAW__", "camera.yRot()" if new else "camera.getYRot()")
             source = source.replace("__CAMERA_PITCH__", "camera.xRot()" if new else "camera.getXRot()")

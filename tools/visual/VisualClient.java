@@ -144,13 +144,12 @@ public final class VisualClient {
                 return false;
             }
             // A ready JSON is emitted in the same server tick as the block updates. On a
-            // remote client those packets can still be in flight. For the anchor-unloaded
-            // regression, synchronization additionally proves the anchor chunk is gone
-            // while at least one child chunk and its replicated logical-screen data remain.
+            // remote client those packets can still be in flight. The anchor-unloaded
+            // regression is deliberately two phase: first prove the complete screen and
+            // anchor are synchronized, ACK that state to the server, then wait for normal
+            // reduced-radius chunk tracking to remove only the anchor side.
             if (!sceneSynchronized(mc, image)) {
-                waitingFor = anchorUnloadedScenario()
-                        ? "anchor chunk unload with synchronized child cells"
-                        : "all screen cells to synchronize";
+                if (!anchorUnloadedScenario()) waitingFor = "all screen cells to synchronize";
                 resetStability();
                 return false;
             }
@@ -307,27 +306,90 @@ public final class VisualClient {
         return scene.get("yaw").getAsFloat() + (sample % BASE_SAMPLES - (BASE_SAMPLES - 1) / 2.0f) * 0.025f;
     }
 
-    private static boolean sceneSynchronized(Minecraft mc, UUID image) {
+    private static boolean sceneSynchronized(Minecraft mc, UUID image) throws Exception {
+        if (anchorUnloadedScenario()) return anchorUnloadSceneSynchronized(mc, image);
         BlockPos anchor = sceneAnchor();
-        if (anchorUnloadedScenario() && chunkLoaded(mc, anchor)) return false;
         Direction facing = Direction.valueOf(scene.get("facing").getAsString());
         Direction width = widthDirection(facing);
         Direction height = heightDirection(facing);
         int size = scene.get("size").getAsInt();
+        for (int x = 0; x < size; x++) for (int y = 0; y < size; y++) {
+            BlockPos pos = anchor.relative(width, x).relative(height, y);
+            if (!(mc.level.getBlockEntity(pos) instanceof ScreenBlockEntity cell)) return false;
+            if (!screenCellMatches(cell, anchor, facing, image, size)) return false;
+        }
+        return true;
+    }
+
+    private static boolean anchorUnloadSceneSynchronized(Minecraft mc, UUID image) throws Exception {
+        BlockPos anchor = sceneAnchor();
+        Direction facing = Direction.valueOf(scene.get("facing").getAsString());
+        Direction width = widthDirection(facing);
+        Direction height = heightDirection(facing);
+        int size = scene.get("size").getAsInt();
+        Path ack = DIR.resolve("anchor-sync-ack.txt");
+
+        if (!Files.exists(ack)) {
+            if (!chunkLoaded(mc, anchor)) {
+                waitingFor = "pre-unload anchor chunk to be loaded";
+                return false;
+            }
+            for (int x = 0; x < size; x++) for (int y = 0; y < size; y++) {
+                BlockPos pos = anchor.relative(width, x).relative(height, y);
+                if (!chunkLoaded(mc, pos)) {
+                    waitingFor = "pre-unload screen chunk " + (pos.getX() >> 4) + "," + (pos.getZ() >> 4) + " to load";
+                    return false;
+                }
+                if (!(mc.level.getBlockEntity(pos) instanceof ScreenBlockEntity cell)) {
+                    waitingFor = "pre-unload screen block entity at " + pos;
+                    return false;
+                }
+                if (!screenCellMatches(cell, anchor, facing, image, size)) {
+                    waitingFor = "pre-unload synchronized screen state at " + pos;
+                    return false;
+                }
+            }
+            Files.writeString(ack, current, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            waitingFor = "server view-distance reduction after pre-unload synchronization";
+            return false;
+        }
+
+        if (chunkLoaded(mc, anchor)) {
+            waitingFor = Files.exists(DIR.resolve("anchor-radius-reduced.txt"))
+                    ? "anchor chunk to unload after server view-distance reduction"
+                    : "server view-distance reduction after pre-unload synchronization";
+            return false;
+        }
+
         int loadedCells = 0;
         for (int x = 0; x < size; x++) for (int y = 0; y < size; y++) {
             BlockPos pos = anchor.relative(width, x).relative(height, y);
-            if (anchorUnloadedScenario() && !chunkLoaded(mc, pos)) continue;
+            if (!chunkLoaded(mc, pos)) continue;
             loadedCells++;
-            if (!(mc.level.getBlockEntity(pos) instanceof ScreenBlockEntity cell)) return false;
-            if (!image.equals(cell.getResolvedImageId())
-                    || !anchor.equals(cell.getAnchorPos())
-                    || cell.getScreenWidth() != size
-                    || cell.getScreenHeight() != size
-                    || !cell.getBlockState().hasProperty(ScreenBlock.FACING)
-                    || cell.getBlockState().getValue(ScreenBlock.FACING) != facing) return false;
+            if (!(mc.level.getBlockEntity(pos) instanceof ScreenBlockEntity cell)) {
+                waitingFor = "loaded child block entity after anchor unload at " + pos;
+                return false;
+            }
+            if (!screenCellMatches(cell, anchor, facing, image, size)) {
+                waitingFor = "loaded child synchronized state after anchor unload at " + pos;
+                return false;
+            }
         }
-        return !anchorUnloadedScenario() || loadedCells > 0;
+        if (loadedCells == 0) {
+            waitingFor = "at least one loaded child screen cell after anchor unload";
+            return false;
+        }
+        return true;
+    }
+
+    private static boolean screenCellMatches(ScreenBlockEntity cell, BlockPos anchor,
+                                             Direction facing, UUID image, int size) {
+        return image.equals(cell.getResolvedImageId())
+                && anchor.equals(cell.getAnchorPos())
+                && cell.getScreenWidth() == size
+                && cell.getScreenHeight() == size
+                && cell.getBlockState().hasProperty(ScreenBlock.FACING)
+                && cell.getBlockState().getValue(ScreenBlock.FACING) == facing;
     }
 
     private static JsonArray loadedScreenCells(Minecraft mc) {

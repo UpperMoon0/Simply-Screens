@@ -23,6 +23,7 @@ public final class VisualServer {
     private static final Gson JSON = new Gson();
     private static final List<BlockPos> placed = new ArrayList<>();
     private static String current = "";
+    private static boolean anchorUnloadPending;
     private static final Map<String, UUID> images = new HashMap<>();
 
     public static void tick(MinecraftServer server) {
@@ -30,8 +31,22 @@ public final class VisualServer {
             if (!Files.exists(DIR.resolve("request.json")) || server.getPlayerList().getPlayers().isEmpty()) return;
             JsonObject request = JsonParser.parseString(Files.readString(DIR.resolve("request.json"))).getAsJsonObject();
             String id = request.get("id").getAsString();
-            if (id.equals(current)) return;
+            if (id.equals(current)) {
+                if (anchorUnloadPending && Files.exists(DIR.resolve("anchor-sync-ack.txt"))
+                        && id.equals(Files.readString(DIR.resolve("anchor-sync-ack.txt")))) {
+                    // The client has proved the complete screen was synchronized while
+                    // the anchor was still loaded. Now let normal server chunk tracking
+                    // shrink the tracked radius; no synthetic client-side unload packet.
+                    server.getPlayerList().setViewDistance(3);
+                    anchorUnloadPending = false;
+                    Files.writeString(DIR.resolve("anchor-radius-reduced.txt"), id);
+                }
+                return;
+            }
             current = id;
+            anchorUnloadPending = false;
+            Files.deleteIfExists(DIR.resolve("anchor-sync-ack.txt"));
+            Files.deleteIfExists(DIR.resolve("anchor-radius-reduced.txt"));
             server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), "time set noon");
             server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), "weather clear");
             ServerLevel level = server.overworld();
@@ -61,10 +76,11 @@ public final class VisualServer {
             int size = request.get("size").getAsInt();
             boolean crossChunk = request.has("crossChunk") && request.get("crossChunk").getAsBoolean();
             boolean anchorUnloaded = request.has("anchorUnloaded") && request.get("anchorUnloaded").getAsBoolean();
-            // The fallback regression uses a real server chunk radius: the camera is
-            // chosen so child screen chunks remain sent while the anchor chunk is
-            // outside radius 3 and is explicitly forgotten by the client.
-            server.getPlayerList().setViewDistance(anchorUnloaded ? 3 : 16);
+            // Start every fixture at the normal radius. The anchor-unloaded regression
+            // lowers this only after the client ACKs a fully synchronized screen, so
+            // the unload is caused by real server chunk tracking rather than a racey
+            // same-tick forget packet.
+            server.getPlayerList().setViewDistance(16);
             // Give each orientation its own spatial lane. Reusing one anchor across
             // perpendicular planes can leave an asynchronously rebuilt chunk mesh from
             // the previous scene intersecting the next screen even after the block
@@ -102,11 +118,6 @@ public final class VisualServer {
             float pitch = (float)-Math.toDegrees(Math.asin(look.y));
             // Teleport through the real server connection; the client must acknowledge the fixture.
             __TELEPORT__
-            // Radius changes resize the client cache but can retain old chunks inside
-            // its view+3 storage ring. Explicitly send the same vanilla forget packet
-            // used by normal server chunk tracking, after teleporting so the anchor is
-            // genuinely outside the advertised radius and will not be resent.
-            __FORGET_ANCHOR__
             JsonObject ready = request.deepCopy();
             ready.addProperty("image", image.toString());
             ready.addProperty("yaw", yaw);
@@ -119,6 +130,7 @@ public final class VisualServer {
             ready.add("eye", JSON.toJsonTree(new double[]{eye.x, eye.y, eye.z}));
             ready.add("occluders", boxes);
             write("server-ready.json", ready);
+            if (anchorUnloaded) anchorUnloadPending = true;
         } catch (Throwable failure) {
             try { Files.writeString(DIR.resolve("server-fail.txt"), failure.toString()); } catch (Exception ignored) { }
         }
