@@ -54,6 +54,18 @@ class LiveJoinHarnessTest(unittest.TestCase):
             self.assertIn("skipMultiplayerWarning:true", options)
             self.assertIn("pauseOnLostFocus:false", options)
 
+    def test_forge_test_client_disables_early_graphics_probe(self) -> None:
+        import tomllib
+        with tempfile.TemporaryDirectory() as directory:
+            for target in live_join_test.TARGETS:
+                module = Path(directory) / target
+                live_join_test.prepare_client(module)
+                config = module / "run/live-join/client/config/fml.toml"
+                if target == "forge-1.20.1":
+                    self.assertIs(False, tomllib.loads(config.read_text())["earlyWindowControl"])
+                else:
+                    self.assertFalse(config.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

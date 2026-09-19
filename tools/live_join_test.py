@@ -134,6 +134,13 @@ def prepare_server(module_dir: Path) -> None:
 def prepare_client(module_dir: Path) -> None:
     client_dir = module_dir / "run" / "live-join" / "client"
     client_dir.mkdir(parents=True, exist_ok=True)
+    if module_dir.name == "forge-1.20.1":
+        # Forge's optional splash window probes GL versions before Minecraft starts.
+        # That separate window can time out on Xvfb/llvmpipe and leave an error
+        # dialog open. Let Minecraft create the real test window directly instead.
+        config_dir = client_dir / "config"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        (config_dir / "fml.toml").write_text("earlyWindowControl=false\n", encoding="utf-8")
     # A fresh Minecraft directory otherwise opens the accessibility/narrator
     # onboarding screen, which blocks quick-play and makes the test interactive.
     (client_dir / "options.txt").write_text(
