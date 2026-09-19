@@ -76,7 +76,6 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
         state.anchorOffsetX = anchorPos == null ? 0 : anchorPos.getX() - entity.getBlockPos().getX();
         state.anchorOffsetY = anchorPos == null ? 0 : anchorPos.getY() - entity.getBlockPos().getY();
         state.anchorOffsetZ = anchorPos == null ? 0 : anchorPos.getZ() - entity.getBlockPos().getZ();
-        state.anchorEntityLoaded = anchor != null;
         state.texture = imageId == null ? null : ClientImageManager.getTextureLocation(imageId);
         state.levelIdentity = entity.getLevel();
         state.anchorKey = anchorPos == null ? 0L : anchorPos.asLong();
@@ -97,12 +96,11 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
 
     @Override
     public void submit(ScreenBlockEntityRenderState state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
-        // Prefer the anchor whenever its block entity is loaded so normal frames keep
-        // a stable PoseStack origin. If the anchor chunk is absent, a synchronized child
-        // may own the logical screen for this frame; its anchor offset reconstructs the
-        // same world-space origin instead of making the whole screen disappear.
-        if (!state.visible || state.texture == null || !LogicalScreenOwnership.canOwn(
-                state.anchorEntityLoaded, state.anchorOffsetX, state.anchorOffsetY, state.anchorOffsetZ)
+        // Any extracted tile may own the logical screen for this frame. Every tile
+        // translates back to the same anchor-space origin before queuing geometry, so
+        // ownership does not change the world transform. This is important when the
+        // anchor block entity still exists but is not itself extracted/rendered.
+        if (!state.visible || state.texture == null
                 || !FRAME_RENDER_CLAIMS.claim(state.levelIdentity, state.anchorKey)) return;
         debugDraw(state);
         poseStack.pushPose();

@@ -60,6 +60,12 @@ class EvidenceTests(unittest.TestCase):
             (anchor_unloaded[0]["size"], anchor_unloaded[0]["distance"],
              anchor_unloaded[0]["angle"], anchor_unloaded[0]["maxPixelDistance"]),
         )
+        anchor_loaded = [c for c in cases() if c.get("anchorLoadedFallback")]
+        self.assertEqual(["NORTH-anchor-loaded-fallback"], [c["id"] for c in anchor_loaded])
+        self.assertEqual(
+            (8, 32, 0),
+            (anchor_loaded[0]["size"], anchor_loaded[0]["distance"], anchor_loaded[0]["angle"]),
+        )
 
     def test_anchor_unloaded_fixture_excludes_anchor_and_requires_child_rendering(self):
         server = (ROOT / "tools/visual/VisualServer.java").read_text()
@@ -83,6 +89,11 @@ class EvidenceTests(unittest.TestCase):
         self.assertIn("blockEntity.getBlockPos().getX()", harness)
         self.assertIn("state.blockPos.getX()", harness)
         self.assertIn("ClientboundForgetLevelChunkPacket", harness)
+        self.assertIn("VisualClient.skipAnchorOwner(blockEntity.isAnchor())", harness)
+        self.assertIn("state.anchorOffsetX == 0", harness)
+        self.assertIn("anchorLoadedFallbackScenario()", client)
+        self.assertIn('frame.addProperty("anchorEntityPresent"', client)
+        self.assertIn('case.get("anchorLoadedFallback")', harness)
 
     def test_visual_client_captures_only_after_stable_completed_render_frames(self):
         source = (ROOT / "tools/visual/VisualClient.java").read_text()
@@ -123,7 +134,7 @@ class EvidenceTests(unittest.TestCase):
 
     def test_unique_manifest_and_full_matrix(self):
         self.assertEqual(5, len(TARGETS))
-        self.assertEqual(112, len(cases()))
+        self.assertEqual(113, len(cases()))
         self.assertEqual(4, SAMPLES)
         regular = next(c for c in cases() if not c.get("reload"))
         reload_case = next(c for c in cases() if c.get("reload"))

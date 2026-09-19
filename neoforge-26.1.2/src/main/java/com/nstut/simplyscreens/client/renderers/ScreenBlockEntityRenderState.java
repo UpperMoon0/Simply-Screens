@@ -17,5 +17,4 @@ public final class ScreenBlockEntityRenderState extends BlockEntityRenderState {
     public int anchorOffsetX;
     public int anchorOffsetY;
     public int anchorOffsetZ;
-    public boolean anchorEntityLoaded;
 }

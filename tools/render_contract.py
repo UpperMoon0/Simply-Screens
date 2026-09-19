@@ -26,12 +26,6 @@ NF26_ITEM_BLOCK_MODEL_PATH = Path("neoforge-26.1.2/src/main/resources/assets/sim
 NF26_ITEM_DEF_PATH = Path("neoforge-26.1.2/src/main/resources/assets/simply_screens/items/screen.json")
 OFFSET_RE = re.compile(r"BASE_OFFSET\s*=\s*([0-9.]+)f\s*;")
 EXPECTED_OFFSET = 0.501
-NF26_ANCHOR_FALLBACK = (
-    "!anchorEntityLoaded || (anchorOffsetX == 0 && anchorOffsetY == 0 && anchorOffsetZ == 0)"
-)
-NF26_OWNERSHIP_PATH = Path("neoforge-26.1.2/src/main/java/com/nstut/simplyscreens/client/renderers/LogicalScreenOwnership.java")
-NF26_OWNERSHIP_CALL = "LogicalScreenOwnership.canOwn("
-NF26_ANCHOR_LOADED_STATE = "state.anchorEntityLoaded = anchor != null"
 NF26_ORDERED_SUBMIT = "collector.order(SCREEN_SUBMIT_ORDER).submitCustomGeometry"
 
 
@@ -164,23 +158,10 @@ def verify_renderer(root: Path, contract: RendererContract) -> list[str]:
         errors.append(
             f"{contract.name}: see-through text rendering would break normal world occlusion"
         )
-    if contract.name == "26.1.2":
-        if NF26_OWNERSHIP_CALL not in text:
-            errors.append(
-                "26.1.2: renderer must use the anchor-preferred child-fallback ownership gate"
-            )
-        if NF26_ANCHOR_LOADED_STATE not in text:
-            errors.append(
-                "26.1.2: render state must record whether the anchor entity was loaded"
-            )
-        ownership = root / NF26_OWNERSHIP_PATH
-        ownership_text = ownership.read_text(encoding="utf-8") if ownership.is_file() else ""
-        ownership_text = re.sub(r"/\*.*?\*/|//[^\n]*", "", ownership_text, flags=re.S)
-        ownership_text = re.sub(r"\s+", " ", ownership_text)
-        if NF26_ANCHOR_FALLBACK not in ownership_text:
-            errors.append(
-                "26.1.2: child submission must defer to a loaded anchor but fall back when the anchor chunk is unavailable"
-            )
+    if contract.name == "26.1.2" and ("anchorEntityLoaded" in text or "LogicalScreenOwnership" in text):
+        errors.append(
+            "26.1.2: logical-screen ownership must not depend on anchor availability; any extracted tile may claim the frame"
+        )
     if contract.name == "26.1.2" and NF26_ORDERED_SUBMIT not in text:
         errors.append(
             "26.1.2: screen custom geometry must use a dedicated ordered submit bucket"
@@ -203,16 +184,15 @@ def verify_screen_model(root: Path) -> list[str]:
             continue
         elements = model.get("elements")
         if not isinstance(elements, list):
-            errors.append(f"{path.name}: screen model must declare explicit recessed-front geometry")
+            errors.append(f"{path.name}: screen model must declare explicit full-cube geometry")
             continue
         body = next((e for e in elements if e.get("from") == [0, 0, 0] and e.get("to") == [16, 16, 16]), None)
         if body is None:
             errors.append(f"{path.name}: screen model geometry changed from the full 0..16 cube; re-evaluate the 0.501 render-plane contract")
-        elif "north" in body.get("faces", {}):
-            errors.append(f"{path.name}: body must not keep a coplanar authored front face")
-        backing = next((e for e in elements if e.get("from") == [0, 0, 1] and e.get("to") == [16, 16, 1.001]), None)
-        if backing is None or backing.get("faces", {}).get("north", {}).get("texture") != "#front":
-            errors.append(f"{path.name}: authored front texture must be recessed by 1/16 block")
+        elif body.get("faces", {}).get("north", {}).get("texture") != "#front":
+            errors.append(f"{path.name}: authored front texture must be flush on the full block face")
+        if len(elements) != 1:
+            errors.append(f"{path.name}: world model must not add an inset front layer that creates seams between connected screens")
 
     item_path = root / COMMON_ITEM_BLOCK_MODEL_PATH
     if not item_path.is_file():
@@ -258,16 +238,15 @@ def verify_nf26_models(root: Path) -> list[str]:
             continue
         elements = model.get("elements")
         if not isinstance(elements, list):
-            errors.append(f"26.1.2: {path.name} must declare explicit recessed-front geometry")
+            errors.append(f"26.1.2: {path.name} must declare explicit full-cube geometry")
             continue
         body = next((e for e in elements if e.get("from") == [0, 0, 0] and e.get("to") == [16, 16, 16]), None)
         if body is None:
             errors.append(f"26.1.2: {path.name} must keep the full block body")
-        elif "north" in body.get("faces", {}):
-            errors.append(f"26.1.2: {path.name} body must not keep a coplanar authored front face")
-        backing = next((e for e in elements if e.get("from") == [0, 0, 1] and e.get("to") == [16, 16, 1.001]), None)
-        if backing is None or backing.get("faces", {}).get("north", {}).get("texture") != "#front":
-            errors.append(f"26.1.2: {path.name} must keep the authored front texture recessed by 1/16 block")
+        elif body.get("faces", {}).get("north", {}).get("texture") != "#front":
+            errors.append(f"26.1.2: {path.name} authored front texture must be flush on the full block face")
+        if len(elements) != 1:
+            errors.append(f"26.1.2: {path.name} must not add an inset front layer that creates connected-screen seams")
 
     item_model, load_errors = _load_model(root, NF26_ITEM_BLOCK_MODEL_PATH)
     errors.extend(load_errors)
@@ -311,7 +290,7 @@ def main() -> int:
 
     print("SIMPLYSCREENS_RENDER_CONTRACT_PASS")
     print(
-        "All supported renderers keep the image plane fixed at 0.501 and use polygon offset; shared world models use a recessed static front face, and custom modern render types preserve translucent blending with depth-only bias."
+        "All supported renderers keep the image plane fixed at 0.501 and use polygon offset; world models keep a flush authored front face without per-tile inset seams, and custom modern render types preserve translucent blending with depth-only bias."
     )
     return 0
 

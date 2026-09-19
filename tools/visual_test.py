@@ -241,6 +241,18 @@ def instrument(stage):
         replace_once(package / "client/testing/UiSmokeTest.java", "public static boolean tick(Minecraft client) {",
                      "public static boolean tick(Minecraft client) {\n        if (System.getenv(\"SS_VISUAL_DIR\") != null) return com.nstut.simplyscreens.testing.visual.VisualClient.tick(client);")
         renderer = package / "client/renderers/ScreenBlockEntityRenderer.java"
+        if module == "common-1.21.1":
+            replace_once(
+                renderer,
+                "BlockPos anchorPos = blockEntity.getAnchorPos();",
+                "BlockPos anchorPos = blockEntity.getAnchorPos();\n        if (com.nstut.simplyscreens.testing.visual.VisualClient.skipAnchorOwner(blockEntity.isAnchor())) return;",
+            )
+        elif module == "neoforge-26.1.2":
+            replace_once(
+                renderer,
+                "        if (!state.visible || state.texture == null",
+                "        if (com.nstut.simplyscreens.testing.visual.VisualClient.skipAnchorOwner(\n                state.anchorOffsetX == 0 && state.anchorOffsetY == 0 && state.anchorOffsetZ == 0)) return;\n        if (!state.visible || state.texture == null",
+            )
         if module == "common-1.20.1":
             anchor = "debugDraw(blockEntity, texture, facing);"
             submitted = (
@@ -481,6 +493,9 @@ def run_variant(stage, target, variant, directory, probe=False):
                     if case.get("anchorUnloaded"):
                         if frame.get("anchorChunkLoaded") is not False or not frame.get("loadedCells"):
                             raise RuntimeError("anchor-unloaded evidence did not exclude anchor while retaining child cells")
+                    if case.get("anchorLoadedFallback"):
+                        if frame.get("anchorChunkLoaded") is not True or frame.get("anchorEntityPresent") is not True:
+                            raise RuntimeError("anchor-loaded fallback did not retain the real anchor block entity")
                     identity = {k: frame.get(k) for k in ("graphicsVendor", "graphicsRenderer", "graphicsVersion")}
                     if not all(identity.values()) or (graphics is not None and graphics != identity):
                         raise RuntimeError("missing or changing graphics backend identity")

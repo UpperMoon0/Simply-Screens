@@ -25,10 +25,4 @@ class ScreenBlockEntityRendererTest {
         assertFalse(claims.claim(secondLevel, 42L));
     }
 
-    @Test
-    void loadedAnchorIsPreferredButUnloadedAnchorAllowsChildFallback() {
-        assertTrue(LogicalScreenOwnership.canOwn(true, 0, 0, 0));
-        assertFalse(LogicalScreenOwnership.canOwn(true, -16, 0, 0));
-        assertTrue(LogicalScreenOwnership.canOwn(false, -16, 0, 0));
-    }
 }

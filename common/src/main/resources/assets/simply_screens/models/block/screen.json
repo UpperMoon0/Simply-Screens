@@ -36,21 +36,7 @@
         "down": {
           "texture": "#side",
           "cullface": "down"
-        }
-      }
-    },
-    {
-      "from": [
-        0,
-        0,
-        1
-      ],
-      "to": [
-        16,
-        16,
-        1.001
-      ],
-      "faces": {
+        },
         "north": {
           "texture": "#front",
           "cullface": "north"

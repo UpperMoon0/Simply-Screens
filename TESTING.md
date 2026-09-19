@@ -16,7 +16,7 @@ python3 tools/render_contract.py
 - keeps the physical image plane at `BASE_OFFSET = 0.501f` so it remains visually flush with the screen block;
 - uses a text-compatible polygon-offset render path instead of normal text depth state (vanilla `textPolygonOffset` on 1.20.1, custom equivalent render state/pipeline on 1.21.1 and 26.1.2);
 - does not use see-through rendering, which would allow images to draw through real occluders;
-- remains paired with the current full block body plus the authored front texture recessed by 1/16 block, avoiding a coplanar model face.
+- keeps the authored world-model front flush on the full block face with no per-tile inset; the dynamic image plane at `0.501f` remains slightly in front and polygon-offset, avoiding both connected-screen seams and z-fighting.
 
 The verifier has negative self-tests so a broken verifier cannot silently bless the exact regressions it is meant to catch. The live-client Python harness is also self-tested for target coverage and deterministic client/server fixtures.
 

@@ -74,9 +74,14 @@ public final class VisualClient {
         BlockPos owner = new BlockPos(ownerX, ownerY, ownerZ);
         if (!submissionMatchesScene(facing, width, height, anchorX, anchorY, anchorZ)
                 || !ownerBelongsToScene(ownerX, ownerY, ownerZ)
-                || (anchorUnloadedScenario() && owner.equals(sceneAnchor()))) {
+                || ((anchorUnloadedScenario() || anchorLoadedFallbackScenario()) && owner.equals(sceneAnchor()))) {
             frameUnexpectedSubmission = true;
         }
+    }
+
+    /** Test-only hook used by the instrumented renderer to emulate an anchor omitted this frame. */
+    public static boolean skipAnchorOwner(boolean isAnchor) {
+        return isAnchor && anchorLoadedFallbackScenario();
     }
 
     /** Client-tick phase: acknowledge the complete fixture and request the next camera sample. */
@@ -246,10 +251,11 @@ public final class VisualClient {
             frame.addProperty("reloaded", reloaded);
             frame.addProperty("submissions", submissions);
             frame.addProperty("stableRenderFrames", requiredStableFrames);
-            if (anchorUnloadedScenario()) {
+            if (anchorUnloadedScenario() || anchorLoadedFallbackScenario()) {
                 frame.addProperty("anchorChunkLoaded", chunkLoaded(mc, sceneAnchor()));
-                frame.add("loadedCells", loadedScreenCells(mc));
+                frame.addProperty("anchorEntityPresent", mc.level.getBlockEntity(sceneAnchor()) instanceof ScreenBlockEntity);
             }
+            if (anchorUnloadedScenario()) frame.add("loadedCells", loadedScreenCells(mc));
             frame.addProperty("graphicsVendor", org.lwjgl.opengl.GL11.glGetString(org.lwjgl.opengl.GL11.GL_VENDOR));
             frame.addProperty("graphicsRenderer", org.lwjgl.opengl.GL11.glGetString(org.lwjgl.opengl.GL11.GL_RENDERER));
             frame.addProperty("graphicsVersion", org.lwjgl.opengl.GL11.glGetString(org.lwjgl.opengl.GL11.GL_VERSION));
@@ -345,6 +351,11 @@ public final class VisualClient {
 
     private static boolean anchorUnloadedScenario() {
         return scene != null && scene.has("anchorUnloaded") && scene.get("anchorUnloaded").getAsBoolean();
+    }
+
+    private static boolean anchorLoadedFallbackScenario() {
+        return scene != null && scene.has("anchorLoadedFallback")
+                && scene.get("anchorLoadedFallback").getAsBoolean();
     }
 
     private static Direction widthDirection(Direction facing) {
