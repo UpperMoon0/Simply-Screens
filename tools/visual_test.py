@@ -401,7 +401,15 @@ def run_variant(stage, target, variant, directory, probe=False):
     from PIL import Image
     from visual_pixels import measure
     directory.mkdir(parents=True)
-    Image.new("RGB", (32,32), (240,24,240)).save(directory / "fixture.png")
+    Image.new("RGBA", (32,32), (240,24,240,255)).save(directory / "fixture-opaque.png")
+    alpha_fixture = Image.new("RGBA", (32,32), (240,24,240,0))
+    alpha_pixels = alpha_fixture.load()
+    for x in range(32):
+        u = abs((x + 0.5) / 32.0 - 0.5)
+        alpha = 255 if u < 0.15 else 128 if 0.20 <= u < 0.32 else 0
+        for y in range(32):
+            alpha_pixels[x, y] = (240,24,240,alpha)
+    alpha_fixture.save(directory / "fixture-alpha.png")
     # Fresh runtime only; compiled outputs/Gradle caches are reused between variants.
     runtime = (stage / target / "run/live-join").resolve()
     if not runtime.is_relative_to(stage.resolve()):

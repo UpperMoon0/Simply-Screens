@@ -79,6 +79,7 @@ DEPTH_HELPERS = {
             "RenderSystem.polygonOffset(DEPTH_BIAS_FACTOR, DEPTH_BIAS_UNITS);",
             "RenderSystem.enablePolygonOffset();",
             "RenderSystem.disablePolygonOffset();",
+            ".setTransparencyState(TRANSLUCENT_TRANSPARENCY)",
         ),
     ),
     "26.1.2": (
@@ -88,6 +89,7 @@ DEPTH_HELPERS = {
             "DEPTH_BIAS_UNITS = -16.0F",
             "new DepthStencilState(CompareOp.LESS_THAN_OR_EQUAL, true, DEPTH_BIAS_FACTOR, DEPTH_BIAS_UNITS)",
             ".sortOnUpload()",
+            "BlendFunction.TRANSLUCENT",
         ),
     ),
 }
@@ -291,7 +293,7 @@ def main() -> int:
 
     print("SIMPLYSCREENS_RENDER_CONTRACT_PASS")
     print(
-        "All supported renderers keep the image plane fixed at 0.501 and use polygon offset; shared world models use a recessed static front face, and 1.21.1/26.1.2 use depth-only bias."
+        "All supported renderers keep the image plane fixed at 0.501 and use polygon offset; shared world models use a recessed static front face, and custom modern render types preserve translucent blending with depth-only bias."
     )
     return 0
 

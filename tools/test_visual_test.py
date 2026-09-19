@@ -81,7 +81,7 @@ class EvidenceTests(unittest.TestCase):
 
     def test_unique_manifest_and_full_matrix(self):
         self.assertEqual(5, len(TARGETS))
-        self.assertEqual(110, len(cases()))
+        self.assertEqual(111, len(cases()))
         self.assertEqual(4, SAMPLES)
         regular = next(c for c in cases() if not c.get("reload"))
         reload_case = next(c for c in cases() if c.get("reload"))
@@ -93,6 +93,9 @@ class EvidenceTests(unittest.TestCase):
         cross_chunk = [c for c in cases() if c.get("crossChunk")]
         self.assertEqual({"NORTH-cross-chunk", "UP-cross-chunk"}, {c["id"] for c in cross_chunk})
         self.assertTrue(all(not c["occluded"] for c in cross_chunk))
+        alpha = [c for c in cases() if c.get("alpha")]
+        self.assertEqual(["NORTH-alpha"], [c["id"] for c in alpha])
+        self.assertTrue(all(c not in cases("plain") and c not in cases("see-through") for c in alpha))
         self.assertTrue(all(variants(target) == ("fixed", "plain", "see-through") for target in TARGETS))
         for target in TARGETS:
             for variant in variants(target):
@@ -252,6 +255,43 @@ class PixelTests(unittest.TestCase):
             self.assertEqual("pass",measure(path,frame)["status"])
             draw.rectangle(image_box, fill=(240,24,240)); image.save(path)
             self.assertGreater(measure(path,frame)["occlusion_errors"], 0.9)
+
+    def test_alpha_fixture_requires_transparency_and_half_alpha_blending(self):
+        import math
+        from PIL import Image, ImageDraw
+        from visual_pixels import measure
+        frame = dict(camera=[0,0,-32], center=[0,0,0], normal=[0,0,-1], right=[-1,0,0], up=[0,1,0],
+                     cameraYaw=0, cameraPitch=0, fov=70, size=8,
+                     occluders=[], occluded=False, alpha=True)
+        focal = 720/(2*math.tan(math.radians(35)))
+        half = focal*4/32
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/"alpha.png"
+            image = Image.new("RGB", (960,720), (0,0,0))
+            draw = ImageDraw.Draw(image)
+            def band(lo, hi, color):
+                x0, x1 = half*lo/0.5, half*hi/0.5
+                draw.rectangle((480-x1,360-half,480-x0,360+half), fill=color)
+                draw.rectangle((480+x0,360-half,480+x1,360+half), fill=color)
+            band(0.0, 0.15, (240,24,240))
+            band(0.20, 0.32, (120,12,120))
+            image.save(path)
+            result = measure(path, frame)
+            self.assertEqual("pass", result["status"])
+            self.assertGreater(result["alpha_intensity_ratio"], 0.35)
+            self.assertLess(result["alpha_intensity_ratio"], 0.70)
+
+            band(0.20, 0.32, (240,24,240))
+            image.save(path)
+            self.assertEqual("pixel-failure", measure(path, frame)["status"])
+
+            image = Image.new("RGB", (960,720), (0,0,0))
+            draw = ImageDraw.Draw(image)
+            band(0.0, 0.15, (240,24,240))
+            band(0.20, 0.32, (120,12,120))
+            band(0.37, 0.46, (240,24,240))
+            image.save(path)
+            self.assertEqual("pixel-failure", measure(path, frame)["status"])
 
     def test_missing_image_and_single_corrupt_frame_fail(self):
         import math

@@ -46,6 +46,7 @@ public final class ScreenRenderTypes extends RenderStateShard {
                         .setShaderState(RENDERTYPE_TEXT_SHADER)
                         .setTextureState(new TextureStateShard(texture, false, false))
                         .setLightmapState(LIGHTMAP)
+                        .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
                         .setLayeringState(SCREEN_LAYERING)
                         .createCompositeState(false));
     }

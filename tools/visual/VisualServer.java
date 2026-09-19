@@ -23,7 +23,7 @@ public final class VisualServer {
     private static final Gson JSON = new Gson();
     private static final List<BlockPos> placed = new ArrayList<>();
     private static String current = "";
-    private static UUID image;
+    private static final Map<String, UUID> images = new HashMap<>();
 
     public static void tick(MinecraftServer server) {
         try {
@@ -39,10 +39,13 @@ public final class VisualServer {
             Config.SCREEN_TICK_RATE = 72000;
             Config.VIEW_DISTANCE = 512;
             player.setGameMode(GameType.SPECTATOR);
+            String fixture = request.has("alpha") && request.get("alpha").getAsBoolean() ? "alpha" : "opaque";
+            UUID image = images.get(fixture);
             if (image == null) {
-                image = ServerImageManager.saveImage(server, "visual-fixture.png",
-                        Files.readAllBytes(DIR.resolve("fixture.png")), "image/png");
+                image = ServerImageManager.saveImage(server, "visual-fixture-" + fixture + ".png",
+                        Files.readAllBytes(DIR.resolve("fixture-" + fixture + ".png")), "image/png");
                 if (image == null) throw new IllegalStateException("fixture image rejected by production image pipeline");
+                images.put(fixture, image);
             }
             for (BlockPos pos : placed) level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
             placed.clear();

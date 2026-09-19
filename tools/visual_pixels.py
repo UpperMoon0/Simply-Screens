@@ -75,6 +75,31 @@ def measure(path, frame):
     magenta = (r > 80) & (b > 80) & (r > g*2) & (b > g*2)
     if np.count_nonzero(outside) >= 4 and np.mean(magenta[outside]) > 0.1:
         raise ValueError("image outside expected silhouette; invalid camera/fixture or misplaced geometry")
+    if frame.get("alpha"):
+        local_u = np.abs(delta @ right) / frame["size"]
+        opaque = interior(exposed & (local_u < 0.12))
+        semi = interior(exposed & (local_u >= 0.22) & (local_u < 0.29))
+        transparent = interior(exposed & (local_u >= 0.39) & (local_u < 0.44))
+        if min(np.count_nonzero(opaque), np.count_nonzero(semi), np.count_nonzero(transparent)) < 4:
+            raise ValueError("insufficient alpha fixture samples")
+        opaque_error = float(np.mean(~magenta[opaque]))
+        semi_error = float(np.mean(~magenta[semi]))
+        transparent_leak = float(np.mean(magenta[transparent]))
+        rb = (r.astype(float) + b.astype(float)) * 0.5
+        opaque_level = float(np.mean(rb[opaque]))
+        semi_level = float(np.mean(rb[semi]))
+        if opaque_level <= 1.0:
+            raise ValueError("opaque alpha reference is dark; invalid fixture")
+        ratio = semi_level / opaque_level
+        alpha_pass = (opaque_error <= 0.005 and semi_error <= 0.005
+                      and transparent_leak <= 0.005 and 0.35 <= ratio <= 0.70)
+        alpha_error = max(opaque_error, semi_error, transparent_leak,
+                          max(0.0, 0.35-ratio, ratio-0.70))
+        return dict(image_errors=opaque_error, occlusion_errors=0.0,
+                    alpha_errors=alpha_error, alpha_intensity_ratio=ratio,
+                    exposed_pixels=int(exposed.sum()), occluded_pixels=0,
+                    status="pass" if alpha_pass else "pixel-failure")
+
     image_error = float(np.mean(~magenta[exposed]))
     # Occlusion is a depth contract: fail only when the screen image leaks into a
     # geometrically hidden region. Do not require the covering world pixels to be

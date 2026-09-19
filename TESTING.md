@@ -16,7 +16,7 @@ python3 tools/render_contract.py
 - keeps the physical image plane at `BASE_OFFSET = 0.501f` so it remains visually flush with the screen block;
 - uses vanilla's polygon-offset text render type instead of normal text depth state;
 - does not use see-through rendering, which would allow images to draw through real occluders;
-- remains paired with the current full `0..16` screen cube geometry.
+- remains paired with the current full block body plus the authored front texture recessed by 1/16 block, avoiding a coplanar model face.
 
 The verifier has negative self-tests so a broken verifier cannot silently bless the exact regressions it is meant to catch. The live-client Python harness is also self-tested for target coverage and deterministic client/server fixtures.
 
@@ -69,7 +69,7 @@ python3 tools/visual_test.py --target fabric-1.21.1
 
 Install the pinned OpenUI dependencies as in CI first. Java 21 runs Gradle; the build resolves the version-specific Java toolchains. Linux needs Xvfb and Mesa, Windows needs a graphical desktop. The harness uses the existing dedicated-server and graphical-client launch targets. It snapshots the checkout under `build/screen-visual-work` and injects test drivers only there. Production sources/jars never contain these drivers or runtime switches to broken render types. CI builds and checks the production jar before instrumentation.
 
-The server imports a deterministic magenta PNG with the production image manager, creates actual screen blocks and block entities, updates their image/anchor data, and teleports a spectator to the fixture. The client receives the ordinary screen updates and image download. It requires the intended image UUID, camera position, and actual renderer submission before taking samples. Client-side fake block state is not a substitute for server setup.
+The server imports deterministic opaque-magenta and alpha-stripe PNGs with the production image manager, creates actual screen blocks and block entities, updates their image/anchor data, and teleports a spectator to the fixture. The client receives the ordinary screen updates and image download. It requires the intended image UUID, camera position, and actual renderer submission before taking samples. Client-side fake block state is not a substitute for server setup.
 
 `tools/visual_cases.py` is the sole scenario manifest:
 
@@ -77,17 +77,18 @@ The server imports a deterministic magenta PNG with the production image manager
 - 2×2 and 8×8 screens at 8, 32, 64 and 160 blocks; frontal and 60-degree oblique views.
 - A red foreground occluder covering half the screen, separately for every facing.
 - A resource/shader reload case for every facing, with four samples before and four after successful reload.
+- A transparent/semi-transparent alpha case that checks a fully transparent stripe, a 50% alpha stripe, and an opaque reference against the black screen backing.
 - Four samples per normal scene, one for each unique sub-degree raster alignment. Each camera offset is armed first and captured only after a subsequent real renderer submission; there is no fixed warm-up or inter-sample sleep. Every sample must pass.
 
-The oracle projects the independently specified full-cube front surface using the recorded camera. It checks magenta in exposed screen interiors and red in covered interiors, excludes silhouette edges, and rejects insufficient pixel coverage or image color outside the expected silhouette. It never finds the expected region by searching for the image color itself. The error budget is 0.5% per region per sample; the worst sample determines the scene result. A missing texture, missing screen, stalled capture, crash or stale frame is not a successful visual check.
+The oracle projects the independently specified screen plane from recorded fixture geometry. Opaque cases check magenta in exposed screen interiors and image leakage in covered interiors; the alpha case separately checks transparent, 50%-alpha, and opaque geometric bands. It excludes silhouette edges and rejects insufficient pixel coverage or image color outside the expected silhouette. It never finds the expected region by searching for the image color itself. The error budget is 0.5% per region per sample; the worst sample determines the scene result. A missing texture, missing screen, stalled capture, crash or stale frame is not a successful visual check.
 
 Each target runs isolated variants, reusing compiled outputs but starting fresh worlds/processes:
 
-1. **Fixed**: all 108 scenarios and every sample pass.
-2. **Plain text negative control**: for 1.20.1/1.21.1 targets, the same physical geometry with only the render call changed back. Every near reference must pass, and at least one 64/160-block scenario must show pixel corruption.
+1. **Fixed**: all 111 scenarios and every sample pass, including the alpha/blending scene.
+2. **Plain text negative control**: for 1.20.1/1.21.1 targets, the renderer is changed back to plain text depth state and the disposable snapshot also restores the original coplanar authored front model so the old conflict remains reproducible. Every near reference must pass, and at least one 64/160-block scenario must show pixel corruption.
 3. **See-through negative control**: every foreground case must show substantial occlusion failure. A crash cannot satisfy this control.
 
-NeoForge 26.1.2 additionally runs a hash-locked 2x2 isolation matrix because its fix changed both render state and submission topology. The **original** control is the exact three-file renderer/state/client implementation from `main` at `1ec1058a8026294df8bd34ed21e6852d0244f26c`, with only the visual submission counter injected into the disposable snapshot. It must reproduce the far-distance failure. **single-plain** uses the new single-quad ownership path with plain text depth state; **tiled-offset** uses the original per-tile topology with polygon-offset depth state. The receipt classifies which independent change removes the corruption, or records that both or either is sufficient, rather than assuming a root cause in advance.
+NeoForge 26.1.2 uses a hash-locked **original** control: the exact three-file renderer/state/client implementation from `main` at `1ec1058a8026294df8bd34ed21e6852d0244f26c`, with only the visual submission counter injected into the disposable snapshot. The common **plain** variant exercises the current single-quad ownership path with plain depth state and restored coplanar control models. Together these controls distinguish the actual pre-fix renderer failure from the current topology with depth bias removed without maintaining obsolete diagnostic-only variants.
 
 The enlarged-offset mutation is rejected by the fast source/compiled contract, not by changing geometry to make the pixel reproduction easier. Negative controls mutate only the disposable snapshot. No assertion failure is retried into a pass.
 
