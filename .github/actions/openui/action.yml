@@ -1,0 +1,33 @@
+name: Pinned OpenUI dependencies
+description: Cache all five published OpenUI artifacts by immutable source and build environment.
+runs:
+  using: composite
+  steps:
+    - name: Set up OpenUI build JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '21'
+        cache: gradle
+    - name: Restore pinned OpenUI Maven-local artifacts
+      id: openui
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2/repository/com/nstut/
+        key: openui-v2-${{ runner.os }}-${{ runner.arch }}-jdk21-f3f1954621f32606e732dd47d1de0eb430cf1eba
+    - name: Checkout pinned OpenUI source
+      if: steps.openui.outputs.cache-hit != 'true'
+      uses: actions/checkout@v4
+      with:
+        repository: UpperMoon0/OpenUI-MC
+        ref: f3f1954621f32606e732dd47d1de0eb430cf1eba
+        path: OpenUI-MC
+    - name: Publish missing OpenUI artifacts
+      if: steps.openui.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        chmod +x OpenUI-MC/gradlew
+        python3 tools/build_openui.py
+    - name: Verify complete OpenUI cache
+      shell: bash
+      run: python3 tools/build_openui.py --verify-only

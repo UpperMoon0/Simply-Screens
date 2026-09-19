@@ -8,8 +8,6 @@ public final class ScreenBlockEntityRenderState extends BlockEntityRenderState {
     public boolean visible;
     public Direction facing = Direction.NORTH;
     public Identifier texture;
-    public Object levelIdentity;
-    public long anchorKey;
     public float scaleX = 1;
     public float scaleY = 1;
     public int width = 1;
@@ -17,4 +15,12 @@ public final class ScreenBlockEntityRenderState extends BlockEntityRenderState {
     public int anchorOffsetX;
     public int anchorOffsetY;
     public int anchorOffsetZ;
+    public float tileMinX;
+    public float tileMaxX;
+    public float tileMinY;
+    public float tileMaxY;
+    public float tileMinU;
+    public float tileMaxU;
+    public float tileMinV;
+    public float tileMaxV;
 }
