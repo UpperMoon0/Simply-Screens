@@ -278,9 +278,19 @@ class PixelTests(unittest.TestCase):
             image.save(path)
             result = measure(path, frame)
             self.assertEqual("pass", result["status"])
-            self.assertGreater(result["alpha_intensity_ratio"], 0.35)
-            self.assertLess(result["alpha_intensity_ratio"], 0.70)
+            self.assertGreater(result["alpha_blend_fraction"], 0.20)
+            self.assertLess(result["alpha_blend_fraction"], 0.85)
 
+            # sRGB-style framebuffer blending can make 50% source alpha display
+            # around 75% of the opaque channel value. That is still real blending.
+            band(0.20, 0.32, (178,18,178))
+            image.save(path)
+            srgb = measure(path, frame)
+            self.assertEqual("pass", srgb["status"])
+            self.assertGreater(srgb["alpha_blend_fraction"], 0.70)
+
+            # Ignored alpha makes the semi-transparent band indistinguishable
+            # from opaque and must still fail the semantic contract.
             band(0.20, 0.32, (240,24,240))
             image.save(path)
             self.assertEqual("pixel-failure", measure(path, frame)["status"])

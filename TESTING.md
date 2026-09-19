@@ -77,10 +77,10 @@ The server imports deterministic opaque-magenta and alpha-stripe PNGs with the p
 - 2×2 and 8×8 screens at 8, 32, 64 and 160 blocks; frontal and 60-degree oblique views.
 - A red foreground occluder covering half the screen, separately for every facing.
 - A resource/shader reload case for every facing, with four samples before and four after successful reload.
-- A transparent/semi-transparent alpha case that checks a fully transparent stripe, a 50% alpha stripe, and an opaque reference against the black screen backing.
+- A transparent/semi-transparent alpha case that checks a fully transparent stripe, a 50% alpha stripe, and an opaque reference in the same frame.
 - Four samples per normal scene, one for each unique sub-degree raster alignment. Each camera offset is armed first and captured only after a subsequent real renderer submission; there is no fixed warm-up or inter-sample sleep. Every sample must pass.
 
-The oracle projects the independently specified screen plane from recorded fixture geometry. Opaque cases check magenta in exposed screen interiors and image leakage in covered interiors; the alpha case separately checks transparent, 50%-alpha, and opaque geometric bands. It excludes silhouette edges and rejects insufficient pixel coverage or image color outside the expected silhouette. It never finds the expected region by searching for the image color itself. The error budget is 0.5% per region per sample; the worst sample determines the scene result. A missing texture, missing screen, stalled capture, crash or stale frame is not a successful visual check.
+The oracle projects the independently specified screen plane from recorded fixture geometry. Opaque cases check magenta in exposed screen interiors and image leakage in covered interiors; the alpha case normalizes the 50%-alpha band between the same frame's transparent backing and opaque reference. This preserves the semantic check across linear/sRGB framebuffer differences while still rejecting ignored or discarded alpha. It excludes silhouette edges and rejects insufficient pixel coverage or image color outside the expected silhouette. It never finds the expected region by searching for the image color itself. The error budget is 0.5% per region per sample; the worst sample determines the scene result. A missing texture, missing screen, stalled capture, crash or stale frame is not a successful visual check.
 
 Each target runs isolated variants, reusing compiled outputs but starting fresh worlds/processes:
 
