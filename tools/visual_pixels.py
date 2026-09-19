@@ -90,17 +90,16 @@ def measure(path, frame):
         semi_level = float(np.mean(rb[semi]))
         transparent_level = float(np.mean(rb[transparent]))
         span = opaque_level - transparent_level
-        if span <= 20.0:
-            raise ValueError("alpha fixture lacks opaque/transparent contrast")
-        blend_fraction = (semi_level - transparent_level) / span
+        contrast_ok = span > 20.0
+        blend_fraction = (semi_level - transparent_level) / span if contrast_ok else 1.0
         # The displayed midpoint is backend/color-space dependent: 50% source alpha
         # can land near 0.5 in linear blending or ~0.75 in an sRGB framebuffer.
         # What must remain invariant is that it is materially between transparent
         # backing and the opaque reference; ignored/discarded alpha stays rejected.
-        alpha_pass = (opaque_error <= 0.005 and semi_error <= 0.005
+        alpha_pass = (contrast_ok and opaque_error <= 0.005 and semi_error <= 0.005
                       and transparent_leak <= 0.005 and 0.20 <= blend_fraction <= 0.85)
         alpha_error = max(opaque_error, semi_error, transparent_leak,
-                          max(0.0, 0.20-blend_fraction, blend_fraction-0.85))
+                          1.0 if not contrast_ok else max(0.0, 0.20-blend_fraction, blend_fraction-0.85))
         return dict(image_errors=opaque_error, occlusion_errors=0.0,
                     alpha_errors=alpha_error, alpha_blend_fraction=blend_fraction,
                     alpha_levels=dict(opaque=opaque_level, semi=semi_level, transparent=transparent_level),
