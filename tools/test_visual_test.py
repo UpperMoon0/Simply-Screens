@@ -30,6 +30,17 @@ class EvidenceTests(unittest.TestCase):
                 root_mc = (root / "gradle.properties").read_text().strip()
                 self.assertEqual("minecraft_version = 1.20.1" if target.endswith("1.20.1") else "minecraft_version = 1.21.1", root_mc)
 
+    def test_production_build_is_target_scoped_before_gradle_starts(self):
+        workflow = (ROOT / ".github/workflows/screen-visual.yml").read_text()
+        self.assertIn("python tools/verify_production_build.py --target '${{ matrix.target }}'", workflow)
+        self.assertNotIn("./gradlew :${{ matrix.target }}:build", workflow)
+
+        verifier = (ROOT / "tools/verify_production_build.py").read_text()
+        scope = verifier.index("scope_gradle(stage, target)")
+        build = verifier.index("command = gradle_command(stage, target)")
+        self.assertLess(scope, build)
+        self.assertIn('"--module", str(stage / target)', verifier)
+
     def test_depth_fixture_isolates_faces_and_keeps_explicit_cross_chunk_cases(self):
         server = (ROOT / "tools/visual/VisualServer.java").read_text()
         self.assertIn("BlockPos anchor = fixtureAnchor(facing, crossChunk);", server)
