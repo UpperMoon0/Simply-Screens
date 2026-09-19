@@ -56,7 +56,7 @@ class EvidenceTests(unittest.TestCase):
         anchor_unloaded = [c for c in cases() if c.get("anchorUnloaded")]
         self.assertEqual(["NORTH-anchor-unloaded"], [c["id"] for c in anchor_unloaded])
         self.assertEqual(
-            (64, 76, 60, 64),
+            (64, 68, 75, 44),
             (anchor_unloaded[0]["size"], anchor_unloaded[0]["distance"],
              anchor_unloaded[0]["angle"], anchor_unloaded[0]["maxPixelDistance"]),
         )
@@ -70,7 +70,7 @@ class EvidenceTests(unittest.TestCase):
         eye_x = center_x - distance * math.sin(angle)
         eye_z = center_z - distance * math.cos(angle)
         player_chunk = (math.floor(eye_x / 16), math.floor(eye_z / 16))
-        self.assertEqual((-7, -2), player_chunk)
+        self.assertEqual((-7, -1), player_chunk)
 
         def tracked(chunk):
             dx = max(0, abs(chunk[0] - player_chunk[0]) - 2)

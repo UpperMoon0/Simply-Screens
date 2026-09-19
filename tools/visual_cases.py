@@ -61,10 +61,10 @@ def cases(variant="fixed"):
         # Keep the 64x64 fixture last: clearing 4096 real ScreenBlockEntity instances
         # would legitimately schedule thousands of structure refreshes and can trip
         # the dedicated-server watchdog before the next case. At view distance 3,
-        # this camera lands in chunk (-7,-2), outside both modern tracked radius and
+        # this camera lands in chunk (-7,-1), outside both modern tracked radius and
         # legacy 1.20.1's viewDistance+3 client cache while child chunks remain.
         result.append(dict(id="NORTH-anchor-unloaded", facing="NORTH", size=64,
-                           distance=76, angle=60, occluded=False, anchorUnloaded=True, maxPixelDistance=64))
+                           distance=68, angle=75, occluded=False, anchorUnloaded=True, maxPixelDistance=44))
     return result
 
 
