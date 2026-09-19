@@ -54,15 +54,17 @@ def cases(variant="fixed"):
         for face in ("NORTH", "UP"):
             result.append(dict(id=f"{face}-cross-chunk", facing=face, size=8,
                                distance=32, angle=0, occluded=False, crossChunk=True))
-        # At view distance 3, vanilla chunk tracking keeps a two-chunk neighbor
-        # buffer. This camera lands in chunk (-5,-1): anchor chunk (0,0) is outside
-        # the real tracked view while child chunks -1..-4 on z=0 remain tracked.
-        result.append(dict(id="NORTH-anchor-unloaded", facing="NORTH", size=64,
-                           distance=40, angle=60, occluded=False, anchorUnloaded=True, maxPixelDistance=32))
         result.append(dict(id="NORTH-anchor-loaded-fallback", facing="NORTH", size=8,
                            distance=32, angle=0, occluded=False, anchorLoadedFallback=True))
         result.append(dict(id="NORTH-alpha", facing="NORTH", size=8,
                            distance=32, angle=0, occluded=False, alpha=True))
+        # Keep the 64x64 fixture last: clearing 4096 real ScreenBlockEntity instances
+        # would legitimately schedule thousands of structure refreshes and can trip
+        # the dedicated-server watchdog before the next case. At view distance 3,
+        # this camera lands in chunk (-7,-2), outside both modern tracked radius and
+        # legacy 1.20.1's viewDistance+3 client cache while child chunks remain.
+        result.append(dict(id="NORTH-anchor-unloaded", facing="NORTH", size=64,
+                           distance=76, angle=60, occluded=False, anchorUnloaded=True, maxPixelDistance=64))
     return result
 
 

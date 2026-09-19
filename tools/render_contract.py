@@ -85,7 +85,7 @@ DEPTH_HELPERS = {
         Path("neoforge-26.1.2/src/main/java/com/nstut/simplyscreens/client/renderers/ScreenRenderTypes.java"),
         (
             "DEPTH_BIAS_FACTOR = -1.0F",
-            "DEPTH_BIAS_UNITS = -16.0F",
+            "DEPTH_BIAS_UNITS = -128.0F",
             "new DepthStencilState(CompareOp.LESS_THAN_OR_EQUAL, true, DEPTH_BIAS_FACTOR, DEPTH_BIAS_UNITS)",
             ".sortOnUpload()",
             "BlendFunction.TRANSLUCENT",

@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /** Screen image render state: depth-only polygon bias; world geometry remains authoritative for occlusion. */
 public final class ScreenRenderTypes {
     private static final float DEPTH_BIAS_FACTOR = -1.0F;
-    private static final float DEPTH_BIAS_UNITS = -16.0F;
+    private static final float DEPTH_BIAS_UNITS = -128.0F;
     private static final Map<Identifier, RenderType> TYPES = new ConcurrentHashMap<>();
     private static final RenderPipeline SCREEN_PIPELINE = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath(SimplyScreens.MOD_ID, "pipeline/screen"))

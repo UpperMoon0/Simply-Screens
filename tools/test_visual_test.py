@@ -56,14 +56,13 @@ class EvidenceTests(unittest.TestCase):
         anchor_unloaded = [c for c in cases() if c.get("anchorUnloaded")]
         self.assertEqual(["NORTH-anchor-unloaded"], [c["id"] for c in anchor_unloaded])
         self.assertEqual(
-            (64, 40, 60, 32),
+            (64, 76, 60, 64),
             (anchor_unloaded[0]["size"], anchor_unloaded[0]["distance"],
              anchor_unloaded[0]["angle"], anchor_unloaded[0]["maxPixelDistance"]),
         )
-        # Match vanilla ChunkTrackingView.contains(..., includeNeighbors=true):
-        # view distance 3 keeps a two-chunk neighbor buffer. The fixture camera
-        # must put anchor chunk (0,0) outside that set while retaining child
-        # chunks -1..-4 on z=0.
+        # Match modern vanilla tracked-view behavior and legacy 1.20.1 client
+        # storage. The final camera must evict anchor chunk (0,0) at radius 3
+        # while retaining real child chunks near the viewed screen edge.
         import math
         center_x, center_z = -31.0, 8.0
         angle = math.radians(anchor_unloaded[0]["angle"])
@@ -71,7 +70,7 @@ class EvidenceTests(unittest.TestCase):
         eye_x = center_x - distance * math.sin(angle)
         eye_z = center_z - distance * math.cos(angle)
         player_chunk = (math.floor(eye_x / 16), math.floor(eye_z / 16))
-        self.assertEqual((-5, -1), player_chunk)
+        self.assertEqual((-7, -2), player_chunk)
 
         def tracked(chunk):
             dx = max(0, abs(chunk[0] - player_chunk[0]) - 2)
@@ -79,7 +78,15 @@ class EvidenceTests(unittest.TestCase):
             return dx * dx + dz * dz < 3 * 3
 
         self.assertFalse(tracked((0, 0)))
-        self.assertTrue(all(tracked((x, 0)) for x in (-1, -2, -3, -4)))
+        self.assertTrue(all(tracked((x, 0)) for x in (-3, -4)))
+        legacy_client_radius = 3 + 3
+        legacy_cached = lambda chunk: (
+            abs(chunk[0] - player_chunk[0]) <= legacy_client_radius
+            and abs(chunk[1] - player_chunk[1]) <= legacy_client_radius
+        )
+        self.assertFalse(legacy_cached((0, 0)))
+        self.assertTrue(all(legacy_cached((x, 0)) for x in (-1, -2, -3, -4)))
+        self.assertEqual("NORTH-anchor-unloaded", cases()[-1]["id"])
         anchor_loaded = [c for c in cases() if c.get("anchorLoadedFallback")]
         self.assertEqual(["NORTH-anchor-loaded-fallback"], [c["id"] for c in anchor_loaded])
         self.assertEqual(
