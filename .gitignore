@@ -61,6 +61,8 @@ generated/
 .mixin.out/
 
 # Cache files
+__pycache__/
+*.pyc
 **/loom-cache/
 **/.cache/
 

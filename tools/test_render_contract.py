@@ -1,0 +1,217 @@
+from __future__ import annotations
+
+import json
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import render_contract
+
+
+class RenderContractTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        self._write_valid_tree()
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    def _write(self, relative: Path, content: str) -> None:
+        path = self.root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+
+    def _write_valid_tree(self) -> None:
+        model = {
+            "textures": {"front": "simply_screens:block/screen_front"},
+            "elements": [
+                {"from": [0, 0, 0], "to": [16, 16, 16], "faces": {"north": {"texture": "#front"}}},
+            ],
+        }
+        self._write(render_contract.MODEL_PATH, json.dumps(model))
+        self._write(render_contract.COMMON_ANCHOR_MODEL_PATH, json.dumps(model))
+        shared_item = {
+            "textures": {"front": "simply_screens:block/screen_front"},
+            "elements": [
+                {"from": [0, 0, 0], "to": [16, 16, 16], "faces": {"north": {"texture": "#front"}}}
+            ],
+        }
+        self._write(render_contract.COMMON_ITEM_BLOCK_MODEL_PATH, json.dumps(shared_item))
+        self._write(render_contract.COMMON_ITEM_MODEL_PATH, json.dumps({"parent": "simply_screens:block/screen_item"}))
+        nf26_world = {
+            "textures": {"front": "simply_screens:block/screen_front"},
+            "elements": [
+                {"from": [0, 0, 0], "to": [16, 16, 16], "faces": {"north": {"texture": "#front"}}},
+            ],
+        }
+        self._write(render_contract.NF26_MODEL_PATH, json.dumps(nf26_world))
+        self._write(render_contract.NF26_ANCHOR_MODEL_PATH, json.dumps(nf26_world))
+        nf26_item = {
+            "textures": {"front": "simply_screens:block/screen_front"},
+            "elements": [
+                {"from": [0, 0, 0], "to": [16, 16, 16], "faces": {"north": {"texture": "#front"}}}
+            ],
+        }
+        self._write(render_contract.NF26_ITEM_BLOCK_MODEL_PATH, json.dumps(nf26_item))
+        self._write(render_contract.NF26_ITEM_DEF_PATH, json.dumps({"model": {"model": "simply_screens:block/screen_item"}}))
+        for contract in render_contract.RENDERERS:
+            fixed_offset = "\n".join(contract.fixed_offset_fragments)
+            self._write(
+                contract.path,
+                "public final class ScreenBlockEntityRenderer {\n"
+                "  private static final float BASE_OFFSET = 0.501f;\n"
+                f"  {fixed_offset}\n"
+                + (                    f"  void ordered() {{ {render_contract.NF26_ORDERED_SUBMIT}; }}\n"
+                    if contract.name == "26.1.2" else ""
+                )
+                + f"  void draw() {{ Object type = {contract.polygon_offset_call}; }}\n"
+                + "}\n",
+            )
+            helper = render_contract.DEPTH_HELPERS.get(contract.name)
+            if helper is not None:
+                helper_path, required = helper
+                self._write(helper_path, "\n".join(required) + "\n")
+
+    def test_valid_contract_passes(self) -> None:
+        self.assertEqual([], render_contract.verify(self.root))
+
+    def test_every_renderer_rejects_each_mutation(self) -> None:
+        for contract in render_contract.RENDERERS:
+            for mutation in ("plain", "see-through", "large", "commented"):
+                with self.subTest(version=contract.name, mutation=mutation):
+                    self._write_valid_tree()
+                    path = self.root / contract.path
+                    text = path.read_text()
+                    if mutation == "large":
+                        text = text.replace("0.501f", "0.550f")
+                    else:
+                        replacement = {"plain": contract.plain_text_call,
+                                       "see-through": contract.polygon_offset_call.replace("textPolygonOffset", "textSeeThrough"),
+                                       "commented": "/* " + contract.polygon_offset_call + " */ null"}[mutation]
+                        text = text.replace(contract.polygon_offset_call, replacement)
+                    path.write_text(text)
+                    self.assertTrue(render_contract.verify(self.root))
+
+    def test_plain_text_render_type_is_rejected(self) -> None:
+        contract = render_contract.RENDERERS[0]
+        path = self.root / contract.path
+        path.write_text(
+            path.read_text(encoding="utf-8").replace(
+                contract.polygon_offset_call, contract.plain_text_call
+            ),
+            encoding="utf-8",
+        )
+        errors = render_contract.verify(self.root)
+        self.assertTrue(any("z-fighting" in error for error in errors), errors)
+
+    def test_large_geometric_offset_is_rejected(self) -> None:
+        contract = render_contract.RENDERERS[1]
+        path = self.root / contract.path
+        path.write_text(
+            path.read_text(encoding="utf-8").replace("0.501f", "0.550f"),
+            encoding="utf-8",
+        )
+        errors = render_contract.verify(self.root)
+        self.assertTrue(any("render state" in error for error in errors), errors)
+
+    def test_camera_dependent_physical_offset_is_rejected(self) -> None:
+        contract = render_contract.RENDERERS[0]
+        path = self.root / contract.path
+        original = contract.fixed_offset_fragments[-1]
+        path.write_text(
+            path.read_text(encoding="utf-8").replace(
+                original, "default -> BASE_OFFSET + cameraDistance * 0.001f;"
+            ),
+            encoding="utf-8",
+        )
+        errors = render_contract.verify(self.root)
+        self.assertTrue(any("camera distance" in error for error in errors), errors)
+
+    def test_see_through_rendering_is_rejected(self) -> None:
+        contract = render_contract.RENDERERS[2]
+        path = self.root / contract.path
+        path.write_text(path.read_text(encoding="utf-8") + "\nRenderTypes.textSeeThrough(texture);\n", encoding="utf-8")
+        errors = render_contract.verify(self.root)
+        self.assertTrue(any("occlusion" in error for error in errors), errors)
+
+
+    def test_modern_depth_helper_requires_expected_version_specific_bias(self) -> None:
+        for name in ("1.21.1", "26.1.2"):
+            with self.subTest(version=name):
+                self._write_valid_tree()
+                helper_path, required = render_contract.DEPTH_HELPERS[name]
+                path = self.root / helper_path
+                text = path.read_text(encoding="utf-8")
+                path.write_text(text.replace(required[-1], ""), encoding="utf-8")
+                errors = render_contract.verify(self.root)
+                self.assertTrue(any("depth helper" in error for error in errors), errors)
+
+
+    def test_neoforge_26_requires_dedicated_submit_order(self) -> None:
+        contract = next(c for c in render_contract.RENDERERS if c.name == "26.1.2")
+        path = self.root / contract.path
+        text = path.read_text(encoding="utf-8").replace(render_contract.NF26_ORDERED_SUBMIT, "collector.submitCustomGeometry")
+        path.write_text(text, encoding="utf-8")
+        errors = render_contract.verify(self.root)
+        self.assertTrue(any("ordered submit bucket" in error for error in errors), errors)
+
+    def test_neoforge_26_rejects_anchor_availability_gating(self) -> None:
+        contract = next(c for c in render_contract.RENDERERS if c.name == "26.1.2")
+        path = self.root / contract.path
+        path.write_text(path.read_text(encoding="utf-8") + "\nboolean anchorEntityLoaded;\n", encoding="utf-8")
+        errors = render_contract.verify(self.root)
+        self.assertTrue(any("must not depend on anchor availability" in error for error in errors), errors)
+
+    def test_shared_world_model_requires_flush_front_face(self) -> None:
+        path = self.root / render_contract.MODEL_PATH
+        model = json.loads(path.read_text(encoding="utf-8"))
+        model["elements"][0]["faces"].pop("north")
+        path.write_text(json.dumps(model), encoding="utf-8")
+        errors = render_contract.verify(self.root)
+        self.assertTrue(any("flush on the full block face" in error for error in errors), errors)
+
+    def test_shared_world_model_rejects_inset_front_layer(self) -> None:
+        path = self.root / render_contract.MODEL_PATH
+        model = json.loads(path.read_text(encoding="utf-8"))
+        model["elements"].append({"from": [0, 0, 1], "to": [16, 16, 1.001], "faces": {"north": {"texture": "#front"}}})
+        path.write_text(json.dumps(model), encoding="utf-8")
+        errors = render_contract.verify(self.root)
+        self.assertTrue(any("creates seams" in error for error in errors), errors)
+
+    def test_neoforge_26_requires_flush_world_front_face(self) -> None:
+        path = self.root / render_contract.NF26_MODEL_PATH
+        model = json.loads(path.read_text(encoding="utf-8"))
+        model["elements"][0]["faces"].pop("north")
+        path.write_text(json.dumps(model), encoding="utf-8")
+        errors = render_contract.verify(self.root)
+        self.assertTrue(any("flush on the full block face" in error for error in errors), errors)
+
+    def test_neoforge_26_rejects_inset_world_front_layer(self) -> None:
+        path = self.root / render_contract.NF26_MODEL_PATH
+        model = json.loads(path.read_text(encoding="utf-8"))
+        model["elements"].append({"from": [0, 0, 1], "to": [16, 16, 1.001], "faces": {"north": {"texture": "#front"}}})
+        path.write_text(json.dumps(model), encoding="utf-8")
+        errors = render_contract.verify(self.root)
+        self.assertTrue(any("connected-screen seams" in error for error in errors), errors)
+
+    def test_neoforge_26_rejects_view_z_layering(self) -> None:
+        helper_path, _ = render_contract.DEPTH_HELPERS["26.1.2"]
+        path = self.root / helper_path
+        path.write_text(path.read_text(encoding="utf-8") + "\nLayeringTransform.VIEW_OFFSET_Z_LAYERING;\n", encoding="utf-8")
+        errors = render_contract.verify(self.root)
+        self.assertTrue(any("view-Z" in error for error in errors), errors)
+
+    def test_model_geometry_change_forces_contract_review(self) -> None:
+        path = self.root / render_contract.MODEL_PATH
+        model = json.loads(path.read_text(encoding="utf-8"))
+        model["elements"][0]["to"] = [16, 16, 15]
+        path.write_text(json.dumps(model), encoding="utf-8")
+        errors = render_contract.verify(self.root)
+        self.assertTrue(any("full 0..16 cube" in error for error in errors), errors)
+
+
+if __name__ == "__main__":
+    unittest.main()
