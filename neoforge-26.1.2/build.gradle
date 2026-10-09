@@ -167,7 +167,55 @@ configurations {
     runtimeClasspath.extendsFrom localRuntime
 }
 
+// NeoForge's JUnit service boots the real mod loader, so classes alone cannot
+// satisfy a required mod dependency. Build the actual pinned native provider
+// into a separate test-only jar. It is never attached to a game run or Screens jar.
+def packetWeaveRoot = file('../vendor/PacketWeave')
+def packetWeaveNativeRoot = new File(packetWeaveRoot, 'targets/neoforge-26.1.2')
+def packetWeaveNativeProperties = new Properties()
+new File(packetWeaveNativeRoot, 'gradle.properties').withInputStream {
+    packetWeaveNativeProperties.load(it)
+}
+def packetWeaveNativeVersion = packetWeaveNativeProperties.getProperty('mod_version')
+if (!packetWeaveNativeVersion) {
+    throw new GradleException('The pinned PacketWeave native target is missing mod_version.')
+}
+def packetWeaveTestProvider = sourceSets.create('packetweaveTestProvider') {
+    java.setSrcDirs([
+            new File(packetWeaveRoot, 'core/src/main/java'),
+            new File(packetWeaveNativeRoot, 'src/main/java'),
+    ])
+    resources.setSrcDirs([new File(packetWeaveNativeRoot, 'src/main/resources')])
+    // Native entrypoint compilation needs NeoForge's @Mod annotation. This is
+    // compile-only; none of Screens' output or libraries is copied into the jar.
+    compileClasspath = sourceSets.main.compileClasspath
+}
+tasks.named(packetWeaveTestProvider.processResourcesTaskName, ProcessResources) {
+    inputs.property 'mod_version', packetWeaveNativeVersion
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand mod_version: packetWeaveNativeVersion
+    }
+    from(new File(packetWeaveRoot, 'icon.png')) { into 'assets/packetweave' }
+    from(new File(packetWeaveRoot, 'LICENSE')) {
+        into 'META-INF'
+        rename { 'LICENSE-PacketWeave' }
+    }
+}
+def packetWeaveTestRuntimeJar = tasks.register('packetweaveTestRuntimeJar', Jar) {
+    description = 'Builds the pinned native PacketWeave provider only for NeoForge JUnit tests.'
+    from packetWeaveTestProvider.output
+    archiveBaseName = 'packetweave-neoforge-26.1.2'
+    archiveVersion = packetWeaveNativeVersion
+    destinationDirectory = layout.buildDirectory.dir('packetweave-test-runtime')
+}
+
 dependencies {
+    compileOnly project(':packetweave-api')
+    testCompileOnly project(':packetweave-api')
+    // Use exactly one provider at runtime: the native jar, not the API project.
+    // The task-backed file also builds it automatically for testAllVersions/build.
+    testRuntimeOnly files(packetWeaveTestRuntimeJar)
+
     implementation "com.nstut:openui-mc-neoforge-26.1.2:${project.openui_version}"
     localRuntime "com.nstut:openui-mc-neoforge-26.1.2:${project.openui_version}"
     implementation "com.google.code.gson:gson:2.11.0"
@@ -272,5 +320,4 @@ idea {
     }
 }
 
-apply from: file('../packetweave.gradle')
 apply from: file('../packetweave-runtime.gradle')

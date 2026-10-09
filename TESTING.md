@@ -57,13 +57,15 @@ Supported targets are Fabric and Forge 1.20.1, Fabric and NeoForge 1.21.1, and N
 
 PR CI runs this matrix for runtime-affecting changes. CI checks out the exact PR head so a green result cannot refer only to GitHub's synthetic merge commit.
 
-The harness requires the matching standalone PacketWeave native mod from the pinned submodule; `--with-packetweave` remains a compatibility alias. CI additionally runs with `--check-packetweave-dependency`: separate dedicated-server launches must reject missing PacketWeave and an intentionally old `0.1.0` metadata fixture with explicit dependency diagnostics before the valid client/server join. To reproduce CI, build `vendor/PacketWeave/targets/<target>` first using its own wrapper (Java 17 for Forge 1.20.1; Java 25 for the other targets), then run the Screens harness under Java 21:
+The harness requires the matching standalone PacketWeave native mod from the pinned submodule; `--with-packetweave` remains a compatibility alias. CI additionally runs with `--check-packetweave-dependency`: separate dedicated-server launches must reject missing PacketWeave and an intentionally old `0.1.0` metadata fixture with explicit dependency diagnostics before the valid client/server join. To reproduce CI, build `vendor/PacketWeave/targets/<target>` first using its own wrapper (Java 17 for Forge 1.20.1; Java 25 for the other targets), then keep Java 21 as `JAVA_HOME` for the Screens Gradle process. For **NeoForge 26.1.2**, also point `JAVA_HOME_25_X64` to an installed JDK 25, because the co-installation verifier loads native PacketWeave classes compiled for Java 25. CI sets this second home with `setup-java`; an ordinary local Java-21 environment does not:
 
 ```bash
-python3 tools/live_join_test.py --target neoforge-1.21.1 --check-packetweave-dependency
+# Required for neoforge-26.1.2; leave JAVA_HOME pointing at JDK 21.
+export JAVA_HOME_25_X64=/absolute/path/to/jdk-25
+python3 tools/live_join_test.py --target neoforge-26.1.2 --check-packetweave-dependency
 ```
 
-This installs the standalone native jar into both test instances' `mods` directories and checks both actual production jars through SecureJarHandler before launching the client and server. The module check can also be run independently with `python3 tools/verify_packetweave_coinstallation.py --screens-jar <screens.jar> --packetweave-jar <packetweave.jar>`.
+This installs the standalone native jar into both test instances' `mods` directories and checks both actual production jars through SecureJarHandler before launching the client and server. The module check can also be run independently with `python3 tools/verify_packetweave_coinstallation.py --screens-jar <screens.jar> --packetweave-jar <packetweave.jar>`. The same `JAVA_HOME_25_X64` setting is required when that command inspects a NeoForge 26.1.2 native jar; otherwise the verifier falls back to `JAVA_HOME`/`java` and Java 21 cannot load its Java-25 bytecode.
 
 ## Renderer regression protocol
 
@@ -90,7 +92,7 @@ python3 -m pip install -r tools/visual/requirements.txt
 python3 tools/visual_test.py --target fabric-1.21.1
 ```
 
-Install the pinned OpenUI dependencies as in CI first. Java 21 runs Gradle; the build resolves the version-specific Java toolchains. Linux needs Xvfb and Mesa, Windows needs a graphical desktop. The harness uses the existing dedicated-server and graphical-client launch targets. It snapshots the checkout under `build/screen-visual-work` and injects test drivers only there. Production sources/jars never contain these drivers or runtime switches to broken render types. CI builds and checks the production jar before instrumentation.
+Install the pinned OpenUI dependencies as in CI first. Java 21 runs Gradle; the build resolves the version-specific Java toolchains. For NeoForge 26.1.2, also export `JAVA_HOME_25_X64=/absolute/path/to/jdk-25` as described above so the standalone dependency verifier can load the Java-25 native jar. Linux needs Xvfb and Mesa, Windows needs a graphical desktop. The harness uses the existing dedicated-server and graphical-client launch targets. It snapshots the checkout under `build/screen-visual-work` and injects test drivers only there. Production sources/jars never contain these drivers or runtime switches to broken render types. CI builds and checks the production jar before instrumentation.
 
 The server imports deterministic opaque-magenta and alpha-stripe PNGs with the production image manager, creates actual screen blocks and block entities, updates their image/anchor data, and teleports a spectator to the fixture. The client receives the ordinary screen updates and image download. It requires the intended image UUID, camera position, and actual renderer submission before taking samples. Client-side fake block state is not a substitute for server setup.
 
