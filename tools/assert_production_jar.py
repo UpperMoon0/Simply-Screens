@@ -47,6 +47,16 @@ def main() -> int:
         return 1
 
     jar = jars[0]
+    with zipfile.ZipFile(jar) as archive:
+        required = {
+            'com/nstut/packetweave/api/ChunkedTransfer.class',
+            'com/nstut/packetweave/api/TransferRegistry.class',
+            'META-INF/LICENSE-PacketWeave',
+        }
+        missing = required - set(archive.namelist())
+    if missing:
+        print(f"PacketWeave integration missing from {jar}: {sorted(missing)}", file=sys.stderr)
+        return 1
     obsolete = obsolete_entries(jar)
     if obsolete:
         print(f"Forbidden Simply Screens production entries found in {jar}:", file=sys.stderr)

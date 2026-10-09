@@ -2,7 +2,7 @@ package com.nstut.simplyscreens.network;
 
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.Config;
-import com.nstut.simplyscreens.helpers.ChunkedFileTransfer;
+import com.nstut.simplyscreens.helpers.MediaExecutors;
 import com.nstut.simplyscreens.helpers.TransferRequestCoordinator;
 import com.nstut.simplyscreens.helpers.ImageMetadata;
 import com.nstut.simplyscreens.helpers.ServerImageManager;
@@ -25,9 +25,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class RequestImageDownloadC2SPacket implements CustomPacketPayload {
-    private static final int CHUNK_SIZE = ChunkedFileTransfer.CHUNK_SIZE;
+    private static final int CHUNK_SIZE = com.nstut.packetweave.api.ChunkedTransfer.CHUNK_BYTES;
     private static final ExecutorService IMAGE_DOWNLOAD_EXECUTOR =
-            ChunkedFileTransfer.newDaemonBoundedThreadPool(2, 64, "Simply Screens Image Download");
+            MediaExecutors.newDaemonBoundedThreadPool(2, 64, "Simply Screens Image Download");
     private static final TransferRequestCoordinator<String> ACTIVE_DOWNLOADS =
             new TransferRequestCoordinator<>(Duration.ofSeconds(30));
     private static final Map<UUID, AtomicInteger> PLAYER_DOWNLOADS = new ConcurrentHashMap<>();
@@ -112,11 +112,15 @@ public class RequestImageDownloadC2SPacket implements CustomPacketPayload {
                         imageId, fileSize, maxDownloadSize);
                 return;
             }
-            ChunkedFileTransfer.streamFile(imagePath, CHUNK_SIZE, (chunkIndex, totalChunks, chunk) -> {
-                String packetExt = chunkIndex == 0 ? metadata.getExtension() : null;
-                server.execute(() -> PacketRegistries.sendToPlayer(player, new ImageDownloadChunkS2CPacket(
-                        imageId, chunkIndex, totalChunks, chunk, packetExt)));
-            });
+            com.nstut.packetweave.api.ChunkedTransfer.streamFile(imagePath, CHUNK_SIZE, maxDownloadSize,
+                    com.nstut.packetweave.api.ChunkedTransfer.onExecutor(server::execute, Duration.ofSeconds(30),
+                            (chunkIndex, totalChunks, chunk) -> {
+                                if (server.getPlayerList().getPlayer(player.getUUID()) != player)
+                                    throw new java.io.IOException("Player disconnected during media transfer");
+                                String packetExt = chunkIndex == 0 ? metadata.getExtension() : null;
+                                PacketRegistries.sendToPlayer(player, new ImageDownloadChunkS2CPacket(
+                                        imageId, chunkIndex, totalChunks, chunk, packetExt));
+                            }));
             ACTIVE_DOWNLOADS.release(transferKey);
         } catch (Exception e) {
             ACTIVE_DOWNLOADS.release(transferKey);

@@ -175,8 +175,8 @@ dependencies {
     annotationProcessor "org.projectlombok:lombok:1.18.42"
     testImplementation platform("org.junit:junit-bom:5.11.4")
     testImplementation "org.junit.jupiter:junit-jupiter"
-    testImplementation "org.mockito:mockito-core:5.14.2"
-    testImplementation "org.mockito:mockito-junit-jupiter:5.14.2"
+    testImplementation "org.mockito:mockito-core:5.20.0"
+    testImplementation "org.mockito:mockito-junit-jupiter:5.20.0"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
     testImplementation "org.slf4j:slf4j-simple:2.0.16"
     // Example optional mod dependency with JEI
@@ -204,6 +204,14 @@ dependencies {
 
 test {
     useJUnitPlatform()
+}
+
+// The media adapter regressions exercise native packet buffers and server player types.
+neoForge {
+    unitTest {
+        testedMod = mods.getByName(mod_id)
+        enable()
+    }
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
@@ -261,3 +269,5 @@ idea {
         downloadJavadoc = true
     }
 }
+
+apply from: file('../packetweave.gradle')

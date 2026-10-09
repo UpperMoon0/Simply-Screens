@@ -46,3 +46,5 @@ test {
 tasks.withType(JavaCompile).configureEach {
     it.options.release = 17
 }
+
+apply from: file('../packetweave.gradle')

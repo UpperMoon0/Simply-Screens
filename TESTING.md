@@ -20,6 +20,12 @@ python3 tools/render_contract.py
 
 The verifier has negative self-tests so a broken verifier cannot silently bless the exact regressions it is meant to catch. The live-client Python harness is also self-tested for target coverage and deterministic client/server fixtures.
 
+## PacketWeave media regression checks
+
+Initialize the pinned library with `git submodule update --init --recursive`. The shared tests cover reordered download chunks, malformed counts/indices, duplicates, changed counts, safe extensions, expiry, invalidation, disconnect, and retry. Native tests cover capped packet decoding and upload binding/permission revocation. The production-jar check requires PacketWeave classes and its license in every target.
+
+PacketWeave itself tests sender/receiver parity, global/per-owner budgets, dispatch failure/timeout, short reads, and file-size changes. Run `vendor/PacketWeave/gradlew :core:test -p vendor/PacketWeave --no-daemon` separately. A live join only checks connection/codec registration; it does not by itself prove a media upload/download.
+
 ## 2. JVM unit tests
 
 Run:

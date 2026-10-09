@@ -10,10 +10,10 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class ChunkedFileTransferTest {
+class MediaExecutorsTest {
     @Test
     void boundedExecutorRejectsWorkPastItsQueueCapacity() throws Exception {
-        ExecutorService executor = ChunkedFileTransfer.newDaemonBoundedThreadPool(1, 1, "bounded-test");
+        ExecutorService executor = MediaExecutors.newDaemonBoundedThreadPool(1, 1, "bounded-test");
         CountDownLatch running = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
         try {

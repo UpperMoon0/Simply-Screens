@@ -52,3 +52,11 @@ Simply Screens uses Gradle with Architectury Loom:
 ## License
 
 This project is distributed under the MIT license.
+
+## Media transport
+
+PacketWeave owns chunk splitting and bounded upload/download reassembly on all five supported targets. Its version-neutral core is compiled from the immutable `vendor/PacketWeave` Git submodule into each production jar, with its MIT license. No separate PacketWeave loader mod is required. Screens retains its existing registered packets as loader adapters and applies screen permissions, image validation, metadata, and storage policy.
+
+Clone with `git clone --recurse-submodules`, or run `git submodule update --init --recursive` before building. The pin currently follows [PacketWeave PR #1](https://github.com/UpperMoon0/PacketWeave/pull/1); update it deliberately after upstream changes. This approach needs no unpublished Maven artifact.
+
+Packets remain wire-compatible. Chunk arrays are decoded with a 30 KiB cap; receivers enforce byte and session limits, reject duplicate/changed envelopes, and release state on expiry or disconnect. Uploads stay bound to the authenticated sender, world, and original screen position. Download workers wait for game-thread dispatch of each chunk to avoid filling the server task queue with an entire file. This is local dispatch backpressure, not remote delivery acknowledgement.

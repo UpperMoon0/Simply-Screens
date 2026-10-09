@@ -33,6 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          submodules: recursive
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: ./.github/actions/openui
 
@@ -52,6 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          submodules: recursive
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: ./.github/actions/openui
       - name: Install virtual display

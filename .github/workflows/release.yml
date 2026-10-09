@@ -56,6 +56,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Checkout OpenUI-MC
         uses: actions/checkout@v4
         with:
@@ -110,6 +112,8 @@ jobs:
           - { java: 21, version: '26.1.2', platform: neoforge, project: neoforge-26.1.2, pattern: 'simply_screens-neoforge-26.1.2-*.jar' }
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Checkout OpenUI-MC
         uses: actions/checkout@v4
         with:
@@ -180,6 +184,8 @@ jobs:
           - { version: '26.1.2', platform: neoforge, loader: NeoForge, java_tag: 'Java 25' }
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - uses: actions/download-artifact@v4
         with:
           name: simply-screens-${{ matrix.platform }}-${{ matrix.version }}
@@ -255,6 +261,8 @@ jobs:
     permissions: { contents: write }
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Read mod version
         id: version
         shell: bash

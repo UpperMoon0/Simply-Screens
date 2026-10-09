@@ -23,10 +23,10 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import com.nstut.simplyscreens.helpers.ChunkedFileTransfer;
+import com.nstut.simplyscreens.helpers.MediaExecutors;
 
 public class DownloadImageFromUrlC2SPacket implements CustomPacketPayload {
-    private static final ExecutorService URL_EXECUTOR = ChunkedFileTransfer.newDaemonBoundedThreadPool(2, 16, "Simply Screens URL Import");
+    private static final ExecutorService URL_EXECUTOR = MediaExecutors.newDaemonBoundedThreadPool(2, 16, "Simply Screens URL Import");
     private static final Set<UUID> ACTIVE_PLAYERS = ConcurrentHashMap.newKeySet();
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build();
     public static final Type<DownloadImageFromUrlC2SPacket> TYPE = new Type<>(

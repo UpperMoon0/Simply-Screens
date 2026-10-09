@@ -51,7 +51,7 @@ import java.util.Locale;
 import java.util.UUID;
 
 public class ImageLoadScreen extends SimplyScreensUiScreen {
-    private static final int CHUNK_SIZE = com.nstut.simplyscreens.helpers.ChunkedFileTransfer.CHUNK_SIZE;
+    private static final int CHUNK_SIZE = com.nstut.packetweave.api.ChunkedTransfer.CHUNK_BYTES;
     private static final int PANEL_WIDTH = 360;
 
     private enum Tab { GALLERY, SETTINGS, IMPORT }
@@ -342,15 +342,10 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                 return;
             }
             UUID transactionId = UUID.randomUUID();
-            int totalChunks = (int) Math.ceil((double) data.length / CHUNK_SIZE);
-            for (int index = 0; index < totalChunks; index++) {
-                int start = index * CHUNK_SIZE;
-                int end = Math.min(data.length, start + CHUNK_SIZE);
-                byte[] chunk = java.util.Arrays.copyOfRange(data, start, end);
-                PacketRegistries.sendToServer(new UploadImageChunkC2SPacket(
-                        blockEntityPos, transactionId, index, totalChunks, chunk,
-                        index == 0 ? path.getFileName().toString() : null));
-            }
+            com.nstut.packetweave.api.ChunkedTransfer.send(data, CHUNK_SIZE, (index, totalChunks, chunk) ->
+                    PacketRegistries.sendToServer(new UploadImageChunkC2SPacket(
+                            blockEntityPos, transactionId, index, totalChunks, chunk,
+                            index == 0 ? path.getFileName().toString() : null)));
             tab.set(Tab.GALLERY);
             status.set(Component.translatable("gui.simplyscreens.status.uploading"));
         } catch (java.io.IOException | SecurityException exception) {

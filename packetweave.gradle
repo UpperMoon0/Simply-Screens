@@ -1,0 +1,13 @@
+// Compile the immutable, pinned PacketWeave core into the consumer; no loader mod is needed.
+def packetWeaveRoot = file('../vendor/PacketWeave')
+def packetWeaveSources = new File(packetWeaveRoot, 'core/src/main/java')
+if (!packetWeaveSources.isDirectory()) {
+    throw new GradleException('PacketWeave submodule is missing. Run git submodule update --init --recursive.')
+}
+sourceSets.main.java.srcDir(packetWeaveSources)
+processResources {
+    from(new File(packetWeaveRoot, 'LICENSE')) {
+        into 'META-INF'
+        rename { 'LICENSE-PacketWeave' }
+    }
+}

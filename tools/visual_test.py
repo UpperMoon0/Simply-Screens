@@ -114,6 +114,8 @@ def checkout_lock(root):
 
 def snapshot(root, destination):
     paths = subprocess.check_output(["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"], cwd=root).decode().split("\0")
+    # Gitlinks are directories, so the normal file list does not copy pinned library sources.
+    paths += subprocess.check_output(["git", "ls-files", "-z", "--cached", "--recurse-submodules"], cwd=root).decode().split("\0")
     digest = hashlib.sha256()
     for relative in sorted(set(p for p in paths if p)):
         source = root / relative
