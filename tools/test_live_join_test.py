@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 import unittest
@@ -22,6 +23,12 @@ class LiveJoinHarnessTest(unittest.TestCase):
             },
             set(live_join_test.TARGETS),
         )
+
+    def test_only_transient_prelaunch_failures_can_be_retried(self):
+        self.assertTrue(live_join_test.retryable_client_startup("downloadAssets: connection timed out"))
+        for output in ("downloadAssets: assertion failed", "SIMPLYSCREENS_LIVE_JOIN_TEST_FAIL connection timed out downloadAssets",
+                       "ModLauncher running; downloadAssets: connection timed out", "Could not resolve all files: compilation failed"):
+            self.assertFalse(live_join_test.retryable_client_startup(output))
 
     def test_command_is_bounded_and_non_daemon(self) -> None:
         root = Path("checkout")
@@ -64,8 +71,10 @@ class LiveJoinHarnessTest(unittest.TestCase):
                 config = module / "run/live-join/client/config/fml.toml"
                 if target == "forge-1.20.1":
                     self.assertIs(False, tomllib.loads(config.read_text())["earlyWindowControl"])
+                    self.assertFalse((config.parent / "forge-client.toml").exists())
                 else:
                     self.assertFalse(config.exists())
+                    self.assertFalse((config.parent / "forge-client.toml").exists())
 
     def test_pinned_native_packetweave_is_installed_on_both_sides_for_every_target(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -77,7 +86,8 @@ class LiveJoinHarnessTest(unittest.TestCase):
                 metadata = ("fabric.mod.json" if target.startswith("fabric-") else
                             "META-INF/mods.toml" if target.startswith("forge-") else "META-INF/neoforge.mods.toml")
                 with zipfile.ZipFile(jar, "w") as archive:
-                    archive.writestr(metadata, b"native metadata fixture")
+                    archive.writestr(metadata, json.dumps({"id": "packetweave", "version": "0.1.1"})
+                                     if target.startswith("fabric-") else '[[mods]]\nmodId="packetweave"\nversion="0.1.1"\n')
                     archive.writestr("com/nstut/packetweave/api/TransferRegistry.class", b"class fixture")
                 (libs / f"packetweave-{target}-0.1.1-sources.jar").write_bytes(b"not a runtime artifact")
                 self.assertEqual(jar, live_join_test.packetweave_jar(root, target))

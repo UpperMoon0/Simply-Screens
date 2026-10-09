@@ -42,7 +42,7 @@ public class UploadImageChunkC2SPacket {
         UUID transactionId = buf.readUUID();
         int chunkIndex = buf.readVarInt();
         int totalChunks = buf.readVarInt();
-        byte[] data = buf.readByteArray(com.nstut.simplyscreens.internal.packetweave.api.ChunkedTransfer.CHUNK_BYTES);
+        byte[] data = buf.readByteArray(com.nstut.packetweave.api.ChunkedTransfer.CHUNK_BYTES);
         String fileName = null;
         if (chunkIndex == 0) {
             fileName = buf.readUtf(com.nstut.simplyscreens.ImageNameSanitizer.MAX_LENGTH);

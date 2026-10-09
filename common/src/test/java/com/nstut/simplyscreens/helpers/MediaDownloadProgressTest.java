@@ -1,7 +1,7 @@
 package com.nstut.simplyscreens.helpers;
 
-import com.nstut.simplyscreens.internal.packetweave.api.ChunkedTransfer;
-import com.nstut.simplyscreens.internal.packetweave.api.TransferLimits;
+import com.nstut.packetweave.api.ChunkedTransfer;
+import com.nstut.packetweave.api.TransferLimits;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

@@ -12,10 +12,11 @@ import subprocess
 import sys
 import threading
 import time
-import zipfile
 from pathlib import Path
 
 from assert_production_jar import production_jars
+from packetweave_runtime import native_version, check_dependency_rejections
+from build_openui import TRANSIENT_MARKERS
 
 
 PASS_MARKER = "SIMPLYSCREENS_LIVE_JOIN_TEST_PASS"
@@ -37,6 +38,7 @@ class OutputPump:
         self.process = process
         self.prefix = prefix
         self.lines: queue.Queue[str] = queue.Queue()
+        self.history: list[str] = []
         self.thread = threading.Thread(target=self._read, daemon=True)
         self.thread.start()
 
@@ -44,6 +46,7 @@ class OutputPump:
         assert self.process.stdout is not None
         for line in self.process.stdout:
             print(f"[{self.prefix}] {line}", end="", flush=True)
+            self.history.append(line)
             self.lines.put(line)
 
     def wait_for(self, markers: tuple[str, ...], timeout: int) -> str | None:
@@ -167,12 +170,9 @@ def packetweave_jar(root: Path, target: str) -> Path:
 
 
 def install_packetweave(module_dir: Path, target: str, jar: Path) -> None:
-    metadata = ("fabric.mod.json" if target.startswith("fabric-") else
-                "META-INF/mods.toml" if target.startswith("forge-") else "META-INF/neoforge.mods.toml")
-    with zipfile.ZipFile(jar) as archive:
-        required = {metadata, "com/nstut/packetweave/api/TransferRegistry.class"}
-        if not required <= set(archive.namelist()):
-            raise RuntimeError(f"Expected standalone {target} PacketWeave native mod contents in {jar}")
+    version = native_version(jar, target)
+    if not version.replace(".", "").isdigit() or tuple(map(int, version.split("."))) < (0, 1, 1):
+        raise RuntimeError(f"Standalone PacketWeave >=0.1.1 required, found {version}")
     for side in ("server", "client"):
         mods = module_dir / "run" / "live-join" / side / "mods"
         mods.mkdir(parents=True, exist_ok=True)
@@ -182,7 +182,15 @@ def install_packetweave(module_dir: Path, target: str, jar: Path) -> None:
         shutil.copy2(jar, mods / jar.name)
 
 
-def run_target(root: Path, target: str, timeout: int, with_packetweave: bool = False) -> None:
+def retryable_client_startup(output: str) -> bool:
+    lowered = output.lower()
+    if any(marker in lowered for marker in ("modlauncher running", "starting net.fabricmc", "simplyscreens_live_join_test", "backend library:")):
+        return False
+    return (any(marker in lowered for marker in ("downloadassets", "could not resolve all files"))
+            and any(marker in lowered for marker in TRANSIENT_MARKERS))
+
+
+def run_target(root: Path, target: str, timeout: int, check_dependencies: bool = False) -> None:
     module = TARGETS[target]
     print(f"Preparing {target} live join test", flush=True)
     prepare_server(root / module)
@@ -199,16 +207,16 @@ def run_target(root: Path, target: str, timeout: int, with_packetweave: bool = F
         check=True,
     )
 
-    if with_packetweave:
-        standalone = packetweave_jar(root, target)
-        install_packetweave(root / module, target, standalone)
-        # Check the actual shipped jars, in addition to the duplicated compiled
-        # core negative control, before the real client/server co-install run.
-        subprocess.run([
-            sys.executable, str(root / "tools" / "verify_packetweave_coinstallation.py"),
-            "--screens-jar", str(production_jars(root / module)[0]),
-            "--packetweave-jar", str(standalone),
-        ], cwd=root, check=True)
+    standalone = packetweave_jar(root, target)
+    if check_dependencies:
+        check_dependency_rejections(root, target, standalone, timeout)
+    install_packetweave(root / module, target, standalone)
+    # Check the actual shipped jars and standalone API linkage before launch.
+    subprocess.run([
+        sys.executable, str(root / "tools" / "verify_packetweave_coinstallation.py"),
+        "--screens-jar", str(production_jars(root / module)[0]),
+        "--packetweave-jar", str(standalone),
+    ], cwd=root, check=True)
 
     server = popen(command(root, f":{module}:runLiveJoinTestServer"), root)
     server_output = OutputPump(server, f"{target}/server")
@@ -243,6 +251,9 @@ def run_target(root: Path, target: str, timeout: int, with_packetweave: bool = F
             exit_code = client.poll()
             if exit_code is None:
                 raise RuntimeError(f"{target}: client did not report a successful live join")
+            client_output.thread.join(timeout=5)
+            if not retryable_client_startup("".join(client_output.history)):
+                raise RuntimeError(f"{target}: client exited before successful live join (code {exit_code}); not a transient pre-launch dependency failure")
             if attempt == CLIENT_START_ATTEMPTS:
                 raise RuntimeError(
                     f"{target}: client exited before successful live join "
@@ -268,13 +279,15 @@ def main() -> int:
     parser.add_argument("--target", choices=TARGETS, action="append")
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT)
     parser.add_argument("--with-packetweave", action="store_true",
-                        help="Co-install the built pinned standalone native PacketWeave mod on both sides")
+                        help=argparse.SUPPRESS)
+    parser.add_argument("--check-packetweave-dependency", action="store_true",
+                        help="Require real loader rejection with missing and incompatible PacketWeave before the positive join")
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parents[1]
     targets = args.target or list(TARGETS)
     for target in targets:
-        run_target(root, target, args.timeout, args.with_packetweave)
+        run_target(root, target, args.timeout, args.check_packetweave_dependency)
     return 0
 
 

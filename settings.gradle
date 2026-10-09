@@ -13,6 +13,9 @@ plugins {
 
 rootProject.name = 'simply_screens'
 
+// Compile-only PacketWeave API from the pinned source checkout; never packaged.
+include 'packetweave-api'
+
 // Shared common module (version-independent)
 include 'common'
 

@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import tempfile
@@ -70,26 +71,27 @@ class PacketWeaveModuleTests(unittest.TestCase):
 
     @unittest.skipUnless(os.environ.get("PACKETWEAVE_TEST_DEPENDENCY_CACHE"),
                          "set PACKETWEAVE_TEST_DEPENDENCY_CACHE to run the real SecureJarHandler compiled-core regression")
-    def test_compiled_pinned_core_coinstalls_only_when_relocated(self):
-        # Real bytecode from the pinned core, not hand-written class stubs. The
-        # live-join job additionally applies this check to actual production jars.
+    def test_compiled_consumer_uses_only_the_standalone_api(self):
+        # Compile the real pinned API and a consumer with bytecode references to
+        # it. No PacketWeave class is bundled into the consumer fixture.
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory)
             original = ROOT / "vendor/PacketWeave/core/src/main/java"
-            relocated = work / "relocated-source"
-            for source in original.rglob("*.java"):
-                path = relocated / source.relative_to(original).as_posix().replace(
-                    "com/nstut/packetweave", "com/nstut/simplyscreens/internal/packetweave")
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(source.read_text(encoding="utf-8").replace(
-                    "com.nstut.packetweave", "com.nstut.simplyscreens.internal.packetweave"), encoding="utf-8")
             license_file = ROOT / "vendor/PacketWeave/LICENSE"
-            for name, sources in (("packetweave", original), ("simply_screens", relocated)):
-                classes = work / (name + "-classes")
-                compile_java(sorted(sources.rglob("*.java")), classes)
-                core_jar(classes, work / (name + ".jar"), name, license_file)
-            verify(work / "simply_screens.jar", work / "packetweave.jar",
-                   Path(os.environ["PACKETWEAVE_TEST_DEPENDENCY_CACHE"]))
+            classes = work / "packetweave-classes"
+            compile_java(sorted(original.rglob("*.java")), classes)
+            standalone = work / "packetweave.jar"
+            core_jar(classes, standalone, "packetweave", license_file)
+            source = work / "Consumer.java"
+            source.write_text("package com.nstut.simplyscreens; public class Consumer { "
+                              "public static Object limits() { return com.nstut.packetweave.api.TransferLimits.defaults(); } }")
+            consumer = work / "consumer"
+            compile_java([source], consumer, str(standalone))
+            screens = work / "simply_screens.jar"
+            core_jar(consumer, screens, "simply_screens", license_file)
+            with zipfile.ZipFile(screens, "a") as archive:
+                archive.writestr("fabric.mod.json", json.dumps({"id": "simply_screens", "depends": {"packetweave": ">=0.1.1"}}))
+            verify(screens, standalone, Path(os.environ["PACKETWEAVE_TEST_DEPENDENCY_CACHE"]))
 
 
 if __name__ == "__main__":

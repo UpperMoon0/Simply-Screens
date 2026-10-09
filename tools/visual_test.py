@@ -57,7 +57,7 @@ def scope_gradle(stage, target):
     The production checkout stays untouched. This prevents Loom from remapping
     every loader/version before a single-target visual server can even start.
     """
-    allowed = TARGET_PROJECTS[target]
+    allowed = TARGET_PROJECTS[target] | {"packetweave-api"}
     settings = stage / "settings.gradle"
     lines = []
     include = re.compile(r"^\s*include\s+'([^']+)'\s*$")
@@ -420,7 +420,7 @@ def remove_runtime_when_quiet(runtime, timeout=20.0, quiet_period=0.75):
         time.sleep(0.1)
 
 
-def run_variant(stage, target, variant, directory, probe=False):
+def run_variant(stage, target, variant, directory, standalone, probe=False):
     from PIL import Image
     from visual_pixels import measure
     directory.mkdir(parents=True)
@@ -440,6 +440,7 @@ def run_variant(stage, target, variant, directory, probe=False):
     remove_runtime_when_quiet(runtime)
     live.prepare_server(stage / target)
     live.prepare_client(stage / target)
+    live.install_packetweave(stage / target, target, standalone)
     with (runtime / "server/server.properties").open("a") as file:
         file.write("server-ip=127.0.0.1\nlevel-type=minecraft:flat\nlevel-seed=1\nview-distance=16\nsimulation-distance=2\ngamemode=spectator\n")
     with (runtime / "client/options.txt").open("a") as file:
@@ -526,6 +527,11 @@ def run(root, target, compile_only=False, probe=False):
     receipt = dict(head=head, dirty=dirty, target=target, run_id=run_id, status="running", variants={})
     started = time.monotonic()
     try:
+        standalone = None
+        if not compile_only:
+            standalone = live.packetweave_jar(root, target)
+            receipt["packetweave"] = {"version": live.native_version(standalone, target),
+                                      "sha256": hashlib.sha256(standalone.read_bytes()).hexdigest()}
         receipt["source_sha256"] = snapshot(root, stage)
         scope_gradle(stage, target)
         instrument(stage)
@@ -550,7 +556,7 @@ def run(root, target, compile_only=False, probe=False):
         else:
             for variant in variants(target):
                 set_variant(stage, originals, target, variant)
-                run_variant(stage, target, variant, evidence / variant, probe)
+                run_variant(stage, target, variant, evidence / variant, standalone, probe)
                 graphics = json.loads((evidence / variant / "graphics.json").read_text())
                 if "graphics" in receipt and receipt["graphics"] != graphics:
                     raise RuntimeError("negative control ran on a different graphics backend")
@@ -574,6 +580,9 @@ def verify_receipts(directory, head):
     for r in receipts:
         if r.get("head") != head or r.get("dirty") is not False or r.get("status") != "pass":
             raise ValueError("stale, dirty or failed visual receipt")
+        dependency = r.get("packetweave", {})
+        if dependency.get("version") != "0.1.1" or not re.fullmatch(r"[a-f0-9]{64}", dependency.get("sha256", "")):
+            raise ValueError("missing standalone PacketWeave runtime evidence")
         expected_variants = {v:"pass" for v in variants(r["target"])}
         if r.get("variants") != expected_variants:
             raise ValueError("missing negative controls")

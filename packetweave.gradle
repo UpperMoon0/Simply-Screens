@@ -1,23 +1,7 @@
-// Keep the pinned core private: the standalone PacketWeave mod owns its public package.
-def packetWeaveRoot = file('../vendor/PacketWeave')
-def packetWeaveSources = new File(packetWeaveRoot, 'core/src/main/java')
-if (!packetWeaveSources.isDirectory()) {
-    throw new GradleException('PacketWeave submodule is missing. Run git submodule update --init --recursive.')
-}
-def relocatePacketWeave = tasks.register('relocatePacketWeave', Sync) {
-    from(packetWeaveSources) {
-        filter { String line -> line.replace('com.nstut.packetweave', 'com.nstut.simplyscreens.internal.packetweave') }
-        eachFile { details ->
-            details.path = details.path.replace('com/nstut/packetweave', 'com/nstut/simplyscreens/internal/packetweave')
-        }
-    }
-    into(layout.buildDirectory.dir('generated/sources/packetweave'))
-    includeEmptyDirs = false
-}
-sourceSets.main.java.srcDir(relocatePacketWeave)
-processResources {
-    from(new File(packetWeaveRoot, 'LICENSE')) {
-        into 'META-INF'
-        rename { 'LICENSE-PacketWeave' }
-    }
+// The standalone PacketWeave mod owns com.nstut.packetweave at runtime.
+// Compile and test against the exact pinned source, but never shade, include,
+// copy, or relocate it into a Screens artifact.
+dependencies {
+    compileOnly project(':packetweave-api')
+    testImplementation project(':packetweave-api')
 }

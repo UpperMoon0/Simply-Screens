@@ -31,17 +31,31 @@ Simply Screens adds configurable screen blocks that display images from your loc
 
 ## Required Dependencies
 
+- **PacketWeave 0.1.1 or newer**, matching your Minecraft version and loader, on clients and dedicated servers
 - **Architectury API** matching your Minecraft version and loader
 - **Fabric API** on Fabric
-- **OpenUI MC 0.0.8 or newer** matching your Minecraft version and loader (client side)
+- **OpenUI MC 0.0.8 or newer** matching your Minecraft version and loader (clients; also required on Fabric dedicated servers by Fabric metadata)
+
+## Upgrading to 0.8.10
+
+Add the matching native PacketWeave jar to every client and server. Screens uses its public transfer API and does not bundle a second copy. Existing saved media, world data, and configuration need no migration; back up the world before upgrading. The loader requires PacketWeave 0.1.1 or newer, and release files declare it as a required CurseForge dependency.
 
 ## Configuration
 
-- `disableUpload`: Disable in-game uploads from client computers
-- `disableDownload`: Disable downloading images from URLs
-- `maxUploadSize`: Maximum upload size in bytes (default: 10 MB)
-- `maxDownloadSize`: Maximum URL download size in bytes (default: 10 MB)
-- `screenTickRate`: Rate (in ticks) at which screens check and update structure integrity
+Settings are in `config/simply_screens.properties`. Important defaults:
+
+- `disableUpload=false`: allow in-game client uploads
+- `disableUrlDownload=false`: allow image imports from URLs
+- `maxUploadSize=5242880`: 5 MiB per upload
+- `maxUrlDownloadSize=10485760`: 10 MiB per URL import
+- `maxImagesPerPlayer=256`: stored image count per player
+- `maxStoragePerPlayer=536870912`: 512 MiB per player
+- `maxStorageTotal=2147483648`: 2 GiB total storage
+- `screenTickRate=100`: structure check interval in ticks
+- `viewDistance=64`: rendering view distance
+- `debugRendering=false`: rendering diagnostics
+
+Server limits are authoritative. `disableDownload` and `maxDownloadSize` are not valid keys; use the URL-specific names above. See the [README configuration reference](https://github.com/UpperMoon0/Simply-Screens#configuration) for bounds.
 
 ## Support
 

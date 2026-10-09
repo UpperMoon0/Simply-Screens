@@ -1,81 +1,103 @@
 #!/usr/bin/env python3
-"""Check the shipped jar's private PacketWeave copy and production-only contents."""
-
+"""Require a standalone PacketWeave dependency and production-only jar contents."""
 from __future__ import annotations
 
 import argparse
-import sys
-import zipfile
+import io
+import json
 from pathlib import Path
+import sys
+import tomllib
+import zipfile
+
+MINIMUM_PACKETWEAVE = "0.1.1"
+PACKETWEAVE_PACKAGES = ("com/nstut/packetweave/", "com/nstut/simplyscreens/internal/packetweave/")
 
 
-PRIVATE_PACKETWEAVE = "com/nstut/simplyscreens/internal/packetweave/"
-REQUIRED_PACKETWEAVE = {
-    PRIVATE_PACKETWEAVE + "api/" + name + ".class"
-    for name in (
-        "ChunkedTransfer", "TransferAuthorizer", "TransferDigest", "TransferId",
-        "TransferLimits", "TransferOperation", "TransferRegistry", "TransferSession",
-    )
-} | {"META-INF/LICENSE-PacketWeave"}
+def loader_metadata(target: str) -> str:
+    return ("fabric.mod.json" if target.startswith("fabric-") else
+            "META-INF/mods.toml" if target.startswith("forge-") else "META-INF/neoforge.mods.toml")
 
 
-def missing_packetweave_entries(jar: Path) -> list[str]:
+def packetweave_dependency_errors(jar: Path) -> list[str]:
+    """Inspect expanded loader metadata, not source-template string matches."""
     with zipfile.ZipFile(jar) as archive:
-        return sorted(REQUIRED_PACKETWEAVE - set(archive.namelist()))
+        names = set(archive.namelist())
+        metadata = [name for name in ("fabric.mod.json", "META-INF/mods.toml", "META-INF/neoforge.mods.toml") if name in names]
+        if len(metadata) != 1:
+            return ["expected exactly one native loader metadata file"]
+        name = metadata[0]
+        try:
+            text = archive.read(name).decode("utf-8")
+            if name == "fabric.mod.json":
+                data = json.loads(text)
+                errors = []
+                if data.get("id") != "simply_screens":
+                    errors.append("Fabric mod id must be simply_screens")
+                if data.get("environment", "*") != "*":
+                    errors.append("Screens must load on both sides")
+                if data.get("depends", {}).get("packetweave") != ">=" + MINIMUM_PACKETWEAVE:
+                    errors.append("Fabric requires depends.packetweave >=0.1.1")
+                return errors
+            data = tomllib.loads(text)
+            dependencies = [entry for entry in data.get("dependencies", {}).get("simply_screens", [])
+                            if entry.get("modId") == "packetweave"]
+            if len(dependencies) != 1:
+                return ["expected exactly one PacketWeave loader dependency"]
+            dependency = dependencies[0]
+            errors = []
+            if dependency.get("versionRange") != "[" + MINIMUM_PACKETWEAVE + ",)":
+                errors.append("PacketWeave versionRange must be [0.1.1,)")
+            if dependency.get("side") != "BOTH":
+                errors.append("PacketWeave must be required on BOTH sides")
+            if name == "META-INF/mods.toml" and dependency.get("mandatory") is not True:
+                errors.append("Forge PacketWeave dependency must be mandatory")
+            if name == "META-INF/neoforge.mods.toml" and dependency.get("type") != "required":
+                errors.append("NeoForge PacketWeave dependency must be required")
+            return errors
+        except (ValueError, UnicodeError, TypeError, AttributeError) as error:
+            return [f"invalid {name}: {error}"]
 
 
 def production_jars(module_dir: Path) -> list[Path]:
-    libs = module_dir / "build" / "libs"
-    return sorted(
-        jar
-        for jar in libs.glob("simply_screens-*.jar")
-        if not jar.name.endswith("-sources.jar")
-        and not jar.name.endswith("-dev-shadow.jar")
-    )
+    return sorted(jar for jar in (module_dir / "build/libs").glob("simply_screens-*.jar")
+                  if not jar.name.endswith(("-sources.jar", "-dev-shadow.jar")))
+
+
+def _forbidden(archive: zipfile.ZipFile, prefix: str = "") -> list[str]:
+    entries = []
+    for name in archive.namelist():
+        if (Path(name).name == "simplyscreens.mixins.json"
+                or name.startswith("com/nstut/simplyscreens/testing/visual/")
+                or (name.endswith(".class") and any("/" + package in "/" + name for package in PACKETWEAVE_PACKAGES))
+                or (Path(name).name.lower().endswith("refmap.json")
+                    and any(mod in Path(name).name.lower() for mod in ("simply_screens", "simplyscreens")))):
+            entries.append(prefix + name)
+        if name.endswith(".jar"):
+            with zipfile.ZipFile(io.BytesIO(archive.read(name))) as nested:
+                entries.extend(_forbidden(nested, prefix + name + "!"))
+    return entries
 
 
 def obsolete_entries(jar: Path) -> list[str]:
     with zipfile.ZipFile(jar) as archive:
-        entries = archive.namelist()
-    return sorted(
-        entry
-        for entry in entries
-        if Path(entry).name == "simplyscreens.mixins.json"
-        or entry.startswith("com/nstut/simplyscreens/testing/visual/")
-        # Include multi-release paths as well as ordinary top-level classes.
-        or (entry.endswith(".class") and "/com/nstut/packetweave/" in "/" + entry)
-        or (
-            Path(entry).name.lower().endswith("refmap.json")
-            and ("simply_screens" in Path(entry).name.lower() or "simplyscreens" in Path(entry).name.lower())
-        )
-    )
+        return sorted(_forbidden(archive))
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--module", required=True, help="Gradle module containing build/libs")
     args = parser.parse_args()
-
-    module_dir = Path(args.module)
-    jars = production_jars(module_dir)
+    jars = production_jars(Path(args.module))
     if len(jars) != 1:
-        found = ", ".join(str(jar) for jar in jars) or "none"
-        print(f"Expected exactly one production jar for {args.module}; found: {found}", file=sys.stderr)
+        print(f"Expected exactly one production jar for {args.module}; found: {jars}", file=sys.stderr)
         return 1
-
     jar = jars[0]
-    missing = missing_packetweave_entries(jar)
-    if missing:
-        print(f"PacketWeave integration missing from {jar}: {sorted(missing)}", file=sys.stderr)
+    problems = packetweave_dependency_errors(jar) + obsolete_entries(jar)
+    if problems:
+        print(f"Invalid Simply Screens production jar {jar}:\n  " + "\n  ".join(problems), file=sys.stderr)
         return 1
-    obsolete = obsolete_entries(jar)
-    if obsolete:
-        print(f"Forbidden Simply Screens production entries found in {jar}:", file=sys.stderr)
-        for entry in obsolete:
-            print(f"  - {entry}", file=sys.stderr)
-        return 1
-
-    print(f"{jar}: private PacketWeave classes/license present; no public PacketWeave classes, obsolete mixins, or visual drivers")
+    print(f"{jar}: required standalone PacketWeave >=0.1.1 on both sides; no embedded API, obsolete mixins, or visual drivers")
     return 0
 
 

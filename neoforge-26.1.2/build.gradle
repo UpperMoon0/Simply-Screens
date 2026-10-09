@@ -37,6 +37,7 @@ ext.mod_group_id = sharedProperty('maven_group')
 ext.archives_name = sharedProperty('archives_name')
 ext.mod_authors = sharedProperty('mod_authors')
 ext.mod_description = sharedProperty('mod_description')
+ext.packetweave_version = sharedProperty('packetweave_version')
 
 if (tasks.findByName('wrapper')) {
     tasks.named('wrapper', Wrapper).configure {
@@ -228,6 +229,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_version            : mod_version,
             mod_authors            : mod_authors,
             mod_description        : mod_description,
+            packetweave_version    : packetweave_version,
     ]
     inputs.properties replaceProperties
     expand replaceProperties
@@ -271,3 +273,4 @@ idea {
 }
 
 apply from: file('../packetweave.gradle')
+apply from: file('../packetweave-runtime.gradle')

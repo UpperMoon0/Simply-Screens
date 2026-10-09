@@ -63,9 +63,10 @@ dependencies {
 
 processResources {
     inputs.property 'version', project.version
+    inputs.property 'packetweave_version', project.packetweave_version
 
     filesMatching('META-INF/mods.toml') {
-        expand version: project.version
+        expand version: project.version, packetweave_version: project.packetweave_version
     }
 }
 
@@ -77,3 +78,5 @@ shadowJar {
 remapJar {
     inputFile.set shadowJar.archiveFile
 }
+
+apply from: file('../packetweave-runtime.gradle')

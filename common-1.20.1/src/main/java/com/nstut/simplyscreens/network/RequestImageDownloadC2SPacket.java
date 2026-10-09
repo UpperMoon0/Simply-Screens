@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 public class RequestImageDownloadC2SPacket implements IPacket {
-    private static final int CHUNK_SIZE = com.nstut.simplyscreens.internal.packetweave.api.ChunkedTransfer.CHUNK_BYTES;
+    private static final int CHUNK_SIZE = com.nstut.packetweave.api.ChunkedTransfer.CHUNK_BYTES;
     private static final ExecutorService IMAGE_DOWNLOAD_EXECUTOR =
             MediaExecutors.newDaemonBoundedThreadPool(2, 64, "Simply Screens Image Download");
     private static final WorkerTransferCoordinator<String> ACTIVE_DOWNLOADS =
@@ -98,8 +98,8 @@ public class RequestImageDownloadC2SPacket implements IPacket {
                         imageId, fileSize, maxDownloadSize);
                 return;
             }
-            com.nstut.simplyscreens.internal.packetweave.api.ChunkedTransfer.streamFile(imagePath, CHUNK_SIZE, maxDownloadSize,
-                    com.nstut.simplyscreens.internal.packetweave.api.ChunkedTransfer.onExecutor(server::execute, Duration.ofSeconds(30),
+            com.nstut.packetweave.api.ChunkedTransfer.streamFile(imagePath, CHUNK_SIZE, maxDownloadSize,
+                    com.nstut.packetweave.api.ChunkedTransfer.onExecutor(server::execute, Duration.ofSeconds(30),
                             (chunkIndex, totalChunks, chunk) -> {
                                 if (server.getPlayerList().getPlayer(player.getUUID()) != player)
                                     throw new java.io.IOException("Player disconnected during media transfer");

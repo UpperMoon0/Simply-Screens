@@ -18,6 +18,7 @@ class EvidenceTests(unittest.TestCase):
             "neoforge-1.21.1": {"common", "common-1.21.1", "neoforge-1.21.1"},
             "neoforge-26.1.2": {"neoforge-26.1.2"},
         }
+        expected = {target: projects | {"packetweave-api"} for target, projects in expected.items()}
         all_projects = sorted(set().union(*expected.values()))
         for target, wanted in expected.items():
             with self.subTest(target=target), tempfile.TemporaryDirectory() as directory:
@@ -40,6 +41,17 @@ class EvidenceTests(unittest.TestCase):
         build = verifier.index("command = gradle_command(stage, target)")
         self.assertLess(scope, build)
         self.assertIn('"--module", str(stage / target)', verifier)
+
+    def test_every_visual_variant_stages_the_standalone_runtime_after_cleanup(self):
+        harness = (ROOT / "tools/visual_test.py").read_text()
+        clean = harness.index("remove_runtime_when_quiet(runtime)")
+        install = harness.index("live.install_packetweave(stage / target, target, standalone)")
+        launch = harness.index('server_cmd = live.command(stage, f":{target}:runLiveJoinTestServer")')
+        self.assertLess(clean, install)
+        self.assertLess(install, launch)
+        self.assertIn("run_variant(stage, target, variant, evidence / variant, standalone, probe)", harness)
+        workflow = (ROOT / ".github/workflows/screen-visual.yml").read_text()
+        self.assertIn("working-directory: vendor/PacketWeave/targets/${{ matrix.target }}", workflow)
 
     def test_depth_fixture_isolates_faces_and_keeps_explicit_cross_chunk_cases(self):
         server = (ROOT / "tools/visual/VisualServer.java").read_text()
@@ -274,12 +286,13 @@ class EvidenceTests(unittest.TestCase):
                 path = root / target / "result.json"
                 path.parent.mkdir()
                 payload = dict(target=target, head="abc", dirty=False, status="pass",
+                               packetweave={"version": "0.1.1", "sha256": "a" * 64},
                                variants={v:"pass" for v in variants(target)})
                 atomic_json(path, payload)
             verify_receipts(root, "abc")
             path = root / TARGETS[0] / "result.json"
             original = json.loads(path.read_text())
-            for changes in ({"head":"stale"}, {"dirty":True}, {"status":"compile-only"}, {"variants":{}}):
+            for changes in ({"head":"stale"}, {"dirty":True}, {"status":"compile-only"}, {"variants":{}}, {"packetweave": {}}, {"packetweave": {"version": "0.1.0", "sha256": "a" * 64}}):
                 atomic_json(path, original | changes)
                 with self.assertRaises(ValueError): verify_receipts(root,"abc")
             atomic_json(path, original)

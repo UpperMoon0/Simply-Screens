@@ -1,6 +1,6 @@
 package com.nstut.simplyscreens.network;
 
-import com.nstut.simplyscreens.internal.packetweave.api.ChunkedTransfer;
+import com.nstut.packetweave.api.ChunkedTransfer;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.DecoderException;
 import net.minecraft.core.BlockPos;

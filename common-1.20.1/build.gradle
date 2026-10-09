@@ -139,3 +139,5 @@ jar {
         project(':common').sourceSets.main.output
     }
 }
+
+apply from: file('../packetweave.gradle')

@@ -22,7 +22,7 @@ The verifier has negative self-tests so a broken verifier cannot silently bless 
 
 ## PacketWeave media regression checks
 
-Initialize the pinned library with `git submodule update --init --recursive`. The shared tests cover reordered download chunks, malformed counts/indices, duplicates, changed counts, safe extensions, expiry, invalidation, disconnect, and retry. Native tests cover capped packet decoding and upload binding/permission revocation. The pinned sources are relocated at build time to `com.nstut.simplyscreens.internal.packetweave`; Screens never exports PacketWeave's public API package. The production-jar check requires the private core classes and license and rejects unrelocated classes in every target. Shared progress tests exercise real file streaming through backpressured dispatch beyond the request timeout; native upload tests hold the image-storage monitor while checking transfer bookkeeping independently.
+Initialize the pinned library with `git submodule update --init --recursive`. The shared tests cover reordered download chunks, malformed counts/indices, duplicates, changed counts, safe extensions, expiry, invalidation, disconnect, and retry. Native tests cover capped packet decoding and upload binding/permission revocation. The pinned sources build a compile/test-only `:packetweave-api` project. Screens calls PacketWeave's public API from the separately installed native library and embeds neither public nor private PacketWeave classes. The production-jar check rejects both packages, including nested jars, and verifies the required loader dependency and minimum version in every target. Shared progress tests exercise real file streaming through backpressured dispatch beyond the request timeout; native upload tests hold the image-storage monitor while checking transfer bookkeeping independently.
 
 PacketWeave itself tests sender/receiver parity, global/per-owner budgets, dispatch failure/timeout, short reads, and file-size changes. Run `vendor/PacketWeave/gradlew :core:test -p vendor/PacketWeave --no-daemon` separately. A live join only checks connection/codec registration; it does not by itself prove a media upload/download.
 
@@ -33,7 +33,7 @@ PACKETWEAVE_TEST_DEPENDENCY_CACHE="$PWD/.gradle/packetweave-coinstallation" \
   python3 -m unittest discover -s tools -p 'test_packetweave_packaging.py' -v
 ```
 
-This opt-in test downloads checksum-pinned SecureJarHandler 3.0.8/ASM dependencies, compiles the pinned original and relocated core into distinct module fixtures, and exercises `JarModuleFinder` plus `resolveAndBind`. Its duplicate-original-core negative control must fail specifically for the public API split package, while the private copy must resolve alongside the original. It is a module-resolution check, not a game launch. Without the environment variable, the regular Python suite skips this dependency-requiring test.
+This opt-in test downloads checksum-pinned SecureJarHandler 3.0.8/ASM dependencies, compiles the pinned core and a separate consumer fixture, and exercises `JarModuleFinder` plus `resolveAndBind`. Its duplicate-core negative control must fail specifically for the public API split package. The consumer must resolve alongside the standalone library and invoke its public API from that provider. It is a module-resolution check, not a game launch. Without the environment variable, the regular Python suite skips this dependency-requiring test.
 
 ## 2. JVM unit tests
 
@@ -57,10 +57,10 @@ Supported targets are Fabric and Forge 1.20.1, Fabric and NeoForge 1.21.1, and N
 
 PR CI runs this matrix for runtime-affecting changes. CI checks out the exact PR head so a green result cannot refer only to GitHub's synthetic merge commit.
 
-CI also builds the matching standalone PacketWeave native mod from the pinned submodule and runs with `--with-packetweave`. To reproduce that mode, build `vendor/PacketWeave/targets/<target>` first using its own wrapper (Java 17 for Forge 1.20.1; Java 25 for the other targets), then run the Screens harness under Java 21:
+The harness requires the matching standalone PacketWeave native mod from the pinned submodule; `--with-packetweave` remains a compatibility alias. CI additionally runs with `--check-packetweave-dependency`: separate dedicated-server launches must reject missing PacketWeave and an intentionally old `0.1.0` metadata fixture with explicit dependency diagnostics before the valid client/server join. To reproduce CI, build `vendor/PacketWeave/targets/<target>` first using its own wrapper (Java 17 for Forge 1.20.1; Java 25 for the other targets), then run the Screens harness under Java 21:
 
 ```bash
-python3 tools/live_join_test.py --target neoforge-1.21.1 --with-packetweave
+python3 tools/live_join_test.py --target neoforge-1.21.1 --check-packetweave-dependency
 ```
 
 This installs the standalone native jar into both test instances' `mods` directories and checks both actual production jars through SecureJarHandler before launching the client and server. The module check can also be run independently with `python3 tools/verify_packetweave_coinstallation.py --screens-jar <screens.jar> --packetweave-jar <packetweave.jar>`.
@@ -125,3 +125,9 @@ The enlarged-offset mutation is rejected by the fast source/compiled contract, n
 CI uses a software graphics backend and records its identity; that backend is not a guarantee about every physical GPU, shader pack, or optional renderer. The suite must first demonstrate the old-renderer failure on a repeatable configuration before it can certify the fix there. If the original bug cannot be reproduced, preserve the evidence and improve the fixture/backend—do not loosen thresholds or relabel startup success as visual proof. Third-party renderer and shader-pack matrices remain separate extensions; they are not claimed by this gate.
 
 The five jobs share one OpenUI dependency build. Cheap harness/source checks run before game launches, scenarios share a client/server session within each variant, and the matrix is generated from the same target manifest that validates the final receipts.
+
+## Release dependencies and upgrade documentation
+
+Screens 0.8.10 requires PacketWeave 0.1.1 or newer on both sides. Publish PacketWeave first, verify all five matching native artifacts on GitHub and CurseForge, and only then publish Screens. `tools/release_dependencies.py verify-release` blocks Screens release builds if the required GitHub release/artifacts are unavailable. The CurseForge upload step checks the official dependency catalog for the exact PacketWeave project ID/slug and declares `requiredDependency` for every target; minimum versions remain enforced by loader metadata because CurseForge relations cannot express them.
+
+Accepted uploads retain per-target file-ID/source-SHA/relation receipts. They do not prove moderation approval or public download availability. Inspect those public file pages and their dependency relations before declaring publication complete. An ambiguous failed upload is not automatically retried as a POST or reported as success.

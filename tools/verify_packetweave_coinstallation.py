@@ -15,7 +15,7 @@ import subprocess
 import tempfile
 import zipfile
 
-from assert_production_jar import missing_packetweave_entries, obsolete_entries
+from assert_production_jar import packetweave_dependency_errors, obsolete_entries
 
 ROOT = Path(__file__).resolve().parents[1]
 DEPENDENCIES = (
@@ -31,7 +31,7 @@ DEPENDENCIES = (
 
 
 def java_command() -> list[str]:
-    home = os.environ.get("JAVA_HOME")
+    home = os.environ.get("JAVA_HOME_25_X64") or os.environ.get("JAVA_HOME")
     return [str(Path(home) / "bin" / ("java.exe" if os.name == "nt" else "java")) if home else "java"]
 
 
@@ -75,7 +75,7 @@ def dependency_classpath(cache: Path) -> str:
 
 
 def verify(screens: Path, standalone: Path, cache: Path, root: Path = ROOT) -> None:
-    missing, forbidden = missing_packetweave_entries(screens), obsolete_entries(screens)
+    missing, forbidden = packetweave_dependency_errors(screens), obsolete_entries(screens)
     if missing or forbidden:
         raise RuntimeError(f"Invalid Screens production jar: missing={missing}, forbidden={forbidden}")
     with zipfile.ZipFile(standalone) as archive:

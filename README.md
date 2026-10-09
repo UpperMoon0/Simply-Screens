@@ -23,6 +23,19 @@ The client interface is powered by **OpenUI MC 0.0.8 or newer**, which is a requ
   - Per-player upload concurrency and rate limits, bounded processing queues, and full image decode checks.
   - Atomic registry operations with automated `.bak` backups and crash recovery.
 
+## Installation and upgrade to 0.8.10
+
+Install the artifact matching **both** your Minecraft version and loader. The following mods are required:
+
+- **PacketWeave 0.1.1 or newer**, matching the same Minecraft version and loader, on the client **and** dedicated server.
+- **Architectury API**, matching the same Minecraft version and loader, on both sides.
+- **Fabric API** on Fabric.
+- **OpenUI MC 0.0.8 or newer** on clients; Fabric dedicated servers also need it to satisfy Fabric dependency metadata.
+
+Download PacketWeave from its [release assets](https://github.com/UpperMoon0/PacketWeave/releases) or its approved [CurseForge files](https://www.curseforge.com/minecraft/mc-mods/packetweave/files). Do not install the development-only API/core jar as a substitute for the native loader jar. Missing PacketWeave or a version below 0.1.1 must be resolved before the loader can start Screens.
+
+When upgrading from 0.8.9, add PacketWeave to every client and server before launching. Keep the existing world, `simply_screens_images` directory, screen registry, and configuration. This update does not require a media-file or world migration, and keeps the existing native Screens packet format. Back up worlds before any mod upgrade.
+
 ## Getting Started
 
 1. Craft and place a **Screen** block.
@@ -33,15 +46,18 @@ The client interface is powered by **OpenUI MC 0.0.8 or newer**, which is a requ
 
 ## Development & Building
 
-Simply Screens uses Gradle with Architectury Loom:
+Simply Screens uses Architectury Loom for 1.20.1/1.21.1 and a standalone ModDevGradle target for NeoForge 26.1.2. Start with Java 21 and initialize pinned sources:
 
 ```bash
-# Build all subprojects
-./gradlew build
-
-# Run unit tests
-./gradlew test
+git submodule update --init --recursive
+# Install the pinned OpenUI artifacts as documented in .github/actions/openui/action.yml.
+./gradlew testAllVersions --no-daemon
+./gradlew build --no-daemon
 ```
+
+The `packetweave-api` project compiles the pinned public API for compile-time and unit-test use only. It is never shipped in Screens. Production and development game launches need the matching native PacketWeave mod. Build it with the target's wrapper in `vendor/PacketWeave/targets/<loader-version>` (Java 17 for Forge; Java 25 for PacketWeave's newer target builds), then put that jar in the game's `mods` directory. For a Gradle development launch, alternatively pass `-PpacketweaveRuntimeJar=/absolute/path/to/the-native.jar`; do not also install the same jar in `mods`.
+
+See [TESTING.md](TESTING.md) for source/JVM contracts, missing/incompatible dependency checks, real client/server joins, and visual evidence.
 
 ### Supported Minecraft Versions
 
@@ -55,8 +71,27 @@ This project is distributed under the MIT license.
 
 ## Media transport
 
-PacketWeave owns chunk splitting and bounded upload/download reassembly on all five supported targets. Its version-neutral core is compiled from the immutable `vendor/PacketWeave` Git submodule into each production jar, with its MIT license. No separate PacketWeave loader mod is required. Screens retains its existing registered packets as loader adapters and applies screen permissions, image validation, metadata, and storage policy.
+Screens calls the **standalone PacketWeave** public API for chunk splitting and bounded upload/download reassembly on all five targets. Screens jars contain neither a public nor a relocated copy of that API. This avoids split packages and gives every consuming mod one runtime library. Screens retains native packet registration, screen permissions, image validation, metadata, and storage policy.
 
-Clone with `git clone --recurse-submodules`, or run `git submodule update --init --recursive` before building. The pin currently follows [PacketWeave PR #1](https://github.com/UpperMoon0/PacketWeave/pull/1); update it deliberately after upstream changes. This approach needs no unpublished Maven artifact.
+Clone with `git clone --recurse-submodules`, or initialize the submodule before building. The immutable source pin supplies a compile-only API without relying on unpublished Maven artifacts. The pinned version, loader minimum, and CurseForge required dependency must remain aligned; release PacketWeave's matching native artifacts before releasing Screens.
 
 Packets remain wire-compatible. Chunk arrays are decoded with a 30 KiB cap; receivers enforce byte and session limits, reject duplicate/changed envelopes, and release state on expiry or disconnect. Uploads stay bound to the authenticated sender, world, and original screen position. Download workers wait for game-thread dispatch of each chunk to avoid filling the server task queue with an entire file. This is local dispatch backpressure, not remote delivery acknowledgement.
+
+## Configuration
+
+Edit `config/simply_screens.properties`; server limits remain authoritative. Names and defaults below match `Config.java`:
+
+| Key | Default | Meaning |
+|---|---:|---|
+| `viewDistance` | `64` | View distance; clamped to 8–512 |
+| `screenTickRate` | `100` | Structure check interval in ticks; clamped to 1–72,000 |
+| `disableUpload` | `false` | Disable uploads from client files |
+| `disableUrlDownload` | `false` | Disable server image imports from URLs |
+| `debugRendering` | `false` | Enable rendering diagnostics |
+| `maxUploadSize` | `5242880` | Upload bytes; 5 MiB |
+| `maxUrlDownloadSize` | `10485760` | URL import bytes; 10 MiB |
+| `maxImagesPerPlayer` | `256` | Stored images per player; clamped to 1–1,024 |
+| `maxStoragePerPlayer` | `536870912` | Stored bytes per player; 512 MiB |
+| `maxStorageTotal` | `2147483648` | Total stored bytes; 2 GiB |
+
+Both transfer-size limits are clamped to 1 KiB–100 MiB. The properties are `disableUrlDownload` and `maxUrlDownloadSize`; `disableDownload` and `maxDownloadSize` are not read by this version.

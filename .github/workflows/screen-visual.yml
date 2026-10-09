@@ -52,6 +52,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Set up standalone PacketWeave build JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.target == 'forge-1.20.1' && '17' || '25' }}
+      - name: Build pinned standalone PacketWeave native mod
+        working-directory: vendor/PacketWeave/targets/${{ matrix.target }}
+        run: |
+          chmod +x gradlew
+          ./gradlew build --no-daemon --console=plain --max-workers=4
       - uses: ./.github/actions/openui
       - name: Install graphics and pixel analysis runtime
         run: |

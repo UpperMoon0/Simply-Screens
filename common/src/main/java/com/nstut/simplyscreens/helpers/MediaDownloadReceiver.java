@@ -1,9 +1,9 @@
 package com.nstut.simplyscreens.helpers;
 
-import com.nstut.simplyscreens.internal.packetweave.api.ChunkedTransfer;
-import com.nstut.simplyscreens.internal.packetweave.api.TransferId;
-import com.nstut.simplyscreens.internal.packetweave.api.TransferLimits;
-import com.nstut.simplyscreens.internal.packetweave.api.TransferRegistry;
+import com.nstut.packetweave.api.ChunkedTransfer;
+import com.nstut.packetweave.api.TransferId;
+import com.nstut.packetweave.api.TransferLimits;
+import com.nstut.packetweave.api.TransferRegistry;
 import com.nstut.simplyscreens.Config;
 import java.time.Duration;
 import java.util.ArrayList;

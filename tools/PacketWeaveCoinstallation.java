@@ -22,11 +22,11 @@ public final class PacketWeaveCoinstallation {
                 throw new AssertionError("The co-installation check must resolve two distinct modules");
             }
             if (!libraryModule.packages().contains(PUBLIC_API)
-                    || !screensModule.packages().contains(duplicateControl ? PUBLIC_API : PRIVATE_API)) {
+                    || (duplicateControl && !screensModule.packages().contains(PUBLIC_API))) {
                 throw new AssertionError("Expected the actual PacketWeave core packages in both jars");
             }
-            if (!duplicateControl && screensModule.packages().contains(PUBLIC_API)) {
-                throw new AssertionError("Simply Screens still exports the standalone PacketWeave package");
+            if (!duplicateControl && (screensModule.packages().contains(PUBLIC_API) || screensModule.packages().contains(PRIVATE_API))) {
+                throw new AssertionError("Simply Screens must not bundle either public or relocated PacketWeave classes");
             }
             try {
                 var resolved = ModuleLayer.boot().configuration().resolveAndBind(
@@ -37,6 +37,16 @@ public final class PacketWeaveCoinstallation {
                 if (resolved.findModule(library.name()).isEmpty() || resolved.findModule(screens.name()).isEmpty()) {
                     throw new AssertionError("Both co-installed modules must be resolved");
                 }
+                var layer = ModuleLayer.boot().defineModulesWithOneLoader(resolved, ClassLoader.getPlatformClassLoader());
+                var limits = layer.findLoader(screens.name()).loadClass(PUBLIC_API + ".TransferLimits");
+                if (!limits.getModule().getName().equals(library.name())) {
+                    throw new AssertionError("PacketWeave API did not resolve from the standalone module");
+                }
+                Object defaults = limits.getMethod("defaults").invoke(null);
+                if ((int) limits.getMethod("chunkBytes").invoke(defaults) <= 0) {
+                    throw new AssertionError("Standalone PacketWeave API invocation failed");
+                }
+                System.out.println("PASS: standalone API loaded and invoked from " + limits.getModule().getName());
                 System.out.println("PASS: SecureJarHandler resolved " + library.name() + " with " + screens.name());
             } catch (ResolutionException expected) {
                 if (!duplicateControl || !expected.getMessage().contains(PUBLIC_API)) {

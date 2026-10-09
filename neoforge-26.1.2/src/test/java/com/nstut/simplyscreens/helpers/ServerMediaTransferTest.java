@@ -1,7 +1,7 @@
 package com.nstut.simplyscreens.helpers;
 
-import com.nstut.simplyscreens.internal.packetweave.api.TransferId;
-import com.nstut.simplyscreens.internal.packetweave.api.TransferRegistry;
+import com.nstut.packetweave.api.TransferId;
+import com.nstut.packetweave.api.TransferRegistry;
 import com.nstut.simplyscreens.Config;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
