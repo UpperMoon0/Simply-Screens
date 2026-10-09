@@ -75,6 +75,15 @@ jobs:
         env:
           LIBGL_ALWAYS_SOFTWARE: 'true'
         run: python tools/visual_test.py --target '${{ matrix.target }}'
+      - name: Preserve failed production-test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-test-diagnostics-${{ matrix.target }}
+          path: |
+            build/screen-production-work/**/build/test-results/**
+            build/screen-production-work/**/build/reports/tests/**
+          if-no-files-found: ignore
       - name: Preserve measurements, screenshots and failure evidence
         if: always()
         uses: actions/upload-artifact@v4

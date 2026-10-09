@@ -1,13 +1,14 @@
 import json
 from pathlib import Path
 import tempfile
+import sys
 import unittest
 from unittest.mock import patch
 from types import SimpleNamespace
 import zipfile
 
 from assert_production_jar import loader_metadata
-from packetweave_runtime import assert_dependency_rejected, check_dependency_rejections, incompatible_jar, native_version
+from packetweave_runtime import assert_dependency_rejected, check_dependency_rejections, incompatible_jar, native_version, wait_for_dependency_rejection
 
 
 class PacketWeaveRuntimeTests(unittest.TestCase):
@@ -37,6 +38,9 @@ class PacketWeaveRuntimeTests(unittest.TestCase):
                       "mod 'PacketWeave' (packetweave), " + ("which is missing!" if mode == "missing" else "but only version 0.1.0 is present!"))
             neo = ("Mod §esimply_screens§r requires §epacketweave§r 0.1.1 or above\n"
                    "Currently, packetweave is " + ("not installed" if mode == "missing" else "0.1.0"))
+            forge += "\nFailed to start the minecraft server"
+            neo += "\nFailed to start the minecraft server"
+            fabric += "\nIncompatible mods found!\nnet.fabricmc.loader.impl.FormattedException"
             for output in (forge, fabric, neo):
                 assert_dependency_rejected(output, 1, mode)
                 with self.assertRaises(RuntimeError):
@@ -70,13 +74,77 @@ class PacketWeaveRuntimeTests(unittest.TestCase):
                 output = ("Missing or unsupported mandatory dependencies:\nMod ID: 'packetweave', "
                           "Requested by: 'simply_screens', Expected range: '[0.1.1,)', Actual version: '" + actual + "'")
                 return SimpleNamespace(returncode=1, communicate=lambda **kwargs: (output, None))
-            with patch("live_join_test.popen", side_effect=launch), patch("live_join_test.stop_tree"):
+            def observe(process, mode, timeout, log, prefix):
+                output, _ = process.communicate()
+                log.write_text(output)
+                assert_dependency_rejected(output + "\nFailed to start the minecraft server", process.returncode, mode)
+                return False
+            with patch("live_join_test.popen", side_effect=launch), patch("packetweave_runtime.wait_for_dependency_rejection", side_effect=observe):
                 check_dependency_rejections(root, target, native, 10)
             self.assertEqual(["missing", "incompatible"], launches)
             self.assertEqual([installed], list(mods.glob("*.jar")))
             self.assertEqual(native.read_bytes(), installed.read_bytes())
             self.assertTrue((mods.parent.parent / "dependency-checks/missing-server.log").is_file())
             self.assertTrue((mods.parent.parent / "dependency-checks/incompatible-server.log").is_file())
+
+    def run_streaming_fixture(self, output, mode="missing", linger=False, should_pass=False):
+        import live_join_test as live
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            log = root / "dependency.log"
+            script = ("import sys,time; print(" + repr(output) + ", flush=True); "
+                      + ("time.sleep(30); " if linger else "") + "sys.exit(1)")
+            process = live.popen([sys.executable, "-u", "-c", script], root)
+            try:
+                if should_pass:
+                    stopped_lingering = wait_for_dependency_rejection(process, mode, 2, log, "fixture")
+                    self.assertEqual(linger, stopped_lingering)
+                else:
+                    with self.assertRaises(RuntimeError):
+                        wait_for_dependency_rejection(process, mode, 0.25, log, "fixture")
+                self.assertIsNotNone(process.poll())
+                self.assertIn(output, log.read_text())
+            finally:
+                live.stop_tree(process)
+                if process.stdin is not None:
+                    process.stdin.close()
+                if process.stdout is not None:
+                    process.stdout.close()
+
+    def test_fatal_dependency_rejection_stops_a_lingering_dev_launcher(self):
+        for mode, actual in (("missing", "[MISSING]"), ("incompatible", "0.1.0")):
+            output = ("Missing or unsupported mandatory dependencies:\n"
+                      "Mod ID: 'packetweave', Requested by: 'simply_screens', "
+                      f"Expected range: '[0.1.1,)', Actual version: '{actual}'\n"
+                      "Failed to start the minecraft server")
+            self.run_streaming_fixture(output, mode=mode, linger=True, should_pass=True)
+
+    def test_diagnostic_without_fatal_completion_never_passes(self):
+        diagnostic = ("Mod simply_screens requires packetweave 0.1.1 or above\n"
+                      "Currently, packetweave is not installed")
+        self.run_streaming_fixture(diagnostic, linger=True)
+        self.run_streaming_fixture(diagnostic + "\nNullPointerException", linger=False)
+
+    def test_unrelated_fatal_download_failure_and_ready_after_rejection_never_pass(self):
+        diagnostic = ("Mod simply_screens requires packetweave 0.1.1 or above\n"
+                      "Currently, packetweave is not installed")
+        for output in ("Failed to start the minecraft server\nother_mod is not installed",
+                       "Could not download packetweave: connection timed out",
+                       diagnostic + "\nFailed to start the minecraft server\nDone (0.5s)! For help, type help"):
+            self.run_streaming_fixture(output)
+
+    def test_incomplete_output_drain_never_certifies_rejection_and_keeps_log(self):
+        diagnostic = ("Mod simply_screens requires packetweave 0.1.1 or above\n"
+                      "Currently, packetweave is not installed\nFailed to start the minecraft server\n")
+        pump = SimpleNamespace(history=[diagnostic], thread=SimpleNamespace(
+            is_alive=lambda: True, join=lambda **kwargs: None))
+        process = SimpleNamespace(poll=lambda: None)
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "incomplete.log"
+            with patch("live_join_test.OutputPump", return_value=pump), patch("live_join_test.stop_tree"):
+                with self.assertRaisesRegex(RuntimeError, "did not fully drain"):
+                    wait_for_dependency_rejection(process, "missing", 1, log, "fixture")
+            self.assertEqual(diagnostic, log.read_text())
 
     def test_generic_crashes_and_timeouts_never_pass_negative_controls(self):
         for output in ("Gradle download timed out", "NullPointerException packetweave simply_screens 0.1.1",
