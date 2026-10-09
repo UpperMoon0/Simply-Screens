@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import tempfile
 import sys
+import time
 import unittest
 from unittest.mock import patch
 from types import SimpleNamespace
@@ -87,17 +88,28 @@ class PacketWeaveRuntimeTests(unittest.TestCase):
             self.assertTrue((mods.parent.parent / "dependency-checks/missing-server.log").is_file())
             self.assertTrue((mods.parent.parent / "dependency-checks/incompatible-server.log").is_file())
 
-    def run_streaming_fixture(self, output, mode="missing", linger=False, should_pass=False):
+    def run_streaming_fixture(self, output, mode="missing", linger=False, should_pass=False, startup_delay=0):
         import live_join_test as live
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             log = root / "dependency.log"
-            script = ("import sys,time; print(" + repr(output) + ", flush=True); "
+            ready = root / "fixture-ready"
+            script = ("import sys,time; from pathlib import Path; "
+                      + f"time.sleep({startup_delay!r}); "
+                      + "print(" + repr(output) + ", flush=True); "
+                      + "Path(" + repr(str(ready)) + ").write_text('ready'); "
                       + ("time.sleep(30); " if linger else "") + "sys.exit(1)")
             process = live.popen([sys.executable, "-u", "-c", script], root)
             try:
+                # Interpreter startup is not part of the short observer budget.
+                # The child acknowledges readiness only after flushing all test
+                # output, so even a slow first spawn cannot lose log assertions.
+                startup_deadline = time.monotonic() + 10
+                while not ready.exists() and time.monotonic() < startup_deadline:
+                    time.sleep(0.01)
+                self.assertTrue(ready.exists(), "Fixture did not start and flush its output within 10 seconds")
                 if should_pass:
-                    stopped_lingering = wait_for_dependency_rejection(process, mode, 2, log, "fixture")
+                    stopped_lingering = wait_for_dependency_rejection(process, mode, 10, log, "fixture")
                     self.assertEqual(linger, stopped_lingering)
                 else:
                     with self.assertRaises(RuntimeError):
@@ -110,6 +122,12 @@ class PacketWeaveRuntimeTests(unittest.TestCase):
                     process.stdin.close()
                 if process.stdout is not None:
                     process.stdout.close()
+
+    def test_slow_fixture_startup_is_outside_the_observation_timeout(self):
+        # Deliberately exceed the 250ms rejection-observation budget without
+        # retrying: output must still be preserved and the generic failure rejected.
+        self.run_streaming_fixture("Failed to start the minecraft server\nother_mod is not installed",
+                                   startup_delay=0.4)
 
     def test_fatal_dependency_rejection_stops_a_lingering_dev_launcher(self):
         for mode, actual in (("missing", "[MISSING]"), ("incompatible", "0.1.0")):
