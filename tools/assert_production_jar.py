@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail CI for obsolete mixin metadata or accidentally packaged visual drivers."""
+"""Check the shipped jar's private PacketWeave copy and production-only contents."""
 
 from __future__ import annotations
 
@@ -7,6 +7,21 @@ import argparse
 import sys
 import zipfile
 from pathlib import Path
+
+
+PRIVATE_PACKETWEAVE = "com/nstut/simplyscreens/internal/packetweave/"
+REQUIRED_PACKETWEAVE = {
+    PRIVATE_PACKETWEAVE + "api/" + name + ".class"
+    for name in (
+        "ChunkedTransfer", "TransferAuthorizer", "TransferDigest", "TransferId",
+        "TransferLimits", "TransferOperation", "TransferRegistry", "TransferSession",
+    )
+} | {"META-INF/LICENSE-PacketWeave"}
+
+
+def missing_packetweave_entries(jar: Path) -> list[str]:
+    with zipfile.ZipFile(jar) as archive:
+        return sorted(REQUIRED_PACKETWEAVE - set(archive.namelist()))
 
 
 def production_jars(module_dir: Path) -> list[Path]:
@@ -27,6 +42,8 @@ def obsolete_entries(jar: Path) -> list[str]:
         for entry in entries
         if Path(entry).name == "simplyscreens.mixins.json"
         or entry.startswith("com/nstut/simplyscreens/testing/visual/")
+        # Include multi-release paths as well as ordinary top-level classes.
+        or (entry.endswith(".class") and "/com/nstut/packetweave/" in "/" + entry)
         or (
             Path(entry).name.lower().endswith("refmap.json")
             and ("simply_screens" in Path(entry).name.lower() or "simplyscreens" in Path(entry).name.lower())
@@ -47,13 +64,7 @@ def main() -> int:
         return 1
 
     jar = jars[0]
-    with zipfile.ZipFile(jar) as archive:
-        required = {
-            'com/nstut/packetweave/api/ChunkedTransfer.class',
-            'com/nstut/packetweave/api/TransferRegistry.class',
-            'META-INF/LICENSE-PacketWeave',
-        }
-        missing = required - set(archive.namelist())
+    missing = missing_packetweave_entries(jar)
     if missing:
         print(f"PacketWeave integration missing from {jar}: {sorted(missing)}", file=sys.stderr)
         return 1
@@ -64,7 +75,7 @@ def main() -> int:
             print(f"  - {entry}", file=sys.stderr)
         return 1
 
-    print(f"{jar}: no obsolete mixin metadata or test-only visual drivers")
+    print(f"{jar}: private PacketWeave classes/license present; no public PacketWeave classes, obsolete mixins, or visual drivers")
     return 0
 
 

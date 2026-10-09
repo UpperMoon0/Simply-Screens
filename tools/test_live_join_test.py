@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -65,6 +66,37 @@ class LiveJoinHarnessTest(unittest.TestCase):
                     self.assertIs(False, tomllib.loads(config.read_text())["earlyWindowControl"])
                 else:
                     self.assertFalse(config.exists())
+
+    def test_pinned_native_packetweave_is_installed_on_both_sides_for_every_target(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for target in live_join_test.TARGETS:
+                libs = root / "vendor/PacketWeave/targets" / target / "build/libs"
+                libs.mkdir(parents=True)
+                jar = libs / f"packetweave-{target}-0.1.1.jar"
+                metadata = ("fabric.mod.json" if target.startswith("fabric-") else
+                            "META-INF/mods.toml" if target.startswith("forge-") else "META-INF/neoforge.mods.toml")
+                with zipfile.ZipFile(jar, "w") as archive:
+                    archive.writestr(metadata, b"native metadata fixture")
+                    archive.writestr("com/nstut/packetweave/api/TransferRegistry.class", b"class fixture")
+                (libs / f"packetweave-{target}-0.1.1-sources.jar").write_bytes(b"not a runtime artifact")
+                self.assertEqual(jar, live_join_test.packetweave_jar(root, target))
+                live_join_test.install_packetweave(root / target, target, jar)
+                for side in ("server", "client"):
+                    installed = root / target / "run/live-join" / side / "mods" / jar.name
+                    self.assertEqual(jar.read_bytes(), installed.read_bytes())
+
+    def test_coinstallation_rejects_missing_native_jar_or_wrong_loader_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with self.assertRaisesRegex(RuntimeError, "Build the pinned"):
+                live_join_test.packetweave_jar(root, "forge-1.20.1")
+            jar = root / "packetweave.jar"
+            with zipfile.ZipFile(jar, "w") as archive:
+                archive.writestr("fabric.mod.json", b"{}")
+                archive.writestr("com/nstut/packetweave/api/TransferRegistry.class", b"fixture")
+            with self.assertRaisesRegex(RuntimeError, "native mod contents"):
+                live_join_test.install_packetweave(root / "forge-1.20.1", "forge-1.20.1", jar)
 
 
 if __name__ == "__main__":

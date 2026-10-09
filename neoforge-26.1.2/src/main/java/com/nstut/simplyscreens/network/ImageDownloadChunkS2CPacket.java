@@ -35,7 +35,7 @@ public class ImageDownloadChunkS2CPacket implements CustomPacketPayload {
         this.imageId = buf.readUUID();
         this.chunkIndex = buf.readVarInt();
         this.totalChunks = buf.readVarInt();
-        this.data = buf.readByteArray(com.nstut.packetweave.api.ChunkedTransfer.CHUNK_BYTES);
+        this.data = buf.readByteArray(com.nstut.simplyscreens.internal.packetweave.api.ChunkedTransfer.CHUNK_BYTES);
         if (this.chunkIndex == 0) {
             this.extension = buf.readUtf(4);
         } else {

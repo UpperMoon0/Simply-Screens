@@ -1,10 +1,20 @@
-// Compile the immutable, pinned PacketWeave core into the consumer; no loader mod is needed.
+// Keep the pinned core private: the standalone PacketWeave mod owns its public package.
 def packetWeaveRoot = file('../vendor/PacketWeave')
 def packetWeaveSources = new File(packetWeaveRoot, 'core/src/main/java')
 if (!packetWeaveSources.isDirectory()) {
     throw new GradleException('PacketWeave submodule is missing. Run git submodule update --init --recursive.')
 }
-sourceSets.main.java.srcDir(packetWeaveSources)
+def relocatePacketWeave = tasks.register('relocatePacketWeave', Sync) {
+    from(packetWeaveSources) {
+        filter { String line -> line.replace('com.nstut.packetweave', 'com.nstut.simplyscreens.internal.packetweave') }
+        eachFile { details ->
+            details.path = details.path.replace('com/nstut/packetweave', 'com/nstut/simplyscreens/internal/packetweave')
+        }
+    }
+    into(layout.buildDirectory.dir('generated/sources/packetweave'))
+    includeEmptyDirs = false
+}
+sourceSets.main.java.srcDir(relocatePacketWeave)
 processResources {
     from(new File(packetWeaveRoot, 'LICENSE')) {
         into 'META-INF'

@@ -1,6 +1,6 @@
 package com.nstut.simplyscreens.helpers;
 
-import com.nstut.packetweave.api.TransferLimits;
+import com.nstut.simplyscreens.internal.packetweave.api.TransferLimits;
 import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.util.UUID;

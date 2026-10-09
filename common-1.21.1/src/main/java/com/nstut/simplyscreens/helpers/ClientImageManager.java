@@ -128,7 +128,7 @@ public class ClientImageManager {
             }
         }
 
-        PENDING_DOWNLOADS.tryStart(imageId,
+        DOWNLOADS.requestIfIdle(imageId, PENDING_DOWNLOADS,
                 () -> PacketRegistries.sendToServer(new RequestImageDownloadC2SPacket(imageId)));
         return null;
     }

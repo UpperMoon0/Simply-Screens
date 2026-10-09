@@ -22,9 +22,18 @@ The verifier has negative self-tests so a broken verifier cannot silently bless 
 
 ## PacketWeave media regression checks
 
-Initialize the pinned library with `git submodule update --init --recursive`. The shared tests cover reordered download chunks, malformed counts/indices, duplicates, changed counts, safe extensions, expiry, invalidation, disconnect, and retry. Native tests cover capped packet decoding and upload binding/permission revocation. The production-jar check requires PacketWeave classes and its license in every target.
+Initialize the pinned library with `git submodule update --init --recursive`. The shared tests cover reordered download chunks, malformed counts/indices, duplicates, changed counts, safe extensions, expiry, invalidation, disconnect, and retry. Native tests cover capped packet decoding and upload binding/permission revocation. The pinned sources are relocated at build time to `com.nstut.simplyscreens.internal.packetweave`; Screens never exports PacketWeave's public API package. The production-jar check requires the private core classes and license and rejects unrelocated classes in every target. Shared progress tests exercise real file streaming through backpressured dispatch beyond the request timeout; native upload tests hold the image-storage monitor while checking transfer bookkeeping independently.
 
 PacketWeave itself tests sender/receiver parity, global/per-owner budgets, dispatch failure/timeout, short reads, and file-size changes. Run `vendor/PacketWeave/gradlew :core:test -p vendor/PacketWeave --no-daemon` separately. A live join only checks connection/codec registration; it does not by itself prove a media upload/download.
+
+Run the focused compiled-core co-installation regression with Java 21 and curl:
+
+```bash
+PACKETWEAVE_TEST_DEPENDENCY_CACHE="$PWD/.gradle/packetweave-coinstallation" \
+  python3 -m unittest discover -s tools -p 'test_packetweave_packaging.py' -v
+```
+
+This opt-in test downloads checksum-pinned SecureJarHandler 3.0.8/ASM dependencies, compiles the pinned original and relocated core into distinct module fixtures, and exercises `JarModuleFinder` plus `resolveAndBind`. Its duplicate-original-core negative control must fail specifically for the public API split package, while the private copy must resolve alongside the original. It is a module-resolution check, not a game launch. Without the environment variable, the regular Python suite skips this dependency-requiring test.
 
 ## 2. JVM unit tests
 
@@ -47,6 +56,14 @@ python3 tools/live_join_test.py --target neoforge-1.21.1
 Supported targets are Fabric and Forge 1.20.1, Fabric and NeoForge 1.21.1, and NeoForge 26.1.2. The harness builds the production jar, checks its packaged shape, starts a dedicated server, launches a graphical client under a real display/Xvfb, joins it, exercises the UI smoke path, and requires the explicit pass marker.
 
 PR CI runs this matrix for runtime-affecting changes. CI checks out the exact PR head so a green result cannot refer only to GitHub's synthetic merge commit.
+
+CI also builds the matching standalone PacketWeave native mod from the pinned submodule and runs with `--with-packetweave`. To reproduce that mode, build `vendor/PacketWeave/targets/<target>` first using its own wrapper (Java 17 for Forge 1.20.1; Java 25 for the other targets), then run the Screens harness under Java 21:
+
+```bash
+python3 tools/live_join_test.py --target neoforge-1.21.1 --with-packetweave
+```
+
+This installs the standalone native jar into both test instances' `mods` directories and checks both actual production jars through SecureJarHandler before launching the client and server. The module check can also be run independently with `python3 tools/verify_packetweave_coinstallation.py --screens-jar <screens.jar> --packetweave-jar <packetweave.jar>`.
 
 ## Renderer regression protocol
 

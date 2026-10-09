@@ -1,9 +1,9 @@
 package com.nstut.simplyscreens.helpers;
 
-import com.nstut.packetweave.api.ChunkedTransfer;
-import com.nstut.packetweave.api.TransferId;
-import com.nstut.packetweave.api.TransferLimits;
-import com.nstut.packetweave.api.TransferRegistry;
+import com.nstut.simplyscreens.internal.packetweave.api.ChunkedTransfer;
+import com.nstut.simplyscreens.internal.packetweave.api.TransferId;
+import com.nstut.simplyscreens.internal.packetweave.api.TransferLimits;
+import com.nstut.simplyscreens.internal.packetweave.api.TransferRegistry;
 import com.nstut.simplyscreens.Config;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -54,6 +54,11 @@ public final class MediaDownloadReceiver {
         if (result == null) return null;
         headers.remove(image);
         return new Download(header.extension, result);
+    }
+
+    /** Request timers cover a missing response; an active receiver uses its idle expiry instead. */
+    public synchronized boolean requestIfIdle(UUID image, TransferRequestCoordinator<UUID> requests, Runnable starter) {
+        return !transfers.contains(id(image)) && requests.tryStart(image, starter);
     }
 
     public synchronized boolean isPending(UUID image) { return transfers.contains(id(image)); }

@@ -51,7 +51,7 @@ import java.util.Locale;
 import java.util.UUID;
 
 public class ImageLoadScreen extends SimplyScreensUiScreen {
-    private static final int CHUNK_SIZE = com.nstut.packetweave.api.ChunkedTransfer.CHUNK_BYTES;
+    private static final int CHUNK_SIZE = com.nstut.simplyscreens.internal.packetweave.api.ChunkedTransfer.CHUNK_BYTES;
     private static final int PANEL_WIDTH = 360;
 
     private enum Tab { GALLERY, SETTINGS, IMPORT }
@@ -342,7 +342,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                 return;
             }
             UUID transactionId = UUID.randomUUID();
-            com.nstut.packetweave.api.ChunkedTransfer.send(data, CHUNK_SIZE, (index, totalChunks, chunk) ->
+            com.nstut.simplyscreens.internal.packetweave.api.ChunkedTransfer.send(data, CHUNK_SIZE, (index, totalChunks, chunk) ->
                     PacketRegistries.sendToServer(new UploadImageChunkC2SPacket(
                             blockEntityPos, transactionId, index, totalChunks, chunk,
                             index == 0 ? path.getFileName().toString() : null)));
