@@ -18,6 +18,7 @@ public class SimplyScreens {
         Config.setModId(MOD_ID);
         Config.load();
         PacketRegistries.register();
+        com.nstut.simplyscreens.helpers.ServerImageManager.initTransfers();
 
         ScreenLoadReconciler.init();
         ServerTickScheduler.init();

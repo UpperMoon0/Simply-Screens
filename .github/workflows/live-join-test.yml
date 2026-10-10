@@ -15,6 +15,12 @@ on:
       - "neoforge-26.1.2/**"
       - "tools/live_join_test.py"
       - "tools/assert_production_jar.py"
+      - "tools/verify_packetweave_coinstallation.py"
+      - "tools/PacketWeaveCoinstallation.java"
+      - "tools/packetweave_runtime.py"
+      - "packetweave-api/**"
+      - "packetweave.gradle"
+      - "vendor/PacketWeave"
       - "tools/build_openui.py"
       - ".github/actions/openui/**"
       - ".github/workflows/live-join-test.yml"
@@ -33,12 +39,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          submodules: recursive
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: ./.github/actions/openui
 
   live-join:
     needs: dependencies
-    timeout-minutes: 25
+    timeout-minutes: 40
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -52,19 +59,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          submodules: recursive
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Set up standalone PacketWeave build JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.target == 'forge-1.20.1' && '17' || '25' }}
+      - name: Build pinned standalone PacketWeave native mod
+        working-directory: vendor/PacketWeave/targets/${{ matrix.target }}
+        run: |
+          chmod +x gradlew
+          ./gradlew build --no-daemon --console=plain --max-workers=4
       - uses: ./.github/actions/openui
       - name: Install virtual display
         run: sudo apt-get update && sudo apt-get install -y xvfb
       - run: chmod +x gradlew
-      - name: Run automatic real-client join test
-        run: python3 tools/live_join_test.py --target "${{ matrix.target }}"
+      - name: Run automatic real-client join with standalone PacketWeave
+        run: python3 tools/live_join_test.py --target "${{ matrix.target }}" --check-packetweave-dependency
       - name: Upload test diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: live-join-${{ matrix.target }}
           path: |
+            ${{ matrix.target }}/build/test-results/**
+            ${{ matrix.target }}/build/reports/tests/**
+            ${{ matrix.target }}/run/live-join/dependency-checks
             ${{ matrix.target }}/run/live-join/client/logs
             ${{ matrix.target }}/run/live-join/server/logs
             ${{ matrix.target }}/run/live-join/client/crash-reports

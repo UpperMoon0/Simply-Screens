@@ -1,0 +1,2 @@
+# Hash-locked original renderer controls must have the same bytes on Windows and Linux.
+tools/visual_controls/** -text

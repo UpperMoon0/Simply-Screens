@@ -1,0 +1,27 @@
+// Build against the public API from the pinned source without needing an
+// unpublished Maven artifact. This project is compile/test-only in Screens;
+// the separately installed PacketWeave loader mod provides these classes.
+plugins {
+    id 'java-library'
+}
+
+def sharedProperties = new Properties()
+file('../gradle.properties').withInputStream { sharedProperties.load(it) }
+group = 'com.nstut'
+version = sharedProperties.getProperty('packetweave_version')
+base.archivesName = 'packetweave-compile-only-api'
+
+def packetWeaveSources = file('../vendor/PacketWeave/core/src/main/java')
+if (!packetWeaveSources.isDirectory()) {
+    throw new GradleException('PacketWeave submodule is missing. Run git submodule update --init --recursive.')
+}
+sourceSets.main.java.setSrcDirs([packetWeaveSources])
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 8
+}

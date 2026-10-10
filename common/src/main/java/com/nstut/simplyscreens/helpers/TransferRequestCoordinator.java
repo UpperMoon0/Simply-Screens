@@ -27,6 +27,8 @@ public final class TransferRequestCoordinator<K> {
         }
     }
 
+    public void clear() { requests.clear(); }
+
     public void release(K key) {
         requests.release(key);
     }

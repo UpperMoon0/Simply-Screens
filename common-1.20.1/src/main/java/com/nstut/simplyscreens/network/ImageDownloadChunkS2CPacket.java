@@ -26,9 +26,9 @@ public class ImageDownloadChunkS2CPacket implements IPacket {
         this.imageId = buf.readUUID();
         this.chunkIndex = buf.readVarInt();
         this.totalChunks = buf.readVarInt();
-        this.data = buf.readByteArray();
+        this.data = buf.readByteArray(com.nstut.packetweave.api.ChunkedTransfer.CHUNK_BYTES);
         if (this.chunkIndex == 0) {
-            this.extension = buf.readUtf();
+            this.extension = buf.readUtf(4);
         } else {
             this.extension = null;
         }
@@ -41,7 +41,7 @@ public class ImageDownloadChunkS2CPacket implements IPacket {
         buf.writeVarInt(totalChunks);
         buf.writeByteArray(data);
         if (chunkIndex == 0) {
-            buf.writeUtf(extension);
+            buf.writeUtf(extension, 4);
         }
     }
 

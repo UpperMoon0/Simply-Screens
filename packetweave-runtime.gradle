@@ -1,0 +1,18 @@
+// Optional IDE/development runtime support. Build the matching native target in
+// vendor/PacketWeave, then pass -PpacketweaveRuntimeJar=/absolute/path/to/its.jar.
+// Integration harnesses instead install it in mods/ and leave this property unset
+// so missing/incompatible-dependency tests can control the runtime independently.
+def packetWeaveRuntimeJar = providers.gradleProperty('packetweaveRuntimeJar')
+if (packetWeaveRuntimeJar.isPresent()) {
+    def nativeJar = rootProject.file(packetWeaveRuntimeJar.get())
+    if (!nativeJar.isFile()) {
+        throw new GradleException("PacketWeave runtime jar does not exist: ${nativeJar}")
+    }
+    dependencies {
+        if (plugins.hasPlugin('net.neoforged.moddev')) {
+            localRuntime files(nativeJar)
+        } else {
+            modLocalRuntime files(nativeJar)
+        }
+    }
+}

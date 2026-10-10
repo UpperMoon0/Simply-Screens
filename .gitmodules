@@ -1,0 +1,3 @@
+[submodule "vendor/PacketWeave"]
+	path = vendor/PacketWeave
+	url = https://github.com/UpperMoon0/PacketWeave.git

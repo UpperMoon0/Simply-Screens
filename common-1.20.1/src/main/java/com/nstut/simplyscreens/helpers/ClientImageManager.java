@@ -35,8 +35,7 @@ public class ClientImageManager {
     private static final Map<UUID, DynamicTexture> IN_MEMORY_CACHE = new ConcurrentHashMap<>();
     private static final Map<UUID, ResourceLocation> TEXTURE_LOCATIONS = new ConcurrentHashMap<>();
     private static final Map<UUID, ImageMetadata> METADATA_CACHE = new ConcurrentHashMap<>();
-    private static final Map<UUID, byte[][]> CHUNK_MAP = new ConcurrentHashMap<>();
-    private static final Map<UUID, String> EXTENSION_MAP = new ConcurrentHashMap<>();
+    private static final MediaDownloadReceiver DOWNLOADS = new MediaDownloadReceiver();
     private static final Set<UUID> FAILED_IMAGES = ConcurrentHashMap.newKeySet();
     private static final TransferRequestCoordinator<UUID> PENDING_DOWNLOADS =
             new TransferRequestCoordinator<>(Duration.ofSeconds(30));
@@ -44,37 +43,9 @@ public class ClientImageManager {
     private static ResourceLocation errorTextureLocation;
 
     public static void handleImageChunk(UUID imageId, int chunkIndex, int totalChunks, byte[] data, String extension) {
-        CHUNK_MAP.computeIfAbsent(imageId, k -> new byte[totalChunks][])[chunkIndex] = data;
-        if (extension != null) {
-            EXTENSION_MAP.put(imageId, extension);
-        }
-
-        boolean allChunksReceived = true;
-        for (int i = 0; i < totalChunks; i++) {
-            if (CHUNK_MAP.get(imageId)[i] == null) {
-                allChunksReceived = false;
-                break;
-            }
-        }
-
-        if (allChunksReceived) {
-            try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-                for (int i = 0; i < totalChunks; i++) {
-                    outputStream.write(CHUNK_MAP.get(imageId)[i]);
-                }
-                byte[] imageData = outputStream.toByteArray();
-                String fileExtension = EXTENSION_MAP.get(imageId);
-
-                saveImageToCache(imageId, fileExtension, imageData);
-
-            } catch (IOException e) {
-                SimplyScreens.LOGGER.error("Failed to reassemble image from chunks", e);
-            } finally {
-                CHUNK_MAP.remove(imageId);
-                EXTENSION_MAP.remove(imageId);
-                PENDING_DOWNLOADS.release(imageId);
-            }
-        }
+        MediaDownloadReceiver.Download download = DOWNLOADS.accept(imageId, chunkIndex, totalChunks, data, extension);
+        if (!DOWNLOADS.isPending(imageId)) PENDING_DOWNLOADS.release(imageId);
+        if (download != null) saveImageToCache(imageId, download.extension(), download.bytes());
     }
 
     public static void invalidateImage(UUID imageId) {
@@ -87,8 +58,7 @@ public class ClientImageManager {
             texture.close();
         }
         METADATA_CACHE.remove(imageId);
-        CHUNK_MAP.remove(imageId);
-        EXTENSION_MAP.remove(imageId);
+        DOWNLOADS.cancel(imageId);
         FAILED_IMAGES.remove(imageId);
         PENDING_DOWNLOADS.release(imageId);
         try {
@@ -123,6 +93,9 @@ public class ClientImageManager {
     }
 
     public static void initialize() {
+        dev.architectury.event.events.client.ClientTickEvent.CLIENT_POST.register(client -> {
+            for (UUID expired : DOWNLOADS.reapExpired()) PENDING_DOWNLOADS.release(expired);
+        });
         try {
             Files.createDirectories(CACHE_DIR);
         } catch (IOException e) {
@@ -155,7 +128,7 @@ public class ClientImageManager {
             }
         }
 
-        PENDING_DOWNLOADS.tryStart(imageId,
+        DOWNLOADS.requestIfIdle(imageId, PENDING_DOWNLOADS,
                 () -> PacketRegistries.sendToServer(new RequestImageDownloadC2SPacket(imageId)));
         return null;
     }
@@ -277,6 +250,10 @@ public class ClientImageManager {
     }
 
     public static void clearCache() {
+        DOWNLOADS.clear();
+        PENDING_DOWNLOADS.clear();
+        METADATA_CACHE.clear();
+        FAILED_IMAGES.clear();
         for (Map.Entry<UUID, ResourceLocation> entry : TEXTURE_LOCATIONS.entrySet()) {
             Minecraft.getInstance().getTextureManager().release(entry.getValue());
             IN_MEMORY_CACHE.remove(entry.getKey());

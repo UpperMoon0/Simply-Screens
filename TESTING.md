@@ -20,6 +20,21 @@ python3 tools/render_contract.py
 
 The verifier has negative self-tests so a broken verifier cannot silently bless the exact regressions it is meant to catch. The live-client Python harness is also self-tested for target coverage and deterministic client/server fixtures.
 
+## PacketWeave media regression checks
+
+Initialize the pinned library with `git submodule update --init --recursive`. The shared tests cover reordered download chunks, malformed counts/indices, duplicates, changed counts, safe extensions, expiry, invalidation, disconnect, and retry. Native tests cover capped packet decoding and upload binding/permission revocation. The pinned sources build a compile/test-only `:packetweave-api` project. Screens calls PacketWeave's public API from the separately installed native library and embeds neither public nor private PacketWeave classes. The production-jar check rejects both packages, including nested jars, and verifies the required loader dependency and minimum version in every target. Shared progress tests exercise real file streaming through backpressured dispatch beyond the request timeout; native upload tests hold the image-storage monitor while checking transfer bookkeeping independently.
+
+PacketWeave itself tests sender/receiver parity, global/per-owner budgets, dispatch failure/timeout, short reads, and file-size changes. Run `vendor/PacketWeave/gradlew :core:test -p vendor/PacketWeave --no-daemon` separately. A live join only checks connection/codec registration; it does not by itself prove a media upload/download.
+
+Run the focused compiled-core co-installation regression with Java 21 and curl:
+
+```bash
+PACKETWEAVE_TEST_DEPENDENCY_CACHE="$PWD/.gradle/packetweave-coinstallation" \
+  python3 -m unittest discover -s tools -p 'test_packetweave_packaging.py' -v
+```
+
+This opt-in test downloads checksum-pinned SecureJarHandler 3.0.8/ASM dependencies, compiles the pinned core and a separate consumer fixture, and exercises `JarModuleFinder` plus `resolveAndBind`. Its duplicate-core negative control must fail specifically for the public API split package. The consumer must resolve alongside the standalone library and invoke its public API from that provider. It is a module-resolution check, not a game launch. Without the environment variable, the regular Python suite skips this dependency-requiring test.
+
 ## 2. JVM unit tests
 
 Run:
@@ -41,6 +56,16 @@ python3 tools/live_join_test.py --target neoforge-1.21.1
 Supported targets are Fabric and Forge 1.20.1, Fabric and NeoForge 1.21.1, and NeoForge 26.1.2. The harness builds the production jar, checks its packaged shape, starts a dedicated server, launches a graphical client under a real display/Xvfb, joins it, exercises the UI smoke path, and requires the explicit pass marker.
 
 PR CI runs this matrix for runtime-affecting changes. CI checks out the exact PR head so a green result cannot refer only to GitHub's synthetic merge commit.
+
+The harness requires the matching standalone PacketWeave native mod from the pinned submodule; `--with-packetweave` remains a compatibility alias. CI additionally runs with `--check-packetweave-dependency`: separate dedicated-server launches must reject missing PacketWeave and an intentionally old `0.1.0` metadata fixture with explicit dependency diagnostics before the valid client/server join. To reproduce CI, build `vendor/PacketWeave/targets/<target>` first using its own wrapper (Java 17 for Forge 1.20.1; Java 25 for the other targets), then keep Java 21 as `JAVA_HOME` for the Screens Gradle process. For **NeoForge 26.1.2**, also point `JAVA_HOME_25_X64` to an installed JDK 25, because the co-installation verifier loads native PacketWeave classes compiled for Java 25. CI sets this second home with `setup-java`; an ordinary local Java-21 environment does not:
+
+```bash
+# Required for neoforge-26.1.2; leave JAVA_HOME pointing at JDK 21.
+export JAVA_HOME_25_X64=/absolute/path/to/jdk-25
+python3 tools/live_join_test.py --target neoforge-26.1.2 --check-packetweave-dependency
+```
+
+This installs the standalone native jar into both test instances' `mods` directories and checks both actual production jars through SecureJarHandler before launching the client and server. The module check can also be run independently with `python3 tools/verify_packetweave_coinstallation.py --screens-jar <screens.jar> --packetweave-jar <packetweave.jar>`. The same `JAVA_HOME_25_X64` setting is required when that command inspects a NeoForge 26.1.2 native jar; otherwise the verifier falls back to `JAVA_HOME`/`java` and Java 21 cannot load its Java-25 bytecode.
 
 ## Renderer regression protocol
 
@@ -67,7 +92,7 @@ python3 -m pip install -r tools/visual/requirements.txt
 python3 tools/visual_test.py --target fabric-1.21.1
 ```
 
-Install the pinned OpenUI dependencies as in CI first. Java 21 runs Gradle; the build resolves the version-specific Java toolchains. Linux needs Xvfb and Mesa, Windows needs a graphical desktop. The harness uses the existing dedicated-server and graphical-client launch targets. It snapshots the checkout under `build/screen-visual-work` and injects test drivers only there. Production sources/jars never contain these drivers or runtime switches to broken render types. CI builds and checks the production jar before instrumentation.
+Install the pinned OpenUI dependencies as in CI first. Java 21 runs Gradle; the build resolves the version-specific Java toolchains. For NeoForge 26.1.2, also export `JAVA_HOME_25_X64=/absolute/path/to/jdk-25` as described above so the standalone dependency verifier can load the Java-25 native jar. Linux needs Xvfb and Mesa, Windows needs a graphical desktop. The harness uses the existing dedicated-server and graphical-client launch targets. It snapshots the checkout under `build/screen-visual-work` and injects test drivers only there. Production sources/jars never contain these drivers or runtime switches to broken render types. CI builds and checks the production jar before instrumentation.
 
 The server imports deterministic opaque-magenta and alpha-stripe PNGs with the production image manager, creates actual screen blocks and block entities, updates their image/anchor data, and teleports a spectator to the fixture. The client receives the ordinary screen updates and image download. It requires the intended image UUID, camera position, and actual renderer submission before taking samples. Client-side fake block state is not a substitute for server setup.
 
@@ -102,3 +127,9 @@ The enlarged-offset mutation is rejected by the fast source/compiled contract, n
 CI uses a software graphics backend and records its identity; that backend is not a guarantee about every physical GPU, shader pack, or optional renderer. The suite must first demonstrate the old-renderer failure on a repeatable configuration before it can certify the fix there. If the original bug cannot be reproduced, preserve the evidence and improve the fixture/backend—do not loosen thresholds or relabel startup success as visual proof. Third-party renderer and shader-pack matrices remain separate extensions; they are not claimed by this gate.
 
 The five jobs share one OpenUI dependency build. Cheap harness/source checks run before game launches, scenarios share a client/server session within each variant, and the matrix is generated from the same target manifest that validates the final receipts.
+
+## Release dependencies and upgrade documentation
+
+Screens 0.8.10 requires PacketWeave 0.1.1 or newer on both sides. Publish PacketWeave first, verify all five matching native artifacts on GitHub and CurseForge, and only then publish Screens. `tools/release_dependencies.py verify-release` blocks Screens release builds if the required GitHub release/artifacts are unavailable. The CurseForge upload step checks the official dependency catalog for the exact PacketWeave project ID/slug and declares `requiredDependency` for every target; minimum versions remain enforced by loader metadata because CurseForge relations cannot express them.
+
+Accepted uploads retain per-target file-ID/source-SHA/relation receipts. They do not prove moderation approval or public download availability. Inspect those public file pages and their dependency relations before declaring publication complete. An ambiguous failed upload is not automatically retried as a POST or reported as success.

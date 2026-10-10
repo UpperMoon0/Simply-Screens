@@ -61,9 +61,10 @@ dependencies {
 
 processResources {
     inputs.property 'version', project.version
+    inputs.property 'packetweave_version', project.packetweave_version
 
     filesMatching('fabric.mod.json') {
-        expand version: project.version
+        expand version: project.version, packetweave_version: project.packetweave_version
     }
 }
 
@@ -76,3 +77,5 @@ shadowJar {
 remapJar {
     inputFile.set shadowJar.archiveFile
 }
+
+apply from: file('../packetweave-runtime.gradle')

@@ -50,12 +50,28 @@ jobs:
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
           echo "value=$current" >> "$GITHUB_OUTPUT"
 
-  verify:
+  dependency-release:
+    name: Verify required PacketWeave release artifacts
     needs: version-change
     if: needs.version-change.outputs.changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 tools/release_dependencies.py verify-release
+
+  verify:
+    needs: [version-change, dependency-release]
+    if: needs.version-change.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Checkout OpenUI-MC
         uses: actions/checkout@v4
         with:
@@ -110,6 +126,8 @@ jobs:
           - { java: 21, version: '26.1.2', platform: neoforge, project: neoforge-26.1.2, pattern: 'simply_screens-neoforge-26.1.2-*.jar' }
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Checkout OpenUI-MC
         uses: actions/checkout@v4
         with:
@@ -180,6 +198,8 @@ jobs:
           - { version: '26.1.2', platform: neoforge, loader: NeoForge, java_tag: 'Java 25' }
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - uses: actions/download-artifact@v4
         with:
           name: simply-screens-${{ matrix.platform }}-${{ matrix.version }}
@@ -209,11 +229,14 @@ jobs:
           [[ -n "${CURSEFORGE_API_TOKEN:-}" ]] || { echo 'Missing required GitHub secret: CURSEFORGE_API_TOKEN' >&2; exit 1; }
           changelog_path="changelog/${MOD_VERSION}.md"
           [[ -f "$changelog_path" ]] || { echo "Missing release changelog: $changelog_path" >&2; exit 1; }
-          if [[ "$PLATFORM" == fabric ]]; then
-            relations='{"projects":[{"slug":"architectury-api","type":"requiredDependency"},{"slug":"fabric-api","type":"requiredDependency"},{"slug":"openui-mc","type":"requiredDependency"}]}'
-          else
-            relations='{"projects":[{"slug":"architectury-api","type":"requiredDependency"},{"slug":"openui-mc","type":"requiredDependency"}]}'
-          fi
+          dependency_catalog="$(mktemp)"
+          curl --fail-with-body --silent --show-error --retry 4 --retry-max-time 90 \
+            --connect-timeout 15 --max-time 45 \
+            --header "X-Api-Token: $CURSEFORGE_API_TOKEN" \
+            --output "$dependency_catalog" https://minecraft.curseforge.com/api/game/dependencies
+          python3 tools/release_dependencies.py verify-curseforge-identity --catalog "$dependency_catalog"
+          rm -f "$dependency_catalog"
+          relations="$(python3 tools/release_dependencies.py relations --loader "$PLATFORM")"
           tags="$(jq -cn --arg mc "$MINECRAFT_VERSION" --arg loader "$LOADER_NAME" --arg java "$JAVA_VERSION_NAME" '[$mc,$loader,$java,"Client","Server"]')"
           available="$(curl --fail-with-body --silent --show-error \
             --retry 4 \
@@ -226,8 +249,6 @@ jobs:
           metadata="$(jq -cn --rawfile changelog "$changelog_path" --arg name "Simply Screens ${MOD_VERSION} - ${LOADER_NAME} ${MINECRAFT_VERSION}" --argjson tags "$tags" --argjson relations "$relations" '{changelog:$changelog,changelogType:"markdown",displayName:$name,gameVersionNames:$tags,releaseType:"release",relations:$relations}')"
           response_file="$(mktemp)"
           http_status="$(curl --silent --show-error \
-            --retry 4 \
-            --retry-max-time 90 \
             --connect-timeout 15 \
             --max-time 45 \
             --output "$response_file" \
@@ -240,13 +261,24 @@ jobs:
           response="$(<"$response_file")"
           rm -f "$response_file"
           if [[ "$http_status" =~ ^2 ]]; then
-            echo "Published $JAR_PATH as CurseForge file $(jq -er '.id' <<< "$response")."
-          elif grep -Eqi 'already|duplicate' <<< "$response"; then
-            echo "CurseForge already has $JAR_PATH; treating retry as successful."
+            file_id="$(jq -er '.id | select(type == "number" and . > 0)' <<< "$response")"
+            mkdir -p curseforge-receipts
+            jq -n --argjson file_id "$file_id" --arg sha "$GITHUB_SHA" --arg jar "$(basename "$JAR_PATH")" \
+              --arg version "$MOD_VERSION" --arg platform "$PLATFORM" --arg minecraft "$MINECRAFT_VERSION" \
+              --argjson relations "$relations" \
+              '{project_id:1188741,file_id:$file_id,source_sha:$sha,jar:$jar,version:$version,platform:$platform,minecraft:$minecraft,relations:$relations}' \
+              > "curseforge-receipts/${PLATFORM}-${MINECRAFT_VERSION}.json"
+            echo "Published $JAR_PATH as CurseForge file $file_id. Moderation/public availability must still be verified."
           else
-            echo "CurseForge upload failed for $JAR_PATH with HTTP $http_status: $response" >&2
+            echo "CurseForge upload did not confirm a file ID for $JAR_PATH (HTTP $http_status): $response" >&2
             exit 1
           fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: curseforge-receipt-${{ matrix.platform }}-${{ matrix.version }}
+          path: curseforge-receipts/*.json
+          if-no-files-found: ignore
 
   release:
     needs: [build, publish-curseforge, live-client]
@@ -255,6 +287,8 @@ jobs:
     permissions: { contents: write }
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Read mod version
         id: version
         shell: bash

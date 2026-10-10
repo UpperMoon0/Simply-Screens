@@ -101,3 +101,10 @@ ${mod_description}
 # stop your mod loading on the server for example.
 #[features.${mod_id}]
 #openGLVersion="[3.2,)"
+
+[[dependencies.${mod_id}]]
+    modId="packetweave"
+    type="required"
+    versionRange="[${packetweave_version},)"
+    ordering="AFTER"
+    side="BOTH"

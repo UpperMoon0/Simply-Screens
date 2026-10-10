@@ -1,0 +1,7 @@
+// The standalone PacketWeave mod owns com.nstut.packetweave at runtime.
+// Compile and test against the exact pinned source, but never shade, include,
+// copy, or relocate it into a Screens artifact.
+dependencies {
+    compileOnly project(':packetweave-api')
+    testImplementation project(':packetweave-api')
+}

@@ -19,6 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          submodules: recursive
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Test verification harnesses
         # Pixel-oracle self-tests use synthetic images and never boot Minecraft.
@@ -35,6 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          submodules: recursive
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: ./.github/actions/openui
       - run: chmod +x gradlew

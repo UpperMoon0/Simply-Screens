@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -21,6 +23,12 @@ class LiveJoinHarnessTest(unittest.TestCase):
             },
             set(live_join_test.TARGETS),
         )
+
+    def test_only_transient_prelaunch_failures_can_be_retried(self):
+        self.assertTrue(live_join_test.retryable_client_startup("downloadAssets: connection timed out"))
+        for output in ("downloadAssets: assertion failed", "SIMPLYSCREENS_LIVE_JOIN_TEST_FAIL connection timed out downloadAssets",
+                       "ModLauncher running; downloadAssets: connection timed out", "Could not resolve all files: compilation failed"):
+            self.assertFalse(live_join_test.retryable_client_startup(output))
 
     def test_command_is_bounded_and_non_daemon(self) -> None:
         root = Path("checkout")
@@ -63,8 +71,42 @@ class LiveJoinHarnessTest(unittest.TestCase):
                 config = module / "run/live-join/client/config/fml.toml"
                 if target == "forge-1.20.1":
                     self.assertIs(False, tomllib.loads(config.read_text())["earlyWindowControl"])
+                    self.assertFalse((config.parent / "forge-client.toml").exists())
                 else:
                     self.assertFalse(config.exists())
+                    self.assertFalse((config.parent / "forge-client.toml").exists())
+
+    def test_pinned_native_packetweave_is_installed_on_both_sides_for_every_target(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for target in live_join_test.TARGETS:
+                libs = root / "vendor/PacketWeave/targets" / target / "build/libs"
+                libs.mkdir(parents=True)
+                jar = libs / f"packetweave-{target}-0.1.1.jar"
+                metadata = ("fabric.mod.json" if target.startswith("fabric-") else
+                            "META-INF/mods.toml" if target.startswith("forge-") else "META-INF/neoforge.mods.toml")
+                with zipfile.ZipFile(jar, "w") as archive:
+                    archive.writestr(metadata, json.dumps({"id": "packetweave", "version": "0.1.1"})
+                                     if target.startswith("fabric-") else '[[mods]]\nmodId="packetweave"\nversion="0.1.1"\n')
+                    archive.writestr("com/nstut/packetweave/api/TransferRegistry.class", b"class fixture")
+                (libs / f"packetweave-{target}-0.1.1-sources.jar").write_bytes(b"not a runtime artifact")
+                self.assertEqual(jar, live_join_test.packetweave_jar(root, target))
+                live_join_test.install_packetweave(root / target, target, jar)
+                for side in ("server", "client"):
+                    installed = root / target / "run/live-join" / side / "mods" / jar.name
+                    self.assertEqual(jar.read_bytes(), installed.read_bytes())
+
+    def test_coinstallation_rejects_missing_native_jar_or_wrong_loader_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with self.assertRaisesRegex(RuntimeError, "Build the pinned"):
+                live_join_test.packetweave_jar(root, "forge-1.20.1")
+            jar = root / "packetweave.jar"
+            with zipfile.ZipFile(jar, "w") as archive:
+                archive.writestr("fabric.mod.json", b"{}")
+                archive.writestr("com/nstut/packetweave/api/TransferRegistry.class", b"fixture")
+            with self.assertRaisesRegex(RuntimeError, "native mod contents"):
+                live_join_test.install_packetweave(root / "forge-1.20.1", "forge-1.20.1", jar)
 
 
 if __name__ == "__main__":
