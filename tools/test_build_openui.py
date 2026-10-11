@@ -62,7 +62,7 @@ class BuildOpenUiTest(unittest.TestCase):
     def test_cold_ci_exercises_real_build_without_production_cache_changes(self):
         workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/cold-openui.yml").read_text()
         self.assertIn("timeout-minutes: 30", workflow)
-        self.assertIn("GRADLE_USER_HOME: ${{ runner.temp }}/cold-openui-gradle", workflow)
+        self.assertIn("        env:\n          GRADLE_USER_HOME: ${{ runner.temp }}/cold-openui-gradle", workflow)
         self.assertIn('test ! -e "$GRADLE_USER_HOME"', workflow)
         self.assertIn('test ! -d "$HOME/.m2/repository/com/nstut"', workflow)
         self.assertIn("python3 tools/build_openui.py --attempts 1", workflow)

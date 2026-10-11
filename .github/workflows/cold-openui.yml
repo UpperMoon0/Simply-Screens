@@ -22,8 +22,6 @@ jobs:
     name: Cold isolated OpenUI build
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      GRADLE_USER_HOME: ${{ runner.temp }}/cold-openui-gradle
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,6 +37,8 @@ jobs:
           java-version: '21'
       - name: Build all five pinned targets without restored caches
         shell: bash
+        env:
+          GRADLE_USER_HOME: ${{ runner.temp }}/cold-openui-gradle
         run: |
           set -euo pipefail
           test ! -e "$GRADLE_USER_HOME"
