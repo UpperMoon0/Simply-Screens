@@ -88,7 +88,7 @@ DEPTH_HELPERS = {
             "DEPTH_BIAS_UNITS = -128.0F",
             "new DepthStencilState(CompareOp.LESS_THAN_OR_EQUAL, true, DEPTH_BIAS_FACTOR, DEPTH_BIAS_UNITS)",
             ".sortOnUpload()",
-            "BlendFunction.TRANSLUCENT",
+            "RenderPipelines.TEXT_POLYGON_OFFSET.toBuilder()",
         ),
     ),
 }

@@ -56,17 +56,33 @@ def incompatible_jar(source: Path, destination: Path, target: str) -> None:
         raise RuntimeError("Incompatible PacketWeave fixture still reports a compatible version")
 
 
+
+def terminal_forge_mixin_rejection(output: str) -> bool:
+    """Forge removes non-system mods after dependency validation fails, including
+    their mixin resources. Recognize only this exact secondary bootstrap failure;
+    assert_dependency_rejected still requires the bound PacketWeave diagnostic.
+    """
+    text=re.sub(r"\x1b\[[0-9;]*m|§.", "", output.lower())
+    markers=("missing or unsupported mandatory dependencies:",
+             'exception in thread "main" org.spongepowered.asm.launch.mixininitialisationerror: '
+             'error initialising mixin config simplyscreens-color.mixins.json',
+             "the specified resource 'simplyscreens-color.mixins.json' was invalid or could not be read")
+    positions=[text.find(marker) for marker in markers]
+    return all(position>=0 for position in positions) and positions==sorted(positions)
+
+
 def assert_dependency_rejected(output: str, returncode: int | None, mode: str) -> None:
     lowered = output.lower()
     if returncode == 0 or "done (" in lowered:
         raise RuntimeError(f"{mode}: loader started despite the invalid PacketWeave dependency")
     fatal_server = "failed to start the minecraft server" in lowered
+    fatal_bootstrap = terminal_forge_mixin_rejection(output)
     fatal_loader = ("net.neoforged.fml.modloadingexception" in lowered
                     or "net.minecraftforge.fml.loadingfailedexception" in lowered
                     or ("net.fabricmc.loader.impl.formattedexception" in lowered and "incompatible mods found" in lowered))
-    if returncode is None and not fatal_server:
+    if returncode is None and not (fatal_server or fatal_bootstrap):
         raise RuntimeError(f"{mode}: running launcher has not reported a fatal server-start failure")
-    if returncode is not None and not (fatal_server or fatal_loader):
+    if returncode is not None and not (fatal_server or fatal_loader or fatal_bootstrap):
         raise RuntimeError(f"{mode}: process exited without a fatal loader rejection")
     # A generic crash, repository failure, or timeout cannot satisfy this test.
     diagnostic = False
@@ -98,7 +114,8 @@ def wait_for_dependency_rejection(process, mode: str, timeout: int, log: Path, p
     """Observe rejection before cleanup; a termination signal is never evidence.
 
     Forge/NeoForge development launchers may retain non-daemon threads after
-    ServerModLoader throws and Minecraft Main logs a fatal startup failure.
+    ServerModLoader throws and Minecraft Main logs a fatal startup failure, or
+    Forge excludes invalid mods and their manifest-registered mixin resources.
     Accept that explicit terminal loader state, then clean up the launcher.
     """
     import live_join_test as live
@@ -117,7 +134,7 @@ def wait_for_dependency_rejection(process, mode: str, timeout: int, log: Path, p
                 observed_code = code
                 verified = True
                 break
-            if "failed to start the minecraft server" in output.lower():
+            if "failed to start the minecraft server" in output.lower() or terminal_forge_mixin_rejection(output):
                 # Do not infer rejection from a fatal error for a different mod,
                 # or from a diagnostic alone without completed startup failure.
                 try:

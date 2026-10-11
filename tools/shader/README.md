@@ -159,8 +159,37 @@ For Loom Forge/NeoForge, non-mod children use the documented
 not only localRuntime. This is required for MixinExtras and Sodium’s service classes.
 
 Forge development launches register the color mixin only on client runs; production
-jars retain the explicit `MixinConfigs` manifest entry. This prevents a client-only
-launch argument from masking the server's real missing-dependency rejection. The
+jars retain the explicit `MixinConfigs` manifest entry. This avoids adding an unnecessary client-only launch argument to dedicated servers.
+Forge can still fail mixin bootstrap after its mandatory-dependency validation
+excludes invalid mod resources. The negative dependency observer accepts only the
+exact Screens-config bootstrap failure together with the mode-matching mandatory
+PacketWeave row; unrelated crashes, mismatched versions and later readiness fail. The
 production-jar gate requires the hook to exist and be registered in every loader's
 actual packaged metadata. Relevant Loom sources: [development launch arguments](https://github.com/architectury/architectury-loom/blob/dev/1.11/src/main/java/net/fabricmc/loom/task/launch/GenerateDLIConfigTask.java)
 and [production manifest handling](https://github.com/architectury/architectury-loom/blob/dev/1.11/src/main/java/net/fabricmc/loom/task/RemapTaskConfiguration.java).
+
+Forge's [ModSorter dependency-failure path](https://github.com/MinecraftForge/MinecraftForge/blob/1.20.x/fmlloader/src/main/java/net/minecraftforge/fml/loading/ModSorter.java)
+returns only system mods when mandatory dependencies fail. This explains why a
+manifest-discovered color config can be unavailable at subsequent mixin bootstrap;
+it is a terminal negative test state, not a successful or clean server launch.
+
+### Modern world-pipeline routing regression
+
+NeoForge26 copies `RenderPipelines.TEXT_POLYGON_OFFSET.toBuilder()` and changes
+only its location and depth bias. Iris's NeoForge copy-builder hooks propagate
+both world and shadow program routing. A standalone lookalike text pipeline is
+not equivalent: the real Iris1.11.4 capture rendered it black, and removing that
+world image caused exactly zero glow difference. The late restore pipeline stays
+separate and is never assigned to a pack shader.
+
+The reproduction oracle now records observed patch RGB and requires recognizable
+spatial gray contrast plus red/green/blue channel ordering. Missing, flat black,
+flat white, and channel-swapped charts cannot count as reproduced shader grading.
+The paired backdrop is48blocks square, covering the entire camera frustum rather
+than leaving sky strips that can enter the pack's broad bloom kernel. The0.05/255
+signed repeat-drift bound and4/255 source-color bound are unchanged.
+
+References:
+- [NeoForge copy-builder API](https://github.com/neoforged/NeoForge/blob/26.1.x/patches/com/mojang/blaze3d/pipeline/RenderPipeline.java.patch)
+- [Iris copy origin hook](https://github.com/IrisShaders/Iris/blob/bff1e69cb6c5519d8745784aa9c8b92984de67e7/neoforge/src/main/java/net/irisshaders/iris/mixin/forge/PipelineMixin.java)
+- [Iris built-pipeline routing copy](https://github.com/IrisShaders/Iris/blob/bff1e69cb6c5519d8745784aa9c8b92984de67e7/neoforge/src/main/java/net/irisshaders/iris/mixin/forge/PipelineBuilderMixin.java)

@@ -38,6 +38,16 @@ class ShaderOracleTests(unittest.TestCase):
         self.assertGreater(max(p['median'] for p in result['patches']),8)
     def test_blank_or_missing_image_is_rejected(self):
         self.assertEqual('pixel-failure',self.measure(np.zeros((720,960,3),dtype=np.uint8),self.frame)['status'])
+    def test_distortion_reproduction_requires_a_recognizable_chart(self):
+        def evidence(rgb):
+            return {'NORTH-8-0-False':{'frames':[self.measure(rgb,self.frame)]}}
+        self.assertTrue(shader_test.reproduces_distortion(evidence(self.chart(self.frame,grade=True))))
+        self.assertFalse(shader_test.reproduces_distortion(evidence(self.chart(self.frame))))
+        for value in (0,30,255):
+            self.assertFalse(shader_test.reproduces_distortion(evidence(np.full((720,960,3),value,dtype=np.uint8))))
+        # A correctly colored chart in the wrong spatial order is not the fixture.
+        self.assertFalse(shader_test.reproduces_distortion(evidence(self.chart(self.frame,grade=True)[:,:,::-1])))
+
     def test_depth_leak_is_rejected(self):
         frame=self.frame|dict(occluded=True,occluders=[[-5,-5,-2,0,5,-1]])
         self.assertEqual('pass',self.measure(self.chart(frame),frame)['status'])
@@ -116,6 +126,7 @@ class ShaderStackTests(unittest.TestCase):
                 self.assertIn('Blocks.BLACK_CONCRETE',(base/'testing/visual/VisualClient.java').read_text())
                 server=(base/'testing/visual/VisualServer.java').read_text()
                 self.assertIn('Blocks.BLACK_CONCRETE',server)
+                self.assertIn('for (int x = -20; x < 28; x++)',server)
                 self.assertIn('gamerule '+('minecraft:advance_time' if module=='neoforge-26.1.2' else 'doDaylightCycle')+' false',server)
                 self.assertIn('gamerule '+('minecraft:advance_weather' if module=='neoforge-26.1.2' else 'doWeatherCycle')+' false',server)
                 hook=(base/'client/mixin/GameRendererMixin.java').read_text()
@@ -124,7 +135,7 @@ class ShaderStackTests(unittest.TestCase):
     def test_original_control_cannot_pass_from_vanilla_far_fog(self):
         d={'NORTH-32-60-False':{'frames':[{'patches':[{'median':9}]}]}}
         self.assertFalse(shader_test.reproduces_distortion(d))
-        d['NORTH-8-0-False']={'frames':[{'patches':[{'median':9}]}]}
+        d['NORTH-8-0-False']={'frames':[dict(patches=[dict(index=i,median=9,observed=p.tolist()) for i,p in enumerate(pixels.PALETTE.reshape(16,3))])]}
         self.assertTrue(shader_test.reproduces_distortion(d))
 
     def test_identical_run_control_rejects_temporal_background_drift(self):

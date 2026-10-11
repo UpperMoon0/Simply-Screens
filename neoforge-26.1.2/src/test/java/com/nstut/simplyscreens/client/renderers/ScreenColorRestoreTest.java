@@ -1,6 +1,7 @@
 package com.nstut.simplyscreens.client.renderers;
 
 import com.mojang.blaze3d.platform.CompareOp;
+import net.minecraft.client.renderer.RenderPipelines;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.Test;
 
@@ -9,6 +10,17 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ScreenColorRestoreTest {
+    @Test
+    void worldPipelineInheritsVanillaTextStateForShaderRouting() {
+        var pipeline = ScreenRenderTypes.SCREEN_PIPELINE;
+        var vanilla = RenderPipelines.TEXT_POLYGON_OFFSET;
+        assertEquals(vanilla.getVertexFormat(), pipeline.getVertexFormat());
+        assertEquals(vanilla.getColorTargetState(), pipeline.getColorTargetState());
+        assertTrue(pipeline.getDepthStencilState().writeDepth());
+        assertEquals(-1.0f, pipeline.getDepthStencilState().depthBiasScaleFactor());
+        assertEquals(-128.0f, pipeline.getDepthStencilState().depthBiasConstant());
+    }
+
     @Test
     void replayCopiesTheActualWorldAndPoseTransforms() {
         Matrix4f world = new Matrix4f().rotateY(0.6f);

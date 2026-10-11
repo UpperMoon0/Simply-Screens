@@ -57,6 +57,7 @@ def measure(path, frame, tolerance=TOLERANCE):
                 raise ValueError('missing projected color patch')
             difference=np.abs(rgb[mask]-PALETTE[y,x]); error=difference.max(axis=1)
             patches.append(dict(index=y*4+x,expected=PALETTE[y,x].tolist(),samples=int(error.size),
+                                observed=np.median(rgb[mask],axis=0).tolist(),
                                 median=round(float(np.median(error)),4),max=int(error.max()),
                                 bad=float(np.mean(error>tolerance))))
     if not patches: raise ValueError('no chart patches')

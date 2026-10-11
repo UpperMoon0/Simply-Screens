@@ -88,11 +88,12 @@ def instrument(stage):
             command+f'"gamerule {clock} false");\n            '+
             command+f'"gamerule {weather} false");\n            '+command+'"time set noon");')
         # A bright sky can become darker under a bloom blend, even when the image
-        # contributes correctly. Measure retained glow against a known dark surface.
+        # contributes correctly. A48-block wall covers the entire paired camera frustum,
+        # including the16-block alpha view, so sky cannot feed the broad bloom kernel.
         visual.replace_once(server, '            if (request.get("occluded").getAsBoolean()) {',
             '            JsonArray backgrounds = new JsonArray();\n'
             '            if (request.has("backdrop") && request.get("backdrop").getAsBoolean()) {\n'
-            '                for (int x = -size / 2; x < size + size / 2; x++) for (int y = -size / 2; y < size + size / 2; y++) {\n'
+            '                for (int x = -20; x < 28; x++) for (int y = -20; y < 28; y++) {\n'
             '                    BlockPos pos = anchor.relative(width, x).relative(height, y).relative(facing, -2);\n'
             '                    level.setBlockAndUpdate(pos, Blocks.BLACK_CONCRETE.defaultBlockState());\n'
             '                    placed.add(pos);\n'
@@ -160,11 +161,25 @@ def validate_variant(variant, measurements, directory):
     elif failures:
         raise ValueError(f'{variant} failed source RGB/occlusion tolerance: {failures}')
 
+def recognizable_chart(frame):
+    # A missing/black world draw is not a color-distortion reproduction. Require
+    # spatial gray contrast and the three known primary-color channel orderings.
+    patches={p['index']:p for p in frame.get('patches',[]) if 'observed' in p}
+    if not all(i in patches for i in (0,3,4,5,6)): return False
+    if sum(patches[3]['observed'])-sum(patches[0]['observed'])<3*16: return False
+    for index,channel in ((4,0),(5,1),(6,2)):
+        rgb=patches[index]['observed']
+        if rgb[channel]-max(rgb[c] for c in range(3) if c!=channel)<8: return False
+    return True
+
 def reproduces_distortion(measurements):
-    # Far vanilla fog has its own baseline allowance and cannot prove shader damage.
-    near={scene['id'] for scene in scenarios() if scene['distance']<=16 and not scene.get('alpha')}
-    return any(p['median']>8 for name,s in measurements.items() if name in near
-               for f in s['frames'] for p in f.get('patches',[]))
+    # Far vanilla fog and occluders cannot prove shader damage. Every captured
+    # near chart used as reproduction must still contain the recognizable image.
+    near={scene['id'] for scene in scenarios() if scene['distance']<=16
+          and not scene.get('alpha') and not scene['occluded']}
+    frames=[f for name,s in measurements.items() if name in near for f in s['frames']]
+    return bool(frames) and all(recognizable_chart(f) for f in frames) and any(
+        p['median']>8 for f in frames for p in f.get('patches',[]))
 
 def compare_alpha(evidence):
     import shader_pixels
