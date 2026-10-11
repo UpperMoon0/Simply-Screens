@@ -25,7 +25,7 @@ class ShaderColorContractTest(unittest.TestCase):
             self.assertIn('Lnet/minecraft/client/renderer/LevelRenderer;renderLevel(', hook)
             self.assertIn('shift = At.Shift.AFTER', hook)
             self.assertNotIn('@At("TAIL")', hook)
-            config = json.loads((base/'resources/simplyscreens.mixins.json').read_text())
+            config = json.loads((base/'resources/simplyscreens-color.mixins.json').read_text())
             self.assertEqual(1, config['injectors']['defaultRequire'])
             self.assertEqual(['GameRendererMixin'], config['client'])
 
@@ -56,7 +56,7 @@ class ShaderColorContractTest(unittest.TestCase):
     def test_loader_registrations_are_client_only(self):
         for target in ('fabric-1.20.1', 'fabric-1.21.1'):
             metadata = json.loads((ROOT/target/'src/main/resources/fabric.mod.json').read_text())
-            self.assertIn('simplyscreens.mixins.json', metadata['mixins'])
+            self.assertIn('simplyscreens-color.mixins.json', metadata['mixins'])
             setup=(ROOT/target/'src/main/java/com/nstut/simplyscreens/fabric/client/ClientSetup.java').read_text()
             self.assertIn('CoreShaderRegistrationCallback.EVENT', setup)
         for target in ('forge-1.20.1', 'neoforge-1.21.1'):

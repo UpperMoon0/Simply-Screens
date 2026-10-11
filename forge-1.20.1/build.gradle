@@ -81,6 +81,6 @@ remapJar {
 
 apply from: file('../packetweave-runtime.gradle')
 
-loom { forge { mixinConfig 'simplyscreens.mixins.json' } }
+loom { forge { mixinConfig 'simplyscreens-color.mixins.json' } }
 
 apply from: file('../shader-runtime.gradle')

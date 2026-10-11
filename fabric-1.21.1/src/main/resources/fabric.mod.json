@@ -35,6 +35,6 @@
     "sable": "=2.0.5"
   },
   "mixins": [
-    "simplyscreens.mixins.json"
+    "simplyscreens-color.mixins.json"
   ]
 }

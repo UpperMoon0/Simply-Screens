@@ -13,8 +13,7 @@ import uuid
 import visual_test as visual
 import live_join_test as live
 from visual_cases import TARGETS, FACES, sample_count
-from shader_stack import load_lock, prepare, install_pack
-import shader_pixels
+from shader_stack import load_lock, prepare, install_pack, native_mod_ids
 
 ROOT = Path(__file__).resolve().parents[1]
 VARIANTS = ('shader-off', 'original', 'fixed', 'bloom-off')
@@ -38,15 +37,35 @@ def instrument(stage):
             text=file.read_text()
             text=text.replace('VisualClient.afterRender(', 'VisualClient.beforeShaderFinalization(')
             file.write_text(text)
+        loader = target.split('-', 1)[0]
+        if loader == 'fabric':
+            setup = stage/target/visual.PACKAGE/'fabric/client/ClientSetup.java'
+            lookup = 'net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer(id).orElseThrow().getMetadata().getVersion().getFriendlyString()'
+        else:
+            setup = stage/target/visual.PACKAGE/(f'{loader}/SimplyScreensClient.java' if target == 'neoforge-26.1.2' else f'{loader}/client/ClientSetup.java')
+            namespace = 'net.minecraftforge.fml' if loader == 'forge' else 'net.neoforged.fml'
+            lookup = namespace+'.ModList.get().getModContainerById(id).orElseThrow().getModInfo().getVersion().toString()'
+        visual.replace_once(setup, 'ClientImageManager.initialize();',
+            'ClientImageManager.initialize(); com.nstut.simplyscreens.testing.visual.VisualClient.setModLookup(id -> '+lookup+');')
     for module in visual.MODULES:
         base=stage/module/visual.PACKAGE
         driver=base/'testing/visual/VisualClient.java'
         text=driver.read_text().replace('    public static void afterRender(Minecraft mc) {',
             '    public static void beforeShaderFinalization(Minecraft mc) {}\n\n    public static void afterRender(Minecraft mc) {')
+        text=text.replace('    public static void beforeShaderFinalization(Minecraft mc) {}',
+            '    private static java.util.function.Function<String, String> modLookup;\n'
+            '    public static void setModLookup(java.util.function.Function<String, String> lookup) { modLookup = lookup; }\n'
+            '    public static void beforeShaderFinalization(Minecraft mc) {}')
         text=text.replace('        submissions++;',
             '        if (com.nstut.simplyscreens.client.compat.ShaderPackState.isRenderingShadowPass()) return;\n        submissions++;')
         text=text.replace('            frame.addProperty("sample", index);',
             '            frame.addProperty("sample", index);\n            frame.addProperty("shaderPackActive", com.nstut.simplyscreens.client.compat.ShaderPackState.shouldCapture());')
+        text=text.replace('            frame.addProperty("sample", index);',
+            '            JsonObject loadedMods = new JsonObject();\n'
+            '            for (JsonElement id : JsonParser.parseString(Files.readString(DIR.resolve("expected-mods.json"))).getAsJsonArray())\n'
+            '                loadedMods.addProperty(id.getAsString(), modLookup.apply(id.getAsString()));\n'
+            '            frame.add("loadedShaderMods", loadedMods);\n'
+            '            frame.addProperty("sample", index);')
         driver.write_text(text)
         hook=base/'client/mixin/GameRendererMixin.java'
         text=hook.read_text()
@@ -58,11 +77,14 @@ def validate_variant(variant, measurements, directory):
     expected={s['id'] for s in scenarios()}
     if set(measurements)!=expected: raise ValueError('missing shader scenes')
     failures=[]
+    expected_mods=set(json.loads((directory/'expected-mods.json').read_text()))
     for scene in scenarios():
         result=measurements[scene['id']]
         if len(result['frames'])!=sample_count(scene): raise ValueError('incomplete shader samples')
         for index in range(sample_count(scene)):
             frame=json.loads((directory/f'{scene["id"]}-{index:02d}.json').read_text())
+            if set(frame.get('loadedShaderMods',{}))!=expected_mods or not all(frame['loadedShaderMods'].values()):
+                raise ValueError('missing actually loaded renderer/Extra/shader mods')
             if frame.get('shaderPackActive') is not (variant!='shader-off'):
                 raise ValueError('wrong shader state; a disabled/failed shader is not visual evidence')
         if result['status']!='pass' and not scene.get('alpha'): failures.append(scene['id'])
@@ -74,6 +96,7 @@ def validate_variant(variant, measurements, directory):
         raise ValueError(f'{variant} failed source RGB/occlusion tolerance: {failures}')
 
 def compare_alpha(evidence):
+    import shader_pixels
     scene=next(s for s in scenarios() if s.get('alpha'))
     measurements=[]
     for sample in range(sample_count(scene)):
@@ -85,6 +108,7 @@ def compare_alpha(evidence):
     return measurements
 
 def compare_bloom(evidence):
+    import shader_pixels
     import numpy as np
     from PIL import Image
     scene=next(s for s in scenarios() if s['facing']=='NORTH' and s['distance']==8 and not s['occluded'])
@@ -103,6 +127,7 @@ def compare_bloom(evidence):
     return values
 
 def run(target):
+    import shader_pixels
     head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
     dirty=bool(subprocess.check_output(['git','status','--porcelain'],cwd=ROOT,text=True).strip())
     run_id=uuid.uuid4().hex
@@ -122,6 +147,7 @@ def run(target):
         instrument(stage)
         hook=stage/('neoforge-26.1.2' if target=='neoforge-26.1.2' else 'common-'+target.split('-',1)[1])/visual.PACKAGE/'client/mixin/GameRendererMixin.java'
         original=hook.read_text()
+        ids=sorted({id for jar in jars for id in native_mod_ids(jar,target.split('-',1)[0])})
         for variant in VARIANTS:
             hook.write_text(original.replace('ScreenColorRestore.finishWorld();','ScreenColorRestore.beginFrame();') if variant=='original' else original)
             def configure(client):
@@ -129,13 +155,21 @@ def run(target):
                 # Same pack and grading settings. Change only bloom for the glow negative control.
                 (client/'shaderpacks'/f'{pack.name}.txt').write_text(
                     'BLOOM_ENABLED='+('-1' if variant=='bloom-off' else '1')+'\nBLOOM_STRENGTH=0.32\n')
+            def fixtures(directory):
+                shader_pixels.write_chart(directory)
+                visual.atomic_json(directory/'expected-mods.json',ids)
             results=visual.run_variant(stage,target,'fixed',evidence/variant,standalone,
-                scenario_list=scenarios(),fixture_writer=shader_pixels.write_chart,pixel_measure=shader_pixels.measure,
+                scenario_list=scenarios(),fixture_writer=fixtures,pixel_measure=shader_pixels.measure,
                 runtime_setup=configure,client_args=(f'-PscreensShaderStack={cache}',),validate_outcome=False)
             validate_variant(variant,results,evidence/variant)
+            graphics=json.loads((evidence/variant/'graphics.json').read_text())
+            if 'graphics' in receipt and receipt['graphics']!=graphics: raise ValueError('graphics backend changed between shader controls')
+            receipt['graphics']=graphics
             receipt['variants'][variant]='pass'
         receipt['alpha_delta_p95']=compare_alpha(evidence)
         receipt['bloom_ring_delta']=compare_bloom(evidence)
+        receipt['evidence_sha256']={str(p.relative_to(evidence)):hashlib.sha256(p.read_bytes()).hexdigest()
+                                    for p in evidence_files(evidence)}
         receipt['status']='pass'
     except BaseException as error:
         receipt['status']='fail';receipt['error']=str(error)
@@ -145,17 +179,41 @@ def run(target):
         visual.atomic_json(evidence/'result.json',receipt)
     return receipt
 
+def evidence_files(directory):
+    paths=[]
+    for variant in VARIANTS:
+        base=directory/variant
+        paths += [base/name for name in ('expected-mods.json','graphics.json','measurements.json')]
+        for scene in scenarios():
+            for sample in range(sample_count(scene)):
+                paths += [base/f'{scene["id"]}-{sample:02d}.{extension}' for extension in ('png','json')]
+    return paths
+
 def verify_receipts(directory,head):
-    receipts=[json.loads(path.read_text()) for path in directory.rglob('result.json')]
+    paths=list(directory.rglob('result.json'))
+    receipts=[json.loads(path.read_text()) for path in paths]
     if len(receipts)!=len(TARGETS) or {r.get('target') for r in receipts}!=set(TARGETS):
         raise ValueError('missing or duplicate shader targets')
     lock=load_lock()
-    for r in receipts:
+    for path,r in zip(paths,receipts):
         if r.get('status')!='pass' or r.get('dirty') is not False or r.get('head')!=head:
             raise ValueError('failed, dirty, or stale shader evidence')
         if r.get('variants')!={v:'pass' for v in VARIANTS}: raise ValueError('incomplete shader controls')
         if r.get('stack')!=lock['stacks'][r['target']] or r.get('shaderpack')!=lock['shaderpack']:
             raise ValueError('unexpected shader dependencies')
+        hashes=r.get('evidence_sha256',{})
+        expected_files=evidence_files(path.parent)
+        if set(hashes)!={str(p.relative_to(path.parent)) for p in expected_files}:
+            raise ValueError('missing shader framebuffer evidence')
+        for file in expected_files:
+            if not file.is_file() or hashlib.sha256(file.read_bytes()).hexdigest()!=hashes[str(file.relative_to(path.parent))]:
+                raise ValueError('missing or changed shader framebuffer evidence')
+        for variant in VARIANTS:
+            base=path.parent/variant
+            graphics=json.loads((base/'graphics.json').read_text())
+            if graphics!=r.get('graphics') or not all(graphics.get(k) for k in ('graphicsVendor','graphicsRenderer','graphicsVersion')):
+                raise ValueError('missing or inconsistent graphics evidence')
+            validate_variant(variant,json.loads((base/'measurements.json').read_text()),base)
         if len(r.get('alpha_delta_p95',[]))!=4 or max(r['alpha_delta_p95'])>8:
             raise ValueError('missing/failed transparency evidence')
         if len(r.get('bloom_ring_delta',[]))!=4 or min(r['bloom_ring_delta'])<=.15:

@@ -10,6 +10,8 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
+import zipfile
+import tomllib
 import urllib.request
 from urllib.parse import urlsplit
 
@@ -45,6 +47,14 @@ def download(artifact, cache):
     temporary.write_bytes(content)
     temporary.replace(path)
     return path
+
+def native_mod_ids(path, loader):
+    """Read the actual downloaded native manifest, not the hosting site's project slug."""
+    with zipfile.ZipFile(path) as jar:
+        if loader == 'fabric':
+            return [json.loads(jar.read('fabric.mod.json'))['id']]
+        metadata = 'META-INF/mods.toml' if loader == 'forge' else 'META-INF/neoforge.mods.toml'
+        return [m['modId'] for m in tomllib.loads(jar.read(metadata).decode())['mods']]
 
 def prepare(target, cache):
     lock = load_lock()

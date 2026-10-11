@@ -5,7 +5,7 @@ import tempfile
 import unittest
 import zipfile
 
-from assert_production_jar import loader_metadata, obsolete_entries, packetweave_dependency_errors
+from assert_production_jar import loader_metadata, obsolete_entries, packetweave_dependency_errors, COLOR_MIXIN_CLASS, COLOR_MIXIN_CONFIG, COLOR_REFMAP
 
 
 def metadata(target, minimum="0.1.1", required=True, side="BOTH"):
@@ -20,6 +20,23 @@ def metadata(target, minimum="0.1.1", required=True, side="BOTH"):
 
 
 class ProductionJarTest(unittest.TestCase):
+    def test_only_explicit_client_color_hook_and_matching_refmap_are_allowed(self):
+        config = dict(package="com.nstut.simplyscreens.client.mixin", client=["GameRendererMixin"],
+                      required=True, injectors=dict(defaultRequire=1), refmap=COLOR_REFMAP)
+        mappings = dict(mappings={COLOR_MIXIN_CLASS: {"renderLevel": "mapped"}}, data={})
+        with tempfile.TemporaryDirectory() as directory:
+            jar = Path(directory)/'production.jar'
+            for mutation in (None, 'server', 'other-client', 'other-refmap', 'missing-class'):
+                altered = json.loads(json.dumps(config))
+                if mutation == 'server': altered['mixins'] = ['GameRendererMixin']
+                if mutation == 'other-client': altered['client'].append('VisualDriverMixin')
+                remap = mappings if mutation != 'other-refmap' else dict(mappings={'old.PacketMixin':{}},data={})
+                with zipfile.ZipFile(jar,'w') as archive:
+                    archive.writestr(COLOR_MIXIN_CONFIG,json.dumps(altered))
+                    archive.writestr(COLOR_REFMAP,json.dumps(remap))
+                    if mutation != 'missing-class': archive.writestr(COLOR_MIXIN_CLASS+'.class',b'fixture')
+                self.assertEqual(mutation is not None, bool(obsolete_entries(jar)), mutation)
+
     def test_test_driver_cannot_ship_even_as_nested_class(self):
         with tempfile.TemporaryDirectory() as directory:
             jar = Path(directory) / "production.jar"

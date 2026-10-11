@@ -32,6 +32,6 @@
     "packetweave": ">=${packetweave_version}"
   },
   "mixins": [
-    "simplyscreens.mixins.json"
+    "simplyscreens-color.mixins.json"
   ]
 }

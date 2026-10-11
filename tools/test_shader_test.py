@@ -2,6 +2,8 @@ import copy
 import json
 from pathlib import Path
 import tempfile
+import subprocess
+import sys
 import unittest
 from unittest.mock import patch
 import numpy as np
@@ -67,6 +69,25 @@ class ShaderStackTests(unittest.TestCase):
             root=Path(d);pack=root/'test.zip';pack.write_bytes(b'test')
             shader_stack.install_pack(root/'client',pack,False)
             self.assertIn('enableShaders=false',(root/'client/config/iris.properties').read_text())
+    def test_receipt_cli_does_not_require_pixel_dependencies(self):
+        with tempfile.TemporaryDirectory() as d:
+            result=subprocess.run([sys.executable,'-S',str(shader_test.ROOT/'tools/shader_test.py'),
+                                   '--verify-receipts',d,'--head','abc'],capture_output=True,text=True)
+        self.assertNotEqual(0,result.returncode)
+        self.assertIn('missing or duplicate shader targets',result.stderr)
+        self.assertNotIn('ModuleNotFoundError',result.stderr)
+
+    def test_real_checkout_instrumentation_has_post_shader_capture_and_mod_proof(self):
+        with tempfile.TemporaryDirectory() as d:
+            stage=Path(d)
+            shader_test.visual.snapshot(shader_test.ROOT,stage)
+            shader_test.instrument(stage)
+            for module in shader_test.visual.MODULES:
+                base=stage/module/shader_test.visual.PACKAGE
+                self.assertIn('loadedShaderMods',(base/'testing/visual/VisualClient.java').read_text())
+                hook=(base/'client/mixin/GameRendererMixin.java').read_text()
+                self.assertIn('ScreenColorRestore.finishWorld(); com.nstut.simplyscreens.testing.visual.VisualClient.afterRender',hook)
+
     def test_receipt_gate_rejects_missing_targets(self):
         with tempfile.TemporaryDirectory() as d:
             with self.assertRaisesRegex(ValueError,'missing or duplicate'): shader_test.verify_receipts(Path(d),'abc')

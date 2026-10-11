@@ -52,10 +52,10 @@ Pinned matrix:
 | Fabric 1.21.1 | Iris 1.8.8 | Sodium 0.6.13 | Sodium Extra 0.6.0 |
 | Forge 1.20.1 | Oculus 1.8.0 | Embeddium 0.3.31 | Embeddium/Rubidium Extra 0.5.4.4 |
 | NeoForge 1.21.1 | Iris 1.8.12 | Sodium 0.6.13 | Sodium Extra 0.6.0 |
-| NeoForge 26.1.2 | Iris 1.11.4 | Sodium 0.9.2 | No verified compatible Extra artifact pinned |
+| NeoForge 26.1.2 | Iris 1.11.4 | Sodium 0.9.2 | Official Sodium Extra exists; pin/download pending |
 
 All targets use Complementary Reimagined r5.9.3. Sodium Extra itself is not a Forge
-mod; the pinned Forge port is named Embeddium (Rubidium) Extra. Compatibility
+mod; the pinned Forge port is named Embeddium (Rubidium) Extra. NeoForge26.1.2 Extra coverage is not complete until its official artifact is pinned and loaded by the test. Compatibility
 metadata is checked before installation, and runtime loader rejection is a test
 failure, never permission to edit a third-party jar's metadata.
 
@@ -86,8 +86,8 @@ reject double blending. The test uses `BLOOM_STRENGTH=0.32` for a measurable hal
 that is a test fixture setting, not a production override of the user's pack.
 
 Receipts preserve exact commit, clean/dirty status, source snapshot digest,
-artifact hashes, scene/camera data, frame PNGs, graphics identity, original-control
-measurements, transparency deltas and bloom-ring deltas. `Required shader color
+artifact hashes, actually loaded mod IDs/versions, scene/camera data, frame PNGs, graphics identity, original-control
+measurements, transparency deltas and bloom-ring deltas. The aggregate gate checks every required frame/metadata file against its SHA256 and revalidates controls and loaded-mod proof. `Required shader color
 evidence` rejects missing targets, stale/dirty runs, wrong stacks, inactive
 shaders, incomplete controls and failed pixels. Source contracts and synthetic
 oracle tests do not replace this gate. A newly opened draft has no compatibility
@@ -102,3 +102,5 @@ claim until its exact-head real shader jobs pass.
 - [Iris 26.1 output conversion](https://github.com/IrisShaders/Iris/blob/26.1/common/src/main/java/net/irisshaders/iris/mixin/MixinGameRenderer.java)
 - [Complementary grading, bloom and tonemapping](https://github.com/ComplementaryDevelopment/ComplementaryReimagined/blob/main/shaders/program/composite5.glsl)
 - [Complementary official pinned release](https://modrinth.com/shader/complementary-reimagined/version/Bqen1mJX)
+
+NeoForge1.21.1 deliberately accepts Minecraft1.21 dependency ranges through its official [VersionSupportMatrix](https://github.com/neoforged/FancyModLoader/blob/1.21.1/loader/src/main/java/net/neoforged/fml/loading/VersionSupportMatrix.java); the Iris native jar is used unchanged.
