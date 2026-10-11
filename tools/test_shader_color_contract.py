@@ -28,6 +28,7 @@ class ShaderColorContractTest(unittest.TestCase):
             config = json.loads((base/'resources/simplyscreens-color.mixins.json').read_text())
             self.assertEqual(1, config['injectors']['defaultRequire'])
             self.assertEqual(['GameRendererMixin'], config['client'])
+            self.assertNotIn('refmap', config, 'Architectury injects production refmaps; source refmaps break dev namespaces')
 
     def test_late_pass_is_depth_tested_opaque_replacement_not_alpha_reblend(self):
         for version in ('1.20.1', '1.21.1'):

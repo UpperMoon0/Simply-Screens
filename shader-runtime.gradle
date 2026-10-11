@@ -12,8 +12,66 @@ if (stackDirectory.isPresent()) {
         if (digest != artifact.sha512) throw new GradleException("Shader dependency checksum mismatch: ${jar}")
         jar
     }
+    // Loom strips jar-in-jar metadata while remapping dev mods. Expand children from
+    // verified parent bytes; never edit third-party manifests or download loose libraries.
+    def nestedMods = []
+    def nestedLibraries = []
+    if (!plugins.hasPlugin('net.neoforged.moddev')) {
+        def selected = [:]
+        def expand
+        expand = { File parent ->
+            new java.util.zip.ZipFile(parent).withCloseable { zip ->
+                def fabric = zip.getEntry('fabric.mod.json')
+                def metadata = fabric ?: zip.getEntry('META-INF/jarjar/metadata.json')
+                if (metadata == null) return
+                def data = new groovy.json.JsonSlurper().parse(zip.getInputStream(metadata))
+                (data.jars ?: []).each { entry ->
+                    def path = entry.file ?: entry.path
+                    def childEntry = zip.getEntry(path)
+                    if (childEntry == null) throw new GradleException("Missing nested shader dependency ${path}")
+                    def bytes = zip.getInputStream(childEntry).bytes
+                    def digest = java.security.MessageDigest.getInstance('SHA-512').digest(bytes).encodeHex().toString()
+                    def child = layout.buildDirectory.file("shader-nested/${digest}.jar").get().asFile
+                    child.parentFile.mkdirs()
+                    child.bytes = bytes
+                    def id = entry.identifier ? "${entry.identifier.group}:${entry.identifier.artifact}".toString() : path
+                    def nativeMod = false
+                    new java.util.zip.ZipFile(child).withCloseable { nested ->
+                        if (nested.getEntry('fabric.mod.json') != null) {
+                            def manifest = new groovy.json.JsonSlurper().parse(nested.getInputStream(nested.getEntry('fabric.mod.json')))
+                            id = manifest.id
+                            nativeMod = true
+                        } else nativeMod = nested.getEntry('META-INF/mods.toml') != null || nested.getEntry('META-INF/neoforge.mods.toml') != null
+                    }
+                    // The Fabric API dependency already supplies these components.
+                    if (project.name.startsWith('fabric-') && id.startsWith('fabric-')) return
+                    if (selected.containsKey(id)) {
+                        if (selected[id] != digest && id != 'org.sinytra.forgified-fabric-api:fabric-renderer-api-v1')
+                            throw new GradleException("Conflicting nested shader dependency ${id}")
+                        // Lock order explicitly prefers Iris's newer renderer-api build over Sodium's.
+                        return
+                    }
+                    selected[id] = digest
+                    (nativeMod ? nestedMods : nestedLibraries).add(child)
+                    expand(child)
+                }
+            }
+        }
+        jars.each { expand(it) }
+    }
+    if (project.name == 'fabric-1.20.1') {
+        // Sodium 0.5 requires Minecraft's LWJGL 3.3.1. Run the game on Java17,
+        // not Gradle's Java21, so Loom does not substitute LWJGL3.3.2-snapshot.
+        project.ext.set('fabric.loom.runtimeJavaCompatibilityVersion', '17')
+        tasks.withType(net.fabricmc.loom.task.AbstractRunTask).configureEach {
+            javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(17)) })
+        }
+    }
     dependencies {
         if (plugins.hasPlugin('net.neoforged.moddev')) localRuntime files(jars)
-        else modLocalRuntime files(jars)
+        else {
+            modLocalRuntime files(jars + nestedMods)
+            localRuntime files(nestedLibraries)
+        }
     }
 }

@@ -39,7 +39,7 @@ def regions(frame, width=960, height=720):
         covered|=(far>=np.maximum(near,0))&(near<depth)
     return u,v,interior(screen&~covered),interior(screen&covered)
 
-def measure(path, frame):
+def measure(path, frame, tolerance=TOLERANCE):
     with Image.open(path) as image: rgb=np.asarray(image.convert('RGB'),dtype=np.int16)
     if rgb.shape != (720,960,3): raise ValueError('shader fixture needs960x720 framebuffer')
     u,v,visible,hidden=regions(frame)
@@ -58,7 +58,7 @@ def measure(path, frame):
             difference=np.abs(rgb[mask]-PALETTE[y,x]); error=difference.max(axis=1)
             patches.append(dict(index=y*4+x,expected=PALETTE[y,x].tolist(),samples=int(error.size),
                                 median=round(float(np.median(error)),4),max=int(error.max()),
-                                bad=float(np.mean(error>TOLERANCE))))
+                                bad=float(np.mean(error>tolerance))))
     if not patches: raise ValueError('no chart patches')
     if frame['occluded'] and np.count_nonzero(hidden)<32: raise ValueError('missing occluder coverage')
     # Covered pixels must not be replaced with the known underlying chart. Dark red concrete

@@ -47,6 +47,13 @@ class ShaderOracleTests(unittest.TestCase):
         u,v,visible,_=pixels.regions(self.frame)
         rgb[visible]=np.minimum(rgb[visible]+3,255)
         self.assertEqual('pass',self.measure(rgb.astype(np.uint8),self.frame)['status'])
+    def test_vanilla_fog_budget_does_not_relax_shader_budget(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d)/'frame.png'
+            Image.fromarray(np.minimum(self.chart(self.frame).astype(int)+9,255).astype(np.uint8)).save(p)
+            self.assertEqual('pixel-failure',pixels.measure(p,self.frame)['status'])
+            self.assertEqual('pass',pixels.measure(p,self.frame,tolerance=12)['status'])
+
     def test_alpha_comparison_rejects_double_blending(self):
         with tempfile.TemporaryDirectory() as d:
             p,q=Path(d)/'a.png',Path(d)/'b.png'
@@ -69,6 +76,14 @@ class ShaderStackTests(unittest.TestCase):
             root=Path(d);pack=root/'test.zip';pack.write_bytes(b'test')
             shader_stack.install_pack(root/'client',pack,False)
             self.assertIn('enableShaders=false',(root/'client/config/iris.properties').read_text())
+    def test_glow_control_removes_world_vertices_but_keeps_replay(self):
+        for module in shader_test.visual.MODULES:
+            path=shader_test.ROOT/module/shader_test.visual.PACKAGE/'client/renderers/ScreenBlockEntityRenderer.java'
+            altered=shader_test.suppress_world_image(path.read_text(),module)
+            self.assertIn('ScreenColorRestore.capture',altered)
+            self.assertIn('textPolygonOffset',altered)
+            self.assertNotEqual(path.read_text(),altered)
+
     def test_receipt_cli_does_not_require_pixel_dependencies(self):
         with tempfile.TemporaryDirectory() as d:
             result=subprocess.run([sys.executable,'-S',str(shader_test.ROOT/'tools/shader_test.py'),
@@ -85,6 +100,7 @@ class ShaderStackTests(unittest.TestCase):
             for module in shader_test.visual.MODULES:
                 base=stage/module/shader_test.visual.PACKAGE
                 self.assertIn('loadedShaderMods',(base/'testing/visual/VisualClient.java').read_text())
+                self.assertIn('Blocks.RED_CONCRETE',(base/'testing/visual/VisualClient.java').read_text())
                 hook=(base/'client/mixin/GameRendererMixin.java').read_text()
                 self.assertIn('ScreenColorRestore.finishWorld(); com.nstut.simplyscreens.testing.visual.VisualClient.afterRender',hook)
 

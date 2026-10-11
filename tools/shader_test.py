@@ -16,7 +16,7 @@ from visual_cases import TARGETS, FACES, sample_count
 from shader_stack import load_lock, prepare, install_pack, native_mod_ids
 
 ROOT = Path(__file__).resolve().parents[1]
-VARIANTS = ('shader-off', 'original', 'fixed', 'bloom-off')
+VARIANTS = ('shader-off', 'original', 'fixed', 'bloom-off', 'glow-source-off')
 
 def scenarios():
     result=[]
@@ -66,6 +66,13 @@ def instrument(stage):
             '                loadedMods.addProperty(id.getAsString(), modLookup.apply(id.getAsString()));\n'
             '            frame.add("loadedShaderMods", loadedMods);\n'
             '            frame.addProperty("sample", index);')
+        text=text.replace('        if (anchorUnloadedScenario()) return anchorUnloadSceneSynchronized(mc, image);',
+            '        for (JsonElement element : scene.getAsJsonArray("occluders")) {\n'
+            '            JsonArray box = element.getAsJsonArray();\n'
+            '            BlockPos pos = new BlockPos(box.get(0).getAsInt(), box.get(1).getAsInt(), box.get(2).getAsInt());\n'
+            '            if (!mc.level.getBlockState(pos).is(net.minecraft.world.level.block.Blocks.RED_CONCRETE)) return false;\n'
+            '        }\n'
+            '        if (anchorUnloadedScenario()) return anchorUnloadSceneSynchronized(mc, image);')
         driver.write_text(text)
         hook=base/'client/mixin/GameRendererMixin.java'
         text=hook.read_text()
@@ -107,7 +114,7 @@ def compare_alpha(evidence):
     if max(measurements)>8: raise ValueError(f'transparent samples changed/double blended: {measurements}')
     return measurements
 
-def compare_bloom(evidence):
+def compare_bloom(evidence, control='bloom-off'):
     import shader_pixels
     import numpy as np
     from PIL import Image
@@ -121,10 +128,22 @@ def compare_bloom(evidence):
         ring=(u>-.08)&(u<1.08)&(v>-.08)&(v<1.08)&((u<-.015)|(u>1.015)|(v<-.015)|(v>1.015))
         if ring.sum()<32: raise ValueError('insufficient glow-ring coverage')
         on=np.asarray(Image.open(evidence/'fixed'/f'{stem}.png').convert('RGB'),dtype=float)
-        off=np.asarray(Image.open(evidence/'bloom-off'/f'{stem}.png').convert('RGB'),dtype=float)
+        off=np.asarray(Image.open(evidence/control/f'{stem}.png').convert('RGB'),dtype=float)
         values.append(float(np.mean(on[ring]-off[ring])))
     if min(values)<=0.15: raise ValueError(f'no measurable retained bloom outside image: {values}')
     return values
+
+def suppress_world_image(source, module):
+    """Negative control removes only the world's image contribution, never the late replay."""
+    if module == 'common-1.20.1':
+        needle = '        buildTexturedQuad(vertexBuffer, pose, packedOverlay, tile);'
+        if source.count(needle) != 1: raise ValueError('world-image control anchor changed')
+        return source.replace(needle, '')
+    prefix = ('        addVertex(consumer, pose, packedOverlay,' if module == 'common-1.21.1'
+              else '        vertex(consumer, pose,')
+    lines = source.splitlines()
+    if sum(line.startswith(prefix) for line in lines) != 4: raise ValueError('world-image quad control changed')
+    return '\n'.join(line for line in lines if not line.startswith(prefix))+'\n'
 
 def run(target):
     import shader_pixels
@@ -145,10 +164,14 @@ def run(target):
         receipt['source_sha256']=visual.snapshot(ROOT,stage)
         visual.scope_gradle(stage,target)
         instrument(stage)
-        hook=stage/('neoforge-26.1.2' if target=='neoforge-26.1.2' else 'common-'+target.split('-',1)[1])/visual.PACKAGE/'client/mixin/GameRendererMixin.java'
+        module='neoforge-26.1.2' if target=='neoforge-26.1.2' else 'common-'+target.split('-',1)[1]
+        hook=stage/module/visual.PACKAGE/'client/mixin/GameRendererMixin.java'
+        renderer=stage/module/visual.PACKAGE/'client/renderers/ScreenBlockEntityRenderer.java'
+        renderer_original=renderer.read_text()
         original=hook.read_text()
         ids=sorted({id for jar in jars for id in native_mod_ids(jar,target.split('-',1)[0])})
         for variant in VARIANTS:
+            renderer.write_text(suppress_world_image(renderer_original,module) if variant=='glow-source-off' else renderer_original)
             hook.write_text(original.replace('ScreenColorRestore.finishWorld();','ScreenColorRestore.beginFrame();') if variant=='original' else original)
             def configure(client):
                 install_pack(client,pack,enabled=variant!='shader-off')
@@ -159,7 +182,8 @@ def run(target):
                 shader_pixels.write_chart(directory)
                 visual.atomic_json(directory/'expected-mods.json',ids)
             results=visual.run_variant(stage,target,'fixed',evidence/variant,standalone,
-                scenario_list=scenarios(),fixture_writer=fixtures,pixel_measure=shader_pixels.measure,
+                scenario_list=scenarios(),fixture_writer=fixtures,pixel_measure=lambda path, frame: shader_pixels.measure(path,frame,
+                    tolerance=12 if variant=='shader-off' and frame['distance']>=32 else shader_pixels.TOLERANCE),
                 runtime_setup=configure,client_args=(f'-PscreensShaderStack={cache}',),validate_outcome=False)
             validate_variant(variant,results,evidence/variant)
             graphics=json.loads((evidence/variant/'graphics.json').read_text())
@@ -168,11 +192,15 @@ def run(target):
             receipt['variants'][variant]='pass'
         receipt['alpha_delta_p95']=compare_alpha(evidence)
         receipt['bloom_ring_delta']=compare_bloom(evidence)
+        receipt['screen_glow_ring_delta']=compare_bloom(evidence,'glow-source-off')
         receipt['evidence_sha256']={str(p.relative_to(evidence)):hashlib.sha256(p.read_bytes()).hexdigest()
                                     for p in evidence_files(evidence)}
         receipt['status']='pass'
     except BaseException as error:
         receipt['status']='fail';receipt['error']=str(error)
+        for log in sorted(evidence.rglob('*-process.log')):
+            print(f'\n--- {log.relative_to(evidence)} (last 120 lines) ---', flush=True)
+            print('\n'.join(log.read_text(errors="replace").splitlines()[-120:]), flush=True)
         raise
     finally:
         receipt['seconds']=time.monotonic()-started
@@ -216,8 +244,9 @@ def verify_receipts(directory,head):
             validate_variant(variant,json.loads((base/'measurements.json').read_text()),base)
         if len(r.get('alpha_delta_p95',[]))!=4 or max(r['alpha_delta_p95'])>8:
             raise ValueError('missing/failed transparency evidence')
-        if len(r.get('bloom_ring_delta',[]))!=4 or min(r['bloom_ring_delta'])<=.15:
-            raise ValueError('missing/failed bloom evidence')
+        for key in ('bloom_ring_delta','screen_glow_ring_delta'):
+            if len(r.get(key,[]))!=4 or min(r[key])<=.15:
+                raise ValueError('missing/failed screen-specific bloom evidence')
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)

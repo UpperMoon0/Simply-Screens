@@ -72,7 +72,7 @@ occlusion, shader-resource reload and alpha cases are captured at four raster
 alignments. The main renderer's world submissions must match the server fixture;
 shadow-map submissions cannot satisfy readiness.
 
-Four isolated client/server runs use the same pinned renderer/mod stack:
+Five isolated client/server runs use the same pinned renderer/mod stack:
 
 1. Shader off: validates the source-color baseline.
 2. Original world pass: disables only the late replay in the disposable snapshot;
@@ -80,6 +80,10 @@ Four isolated client/server runs use the same pinned renderer/mod stack:
 3. Fixed: source chart colors/occlusion must pass with the shader actually active.
 4. Bloom off: only Complementary `BLOOM_ENABLED` changes from 1 to -1; a geometric
    ring outside the image must be measurably brighter with bloom enabled.
+5. Glow source off: keep the same shader/bloom settings and late color replay,
+   but suppress only the original world image vertices. The geometric ring must
+   be brighter with the original contribution, proving image-produced glow
+   rather than unrelated sky/background bloom.
 
 Semi-transparent/transparent samples are compared to the original shader run to
 reject double blending. The test uses `BLOOM_STRENGTH=0.32` for a measurable halo;
@@ -104,3 +108,19 @@ claim until its exact-head real shader jobs pass.
 - [Complementary official pinned release](https://modrinth.com/shader/complementary-reimagined/version/Bqen1mJX)
 
 NeoForge1.21.1 deliberately accepts Minecraft1.21 dependency ranges through its official [VersionSupportMatrix](https://github.com/neoforged/FancyModLoader/blob/1.21.1/loader/src/main/java/net/neoforged/fml/loading/VersionSupportMatrix.java); the Iris native jar is used unchanged.
+
+The shader-disabled 32-block baseline retains Minecraft’s normal distance fog; it permits
+12/255 source error at that distance only. All corrected shader-on chart patches retain
+the strict 4/255 tolerance. Client occluder block states must synchronize before the
+terrain rebuild gate, so a missing wall cannot silently count as a rendering regression.
+
+Development dependencies expand required nested libraries from the SHA-512-verified
+parent jars because [Loom's ModProcessor](https://github.com/architectury/architectury-loom/blob/1.11/src/main/java/net/fabricmc/loom/configuration/mods/ModProcessor.java)
+strips nesting metadata during remapping. Fabric API components already supplied by
+the build are not duplicated; the pinned NeoForge21 Iris renderer-api build takes
+precedence over Sodium's older build. Unexpected child identity conflicts fail closed.
+Fabric20 uses Java17 for the game while Gradle runs Java21, through Loom's
+[runtime compatibility property](https://github.com/architectury/architectury-loom/blob/1.11/src/main/java/net/fabricmc/loom/configuration/providers/minecraft/MinecraftLibraryProvider.java),
+preserving Sodium's required LWJGL3.3.1. Source mixin configurations omit refmaps;
+[Architectury's production transforms](https://github.com/architectury/architectury-plugin/blob/3.4/src/main/kotlin/dev/architectury/plugin/ModLoader.kt)
+add them for Fabric/Forge and statically remap NeoForge.
