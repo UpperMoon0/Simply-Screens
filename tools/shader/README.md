@@ -73,7 +73,7 @@ occlusion, shader-resource reload and alpha cases are captured at four raster
 alignments. The main renderer's world submissions must match the server fixture;
 shadow-map submissions cannot satisfy readiness.
 
-Eight isolated client/server runs use the same pinned renderer/mod stack:
+Ten isolated client/server runs use the same pinned renderer/mod stack:
 
 1. Shader off: validates the source-color baseline on all26scenes.
 2. Original world pass: disables only the late replay; must demonstrate real chart
@@ -82,20 +82,37 @@ Eight isolated client/server runs use the same pinned renderer/mod stack:
    including every previously failing far/oblique raster sample.
 4. Original static: world-only reference with temporal AA disabled.
 5. Fixed static: corrected reference with the same temporal-AA-disabled profile.
-6. Fixed repeat: identical static settings in a fresh process. Alpha p95 must be
-   at most1/255, ring mean absolute delta at most1/255 and signed delta at most0.05/255.
-7. Bloom off: only `BLOOM_ENABLED` differs from the fixed-static reference.
-8. Glow source off: same profile/replay, but suppress original world image vertices.
+6–7. Two fixed repeats: identical static settings in separate fresh processes.
+8. Bloom off: only `BLOOM_ENABLED` differs from the fixed-static reference.
+9. Glow source off: same profile/replay, but suppress original world image vertices.
+10. Source and bloom off: the fourth state of the source-by-bloom factorial control.
 
 The glow/alpha fixtures have a black-concrete backdrop behind the screen, whose
 block arrival is verified before terrain/frame readiness. Bright sky can be
 darkened by a valid bloom blend; it is not a useful positive-emission reference.
 The ring is selected only from geometry and must brighten against this dark surface.
 
-Variants4–8 cover the frontal NORTH glow chart and alpha fixture only; variants1–3
-retain the full color/depth/reload matrix. Both glow controls require the geometric
-ring to brighten by more than0.15/255 in every sample. This separates image-produced
-glow from background bloom, without using mismatched temporal-AA history as proof.
+Variants 4–10 cover the frontal NORTH glow chart and alpha fixture only;
+variants 1–3 retain the full color/depth/reload matrix. Three independent on
+processes provide all three pairwise comparisons, with every raster phase kept.
+Let U be the largest mean-absolute ring difference over those pairs and phases.
+Require U <= 1/255 and unchanged-run alpha p95 <= 1/255. Each on process and phase
+must satisfy both on-minus-bloom-off and on-minus-source-off > 0.15 + 3U.
+Additionally require the screen-by-bloom interaction
+(on - bloom-off) - (source-off - source-and-bloom-off) > 0.15 + 6U.
+The extra factorial state excludes background-only bloom or a static source
+contribution that does not interact with bloom.
+
+These predeclared multiples are conservative engineering margins over an observed
+nuisance envelope, not statistical confidence intervals. Four raster phases are
+correlated and are not counted as independent process repeats. Unseen process
+variation remains a limitation. This replaces the earlier self-chosen signed
+repeat limit of 0.05/255: real retained frames proved within-process convergence
+with zero tile-mean variation, but a localized right-edge background difference
+remained between processes. Its cause is not established as random noise. The
+actual source/glow signal was tens of channel levels, while the observed repeat
+mean-absolute differences were sub-channel. This design measures their separation
+instead of declaring any nonzero stable offset a rendering defect.
 
 Semi-transparent/transparent samples are compared to the original shader run to
 reject double blending. The test uses `BLOOM_STRENGTH=0.32` for a measurable halo;
@@ -186,8 +203,8 @@ The reproduction oracle now records observed patch RGB and requires recognizable
 spatial gray contrast plus red/green/blue channel ordering. Missing, flat black,
 flat white, and channel-swapped charts cannot count as reproduced shader grading.
 The paired backdrop is48blocks square, covering the entire camera frustum rather
-than leaving sky strips that can enter the pack's broad bloom kernel. The0.05/255
-signed repeat-drift bound and4/255 source-color bound are unchanged.
+than leaving sky strips that can enter the pack's broad bloom kernel. The 4/255 source-color bound remains unchanged; the repeat nuisance envelope
+and factorial separation requirements are specified above.
 
 References:
 - [NeoForge copy-builder API](https://github.com/neoforged/NeoForge/blob/26.1.x/patches/com/mojang/blaze3d/pipeline/RenderPipeline.java.patch)
@@ -214,3 +231,16 @@ wrong image cannot pass those independent image oracles. Tests reject incomplete
 short, drifting, non-finite, misidentified, and pixel-mismatched convergence proof.
 
 [Complementary smoothed environment uniforms](https://github.com/ComplementaryDevelopment/ComplementaryReimagined/blob/main/shaders/shaders.properties)
+
+### Factorial-control regression coverage and diagnostics
+
+The oracle rejects a missing source effect, missing bloom effect, background-only
+bloom, static source leakage without a positive source-by-bloom interaction, and
+signals within the measured nuisance budget. It rejects missing repeats,
+non-finite or understated U, and forged interaction arithmetic. All three on
+references must also retain the original alpha-comparison budget of 8/255.
+Every frame records available Iris projection/model-view/tick/sun-angle state and
+world-clock observations alongside the actual RenderSystem model-view matrix.
+Unavailable version-specific diagnostic APIs are identified explicitly. Exact
+camera and fixture geometry must match each contrast. All additional repeat,
+factorial, convergence, and diagnostic evidence is included in the hashed receipt.

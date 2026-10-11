@@ -152,6 +152,8 @@ class ShaderStackTests(unittest.TestCase):
                 self.assertIn('Blocks.RED_CONCRETE',(base/'testing/visual/VisualClient.java').read_text())
                 self.assertIn('Blocks.BLACK_CONCRETE',(base/'testing/visual/VisualClient.java').read_text())
                 self.assertIn('ShaderSettling.ready(mc, current)',(base/'testing/visual/VisualClient.java').read_text())
+                self.assertIn('ShaderDiagnostics.capture(mc)',(base/'testing/visual/VisualClient.java').read_text())
+                self.assertTrue((base/'testing/visual/ShaderDiagnostics.java').is_file())
                 probe=(base/'testing/visual/ShaderSettling.java').read_text()
                 self.assertNotIn('__PROBE__',probe)
                 self.assertIn('ShaderSettling::accept' if module=='neoforge-26.1.2' else 'accept(Screenshot.takeScreenshot',probe)
@@ -169,15 +171,41 @@ class ShaderStackTests(unittest.TestCase):
         d['NORTH-8-0-False']={'frames':[dict(patches=[dict(index=i,median=9,observed=p.tolist()) for i,p in enumerate(pixels.PALETTE.reshape(16,3))])]}
         self.assertTrue(shader_test.reproduces_distortion(d))
 
-    def test_identical_run_control_rejects_temporal_background_drift(self):
-        stable=dict(ring_signed=[0.]*4,ring_absolute=[0.]*4,alpha_p95=[0.]*4)
-        shader_test.validate_stability(stable)
-        for key,drift in (('ring_signed',.16),('ring_absolute',2.),('alpha_p95',9.)):
-            changed=copy.deepcopy(stable);changed[key][2]=drift
-            with self.assertRaisesRegex(ValueError,'unstable paired'):
-                shader_test.validate_stability(changed)
-        changed=copy.deepcopy(stable);changed['ring_signed'][0]=float('nan')
-        with self.assertRaises(ValueError):shader_test.validate_stability(changed)
+    def test_independent_repeats_bound_nuisance_without_signed_cancellation(self):
+        stable=dict(pairs={a+'/'+b:dict(ring_signed=[.1]*4,ring_absolute=[.2]*4,alpha_p95=[0.]*4)
+                           for a,b in shader_test.repeat_pairs()},uncertainty=.2)
+        self.assertEqual(.2,shader_test.validate_stability(stable))
+        pair=next(iter(stable['pairs']))
+        for key,drift in (('ring_signed',1.1),('ring_absolute',2.),('alpha_p95',9.)):
+            changed=copy.deepcopy(stable);changed['pairs'][pair][key][2]=drift
+            with self.assertRaises(ValueError): shader_test.validate_stability(changed)
+        for mutation in (lambda p:p.update(uncertainty=float('nan')),
+                         lambda p:p.update(uncertainty=.1),lambda p:p['pairs'].pop(pair)):
+            changed=copy.deepcopy(stable);mutation(changed)
+            with self.assertRaises(ValueError):shader_test.validate_stability(changed)
+
+    def test_factorial_glow_requires_signal_beyond_repeat_nuisance(self):
+        def evaluate(on,bloom_off,source_off,both_off,uncertainty=.2):
+            levels={r:on+i*.01 for i,r in enumerate(shader_test.ON_REPEATS)}
+            levels.update({'bloom-off':bloom_off,'glow-source-off':source_off,'source-and-bloom-off':both_off})
+            def delta(evidence,control,sample,reference=shader_test.PAIR_REFERENCE):
+                difference=levels[reference]-levels[control]
+                return difference,abs(difference)
+            with patch('shader_test.ring_delta',side_effect=delta):
+                return shader_test.compare_glow(Path('/unused'),uncertainty)
+        accepted=evaluate(40,1,2,1)
+        self.assertGreater(min(accepted['interaction']['fixed-static']),30)
+        for values in (
+            (40,1,40,1,.2),  # no image-specific glow
+            (40,40,2,2,.2),  # no bloom response
+            (40,1,40,1,.2),  # background-only bloom
+            (40,20,20,0,.2), # static source leak + ambient bloom, but no interaction
+            (.5,0,.1,0,.2), # effect does not dominate observed nuisance
+        ):
+            with self.assertRaises(ValueError):evaluate(*values)
+        forged=copy.deepcopy(accepted);forged['interaction']['fixed-static'][0]+=1
+        with self.assertRaises(ValueError):shader_test.validate_glow(forged,.2)
+        with self.assertRaises(ValueError):shader_test.validate_glow(accepted,float('nan'))
 
     def test_deterministic_profile_keeps_default_temporal_aa_and_only_toggles_bloom(self):
         a=shader_test.pack_options('fixed-static');b=shader_test.pack_options('bloom-off')
@@ -187,7 +215,8 @@ class ShaderStackTests(unittest.TestCase):
         self.assertEqual('0',a['TAA_DEFINE'])
         self.assertNotIn('TAA_DEFINE',shader_test.pack_options('fixed'))
         self.assertNotIn('TAA_DEFINE',shader_test.pack_options('original'))
-        self.assertEqual(a,shader_test.pack_options('fixed-repeat'))
+        for repeat in shader_test.ON_REPEATS: self.assertEqual(a,shader_test.pack_options(repeat))
+        self.assertEqual(b,shader_test.pack_options('source-and-bloom-off'))
 
     def test_full_temporal_color_matrix_is_separate_from_static_pair_controls(self):
         self.assertEqual(26,len(shader_test.variant_scenarios('fixed')))

@@ -18,9 +18,13 @@ from visual_cases import TARGETS, FACES, sample_count
 from shader_stack import load_lock, prepare, install_pack, native_mod_ids
 
 ROOT = Path(__file__).resolve().parents[1]
-VARIANTS = ('shader-off', 'original', 'fixed', 'original-static', 'fixed-static', 'fixed-repeat', 'bloom-off', 'glow-source-off')
+VARIANTS = ('shader-off', 'original', 'fixed', 'original-static', 'fixed-static', 'fixed-repeat', 'fixed-repeat-2', 'bloom-off', 'glow-source-off', 'source-and-bloom-off')
 PAIRED_VARIANTS = frozenset(VARIANTS[3:])
 PAIR_REFERENCE = 'fixed-static'
+ON_REPEATS = ('fixed-static','fixed-repeat','fixed-repeat-2')
+MIN_GLOW = .15
+EFFECT_NOISE_MULTIPLIER = 3.
+INTERACTION_NOISE_MULTIPLIER = 6.
 
 
 # Public options of the pinned pack, not a modification to its source. Keep default
@@ -29,7 +33,7 @@ STATIC_OPTIONS = dict(CLOUD_STYLE_DEFINE='0', CLOUD_SPEED_MULT='0', CLOUD_SHADOW
                       LIGHTSHAFT_QUALI_DEFINE='0', MOTION_BLUR_EFFECT='-1', WAVING_SPEED='0.00')
 
 def pack_options(variant):
-    options=STATIC_OPTIONS | dict(BLOOM_ENABLED='-1' if variant=='bloom-off' else '1', BLOOM_STRENGTH='0.32')
+    options=STATIC_OPTIONS | dict(BLOOM_ENABLED='-1' if variant in ('bloom-off','source-and-bloom-off') else '1', BLOOM_STRENGTH='0.32')
     # Keep the full color/depth matrix on default temporal AA. Only paired glow/alpha
     # controls disable temporal history, whose process-dependent phase is a confound.
     if variant in PAIRED_VARIANTS: options['TAA_DEFINE']='0'
@@ -137,10 +141,13 @@ def instrument(stage):
             '            sampleArmed = false;\n            clearObservedStability();\n            capturing.set(true);')
         text=text.replace('if (++ticks > 1200 && sample < totalSamples)',
             'if (++ticks > (scene.has("settle") ? 4000 : 1200) && sample < totalSamples)')
+        text=text.replace('            frame.addProperty("fov", 70);',
+            '            frame.addProperty("fov", 70);\n            frame.add("shaderDiagnostics", ShaderDiagnostics.capture(mc));')
         driver.write_text(text)
         probe=(stage/'tools/shader/ShaderSettling.java').read_text()
         capture='Screenshot.takeScreenshot(mc.getMainRenderTarget(), ShaderSettling::accept);' if module=='neoforge-26.1.2' else 'accept(Screenshot.takeScreenshot(mc.getMainRenderTarget()));'
         (base/'testing/visual/ShaderSettling.java').write_text(probe.replace('__PROBE__',capture))
+        (base/'testing/visual/ShaderDiagnostics.java').write_text((stage/'tools/shader/ShaderDiagnostics.java').read_text())
         hook=base/'client/mixin/GameRendererMixin.java'
         text=hook.read_text()
         needle='ScreenColorRestore.finishWorld();'
@@ -170,7 +177,8 @@ def validate_settling(directory, scene, recompute=False):
     if any(len(m)!=16*12*3 or any(not isinstance(v,(int,float)) or not math.isfinite(v) or not 0<=v<=255 for v in m) for m in means):
         raise ValueError('invalid convergence tile means')
     spread=max(max(channel)-min(channel) for channel in zip(*means))
-    if spread>.01 or abs(spread-proof.get('maxTileChannelRange',-1))>1e-9:
+    reported=proof.get('maxTileChannelRange')
+    if not isinstance(reported,(int,float)) or not math.isfinite(reported) or spread>.01 or abs(spread-reported)>1e-9:
         raise ValueError('shader framebuffer is still changing')
     if recompute:
         import numpy as np
@@ -195,6 +203,8 @@ def validate_variant(variant, measurements, directory):
         if len(result['frames'])!=sample_count(scene): raise ValueError('incomplete shader samples')
         for index in range(sample_count(scene)):
             frame=json.loads((directory/f'{scene["id"]}-{index:02d}.json').read_text())
+            if not isinstance(frame.get('shaderDiagnostics'),dict) or len(frame['shaderDiagnostics'].get('renderModelView',[]))!=16:
+                raise ValueError('missing shader setup diagnostics')
             if set(frame.get('loadedShaderMods',{}))!=expected_mods or not all(frame['loadedShaderMods'].values()):
                 raise ValueError('missing actually loaded renderer/Extra/shader mods')
             if frame.get('shaderPackActive') is not (variant!='shader-off'):
@@ -227,59 +237,107 @@ def reproduces_distortion(measurements):
     return bool(frames) and all(recognizable_chart(f) for f in frames) and any(
         p['median']>8 for f in frames for p in f.get('patches',[]))
 
+def finite_samples(samples, limit=None):
+    import math
+    return (isinstance(samples,list) and len(samples)==4 and all(
+        isinstance(x,(int,float)) and math.isfinite(x) and (limit is None or abs(x)<=limit) for x in samples))
+
 def compare_alpha(evidence):
     import shader_pixels
     scene=next(s for s in scenarios() if s.get('alpha'))
-    measurements=[]
-    for sample in range(sample_count(scene)):
-        stem=f'{scene["id"]}-{sample:02d}'
-        frame=json.loads((evidence/PAIR_REFERENCE/f'{stem}.json').read_text())
-        value=shader_pixels.compare_transparency(evidence/PAIR_REFERENCE/f'{stem}.png',evidence/'original-static'/f'{stem}.png',frame)
-        measurements.append(value)
-    if max(measurements)>8: raise ValueError(f'transparent samples changed/double blended: {measurements}')
+    measurements={}
+    for reference in ON_REPEATS:
+        values=[]
+        for sample in range(4):
+            stem=f'{scene["id"]}-{sample:02d}'
+            frame=json.loads((evidence/reference/f'{stem}.json').read_text())
+            values.append(shader_pixels.compare_transparency(evidence/reference/f'{stem}.png',evidence/'original-static'/f'{stem}.png',frame))
+        if max(values)>8: raise ValueError(f'transparent samples changed/double blended: {reference} {values}')
+        measurements[reference]=values
     return measurements
 
-def ring_delta(evidence, control, sample):
+def ring_delta(evidence, control, sample, reference=PAIR_REFERENCE):
     import shader_pixels
     import numpy as np
     from PIL import Image
     scene=next(s for s in scenarios() if s['facing']=='NORTH' and s['distance']==8 and not s['occluded'])
     stem=f'{scene["id"]}-{sample:02d}'
-    frame=json.loads((evidence/PAIR_REFERENCE/f'{stem}.json').read_text())
+    frame=json.loads((evidence/reference/f'{stem}.json').read_text())
+    other=json.loads((evidence/control/f'{stem}.json').read_text())
+    for key in ('camera','cameraYaw','cameraPitch','center','normal','right','up','size','fov','occluders','backgrounds'):
+        if frame.get(key)!=other.get(key): raise ValueError('paired shader geometry changed: '+key)
     u,v,_,_=shader_pixels.regions(frame)
-    # Geometric ring just outside the image; never selected by observed brightness.
+    # Predeclared geometric ring, never selected by observed brightness.
     ring=(u>-.08)&(u<1.08)&(v>-.08)&(v<1.08)&((u<-.015)|(u>1.015)|(v<-.015)|(v>1.015))
     if ring.sum()<32: raise ValueError('insufficient glow-ring coverage')
-    on=np.asarray(Image.open(evidence/PAIR_REFERENCE/f'{stem}.png').convert('RGB'),dtype=float)
+    on=np.asarray(Image.open(evidence/reference/f'{stem}.png').convert('RGB'),dtype=float)
     off=np.asarray(Image.open(evidence/control/f'{stem}.png').convert('RGB'),dtype=float)
     delta=on[ring]-off[ring]
     return float(np.mean(delta)),float(np.mean(np.abs(delta)))
 
+def repeat_pairs():
+    from itertools import combinations
+    return list(combinations(ON_REPEATS,2))
+
 def validate_stability(values):
-    for key,limit in (('ring_signed',.05),('ring_absolute',1.),('alpha_p95',1.)):
-        samples=values.get(key,[])
-        if len(samples)!=4 or any(not isinstance(x,(int,float)) or not __import__('math').isfinite(x) or abs(x)>limit for x in samples):
-            raise ValueError('unstable paired shader background: '+key+' '+repr(samples))
+    pairs=values.get('pairs',{})
+    if set(pairs)!={a+'/'+b for a,b in repeat_pairs()}: raise ValueError('missing independent shader repeats')
+    uncertainty=0.
+    for pair,measurements in pairs.items():
+        for key,limit in (('ring_signed',1.),('ring_absolute',1.),('alpha_p95',1.)):
+            if not finite_samples(measurements.get(key),limit):
+                raise ValueError('unstable paired shader background: '+pair+' '+key)
+        for signed,absolute in zip(measurements['ring_signed'],measurements['ring_absolute']):
+            if absolute<0 or abs(signed)>absolute+1e-9: raise ValueError('invalid repeat noise measurement')
+            uncertainty=max(uncertainty,absolute)
+    reported=values.get('uncertainty')
+    if not finite_samples([reported]*4,1) or reported<0 or abs(reported-uncertainty)>1e-9: raise ValueError('wrong empirical repeat uncertainty')
+    return uncertainty
 
 def compare_stability(evidence):
     import shader_pixels
     scene=next(s for s in scenarios() if s.get('alpha'))
-    values=dict(ring_signed=[],ring_absolute=[],alpha_p95=[])
-    for sample in range(4):
-        signed,absolute=ring_delta(evidence,'fixed-repeat',sample)
-        values['ring_signed'].append(signed);values['ring_absolute'].append(absolute)
-        stem=f'{scene["id"]}-{sample:02d}'
-        frame=json.loads((evidence/PAIR_REFERENCE/f'{stem}.json').read_text())
-        values['alpha_p95'].append(shader_pixels.compare_transparency(
-            evidence/PAIR_REFERENCE/f'{stem}.png',evidence/'fixed-repeat'/f'{stem}.png',frame))
-    # An identical second process must have less than one third of the required glow
-    # signal. This rejects cloud/time drift rather than crediting it as image bloom.
+    values=dict(pairs={})
+    for reference,control in repeat_pairs():
+        pair=dict(ring_signed=[],ring_absolute=[],alpha_p95=[])
+        for sample in range(4):
+            signed,absolute=ring_delta(evidence,control,sample,reference)
+            pair['ring_signed'].append(signed);pair['ring_absolute'].append(absolute)
+            stem=f'{scene["id"]}-{sample:02d}'
+            frame=json.loads((evidence/reference/f'{stem}.json').read_text())
+            pair['alpha_p95'].append(shader_pixels.compare_transparency(
+                evidence/reference/f'{stem}.png',evidence/control/f'{stem}.png',frame))
+        values['pairs'][reference+'/'+control]=pair
+    # Engineering nuisance envelope, not a statistical confidence interval. Raster
+    # phases are correlated; never treat four frames as independent processes.
+    values['uncertainty']=max(x for p in values['pairs'].values() for x in p['ring_absolute'])
     validate_stability(values)
     return values
 
-def compare_bloom(evidence, control='bloom-off'):
-    values=[ring_delta(evidence,control,sample)[0] for sample in range(4)]
-    if min(values)<=0.15: raise ValueError(f'no measurable retained bloom outside image: {values}')
+def validate_glow(values, uncertainty):
+    if not finite_samples([uncertainty]*4,1) or uncertainty<0: raise ValueError('invalid nuisance bound')
+    background=values.get('background_bloom')
+    if not finite_samples(background): raise ValueError('missing background-only bloom contrast')
+    for key,multiplier in (('bloom',EFFECT_NOISE_MULTIPLIER),('source',EFFECT_NOISE_MULTIPLIER),
+                           ('interaction',INTERACTION_NOISE_MULTIPLIER)):
+        group=values.get(key,{})
+        if set(group)!=set(ON_REPEATS): raise ValueError('missing factorial glow references')
+        for reference,samples in group.items():
+            if not finite_samples(samples) or min(samples)<=MIN_GLOW+multiplier*uncertainty:
+                raise ValueError(f'no glow separated from measured nuisance: {key} {reference} {samples}; U={uncertainty}')
+    for reference in ON_REPEATS:
+        if any(abs(i-(b-a))>1e-9 for i,b,a in zip(values['interaction'][reference],values['bloom'][reference],background)):
+            raise ValueError('invalid factorial interaction')
+
+def compare_glow(evidence, uncertainty):
+    background=[ring_delta(evidence,'source-and-bloom-off',sample,'glow-source-off')[0] for sample in range(4)]
+    values=dict(bloom={},source={},interaction={},background_bloom=background)
+    for reference in ON_REPEATS:
+        bloom=[ring_delta(evidence,'bloom-off',sample,reference)[0] for sample in range(4)]
+        values['bloom'][reference]=bloom
+        values['source'][reference]=[ring_delta(evidence,'glow-source-off',sample,reference)[0] for sample in range(4)]
+        values['interaction'][reference]=[a-b for a,b in zip(bloom,background)]
+    validate_glow(values,uncertainty)
     return values
 
 def suppress_world_image(source, module):
@@ -323,7 +381,7 @@ def run(target):
         ids=sorted({id for jar in jars for id in native_mod_ids(jar,target.split('-',1)[0])})
         for variant in VARIANTS:
             print(f"=== {target}: shader variant {variant} ===", flush=True)
-            renderer.write_text(suppress_world_image(renderer_original,module) if variant=='glow-source-off' else renderer_original)
+            renderer.write_text(suppress_world_image(renderer_original,module) if variant in ('glow-source-off','source-and-bloom-off') else renderer_original)
             hook.write_text(original.replace('ScreenColorRestore.finishWorld();','ScreenColorRestore.beginFrame();') if variant.startswith('original') else original)
             def configure(client):
                 install_pack(client,pack,enabled=variant!='shader-off',loader=target.split('-',1)[0])
@@ -346,8 +404,7 @@ def run(target):
             receipt['variants'][variant]='pass'
         receipt['repeat_stability']=compare_stability(evidence)
         receipt['alpha_delta_p95']=compare_alpha(evidence)
-        receipt['bloom_ring_delta']=compare_bloom(evidence)
-        receipt['screen_glow_ring_delta']=compare_bloom(evidence,'glow-source-off')
+        receipt['glow_evidence']=compare_glow(evidence,receipt['repeat_stability']['uncertainty'])
         receipt['evidence_sha256']={str(p.relative_to(evidence)):hashlib.sha256(p.read_bytes()).hexdigest()
                                     for p in evidence_files(evidence)}
         receipt['status']='pass'
@@ -402,11 +459,10 @@ def verify_receipts(directory,head):
             if graphics!=r.get('graphics') or not all(graphics.get(k) for k in ('graphicsVendor','graphicsRenderer','graphicsVersion')):
                 raise ValueError('missing or inconsistent graphics evidence')
             validate_variant(variant,json.loads((base/'measurements.json').read_text()),base)
-        if len(r.get('alpha_delta_p95',[]))!=4 or max(r['alpha_delta_p95'])>8:
+        alpha=r.get('alpha_delta_p95',{})
+        if set(alpha)!=set(ON_REPEATS) or any(not finite_samples(v,8) for v in alpha.values()):
             raise ValueError('missing/failed transparency evidence')
-        for key in ('bloom_ring_delta','screen_glow_ring_delta'):
-            if len(r.get(key,[]))!=4 or min(r[key])<=.15:
-                raise ValueError('missing/failed screen-specific bloom evidence')
+        validate_glow(r.get('glow_evidence',{}),validate_stability(r['repeat_stability']))
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
