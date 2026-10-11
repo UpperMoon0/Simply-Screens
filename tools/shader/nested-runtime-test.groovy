@@ -40,12 +40,14 @@ try {
     boolean rejected=false
     try { evaluate([a,c]) } catch (GradleException expected) { rejected=expected.message.contains('Conflicting nested') }
     assert rejected : 'Different unreviewed versions must fail closed'
-    def oldMixin=parent('old-mixin.jar','0.3.5','old','io.github.llamalad7','mixinextras-forge')
-    def newMixin=parent('new-mixin.jar','0.4.1','new','io.github.llamalad7','mixinextras-forge')
-    for (def order : [[oldMixin,newMixin],[newMixin,oldMixin]]) {
-        def chosen=evaluate(order)[1]
-        assert chosen.size()==1
-        assert new java.util.zip.ZipFile(chosen[0]).withCloseable { it.getInputStream(it.getEntry('payload.txt')).text } == 'new'
+    for (def identity : [['io.github.llamalad7','mixinextras-forge'],['com.github.LlamaLad7','MixinExtras']]) {
+        def oldMixin=parent('old-mixin.jar','0.3.5','old',identity[0],identity[1])
+        def newMixin=parent('new-mixin.jar','0.4.1','new',identity[0],identity[1])
+        for (def order : [[oldMixin,newMixin],[newMixin,oldMixin]]) {
+            def chosen=evaluate(order)[1]
+            assert chosen.size()==1
+            assert new java.util.zip.ZipFile(chosen[0]).withCloseable { it.getInputStream(it.getEntry('payload.txt')).text } == 'new'
+        }
     }
     def api=jar(new File(root,'api.jar'), ['fabric.mod.json':JsonOutput.toJson([id:'fabric-api-base',version:'1.0'])])
     def config=jar(new File(root,'config.jar'), ['fabric.mod.json':JsonOutput.toJson([id:'caffeineconfig',version:'1.0'])])

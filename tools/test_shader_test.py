@@ -101,6 +101,9 @@ class ShaderStackTests(unittest.TestCase):
                 base=stage/module/shader_test.visual.PACKAGE
                 self.assertIn('loadedShaderMods',(base/'testing/visual/VisualClient.java').read_text())
                 self.assertIn('Blocks.RED_CONCRETE',(base/'testing/visual/VisualClient.java').read_text())
+                server=(base/'testing/visual/VisualServer.java').read_text()
+                self.assertIn('gamerule '+('minecraft:advance_time' if module=='neoforge-26.1.2' else 'doDaylightCycle')+' false',server)
+                self.assertIn('gamerule '+('minecraft:advance_weather' if module=='neoforge-26.1.2' else 'doWeatherCycle')+' false',server)
                 hook=(base/'client/mixin/GameRendererMixin.java').read_text()
                 self.assertIn('ScreenColorRestore.finishWorld(); com.nstut.simplyscreens.testing.visual.VisualClient.afterRender',hook)
 
@@ -110,6 +113,24 @@ class ShaderStackTests(unittest.TestCase):
         d['NORTH-8-0-False']={'frames':[{'patches':[{'median':9}]}]}
         self.assertTrue(shader_test.reproduces_distortion(d))
 
+    def test_identical_run_control_rejects_temporal_background_drift(self):
+        stable=dict(ring_signed=[0.]*4,ring_absolute=[0.]*4,alpha_p95=[0.]*4)
+        shader_test.validate_stability(stable)
+        for key,drift in (('ring_signed',.16),('ring_absolute',2.),('alpha_p95',9.)):
+            changed=copy.deepcopy(stable);changed[key][2]=drift
+            with self.assertRaisesRegex(ValueError,'unstable paired'):
+                shader_test.validate_stability(changed)
+        changed=copy.deepcopy(stable);changed['ring_signed'][0]=float('nan')
+        with self.assertRaises(ValueError):shader_test.validate_stability(changed)
+
+    def test_deterministic_profile_keeps_default_temporal_aa_and_only_toggles_bloom(self):
+        a=shader_test.pack_options('fixed');b=shader_test.pack_options('bloom-off')
+        self.assertEqual(['BLOOM_ENABLED'],[k for k in a if a[k]!=b[k]])
+        self.assertEqual('0',a['CLOUD_STYLE_DEFINE'])
+        self.assertEqual('0',a['LIGHTSHAFT_QUALI_DEFINE'])
+        self.assertNotIn('TAA_DEFINE',a)
+        self.assertEqual(a,shader_test.pack_options('fixed-repeat'))
+
     def test_receipt_gate_rejects_missing_targets(self):
         with tempfile.TemporaryDirectory() as d:
             with self.assertRaisesRegex(ValueError,'missing or duplicate'): shader_test.verify_receipts(Path(d),'abc')
@@ -117,6 +138,6 @@ class ShaderStackTests(unittest.TestCase):
         cases=shader_test.scenarios()
         self.assertEqual(set(shader_test.FACES),{c['facing'] for c in cases if c['occluded']})
         self.assertTrue(any(c.get('alpha') for c in cases));self.assertTrue(any(c.get('reload') for c in cases))
-        self.assertTrue(any(c['angle']==60 for c in cases))
+        self.assertEqual(set(shader_test.FACES),{c['facing'] for c in cases if c['angle']==60 and c['occluded']})
 
 if __name__=='__main__':unittest.main()

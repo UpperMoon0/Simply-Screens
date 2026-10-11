@@ -5,6 +5,8 @@ import argparse
 import hashlib
 import json
 import os
+import re
+import zipfile
 from pathlib import Path
 import subprocess
 import time
@@ -16,12 +18,31 @@ from visual_cases import TARGETS, FACES, sample_count
 from shader_stack import load_lock, prepare, install_pack, native_mod_ids
 
 ROOT = Path(__file__).resolve().parents[1]
-VARIANTS = ('shader-off', 'original', 'fixed', 'bloom-off', 'glow-source-off')
+VARIANTS = ('shader-off', 'original', 'fixed', 'fixed-repeat', 'bloom-off', 'glow-source-off')
+
+
+# Public options of the pinned pack, not a modification to its source. Keep default
+# TAA enabled so the source-color gate still exercises temporal projection jitter.
+STATIC_OPTIONS = dict(CLOUD_STYLE_DEFINE='0', CLOUD_SPEED_MULT='0', CLOUD_SHADOWS='false',
+                      LIGHTSHAFT_QUALI_DEFINE='0', MOTION_BLUR_EFFECT='-1', WAVING_SPEED='0.00')
+
+def pack_options(variant):
+    return STATIC_OPTIONS | dict(BLOOM_ENABLED='-1' if variant=='bloom-off' else '1', BLOOM_STRENGTH='0.32')
+
+def verify_pack_options(pack):
+    # Fail before launch if an updated pack removes/renames an option; silently ignored
+    # properties must not masquerade as a deterministic test environment.
+    with zipfile.ZipFile(pack) as archive:
+        source=archive.read('shaders/lib/common.glsl').decode()
+    for name in pack_options('fixed'):
+        if not re.search(r'^\s*(?://)?#define\s+'+re.escape(name)+r'\b',source,re.M):
+            raise ValueError('unsupported deterministic shader option: '+name)
+
 
 def scenarios():
     result=[]
     for face in FACES:
-        for distance,angle,occluded in ((8,0,False),(32,60,False),(8,0,True)):
+        for distance,angle,occluded in ((8,0,False),(32,60,False),(8,0,True),(32,60,True)):
             result.append(dict(id=f'{face}-{distance}-{angle}-{occluded}',facing=face,size=8,
                                distance=distance,angle=angle,occluded=occluded))
     result.append(dict(id='NORTH-reload',facing='NORTH',size=8,distance=16,angle=0,occluded=False,reload=True))
@@ -49,6 +70,13 @@ def instrument(stage):
             'ClientImageManager.initialize(); com.nstut.simplyscreens.testing.visual.VisualClient.setModLookup(id -> '+lookup+');')
     for module in visual.MODULES:
         base=stage/module/visual.PACKAGE
+        server=base/'testing/visual/VisualServer.java'
+        command='server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), '
+        clock='minecraft:advance_time' if module=='neoforge-26.1.2' else 'doDaylightCycle'
+        weather='minecraft:advance_weather' if module=='neoforge-26.1.2' else 'doWeatherCycle'
+        visual.replace_once(server, command+'"time set noon");',
+            command+f'"gamerule {clock} false");\n            '+
+            command+f'"gamerule {weather} false");\n            '+command+'"time set noon");')
         driver=base/'testing/visual/VisualClient.java'
         text=driver.read_text().replace('    public static void afterRender(Minecraft mc) {',
             '    public static void beforeShaderFinalization(Minecraft mc) {}\n\n    public static void afterRender(Minecraft mc) {')
@@ -120,22 +148,46 @@ def compare_alpha(evidence):
     if max(measurements)>8: raise ValueError(f'transparent samples changed/double blended: {measurements}')
     return measurements
 
-def compare_bloom(evidence, control='bloom-off'):
+def ring_delta(evidence, control, sample):
     import shader_pixels
     import numpy as np
     from PIL import Image
     scene=next(s for s in scenarios() if s['facing']=='NORTH' and s['distance']==8 and not s['occluded'])
-    values=[]
-    for sample in range(sample_count(scene)):
+    stem=f'{scene["id"]}-{sample:02d}'
+    frame=json.loads((evidence/'fixed'/f'{stem}.json').read_text())
+    u,v,_,_=shader_pixels.regions(frame)
+    # Geometric ring just outside the image; never selected by observed brightness.
+    ring=(u>-.08)&(u<1.08)&(v>-.08)&(v<1.08)&((u<-.015)|(u>1.015)|(v<-.015)|(v>1.015))
+    if ring.sum()<32: raise ValueError('insufficient glow-ring coverage')
+    on=np.asarray(Image.open(evidence/'fixed'/f'{stem}.png').convert('RGB'),dtype=float)
+    off=np.asarray(Image.open(evidence/control/f'{stem}.png').convert('RGB'),dtype=float)
+    delta=on[ring]-off[ring]
+    return float(np.mean(delta)),float(np.mean(np.abs(delta)))
+
+def validate_stability(values):
+    for key,limit in (('ring_signed',.05),('ring_absolute',1.),('alpha_p95',1.)):
+        samples=values.get(key,[])
+        if len(samples)!=4 or any(not isinstance(x,(int,float)) or not __import__('math').isfinite(x) or abs(x)>limit for x in samples):
+            raise ValueError('unstable paired shader background: '+key)
+
+def compare_stability(evidence):
+    import shader_pixels
+    scene=next(s for s in scenarios() if s.get('alpha'))
+    values=dict(ring_signed=[],ring_absolute=[],alpha_p95=[])
+    for sample in range(4):
+        signed,absolute=ring_delta(evidence,'fixed-repeat',sample)
+        values['ring_signed'].append(signed);values['ring_absolute'].append(absolute)
         stem=f'{scene["id"]}-{sample:02d}'
         frame=json.loads((evidence/'fixed'/f'{stem}.json').read_text())
-        u,v,_,_=shader_pixels.regions(frame)
-        # Geometric ring just outside the image; never selected by observed brightness.
-        ring=(u>-.08)&(u<1.08)&(v>-.08)&(v<1.08)&((u<-.015)|(u>1.015)|(v<-.015)|(v>1.015))
-        if ring.sum()<32: raise ValueError('insufficient glow-ring coverage')
-        on=np.asarray(Image.open(evidence/'fixed'/f'{stem}.png').convert('RGB'),dtype=float)
-        off=np.asarray(Image.open(evidence/control/f'{stem}.png').convert('RGB'),dtype=float)
-        values.append(float(np.mean(on[ring]-off[ring])))
+        values['alpha_p95'].append(shader_pixels.compare_transparency(
+            evidence/'fixed'/f'{stem}.png',evidence/'fixed-repeat'/f'{stem}.png',frame))
+    # An identical second process must have less than one third of the required glow
+    # signal. This rejects cloud/time drift rather than crediting it as image bloom.
+    validate_stability(values)
+    return values
+
+def compare_bloom(evidence, control='bloom-off'):
+    values=[ring_delta(evidence,control,sample)[0] for sample in range(4)]
     if min(values)<=0.15: raise ValueError(f'no measurable retained bloom outside image: {values}')
     return values
 
@@ -166,6 +218,8 @@ def run(target):
         jars,pack=prepare(target,cache)
         receipt['stack']=load_lock()['stacks'][target]
         receipt['shaderpack']=load_lock()['shaderpack']
+        verify_pack_options(pack)
+        receipt['pack_options']={v:pack_options(v) for v in VARIANTS}
         standalone=live.packetweave_jar(ROOT,target)
         receipt['source_sha256']=visual.snapshot(ROOT,stage)
         visual.scope_gradle(stage,target)
@@ -177,13 +231,14 @@ def run(target):
         original=hook.read_text()
         ids=sorted({id for jar in jars for id in native_mod_ids(jar,target.split('-',1)[0])})
         for variant in VARIANTS:
+            print(f"=== {target}: shader variant {variant} ===", flush=True)
             renderer.write_text(suppress_world_image(renderer_original,module) if variant=='glow-source-off' else renderer_original)
             hook.write_text(original.replace('ScreenColorRestore.finishWorld();','ScreenColorRestore.beginFrame();') if variant=='original' else original)
             def configure(client):
                 install_pack(client,pack,enabled=variant!='shader-off')
                 # Same pack and grading settings. Change only bloom for the glow negative control.
                 (client/'shaderpacks'/f'{pack.name}.txt').write_text(
-                    'BLOOM_ENABLED='+('-1' if variant=='bloom-off' else '1')+'\nBLOOM_STRENGTH=0.32\n')
+                    ''.join(f'{key}={value}\n' for key,value in pack_options(variant).items()))
             def fixtures(directory):
                 shader_pixels.write_chart(directory)
                 visual.atomic_json(directory/'expected-mods.json',ids)
@@ -196,6 +251,7 @@ def run(target):
             if 'graphics' in receipt and receipt['graphics']!=graphics: raise ValueError('graphics backend changed between shader controls')
             receipt['graphics']=graphics
             receipt['variants'][variant]='pass'
+        receipt['repeat_stability']=compare_stability(evidence)
         receipt['alpha_delta_p95']=compare_alpha(evidence)
         receipt['bloom_ring_delta']=compare_bloom(evidence)
         receipt['screen_glow_ring_delta']=compare_bloom(evidence,'glow-source-off')
@@ -233,6 +289,8 @@ def verify_receipts(directory,head):
         if r.get('status')!='pass' or r.get('dirty') is not False or r.get('head')!=head:
             raise ValueError('failed, dirty, or stale shader evidence')
         if r.get('variants')!={v:'pass' for v in VARIANTS}: raise ValueError('incomplete shader controls')
+        if r.get('pack_options')!={v:pack_options(v) for v in VARIANTS}: raise ValueError('wrong deterministic shader profile')
+        validate_stability(r.get('repeat_stability',{}))
         if r.get('stack')!=lock['stacks'][r['target']] or r.get('shaderpack')!=lock['shaderpack']:
             raise ValueError('unexpected shader dependencies')
         hashes=r.get('evidence_sha256',{})

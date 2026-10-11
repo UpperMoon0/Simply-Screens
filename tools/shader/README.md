@@ -48,14 +48,14 @@ Pinned matrix:
 
 | Target | Shader loader | Renderer | Extra |
 |---|---|---|---|
-| Fabric 1.20.1 | Iris 1.7.6 | Sodium 0.5.13 | Sodium Extra 0.5.9 |
+| Fabric 1.20.1 | Iris 1.7.6 | Sodium 0.5.12-beta.2 | Sodium Extra 0.5.9 |
 | Fabric 1.21.1 | Iris 1.8.8 | Sodium 0.6.13 | Sodium Extra 0.6.0 |
 | Forge 1.20.1 | Oculus 1.8.0 | Embeddium 0.3.31 | Embeddium/Rubidium Extra 0.5.4.4 |
 | NeoForge 1.21.1 | Iris 1.8.12 | Sodium 0.6.13 | Sodium Extra 0.6.0 |
-| NeoForge 26.1.2 | Iris 1.11.4 | Sodium 0.9.2 | Official Sodium Extra exists; pin/download pending |
+| NeoForge 26.1.2 | Iris 1.11.4 | Sodium 0.9.2 | Sodium Extra 0.9.4 |
 
 All targets use Complementary Reimagined r5.9.3. Sodium Extra itself is not a Forge
-mod; the pinned Forge port is named Embeddium (Rubidium) Extra. NeoForge26.1.2 Extra coverage is not complete until its official artifact is pinned and loaded by the test. Compatibility
+mod; the pinned Forge port is named Embeddium (Rubidium) Extra. The NeoForge26.1.2 Extra artifact hash and native metadata are verified; runtime coverage still requires the actual test to pass. Compatibility
 metadata is checked before installation, and runtime loader rejection is a test
 failure, never permission to edit a third-party jar's metadata.
 
@@ -72,15 +72,18 @@ occlusion, shader-resource reload and alpha cases are captured at four raster
 alignments. The main renderer's world submissions must match the server fixture;
 shadow-map submissions cannot satisfy readiness.
 
-Five isolated client/server runs use the same pinned renderer/mod stack:
+Six isolated client/server runs use the same pinned renderer/mod stack:
 
 1. Shader off: validates the source-color baseline.
 2. Original world pass: disables only the late replay in the disposable snapshot;
    must demonstrate a real chart color error, not merely crash or fail to load.
 3. Fixed: source chart colors/occlusion must pass with the shader actually active.
-4. Bloom off: only Complementary `BLOOM_ENABLED` changes from 1 to -1; a geometric
+4. Fixed repeat: identical settings in a fresh process. Alpha p95 must be at most
+   1/255, ring mean absolute delta at most1/255 and signed delta at most0.05/255.
+   Background drift cannot supply the required bloom signal.
+5. Bloom off: only Complementary `BLOOM_ENABLED` changes from 1 to -1; a geometric
    ring outside the image must be measurably brighter with bloom enabled.
-5. Glow source off: keep the same shader/bloom settings and late color replay,
+6. Glow source off: keep the same shader/bloom settings and late color replay,
    but suppress only the original world image vertices. The geometric ring must
    be brighter with the original contribution, proving image-produced glow
    rather than unrelated sky/background bloom.
@@ -88,6 +91,20 @@ Five isolated client/server runs use the same pinned renderer/mod stack:
 Semi-transparent/transparent samples are compared to the original shader run to
 reject double blending. The test uses `BLOOM_STRENGTH=0.32` for a measurable halo;
 that is a test fixture setting, not a production override of the user's pack.
+The paired profile disables pack clouds, cloud shadows, animated light shafts,
+motion blur and waving through public options. World day and weather advancement
+are frozen with the version-appropriate gamerules. Default temporal AA remains
+active, including its projection jitter. The pack options are verified against
+the pinned shader source and recorded in receipts. The identical-process control
+fails closed if residual temporal drift is large enough to confound the bloom or
+alpha thresholds; no dynamic-sky equivalence is claimed.
+
+The replay uses one additional raster-pixel slope bias compared with the world
+image, plus a small depth-precision margin. This addresses whole-plane LEQUAL
+rejection at far oblique camera phases without disabling depth tests or writing
+depth. All six facings include32-block/60-degree foreground occlusion as well as
+near frontal occlusion. Nearly coplanar geometry inside the bounded polygon-offset
+margin, arbitrary pack depth rewrites and geometric warps remain limitations.
 
 Receipts preserve exact commit, clean/dirty status, source snapshot digest,
 artifact hashes, actually loaded mod IDs/versions, scene/camera data, frame PNGs, graphics identity, original-control

@@ -45,9 +45,10 @@ public final class ScreenColorRestore {
             .withSampler("Sampler0")
             .withVertexFormat(DefaultVertexFormat.POSITION_TEX, VertexFormat.Mode.QUADS)
             .withColorTargetState(ColorTargetState.DEFAULT)
-            // Match the existing image's polygon-offset depth; never change the world's depth.
+            // Add one raster-pixel slope margin to the world's -1/-128 image bias.
+            // Covers TAA/rounding disagreement at oblique angles without bypassing occlusion.
             // 26.1.2 and Iris 1.11.4 use forward Z (IrisApi.isReverseZDuringShaders() is false).
-            .withDepthStencilState(new DepthStencilState(CompareOp.LESS_THAN_OR_EQUAL, false, -1.0F, -128.0F))
+            .withDepthStencilState(new DepthStencilState(CompareOp.LESS_THAN_OR_EQUAL, false, -2.0F, -144.0F))
             .build();
     private static final List<Quad> FRAME = new ArrayList<>();
 

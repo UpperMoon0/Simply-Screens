@@ -34,7 +34,7 @@ class ShaderColorContractTest(unittest.TestCase):
         for version in ('1.20.1', '1.21.1'):
             base = ROOT / f'common-{version}/src/main'
             state = (base/'java/com/nstut/simplyscreens/client/renderers/ScreenColorRenderTypes.java').read_text()
-            for token in ('LEQUAL_DEPTH_TEST', 'COLOR_WRITE', 'NO_TRANSPARENCY'):
+            for token in ('LEQUAL_DEPTH_TEST', 'COLOR_WRITE', 'NO_TRANSPARENCY', 'polygonOffset(-2.0F, -32.0F)'):
                 self.assertIn(token, state)
             shader = (base/'resources/assets/simply_screens/shaders/core/color_restore.fsh').read_text()
             self.assertIn('if (source.a < 0.99999) discard;', shader)
@@ -45,7 +45,7 @@ class ShaderColorContractTest(unittest.TestCase):
         base = ROOT/'neoforge-26.1.2/src/main'
         replay = (base/'java/com/nstut/simplyscreens/client/renderers/ScreenColorRestore.java').read_text()
         self.assertIn('ColorTargetState.DEFAULT', replay)
-        self.assertIn('CompareOp.LESS_THAN_OR_EQUAL, false, -1.0F, -128.0F', replay)
+        self.assertIn('CompareOp.LESS_THAN_OR_EQUAL, false, -2.0F, -144.0F', replay)
         self.assertIn('target.getDepthTextureView(), OptionalDouble.empty()', replay)
         self.assertIn('new Matrix4f(modelView), new Matrix4f(pose)', replay)
         self.assertIn('FRAME.clear()', replay)

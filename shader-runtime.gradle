@@ -21,7 +21,8 @@ if (stackDirectory.isPresent()) {
         // Explicit reviewed resolutions for the pinned parents' overlapping JarJar ranges.
         def compatibleVersions = [
             'org.sinytra.forgified-fabric-api:fabric-renderer-api-v1': ['3.4.0+9c40919e19', '3.4.0+acb05a3919'],
-            'io.github.llamalad7:mixinextras-forge': ['0.3.5', '0.4.1']
+            'io.github.llamalad7:mixinextras-forge': ['0.3.5', '0.4.1'],
+            'com.github.LlamaLad7:MixinExtras': ['0.3.5', '0.4.1']
         ]
         def expand
         expand = { File parent ->

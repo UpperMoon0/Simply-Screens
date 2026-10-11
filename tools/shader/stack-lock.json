@@ -26,9 +26,9 @@
         ]
       },
       {
-        "version_id": "OihdIimA",
+        "version_id": "ryOMVRuG",
         "project_id": "AANobbMI",
-        "version": "mc1.20.1-0.5.13-fabric",
+        "version": "mc1.20.1-0.5.12-beta.2-fabric",
         "game_versions": [
           "1.20.1"
         ],
@@ -36,9 +36,9 @@
           "fabric",
           "quilt"
         ],
-        "filename": "sodium-fabric-0.5.13+mc1.20.1.jar",
-        "url": "https://cdn.modrinth.com/data/AANobbMI/versions/OihdIimA/sodium-fabric-0.5.13%2Bmc1.20.1.jar",
-        "sha512": "81c64f9c2d3402dfa43ee54d8f5a054f5243bfb08984e3addcab9fe885073c79c43c1c8c41e8f30b625d26a656f82a8e5f370bbbbf222ff1c08f4b324edb7ea4",
+        "filename": "sodium-fabric-0.5.12-beta.2+mc1.20.1.jar",
+        "url": "https://cdn.modrinth.com/data/AANobbMI/versions/ryOMVRuG/sodium-fabric-0.5.12-beta.2%2Bmc1.20.1.jar",
+        "sha512": "e6906b77e709c17bfe445d065353010853cad58a65252f70f9e7e06113156f21c85e91a71e5ccebb4ea0f0168280737bb12ae407e115a9f1df3b5e8d21b87ec5",
         "dependencies": []
       },
       {
@@ -356,6 +356,46 @@
         "url": "https://cdn.modrinth.com/data/AANobbMI/versions/zg4YQ9EL/sodium-neoforge-0.9.2%2Bmc26.1.2.jar",
         "sha512": "899c2d888831c4044877955ab06b5333c6e17bd89b543d4f5bd0e188caca8791727bd18e5e9c5fe52cc14aa6e4173b8ba4905416914126c48d70135318ef1012",
         "dependencies": []
+      },
+      {
+        "version_id": "5xSwvXof",
+        "project_id": "PtjYWJkn",
+        "version": "mc26.1.2-0.9.4+neoforge",
+        "game_versions": [
+          "26.1.2"
+        ],
+        "loaders": [
+          "neoforge"
+        ],
+        "filename": "sodium-extra-neoforge-0.9.4+mc26.1.2.jar",
+        "url": "https://cdn.modrinth.com/data/PtjYWJkn/versions/5xSwvXof/sodium-extra-neoforge-0.9.4%2Bmc26.1.2.jar",
+        "sha512": "754ea0dac5c3a6f82a0ab55ff22e65343434dae569a5c83afb2b41c4fecfa0de40f4d5416cdc537ef7bc202dfc495d8e15c122de306fcf634f724553eb5b1875",
+        "dependencies": [
+          {
+            "version_id": null,
+            "project_id": "AANobbMI",
+            "file_name": null,
+            "dependency_type": "required"
+          },
+          {
+            "version_id": null,
+            "project_id": "EE4vxUHj",
+            "file_name": null,
+            "dependency_type": "optional"
+          },
+          {
+            "version_id": null,
+            "project_id": "Bh37bMuy",
+            "file_name": null,
+            "dependency_type": "optional"
+          },
+          {
+            "version_id": null,
+            "project_id": "YL57xq9U",
+            "file_name": null,
+            "dependency_type": "optional"
+          }
+        ]
       }
     ]
   },
@@ -449,8 +489,5 @@
     "url": "https://cdn.modrinth.com/data/HVnmMxH1/versions/Bqen1mJX/ComplementaryReimagined_r5.9.3.zip",
     "sha512": "45304b1d7862afdb2177b7e6226fc9c6737911d17a4ad46cc9c519ca4deb935f05072cd337cd8b19a15bb8062b57b54eceec7bdee4cd572d94858e2946d37d85",
     "dependencies": []
-  },
-  "unsupported_extras": {
-    "neoforge-26.1.2": "No verified Sodium Extra artifact for this exact supported stack; never substitute an incompatible version."
   }
 }
