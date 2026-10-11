@@ -17,6 +17,11 @@ TARGETS = (
     "neoforge-1.21.1",
     "neoforge-26.1.2",
 )
+FATAL_MARKERS = (
+    "compilation failed",
+    "compilation error",
+    "nosuchfileexception",
+)
 TRANSIENT_MARKERS = (
     "received status code 429",
     "received status code 500",
@@ -98,6 +103,9 @@ def run_attempt(command: list[str], project: Path) -> tuple[int, str]:
 
 def transient_failure(output: str) -> bool:
     lowered = output.lower()
+    # An earlier recovered repository error must not mask a later fatal build error.
+    if any(marker in lowered for marker in FATAL_MARKERS):
+        return False
     return any(marker in lowered for marker in TRANSIENT_MARKERS)
 
 

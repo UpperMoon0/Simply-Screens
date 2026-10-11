@@ -51,7 +51,9 @@ class BuildOpenUiTest(unittest.TestCase):
     @patch.object(build_openui, "property_value", return_value="0.0.8")
     @patch.object(build_openui, "gradle_command", side_effect=lambda project, target: [target])
     def test_mapping_or_compile_failure_stops_without_retry_or_later_targets(self, command, actual, required):
-        for failure in ("NoSuchFileException: mappings-srg.tiny", "Compilation failed"):
+        for failure in ("NoSuchFileException: mappings-srg.tiny", "Compilation failed",
+                        "Received status code 503; retry succeeded\nNoSuchFileException: mappings-srg.tiny",
+                        "connection reset; retry succeeded\nCompilation failed"):
             with self.subTest(failure=failure), patch.object(build_openui, "run_attempt", return_value=(1, failure)) as run:
                 with self.assertRaises(subprocess.CalledProcessError):
                     build_openui.build(Path("source"), attempts=3, retry_delay=0)
