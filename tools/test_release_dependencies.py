@@ -2,7 +2,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from release_dependencies import TARGETS, curseforge_relations, required_version, verify_release, verify_curseforge_identity
+from release_dependencies import TARGETS, curseforge_relations, required_version, verify_release, verify_curseforge_metadata
 
 
 class ReleaseDependencyTests(unittest.TestCase):
@@ -20,12 +20,15 @@ class ReleaseDependencyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             curseforge_relations("unknown")
 
-    def test_official_catalog_must_confirm_both_id_and_slug(self):
-        correct = {"slug": "packetweave", "id": 1735096, "name": "PacketWeave"}
-        verify_curseforge_identity([correct, {"slug": "unrelated", "id": 42}])
-        for catalog in ([], [{"slug": "packetweave", "id": 42}], [{"slug": "unrelated", "id": 1735096}], [correct, correct]):
-            with self.assertRaisesRegex(ValueError, "publication is blocked"):
-                verify_curseforge_identity(catalog)
+    def test_metadata_must_require_exact_id_and_slug(self):
+        correct = {"slug": "packetweave", "projectID": "1735096", "type": "requiredDependency"}
+        verify_curseforge_metadata({"relations": {"projects": [correct]}})
+        invalid = ([], [dict(correct, projectID="42")], [dict(correct, slug="unrelated")],
+                   [dict(correct, type="optionalDependency")], [correct, correct],
+                   [{"slug": "packetweave", "type": "requiredDependency"}])
+        for projects in invalid:
+            with self.subTest(projects=projects), self.assertRaisesRegex(ValueError, "publication is blocked"):
+                verify_curseforge_metadata({"relations": {"projects": projects}})
 
     def test_unreleased_or_partial_dependency_prevents_screens_release(self):
         verify_release(self.release(), "0.1.1")
@@ -62,7 +65,8 @@ class ReleaseDependencyTests(unittest.TestCase):
         self.assertIn("python3 tools/release_dependencies.py verify-release", workflow)
         self.assertNotIn("treating retry as successful", workflow)
         self.assertIn("curseforge-receipt-", workflow)
-        self.assertIn("verify-curseforge-identity --catalog", workflow)
+        self.assertIn('verify-curseforge-metadata <<< "$metadata"', workflow)
+        self.assertNotIn("https://minecraft.curseforge.com/api/game/dependencies", workflow)
 
 
 if __name__ == "__main__":
