@@ -14,16 +14,17 @@ class ReleaseDependencyTests(unittest.TestCase):
         for loader in ("fabric", "forge", "neoforge"):
             projects = curseforge_relations(loader)["projects"]
             packetweave = [p for p in projects if p["slug"] == "packetweave"]
-            self.assertEqual([{"slug": "packetweave", "projectID": "1735096", "type": "requiredDependency"}], packetweave)
+            self.assertEqual([{"slug": "packetweave", "projectID": 1735096, "type": "requiredDependency"}], packetweave)
             self.assertTrue(all(p["type"] == "requiredDependency" for p in projects))
             self.assertEqual(loader == "fabric", any(p["slug"] == "fabric-api" for p in projects))
         with self.assertRaises(ValueError):
             curseforge_relations("unknown")
 
     def test_metadata_must_require_exact_id_and_slug(self):
-        correct = {"slug": "packetweave", "projectID": "1735096", "type": "requiredDependency"}
+        correct = {"slug": "packetweave", "projectID": 1735096, "type": "requiredDependency"}
         verify_curseforge_metadata({"relations": {"projects": [correct]}})
-        invalid = ([], [dict(correct, projectID="42")], [dict(correct, slug="unrelated")],
+        invalid = ([], [dict(correct, projectID="42")], [dict(correct, projectID="1735096")],
+                   [dict(correct, projectID=1735096.0)], [dict(correct, projectID=True)], [dict(correct, slug="unrelated")],
                    [dict(correct, type="optionalDependency")], [correct, correct],
                    [{"slug": "packetweave", "type": "requiredDependency"}])
         for projects in invalid:
