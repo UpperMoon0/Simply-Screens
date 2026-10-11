@@ -97,10 +97,16 @@ def validate_variant(variant, measurements, directory):
         if result['status']!='pass' and not scene.get('alpha'): failures.append(scene['id'])
     if variant=='original':
         # A startup/occlusion error cannot count as reproduction: require an actual RGB-chart mismatch.
-        if not any(p['median']>8 for s in measurements.values() for f in s['frames'] for p in f.get('patches',[])):
+        if not reproduces_distortion(measurements):
             raise ValueError('INCONCLUSIVE: shader did not reproduce image color distortion')
     elif failures:
         raise ValueError(f'{variant} failed source RGB/occlusion tolerance: {failures}')
+
+def reproduces_distortion(measurements):
+    # Far vanilla fog has its own baseline allowance and cannot prove shader damage.
+    near={scene['id'] for scene in scenarios() if scene['distance']<=16 and not scene.get('alpha')}
+    return any(p['median']>8 for name,s in measurements.items() if name in near
+               for f in s['frames'] for p in f.get('patches',[]))
 
 def compare_alpha(evidence):
     import shader_pixels

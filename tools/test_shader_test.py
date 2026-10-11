@@ -104,6 +104,12 @@ class ShaderStackTests(unittest.TestCase):
                 hook=(base/'client/mixin/GameRendererMixin.java').read_text()
                 self.assertIn('ScreenColorRestore.finishWorld(); com.nstut.simplyscreens.testing.visual.VisualClient.afterRender',hook)
 
+    def test_original_control_cannot_pass_from_vanilla_far_fog(self):
+        d={'NORTH-32-60-False':{'frames':[{'patches':[{'median':9}]}]}}
+        self.assertFalse(shader_test.reproduces_distortion(d))
+        d['NORTH-8-0-False']={'frames':[{'patches':[{'median':9}]}]}
+        self.assertTrue(shader_test.reproduces_distortion(d))
+
     def test_receipt_gate_rejects_missing_targets(self):
         with tempfile.TemporaryDirectory() as d:
             with self.assertRaisesRegex(ValueError,'missing or duplicate'): shader_test.verify_receipts(Path(d),'abc')

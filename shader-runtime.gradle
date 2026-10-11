@@ -18,6 +18,11 @@ if (stackDirectory.isPresent()) {
     def nestedLibraries = []
     if (!plugins.hasPlugin('net.neoforged.moddev')) {
         def selected = [:]
+        // Explicit reviewed resolutions for the pinned parents' overlapping JarJar ranges.
+        def compatibleVersions = [
+            'org.sinytra.forgified-fabric-api:fabric-renderer-api-v1': ['3.4.0+9c40919e19', '3.4.0+acb05a3919'],
+            'io.github.llamalad7:mixinextras-forge': ['0.3.5', '0.4.1']
+        ]
         def expand
         expand = { File parent ->
             new java.util.zip.ZipFile(parent).withCloseable { zip ->
@@ -35,23 +40,29 @@ if (stackDirectory.isPresent()) {
                     child.parentFile.mkdirs()
                     child.bytes = bytes
                     def id = entry.identifier ? "${entry.identifier.group}:${entry.identifier.artifact}".toString() : path
+                    def version = entry.version?.artifactVersion
                     def nativeMod = false
                     new java.util.zip.ZipFile(child).withCloseable { nested ->
                         if (nested.getEntry('fabric.mod.json') != null) {
                             def manifest = new groovy.json.JsonSlurper().parse(nested.getInputStream(nested.getEntry('fabric.mod.json')))
                             id = manifest.id
+                            version = manifest.version
                             nativeMod = true
                         } else nativeMod = nested.getEntry('META-INF/mods.toml') != null || nested.getEntry('META-INF/neoforge.mods.toml') != null
                     }
                     // The Fabric API dependency already supplies these components.
                     if (project.name.startsWith('fabric-') && id.startsWith('fabric-')) return
                     if (selected.containsKey(id)) {
-                        if (selected[id] != digest && id != 'org.sinytra.forgified-fabric-api:fabric-renderer-api-v1')
-                            throw new GradleException("Conflicting nested shader dependency ${id}")
-                        // Lock order explicitly prefers Iris's newer renderer-api build over Sodium's.
-                        return
+                        def old = selected[id]
+                        if (old.version == version) return
+                        def accepted = compatibleVersions[id]
+                        if (accepted == null || !accepted.contains(old.version) || !accepted.contains(version))
+                            throw new GradleException("Conflicting nested shader dependency ${id}: ${old.version} / ${version}")
+                        if (accepted.indexOf(version) < accepted.indexOf(old.version)) return
+                        nestedMods.remove(old.file)
+                        nestedLibraries.remove(old.file)
                     }
-                    selected[id] = digest
+                    selected[id] = [version:version, file:child]
                     (nativeMod ? nestedMods : nestedLibraries).add(child)
                     expand(child)
                 }
@@ -63,7 +74,7 @@ if (stackDirectory.isPresent()) {
         // Sodium 0.5 requires Minecraft's LWJGL 3.3.1. Run the game on Java17,
         // not Gradle's Java21, so Loom does not substitute LWJGL3.3.2-snapshot.
         project.ext.set('fabric.loom.runtimeJavaCompatibilityVersion', '17')
-        tasks.withType(net.fabricmc.loom.task.AbstractRunTask).configureEach {
+        tasks.withType(JavaExec).configureEach {
             javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(17)) })
         }
     }
@@ -71,7 +82,8 @@ if (stackDirectory.isPresent()) {
         if (plugins.hasPlugin('net.neoforged.moddev')) localRuntime files(jars)
         else {
             modLocalRuntime files(jars + nestedMods)
-            localRuntime files(nestedLibraries)
+            if (project.name.startsWith('fabric-')) localRuntime files(nestedLibraries)
+            else forgeRuntimeLibrary files(nestedLibraries) // FML bootstrap discovery requires this classpath.
         }
     }
 }

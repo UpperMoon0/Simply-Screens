@@ -118,9 +118,15 @@ Development dependencies expand required nested libraries from the SHA-512-verif
 parent jars because [Loom's ModProcessor](https://github.com/architectury/architectury-loom/blob/1.11/src/main/java/net/fabricmc/loom/configuration/mods/ModProcessor.java)
 strips nesting metadata during remapping. Fabric API components already supplied by
 the build are not duplicated; the pinned NeoForge21 Iris renderer-api build takes
-precedence over Sodium's older build. Unexpected child identity conflicts fail closed.
+precedence over Sodium's older build; Extra's MixinExtras0.4.1 satisfies Embeddium's
+0.3.5-or-later range. Only these explicit pinned-version resolutions are allowed.
+Unexpected child identity/version conflicts fail closed.
 Fabric20 uses Java17 for the game while Gradle runs Java21, through Loom's
 [runtime compatibility property](https://github.com/architectury/architectury-loom/blob/1.11/src/main/java/net/fabricmc/loom/configuration/providers/minecraft/MinecraftLibraryProvider.java),
 preserving Sodium's required LWJGL3.3.1. Source mixin configurations omit refmaps;
 [Architectury's production transforms](https://github.com/architectury/architectury-plugin/blob/3.4/src/main/kotlin/dev/architectury/plugin/ModLoader.kt)
 add them for Fabric/Forge and statically remap NeoForge.
+
+For Loom Forge/NeoForge, non-mod children use the documented
+[forgeRuntimeLibrary bootstrap classpath](https://docs.architectury.dev/loom/using_libraries/),
+not only localRuntime. This is required for MixinExtras and Sodium’s service classes.
