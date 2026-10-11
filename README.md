@@ -23,7 +23,7 @@ The client interface is powered by **OpenUI MC 0.0.8 or newer**, which is a requ
   - Per-player upload concurrency and rate limits, bounded processing queues, and full image decode checks.
   - Atomic registry operations with automated `.bak` backups and crash recovery.
 
-## Installation and upgrade to 0.8.10
+## Installation and upgrade to 0.8.11
 
 Install the artifact matching **both** your Minecraft version and loader. The following mods are required:
 
@@ -35,6 +35,20 @@ Install the artifact matching **both** your Minecraft version and loader. The fo
 Download PacketWeave from its [release assets](https://github.com/UpperMoon0/PacketWeave/releases) or its approved [CurseForge files](https://www.curseforge.com/minecraft/mc-mods/packetweave/files). Do not install the development-only API/core jar as a substitute for the native loader jar. Missing PacketWeave or a version below 0.1.1 must be resolved before the loader can start Screens.
 
 When upgrading from 0.8.9, add PacketWeave to every client and server before launching. Keep the existing world, `simply_screens_images` directory, screen registry, and configuration. This update does not require a media-file or world migration, and keeps the existing native Screens packet format. Back up worlds before any mod upgrade.
+
+## Shader compatibility in 0.8.11
+
+Fully opaque screen image pixels retain their source RGB after Iris/Oculus shader
+processing, while the original world image can still contribute surrounding bloom.
+Shader mods are optional. Use the loader-specific Sodium/Embeddium, Iris/Oculus
+and Extra combinations in the [tested shader matrix](tools/shader/README.md).
+Complementary Reimagined is covered by real framebuffer tests on all five targets.
+
+Semi-transparent and filtered edge pixels keep the shader's existing appearance
+to avoid double blending. Packs that rewrite depth, warp geometry, or apply later
+postprocessing can exceed this guarantee. The precise contract, empirical glow
+controls and reproducible development setup are documented in the matrix above.
+Upgrading from 0.8.10 needs no additional required mod or saved-data migration.
 
 ## Getting Started
 

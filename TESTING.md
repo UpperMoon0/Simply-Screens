@@ -130,7 +130,7 @@ The five jobs share one OpenUI dependency build. Cheap harness/source checks run
 
 ## Release dependencies and upgrade documentation
 
-Screens 0.8.10 requires PacketWeave 0.1.1 or newer on both sides. Publish PacketWeave first, verify all five matching native artifacts on GitHub and CurseForge, and only then publish Screens. `tools/release_dependencies.py verify-release` blocks Screens release builds if the required GitHub release/artifacts are unavailable. The CurseForge upload step checks the official dependency catalog for the exact PacketWeave project ID/slug and declares `requiredDependency` for every target; minimum versions remain enforced by loader metadata because CurseForge relations cannot express them.
+Screens 0.8.10 and newer require PacketWeave 0.1.1 or newer on both sides. Publish PacketWeave first, verify all five matching native artifacts on GitHub and CurseForge, and only then publish Screens. `tools/release_dependencies.py verify-release` blocks Screens release builds if the required GitHub release/artifacts are unavailable. The CurseForge upload step checks the official dependency catalog for the exact PacketWeave project ID/slug and declares `requiredDependency` for every target; minimum versions remain enforced by loader metadata because CurseForge relations cannot express them.
 
 Accepted uploads retain per-target file-ID/source-SHA/relation receipts. They do not prove moderation approval or public download availability. Inspect those public file pages and their dependency relations before declaring publication complete. An ambiguous failed upload is not automatically retried as a POST or reported as success.
 
