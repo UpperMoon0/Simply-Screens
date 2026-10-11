@@ -106,6 +106,9 @@ processResources {
 }
 
 shadowJar {
+    // NeoForge uses static mixin remapping; the common Fabric AP's unused refmap
+    // must not leak into this production artifact or its development metadata.
+    exclude 'simplyscreens-color.refmap.json'
     configurations = [project.configurations.shadowBundle]
     archiveClassifier = 'dev-shadow'
 }
@@ -115,3 +118,5 @@ remapJar {
 }
 
 apply from: file('../packetweave-runtime.gradle')
+
+apply from: file('../shader-runtime.gradle')

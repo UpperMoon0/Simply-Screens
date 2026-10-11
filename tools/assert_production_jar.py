@@ -64,14 +64,72 @@ def production_jars(module_dir: Path) -> list[Path]:
                   if not jar.name.endswith(("-sources.jar", "-dev-shadow.jar")))
 
 
+COLOR_MIXIN_CONFIG = "simplyscreens-color.mixins.json"
+COLOR_REFMAP = "simplyscreens-color.refmap.json"
+COLOR_MIXIN_CLASS = "com/nstut/simplyscreens/client/mixin/GameRendererMixin"
+
+
+def valid_color_mixin(archive: zipfile.ZipFile) -> bool:
+    """Allow only the new production client hook; obsolete/test mixins stay forbidden."""
+    try:
+        config = json.loads(archive.read(COLOR_MIXIN_CONFIG))
+        if (config.get("package") != "com.nstut.simplyscreens.client.mixin"
+                or config.get("client") != ["GameRendererMixin"]
+                or config.get("mixins") or config.get("server") or config.get("plugin")
+                or config.get("required") is not True
+                or config.get("injectors", {}).get("defaultRequire") != 1
+                or COLOR_MIXIN_CLASS + ".class" not in archive.namelist()):
+            return False
+        refmap = config.get("refmap")
+        if refmap is None:
+            return COLOR_REFMAP not in archive.namelist()  # Unobfuscated modern Minecraft.
+        if refmap != COLOR_REFMAP: return False
+        mappings = json.loads(archive.read(COLOR_REFMAP))
+        allowed = {COLOR_MIXIN_CLASS, COLOR_MIXIN_CLASS.replace("/", ".")}
+        if not mappings.get("mappings") or not set(mappings["mappings"]) <= allowed:
+            return False
+        return all(set(context) <= allowed for context in mappings.get("data", {}).values())
+    except (KeyError, ValueError, TypeError, AttributeError):
+        return False
+
+
+
+def color_mixin_registration_errors(jar: Path) -> list[str]:
+    """A valid but unregistered hook is as broken as an absent one in a release jar."""
+    with zipfile.ZipFile(jar) as archive:
+        if not valid_color_mixin(archive): return ['missing or invalid production color hook']
+        names=set(archive.namelist())
+        try:
+            if 'fabric.mod.json' in names:
+                configs=json.loads(archive.read('fabric.mod.json')).get('mixins',[])
+                registered=COLOR_MIXIN_CONFIG in configs or any(
+                    isinstance(item,dict) and item.get('config')==COLOR_MIXIN_CONFIG
+                    and item.get('environment') in (None,'client') for item in configs)
+            elif 'META-INF/neoforge.mods.toml' in names:
+                registered=any(entry.get('config')==COLOR_MIXIN_CONFIG for entry in
+                    tomllib.loads(archive.read('META-INF/neoforge.mods.toml').decode()).get('mixins',[]))
+            elif 'META-INF/mods.toml' in names:
+                # JAR manifest attributes can wrap at72bytes; continuation starts with a space.
+                manifest=archive.read('META-INF/MANIFEST.MF').decode().replace('\r\n','\n').replace('\n ','')
+                registered=any(COLOR_MIXIN_CONFIG in line.split(':',1)[1].strip().split(',')
+                    for line in manifest.splitlines() if line.startswith('MixinConfigs:'))
+            else: registered=False
+            return [] if registered else ['production color hook is not registered with its loader']
+        except (KeyError,ValueError,UnicodeError,TypeError,AttributeError):
+            return ['invalid production color hook registration metadata']
+
+
 def _forbidden(archive: zipfile.ZipFile, prefix: str = "") -> list[str]:
     entries = []
+    color_allowed = not prefix and valid_color_mixin(archive)
     for name in archive.namelist():
         if (Path(name).name == "simplyscreens.mixins.json"
+                or (Path(name).name == COLOR_MIXIN_CONFIG and not color_allowed)
                 or name.startswith("com/nstut/simplyscreens/testing/visual/")
                 or (name.endswith(".class") and any("/" + package in "/" + name for package in PACKETWEAVE_PACKAGES))
                 or (Path(name).name.lower().endswith("refmap.json")
-                    and any(mod in Path(name).name.lower() for mod in ("simply_screens", "simplyscreens")))):
+                    and any(mod in Path(name).name.lower() for mod in ("simply_screens", "simplyscreens"))
+                    and not (name == COLOR_REFMAP and color_allowed))):
             entries.append(prefix + name)
         if name.endswith(".jar"):
             with zipfile.ZipFile(io.BytesIO(archive.read(name))) as nested:
@@ -93,7 +151,7 @@ def main() -> int:
         print(f"Expected exactly one production jar for {args.module}; found: {jars}", file=sys.stderr)
         return 1
     jar = jars[0]
-    problems = packetweave_dependency_errors(jar) + obsolete_entries(jar)
+    problems = packetweave_dependency_errors(jar) + obsolete_entries(jar) + color_mixin_registration_errors(jar)
     if problems:
         print(f"Invalid Simply Screens production jar {jar}:\n  " + "\n  ".join(problems), file=sys.stderr)
         return 1

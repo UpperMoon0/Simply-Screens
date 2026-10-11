@@ -1,14 +1,10 @@
 package com.nstut.simplyscreens.client.renderers;
 
-import com.mojang.blaze3d.pipeline.BlendFunction;
-import com.mojang.blaze3d.pipeline.ColorTargetState;
 import com.mojang.blaze3d.pipeline.DepthStencilState;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.platform.CompareOp;
-import com.mojang.blaze3d.shaders.UniformType;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import com.nstut.simplyscreens.SimplyScreens;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.rendertype.RenderSetup;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.resources.Identifier;
@@ -21,17 +17,11 @@ public final class ScreenRenderTypes {
     private static final float DEPTH_BIAS_FACTOR = -1.0F;
     private static final float DEPTH_BIAS_UNITS = -128.0F;
     private static final Map<Identifier, RenderType> TYPES = new ConcurrentHashMap<>();
-    private static final RenderPipeline SCREEN_PIPELINE = RenderPipeline.builder()
+    // NeoForge's supported copy builder also lets Iris inherit the vanilla text
+    // world/shadow routing. A fresh custom pipeline is unknown to Iris and can
+    // render black into its world buffers, removing the image's bloom source.
+    static final RenderPipeline SCREEN_PIPELINE = RenderPipelines.TEXT_POLYGON_OFFSET.toBuilder()
             .withLocation(Identifier.fromNamespaceAndPath(SimplyScreens.MOD_ID, "pipeline/screen"))
-            .withUniform("DynamicTransforms", UniformType.UNIFORM_BUFFER)
-            .withUniform("Projection", UniformType.UNIFORM_BUFFER)
-            .withUniform("Fog", UniformType.UNIFORM_BUFFER)
-            .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
-            .withVertexFormat(DefaultVertexFormat.POSITION_COLOR_TEX_LIGHTMAP, VertexFormat.Mode.QUADS)
-            .withVertexShader("core/rendertype_text")
-            .withFragmentShader("core/rendertype_text")
-            .withSampler("Sampler0")
-            .withSampler("Sampler2")
             .withDepthStencilState(new DepthStencilState(CompareOp.LESS_THAN_OR_EQUAL, true,
                     DEPTH_BIAS_FACTOR, DEPTH_BIAS_UNITS))
             .build();

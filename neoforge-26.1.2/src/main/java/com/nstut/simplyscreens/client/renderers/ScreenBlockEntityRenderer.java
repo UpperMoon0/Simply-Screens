@@ -19,6 +19,7 @@ import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.core.Direction;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.HashSet;
@@ -109,8 +110,13 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
         applyFacingRotation(poseStack, state.facing);
         poseStack.translate(0, 0, state.facing == Direction.NORTH || state.facing == Direction.SOUTH ? -BASE_OFFSET : BASE_OFFSET);
         poseStack.translate(-(state.width - 1) / 2f, (state.height - 1) / 2f, 0);
+        // The callback can run after submit returns. Snapshot values instead of retaining mutable
+        // extracted state, and capture restoration geometry only when the real world draw happens.
+        Identifier texture = state.texture;
+        float scaleX = state.scaleX;
+        float scaleY = state.scaleY;
         collector.order(SCREEN_SUBMIT_ORDER).submitCustomGeometry(poseStack, ScreenRenderTypes.textPolygonOffset(state.texture),
-                (pose, consumer) -> buildTexturedQuad(consumer, pose, state));
+                (pose, consumer) -> buildTexturedQuad(consumer, pose, texture, scaleX, scaleY));
         poseStack.popPose();
     }
 
@@ -125,15 +131,17 @@ public final class ScreenBlockEntityRenderer implements BlockEntityRenderer<Scre
         }
     }
 
-    private static void buildTexturedQuad(VertexConsumer consumer, PoseStack.Pose pose, ScreenBlockEntityRenderState state) {
-        float minX = -state.scaleX * 0.5f;
-        float maxX = state.scaleX * 0.5f;
-        float minY = -state.scaleY * 0.5f;
-        float maxY = state.scaleY * 0.5f;
+    private static void buildTexturedQuad(VertexConsumer consumer, PoseStack.Pose pose, Identifier texture,
+                                          float scaleX, float scaleY) {
+        float minX = -scaleX * 0.5f;
+        float maxX = scaleX * 0.5f;
+        float minY = -scaleY * 0.5f;
+        float maxY = scaleY * 0.5f;
         vertex(consumer, pose, minX, maxY, 1.0f, 0.0f);
         vertex(consumer, pose, maxX, maxY, 0.0f, 0.0f);
         vertex(consumer, pose, maxX, minY, 0.0f, 1.0f);
         vertex(consumer, pose, minX, minY, 1.0f, 1.0f);
+        ScreenColorRestore.capture(texture, pose, minX, minY, maxX, maxY, 0, 0, 1, 1);
     }
 
     private static void vertex(VertexConsumer consumer, PoseStack.Pose pose, float x, float y, float u, float v) {

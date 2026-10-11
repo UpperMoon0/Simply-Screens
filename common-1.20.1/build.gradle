@@ -141,3 +141,5 @@ jar {
 }
 
 apply from: file('../packetweave.gradle')
+
+loom { mixin { defaultRefmapName = 'simplyscreens-color.refmap.json' } }

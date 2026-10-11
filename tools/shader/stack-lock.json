@@ -1,0 +1,493 @@
+{
+  "schema": 1,
+  "stacks": {
+    "fabric-1.20.1": [
+      {
+        "version_id": "s5eFLITc",
+        "project_id": "YL57xq9U",
+        "version": "1.7.6+1.20.1",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "fabric",
+          "quilt"
+        ],
+        "filename": "iris-1.7.6+mc1.20.1.jar",
+        "url": "https://cdn.modrinth.com/data/YL57xq9U/versions/s5eFLITc/iris-1.7.6%2Bmc1.20.1.jar",
+        "sha512": "f1337b0441c31269bd3bfcb28647d521326a83e73128c1ac8d065615f8a5a4ca1e8c96a468b356584236ece5b164ec8d8a52b1878064f4e391ecf4f32885e301",
+        "dependencies": [
+          {
+            "version_id": "ryOMVRuG",
+            "project_id": "AANobbMI",
+            "file_name": null,
+            "dependency_type": "required"
+          }
+        ]
+      },
+      {
+        "version_id": "ryOMVRuG",
+        "project_id": "AANobbMI",
+        "version": "mc1.20.1-0.5.12-beta.2-fabric",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "fabric",
+          "quilt"
+        ],
+        "filename": "sodium-fabric-0.5.12-beta.2+mc1.20.1.jar",
+        "url": "https://cdn.modrinth.com/data/AANobbMI/versions/ryOMVRuG/sodium-fabric-0.5.12-beta.2%2Bmc1.20.1.jar",
+        "sha512": "e6906b77e709c17bfe445d065353010853cad58a65252f70f9e7e06113156f21c85e91a71e5ccebb4ea0f0168280737bb12ae407e115a9f1df3b5e8d21b87ec5",
+        "dependencies": []
+      },
+      {
+        "version_id": "mDbF0LZT",
+        "project_id": "PtjYWJkn",
+        "version": "mc1.20.1-0.5.9",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "fabric",
+          "quilt"
+        ],
+        "filename": "sodium-extra-0.5.9+mc1.20.1.jar",
+        "url": "https://cdn.modrinth.com/data/PtjYWJkn/versions/mDbF0LZT/sodium-extra-0.5.9%2Bmc1.20.1.jar",
+        "sha512": "c47b765f8e062ca7e3471fe5e74aabdf56160d5b67b64dfcca8c177ede914715097ae4e94defe2a6b02bf86ccba1e7bf471073c71bb126e51adf21e54c5864e3",
+        "dependencies": [
+          {
+            "version_id": null,
+            "project_id": "Bh37bMuy",
+            "file_name": null,
+            "dependency_type": "optional"
+          },
+          {
+            "version_id": null,
+            "project_id": "P7dR8mSH",
+            "file_name": null,
+            "dependency_type": "required"
+          },
+          {
+            "version_id": null,
+            "project_id": "AANobbMI",
+            "file_name": null,
+            "dependency_type": "required"
+          },
+          {
+            "version_id": null,
+            "project_id": "YL57xq9U",
+            "file_name": null,
+            "dependency_type": "optional"
+          }
+        ]
+      }
+    ],
+    "fabric-1.21.1": [
+      {
+        "version_id": "zsoi0dso",
+        "project_id": "YL57xq9U",
+        "version": "1.8.8+1.21.1-fabric",
+        "game_versions": [
+          "1.21",
+          "1.21.1"
+        ],
+        "loaders": [
+          "fabric",
+          "quilt"
+        ],
+        "filename": "iris-fabric-1.8.8+mc1.21.1.jar",
+        "url": "https://cdn.modrinth.com/data/YL57xq9U/versions/zsoi0dso/iris-fabric-1.8.8%2Bmc1.21.1.jar",
+        "sha512": "2e6ba2ffa1e1a6799288245a7e0ac68ee8df1d41b98362189df58f535cae34fa9277801e4136633467341b7dae5be0e5c698011b480b3d91b66d3dd4f7567aa6",
+        "dependencies": [
+          {
+            "version_id": null,
+            "project_id": "AANobbMI",
+            "file_name": null,
+            "dependency_type": "required"
+          }
+        ]
+      },
+      {
+        "version_id": "u1OEbNKx",
+        "project_id": "AANobbMI",
+        "version": "mc1.21.1-0.6.13-fabric",
+        "game_versions": [
+          "1.21",
+          "1.21.1"
+        ],
+        "loaders": [
+          "fabric"
+        ],
+        "filename": "sodium-fabric-0.6.13+mc1.21.1.jar",
+        "url": "https://cdn.modrinth.com/data/AANobbMI/versions/u1OEbNKx/sodium-fabric-0.6.13%2Bmc1.21.1.jar",
+        "sha512": "13032e064c554fc8671573dadb07bc70e6ea2f68706c65c086c4feb1d2f664346a3414cbf9d1367b42b8d063a35e40f2f967ef9af31642e1f0093b852161fe91",
+        "dependencies": []
+      },
+      {
+        "version_id": "anDafurZ",
+        "project_id": "PtjYWJkn",
+        "version": "mc1.21.1-0.6.0+fabric",
+        "game_versions": [
+          "1.21",
+          "1.21.1"
+        ],
+        "loaders": [
+          "fabric"
+        ],
+        "filename": "sodium-extra-fabric-0.6.0+mc1.21.1.jar",
+        "url": "https://cdn.modrinth.com/data/PtjYWJkn/versions/anDafurZ/sodium-extra-fabric-0.6.0%2Bmc1.21.1.jar",
+        "sha512": "fa7fa78b5d4ef19eff4b3e711f5c79cb54e71c55c6af43fa6867c86e3e54be5045a681b809b8482227c5bda4da4afdce6f30b91e8021d3fae7e34be252b9c972",
+        "dependencies": [
+          {
+            "version_id": null,
+            "project_id": "Bh37bMuy",
+            "file_name": null,
+            "dependency_type": "optional"
+          },
+          {
+            "version_id": null,
+            "project_id": "AANobbMI",
+            "file_name": null,
+            "dependency_type": "required"
+          },
+          {
+            "version_id": null,
+            "project_id": "YL57xq9U",
+            "file_name": null,
+            "dependency_type": "optional"
+          }
+        ]
+      }
+    ],
+    "forge-1.20.1": [
+      {
+        "version_id": "iQ1SwGc3",
+        "project_id": "GchcoXML",
+        "version": "1.20.1-1.8.0",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge",
+          "neoforge"
+        ],
+        "filename": "oculus-mc1.20.1-1.8.0.jar",
+        "url": "https://cdn.modrinth.com/data/GchcoXML/versions/iQ1SwGc3/oculus-mc1.20.1-1.8.0.jar",
+        "sha512": "1bb4ac77400d6684347988ed298a692c2cb15cf7923693607eb8739b171a20fef7412259e9e157111d9ce21779badab386029956f7d2283a9e611722a373e9d5",
+        "dependencies": [
+          {
+            "version_id": null,
+            "project_id": "sk9rgfiA",
+            "file_name": null,
+            "dependency_type": "required"
+          }
+        ]
+      },
+      {
+        "version_id": "UTbfe5d1",
+        "project_id": "sk9rgfiA",
+        "version": "0.3.31+mc1.20.1",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge",
+          "neoforge"
+        ],
+        "filename": "embeddium-0.3.31+mc1.20.1.jar",
+        "url": "https://cdn.modrinth.com/data/sk9rgfiA/versions/UTbfe5d1/embeddium-0.3.31%2Bmc1.20.1.jar",
+        "sha512": "ffbf2da4685260a4d5c14c621708bd20722563f084f042d3dfb0a7b87f048e39299648c854a93939129da0d23a15a91ec628560d601e76074b08e275f6e132e9",
+        "dependencies": [
+          {
+            "version_id": null,
+            "project_id": "S1tndFDa",
+            "file_name": null,
+            "dependency_type": "incompatible"
+          },
+          {
+            "version_id": null,
+            "project_id": "4ZqxOvjD",
+            "file_name": null,
+            "dependency_type": "incompatible"
+          }
+        ]
+      },
+      {
+        "version_id": "F06DXCMX",
+        "project_id": "oY2B1pjg",
+        "version": "0.5.4.4+mc1.20.1-build.131",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge",
+          "neoforge"
+        ],
+        "filename": "rubidium-extra-0.5.4.4+mc1.20.1-build.131.jar",
+        "url": "https://cdn.modrinth.com/data/oY2B1pjg/versions/F06DXCMX/rubidium-extra-0.5.4.4%2Bmc1.20.1-build.131.jar",
+        "sha512": "4067ef8d94fd4022a5f4feb02250d86c96ab10867f526c64e7e02a409ac6d46fbc32e87ffd735b1203f328d147c291e4a8dda1288c1deb3e232a1e5cb13701fb",
+        "dependencies": [
+          {
+            "version_id": null,
+            "project_id": "GchcoXML",
+            "file_name": null,
+            "dependency_type": "optional"
+          },
+          {
+            "version_id": null,
+            "project_id": "sk9rgfiA",
+            "file_name": null,
+            "dependency_type": "required"
+          }
+        ]
+      }
+    ],
+    "neoforge-1.21.1": [
+      {
+        "version_id": "t3ruzodq",
+        "project_id": "YL57xq9U",
+        "version": "1.8.12+1.21.1-neoforge",
+        "game_versions": [
+          "1.21.1"
+        ],
+        "loaders": [
+          "neoforge"
+        ],
+        "filename": "iris-neoforge-1.8.12+mc1.21.1.jar",
+        "url": "https://cdn.modrinth.com/data/YL57xq9U/versions/t3ruzodq/iris-neoforge-1.8.12%2Bmc1.21.1.jar",
+        "sha512": "57b8026a3c3c433cf6123d63dc6ce7e11f6d480a72926370db1fc7f2b06059bc16a753ecd7e7af659c19e90b592103196b0e89585ce4f0744a4ca433f59bcf1a",
+        "dependencies": [
+          {
+            "version_id": "Pb3OXVqC",
+            "project_id": "AANobbMI",
+            "file_name": null,
+            "dependency_type": "required"
+          }
+        ]
+      },
+      {
+        "version_id": "Pb3OXVqC",
+        "project_id": "AANobbMI",
+        "version": "mc1.21.1-0.6.13-neoforge",
+        "game_versions": [
+          "1.21.1"
+        ],
+        "loaders": [
+          "neoforge"
+        ],
+        "filename": "sodium-neoforge-0.6.13+mc1.21.1.jar",
+        "url": "https://cdn.modrinth.com/data/AANobbMI/versions/Pb3OXVqC/sodium-neoforge-0.6.13%2Bmc1.21.1.jar",
+        "sha512": "ce58f34d05d96c0a109a5cea23c741f6bdb2e6be31fc087c5989274cefca5f10ba0c08c62083cf554a51f2c7667bf46e4164383f675c844e77633aef2659996b",
+        "dependencies": []
+      },
+      {
+        "version_id": "pFmw1eci",
+        "project_id": "PtjYWJkn",
+        "version": "mc1.21.1-0.6.0+neoforge",
+        "game_versions": [
+          "1.21",
+          "1.21.1"
+        ],
+        "loaders": [
+          "neoforge"
+        ],
+        "filename": "sodium-extra-neoforge-0.6.0+mc1.21.1.jar",
+        "url": "https://cdn.modrinth.com/data/PtjYWJkn/versions/pFmw1eci/sodium-extra-neoforge-0.6.0%2Bmc1.21.1.jar",
+        "sha512": "6f7383ef3f4b572c76d3371a7441bc3d625db9d404cf61b249fab018bc3ffd1fa82e735ec21916df3f4072f0927dad3673efbc40bf8d11846c3d6fecc9329bb7",
+        "dependencies": [
+          {
+            "version_id": null,
+            "project_id": "AANobbMI",
+            "file_name": null,
+            "dependency_type": "required"
+          },
+          {
+            "version_id": null,
+            "project_id": "Bh37bMuy",
+            "file_name": null,
+            "dependency_type": "optional"
+          },
+          {
+            "version_id": null,
+            "project_id": "YL57xq9U",
+            "file_name": null,
+            "dependency_type": "optional"
+          }
+        ]
+      }
+    ],
+    "neoforge-26.1.2": [
+      {
+        "version_id": "qE5Y7GrZ",
+        "project_id": "YL57xq9U",
+        "version": "1.11.4+26.1-neoforge",
+        "game_versions": [
+          "26.1",
+          "26.1.1",
+          "26.1.2"
+        ],
+        "loaders": [
+          "neoforge"
+        ],
+        "filename": "iris-neoforge-1.11.4+mc26.1.2.jar",
+        "url": "https://cdn.modrinth.com/data/YL57xq9U/versions/qE5Y7GrZ/iris-neoforge-1.11.4%2Bmc26.1.2.jar",
+        "sha512": "751cc32fbc319e2549759aa8ed2c798fa8e3a7a32924a27f6f80f81aa2634a5d9d726828348b271d70449c6d25d1fee352cec932185aa066da109414f0a7678f",
+        "dependencies": [
+          {
+            "version_id": "zg4YQ9EL",
+            "project_id": "AANobbMI",
+            "file_name": null,
+            "dependency_type": "required"
+          }
+        ]
+      },
+      {
+        "version_id": "zg4YQ9EL",
+        "project_id": "AANobbMI",
+        "version": "mc26.1.2-0.9.2-neoforge",
+        "game_versions": [
+          "26.1.2"
+        ],
+        "loaders": [
+          "neoforge"
+        ],
+        "filename": "sodium-neoforge-0.9.2+mc26.1.2.jar",
+        "url": "https://cdn.modrinth.com/data/AANobbMI/versions/zg4YQ9EL/sodium-neoforge-0.9.2%2Bmc26.1.2.jar",
+        "sha512": "899c2d888831c4044877955ab06b5333c6e17bd89b543d4f5bd0e188caca8791727bd18e5e9c5fe52cc14aa6e4173b8ba4905416914126c48d70135318ef1012",
+        "dependencies": []
+      },
+      {
+        "version_id": "5xSwvXof",
+        "project_id": "PtjYWJkn",
+        "version": "mc26.1.2-0.9.4+neoforge",
+        "game_versions": [
+          "26.1.2"
+        ],
+        "loaders": [
+          "neoforge"
+        ],
+        "filename": "sodium-extra-neoforge-0.9.4+mc26.1.2.jar",
+        "url": "https://cdn.modrinth.com/data/PtjYWJkn/versions/5xSwvXof/sodium-extra-neoforge-0.9.4%2Bmc26.1.2.jar",
+        "sha512": "754ea0dac5c3a6f82a0ab55ff22e65343434dae569a5c83afb2b41c4fecfa0de40f4d5416cdc537ef7bc202dfc495d8e15c122de306fcf634f724553eb5b1875",
+        "dependencies": [
+          {
+            "version_id": null,
+            "project_id": "AANobbMI",
+            "file_name": null,
+            "dependency_type": "required"
+          },
+          {
+            "version_id": null,
+            "project_id": "EE4vxUHj",
+            "file_name": null,
+            "dependency_type": "optional"
+          },
+          {
+            "version_id": null,
+            "project_id": "Bh37bMuy",
+            "file_name": null,
+            "dependency_type": "optional"
+          },
+          {
+            "version_id": null,
+            "project_id": "YL57xq9U",
+            "file_name": null,
+            "dependency_type": "optional"
+          }
+        ]
+      }
+    ]
+  },
+  "shaderpack": {
+    "version_id": "Bqen1mJX",
+    "project_id": "HVnmMxH1",
+    "version": "r5.9.3",
+    "game_versions": [
+      "1.7.10",
+      "1.8",
+      "1.8.1",
+      "1.8.2",
+      "1.8.3",
+      "1.8.4",
+      "1.8.5",
+      "1.8.6",
+      "1.8.7",
+      "1.8.8",
+      "1.8.9",
+      "1.9",
+      "1.9.1",
+      "1.9.2",
+      "1.9.3",
+      "1.9.4",
+      "1.10",
+      "1.10.1",
+      "1.10.2",
+      "1.11",
+      "1.11.1",
+      "1.11.2",
+      "1.12",
+      "1.12.1",
+      "1.12.2",
+      "1.13",
+      "1.13.1",
+      "1.13.2",
+      "1.14",
+      "1.14.1",
+      "1.14.2",
+      "1.14.3",
+      "1.14.4",
+      "1.15",
+      "1.15.1",
+      "1.15.2",
+      "1.16",
+      "1.16.1",
+      "1.16.2",
+      "1.16.3",
+      "1.16.4",
+      "1.16.5",
+      "1.17",
+      "1.17.1",
+      "1.18",
+      "1.18.1",
+      "1.18.2",
+      "1.19",
+      "1.19.1",
+      "1.19.2",
+      "1.19.3",
+      "1.19.4",
+      "1.20",
+      "1.20.1",
+      "1.20.2",
+      "1.20.3",
+      "1.20.4",
+      "1.20.5",
+      "1.20.6",
+      "1.21",
+      "1.21.1",
+      "1.21.2",
+      "1.21.3",
+      "1.21.4",
+      "1.21.5",
+      "1.21.6",
+      "1.21.7",
+      "1.21.8",
+      "1.21.9",
+      "1.21.10",
+      "1.21.11",
+      "26.1",
+      "26.1.1",
+      "26.1.2",
+      "26.2",
+      "26.3"
+    ],
+    "loaders": [
+      "iris",
+      "optifine"
+    ],
+    "filename": "ComplementaryReimagined_r5.9.3.zip",
+    "url": "https://cdn.modrinth.com/data/HVnmMxH1/versions/Bqen1mJX/ComplementaryReimagined_r5.9.3.zip",
+    "sha512": "45304b1d7862afdb2177b7e6226fc9c6737911d17a4ad46cc9c519ca4deb935f05072cd337cd8b19a15bb8062b57b54eceec7bdee4cd572d94858e2946d37d85",
+    "dependencies": []
+  }
+}

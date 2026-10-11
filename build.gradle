@@ -114,3 +114,12 @@ tasks.register('testAllVersions') {
     description = 'Runs shared and version-specific tests for every supported Minecraft version.'
     dependsOn ':common:test', ':common-1.20.1:test', ':common-1.21.1:test', ':neoforge-26.1.2:test'
 }
+
+// No network or Minecraft runtime: verify pinned nested-library identity selection.
+tasks.register('verifyShaderNestedRuntime', JavaExec) {
+    classpath = configurations.detachedConfiguration(dependencies.localGroovy())
+    mainClass = 'groovy.ui.GroovyMain'
+    args file('tools/shader/nested-runtime-test.groovy')
+    workingDir rootDir
+}
+tasks.named('testAllVersions') { dependsOn 'verifyShaderNestedRuntime' }

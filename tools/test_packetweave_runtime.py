@@ -137,6 +137,22 @@ class PacketWeaveRuntimeTests(unittest.TestCase):
                       "Failed to start the minecraft server")
             self.run_streaming_fixture(output, mode=mode, linger=True, should_pass=True)
 
+    def test_bound_forge_mixin_bootstrap_rejection_is_terminal_but_generic_crashes_are_not(self):
+        terminal=('Exception in thread "main" org.spongepowered.asm.launch.MixinInitialisationError: '
+                  'Error initialising mixin config simplyscreens-color.mixins.json\n'
+                  "Caused by: java.lang.IllegalArgumentException: The specified resource "
+                  "'simplyscreens-color.mixins.json' was invalid or could not be read")
+        for mode,actual in (("missing","[MISSING]"),("incompatible","0.1.0")):
+            diagnostic=("Missing or unsupported mandatory dependencies:\n"
+                        "Mod ID: 'packetweave', Requested by: 'simply_screens', "
+                        f"Expected range: '[0.1.1,)', Actual version: '{actual}'\n")
+            self.run_streaming_fixture(diagnostic+terminal,mode=mode,linger=True,should_pass=True)
+            for wrong in (terminal,diagnostic+terminal.replace('simplyscreens-color','other-mod'),
+                          diagnostic.replace("'packetweave'","'other_mod'")+terminal,
+                          diagnostic.replace(actual,'0.1.1')+terminal,
+                          diagnostic+terminal+"\nDone (1.2s)!",diagnostic+"NullPointerException"):
+                with self.assertRaises(RuntimeError):assert_dependency_rejected(wrong,1,mode)
+
     def test_diagnostic_without_fatal_completion_never_passes(self):
         diagnostic = ("Mod simply_screens requires packetweave 0.1.1 or above\n"
                       "Currently, packetweave is not installed")

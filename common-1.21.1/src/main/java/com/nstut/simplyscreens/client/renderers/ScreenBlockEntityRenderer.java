@@ -242,6 +242,7 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         addVertex(consumer, pose, packedOverlay, maxX, maxY, 0.0f, 0.0f);
         addVertex(consumer, pose, packedOverlay, maxX, minY, 0.0f, 1.0f);
         addVertex(consumer, pose, packedOverlay, minX, minY, 1.0f, 1.0f);
+        ScreenColorRestore.capture(texture, pose, minX, minY, maxX, maxY, 0, 0, 1, 1);
     }
 
     private static void addVertex(VertexConsumer consumer, PoseStack.Pose pose, int overlay,

@@ -36,9 +36,21 @@ Simply Screens adds configurable screen blocks that display images from your loc
 - **Fabric API** on Fabric
 - **OpenUI MC 0.0.8 or newer** matching your Minecraft version and loader (clients; also required on Fabric dedicated servers by Fabric metadata)
 
-## Upgrading to 0.8.10
+## Upgrading to 0.8.11
 
 Add the matching native PacketWeave jar to every client and server. Screens uses its public transfer API and does not bundle a second copy. Existing saved media, world data, and configuration need no migration; back up the world before upgrading. The loader requires PacketWeave 0.1.1 or newer, and release files declare it as a required CurseForge dependency.
+
+## Shader image colors
+
+Version 0.8.11 preserves fully opaque image colors on the Iris/Oculus path while
+retaining surrounding shader bloom. Complementary is tested with matching
+Sodium/Embeddium and Extra stacks across the five supported targets. Shader mods
+remain optional; do not mix Fabric, Forge and NeoForge variants.
+
+Semi-transparent/filtered edges remain shader-processed. Arbitrary depth changes,
+geometric warps and later postprocessing are outside the guarantee. See the
+[compatibility matrix and limits](https://github.com/UpperMoon0/Simply-Screens/blob/main/tools/shader/README.md).
+Existing 0.8.10 installations need no new required dependency or data migration.
 
 ## Configuration
 

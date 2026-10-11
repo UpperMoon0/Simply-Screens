@@ -54,3 +54,6 @@ type = "required"
 versionRange = "[${packetweave_version},)"
 ordering = "AFTER"
 side = "BOTH"
+
+[[mixins]]
+config = "simplyscreens-color.mixins.json"

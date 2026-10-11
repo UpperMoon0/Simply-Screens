@@ -77,3 +77,5 @@ remapJar {
 }
 
 apply from: file('../packetweave-runtime.gradle')
+
+apply from: file('../shader-runtime.gradle')

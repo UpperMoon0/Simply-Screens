@@ -30,5 +30,8 @@
     "fabric-api": "*",
     "openui_mc": ">=0.0.8",
     "packetweave": ">=${packetweave_version}"
-  }
+  },
+  "mixins": [
+    "simplyscreens-color.mixins.json"
+  ]
 }
