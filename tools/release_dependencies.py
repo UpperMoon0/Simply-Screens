@@ -6,6 +6,7 @@ import argparse
 import json
 from pathlib import Path
 import re
+import sys
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -33,12 +34,20 @@ def curseforge_relations(loader: str) -> dict:
     return {"projects": projects}
 
 
-def verify_curseforge_identity(dependencies: list) -> None:
-    """Require the official Upload API catalog to confirm the recorded identity."""
-    matches = [item for item in dependencies
-               if item.get("slug") == PACKETWEAVE_SLUG or str(item.get("id")) == PACKETWEAVE_PROJECT_ID]
-    if len(matches) != 1 or (matches[0].get("slug"), str(matches[0].get("id"))) != (PACKETWEAVE_SLUG, PACKETWEAVE_PROJECT_ID):
-        raise ValueError("CurseForge did not confirm PacketWeave's exact project ID and slug; publication is blocked")
+def verify_curseforge_metadata(metadata: dict) -> None:
+    """Require the exact project relation before the Upload API resolves it.
+
+    The Upload API supports projectID for an exact project match. Its
+    /api/game/dependencies endpoint is not a catalog of mod projects.
+    https://support.curseforge.com/support/solutions/articles/9000197321
+    """
+    projects = metadata.get("relations", {}).get("projects", [])
+    matches = [item for item in projects
+               if item.get("slug") == PACKETWEAVE_SLUG or str(item.get("projectID")) == PACKETWEAVE_PROJECT_ID]
+    expected = {"slug": PACKETWEAVE_SLUG, "projectID": PACKETWEAVE_PROJECT_ID,
+                "type": "requiredDependency"}
+    if matches != [expected]:
+        raise ValueError("CurseForge metadata must require PacketWeave's exact project ID and slug; publication is blocked")
 
 
 def verify_release(release: dict, version: str) -> None:
@@ -67,14 +76,13 @@ def main() -> None:
     relations = commands.add_parser("relations")
     relations.add_argument("--loader", required=True)
     commands.add_parser("verify-release")
-    identity = commands.add_parser("verify-curseforge-identity")
-    identity.add_argument("--catalog", required=True, type=Path)
+    commands.add_parser("verify-curseforge-metadata")
     args = parser.parse_args()
     if args.command == "relations":
         print(json.dumps(curseforge_relations(args.loader), separators=(",", ":")))
-    elif args.command == "verify-curseforge-identity":
-        verify_curseforge_identity(json.loads(args.catalog.read_text()))
-        print("Official CurseForge catalog confirms PacketWeave project ID and slug")
+    elif args.command == "verify-curseforge-metadata":
+        verify_curseforge_metadata(json.load(sys.stdin))
+        print("CurseForge upload metadata requires exact PacketWeave project 1735096")
     else:
         check_published_release(required_version())
 
