@@ -62,14 +62,15 @@ def prepare(target, cache):
     pack = download(lock['shaderpack'], cache)
     return dependencies, pack
 
-def install_pack(client, pack, enabled=True):
+def install_pack(client, pack, enabled=True, loader="fabric"):
     shaders = client / 'shaderpacks'
     config = client / 'config'
     shaders.mkdir(parents=True, exist_ok=True)
     config.mkdir(parents=True, exist_ok=True)
     shutil.copy2(pack, shaders / pack.name)
-    # Oculus retains iris.properties for its Iris-compatible config.
-    (config/'iris.properties').write_text(f'enableShaders={str(enabled).lower()}\nshaderPack={pack.name}\n')
+    # Oculus1.8 forks the public API but reads a different config filename.
+    filename='oculus.properties' if loader=='forge' else 'iris.properties'
+    (config/filename).write_text(f'enableShaders={str(enabled).lower()}\nshaderPack={pack.name}\n')
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -78,7 +79,7 @@ def main():
     parser.add_argument('--client', type=Path, help='Install shaderpack/config into this development client directory')
     args=parser.parse_args()
     dependencies, pack = prepare(args.target, args.cache.resolve())
-    if args.client: install_pack(args.client, pack)
+    if args.client: install_pack(args.client, pack, loader=args.target.split('-',1)[0])
     print(json.dumps({'target':args.target,'jars':[str(p) for p in dependencies],'shaderpack':str(pack),
                       'gradle_property':f'-PscreensShaderStack={args.cache.resolve()}'},indent=2))
 

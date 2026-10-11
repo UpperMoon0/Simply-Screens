@@ -81,6 +81,14 @@ remapJar {
 
 apply from: file('../packetweave-runtime.gradle')
 
-loom { forge { mixinConfig 'simplyscreens-color.mixins.json' } }
+// This hook is client-only. A global Loom forge.mixinConfig adds -mixin.config
+// to server launches too, masking Forge's missing-dependency rejection after it
+// excludes the invalid mod's resources. Production registration remains explicit.
+[loom.runConfigs.named('client'), loom.runConfigs.named('liveJoinTestClient')].each { provider ->
+    provider.configure { programArgs '-mixin.config', 'simplyscreens-color.mixins.json' }
+}
+tasks.withType(Jar).configureEach {
+    manifest.attributes('MixinConfigs': 'simplyscreens-color.mixins.json')
+}
 
 apply from: file('../shader-runtime.gradle')

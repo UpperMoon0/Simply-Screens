@@ -93,6 +93,32 @@ def valid_color_mixin(archive: zipfile.ZipFile) -> bool:
         return False
 
 
+
+def color_mixin_registration_errors(jar: Path) -> list[str]:
+    """A valid but unregistered hook is as broken as an absent one in a release jar."""
+    with zipfile.ZipFile(jar) as archive:
+        if not valid_color_mixin(archive): return ['missing or invalid production color hook']
+        names=set(archive.namelist())
+        try:
+            if 'fabric.mod.json' in names:
+                configs=json.loads(archive.read('fabric.mod.json')).get('mixins',[])
+                registered=COLOR_MIXIN_CONFIG in configs or any(
+                    isinstance(item,dict) and item.get('config')==COLOR_MIXIN_CONFIG
+                    and item.get('environment') in (None,'client') for item in configs)
+            elif 'META-INF/neoforge.mods.toml' in names:
+                registered=any(entry.get('config')==COLOR_MIXIN_CONFIG for entry in
+                    tomllib.loads(archive.read('META-INF/neoforge.mods.toml').decode()).get('mixins',[]))
+            elif 'META-INF/mods.toml' in names:
+                # JAR manifest attributes can wrap at72bytes; continuation starts with a space.
+                manifest=archive.read('META-INF/MANIFEST.MF').decode().replace('\r\n','\n').replace('\n ','')
+                registered=any(COLOR_MIXIN_CONFIG in line.split(':',1)[1].strip().split(',')
+                    for line in manifest.splitlines() if line.startswith('MixinConfigs:'))
+            else: registered=False
+            return [] if registered else ['production color hook is not registered with its loader']
+        except (KeyError,ValueError,UnicodeError,TypeError,AttributeError):
+            return ['invalid production color hook registration metadata']
+
+
 def _forbidden(archive: zipfile.ZipFile, prefix: str = "") -> list[str]:
     entries = []
     color_allowed = not prefix and valid_color_mixin(archive)
@@ -125,7 +151,7 @@ def main() -> int:
         print(f"Expected exactly one production jar for {args.module}; found: {jars}", file=sys.stderr)
         return 1
     jar = jars[0]
-    problems = packetweave_dependency_errors(jar) + obsolete_entries(jar)
+    problems = packetweave_dependency_errors(jar) + obsolete_entries(jar) + color_mixin_registration_errors(jar)
     if problems:
         print(f"Invalid Simply Screens production jar {jar}:\n  " + "\n  ".join(problems), file=sys.stderr)
         return 1

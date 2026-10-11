@@ -42,7 +42,8 @@ python3 tools/shader_stack.py --target fabric-1.21.1 --client fabric-1.21.1/run
 
 Build/install the project's normal OpenUI and PacketWeave development dependencies
 as documented in `TESTING.md`. `--client` explicitly writes only that development
-client's Iris configuration and installs Complementary in its shaderpacks folder.
+client's native shader configuration (`iris.properties`, or `oculus.properties`
+on Forge) and installs Complementary in its shaderpacks folder.
 
 Pinned matrix:
 
@@ -72,21 +73,29 @@ occlusion, shader-resource reload and alpha cases are captured at four raster
 alignments. The main renderer's world submissions must match the server fixture;
 shadow-map submissions cannot satisfy readiness.
 
-Six isolated client/server runs use the same pinned renderer/mod stack:
+Eight isolated client/server runs use the same pinned renderer/mod stack:
 
-1. Shader off: validates the source-color baseline.
-2. Original world pass: disables only the late replay in the disposable snapshot;
-   must demonstrate a real chart color error, not merely crash or fail to load.
-3. Fixed: source chart colors/occlusion must pass with the shader actually active.
-4. Fixed repeat: identical settings in a fresh process. Alpha p95 must be at most
-   1/255, ring mean absolute delta at most1/255 and signed delta at most0.05/255.
-   Background drift cannot supply the required bloom signal.
-5. Bloom off: only Complementary `BLOOM_ENABLED` changes from 1 to -1; a geometric
-   ring outside the image must be measurably brighter with bloom enabled.
-6. Glow source off: keep the same shader/bloom settings and late color replay,
-   but suppress only the original world image vertices. The geometric ring must
-   be brighter with the original contribution, proving image-produced glow
-   rather than unrelated sky/background bloom.
+1. Shader off: validates the source-color baseline on all26scenes.
+2. Original world pass: disables only the late replay; must demonstrate real chart
+   color error rather than a crash or inactive shader, on the full matrix.
+3. Fixed: source colors and occlusion pass with default temporal AA on all26scenes,
+   including every previously failing far/oblique raster sample.
+4. Original static: world-only reference with temporal AA disabled.
+5. Fixed static: corrected reference with the same temporal-AA-disabled profile.
+6. Fixed repeat: identical static settings in a fresh process. Alpha p95 must be
+   at most1/255, ring mean absolute delta at most1/255 and signed delta at most0.05/255.
+7. Bloom off: only `BLOOM_ENABLED` differs from the fixed-static reference.
+8. Glow source off: same profile/replay, but suppress original world image vertices.
+
+The glow/alpha fixtures have a black-concrete backdrop behind the screen, whose
+block arrival is verified before terrain/frame readiness. Bright sky can be
+darkened by a valid bloom blend; it is not a useful positive-emission reference.
+The ring is selected only from geometry and must brighten against this dark surface.
+
+Variants4–8 cover the frontal NORTH glow chart and alpha fixture only; variants1–3
+retain the full color/depth/reload matrix. Both glow controls require the geometric
+ring to brighten by more than0.15/255 in every sample. This separates image-produced
+glow from background bloom, without using mismatched temporal-AA history as proof.
 
 Semi-transparent/transparent samples are compared to the original shader run to
 reject double blending. The test uses `BLOOM_STRENGTH=0.32` for a measurable halo;
@@ -94,7 +103,8 @@ that is a test fixture setting, not a production override of the user's pack.
 The paired profile disables pack clouds, cloud shadows, animated light shafts,
 motion blur and waving through public options. World day and weather advancement
 are frozen with the version-appropriate gamerules. Default temporal AA remains
-active, including its projection jitter. The pack options are verified against
+active for the full source-color/depth matrix, including its projection jitter;
+it is disabled only for the paired alpha/glow measurements. The pack options are verified against
 the pinned shader source and recorded in receipts. The identical-process control
 fails closed if residual temporal drift is large enough to confound the bloom or
 alpha thresholds; no dynamic-sky equivalence is claimed.
@@ -147,3 +157,10 @@ add them for Fabric/Forge and statically remap NeoForge.
 For Loom Forge/NeoForge, non-mod children use the documented
 [forgeRuntimeLibrary bootstrap classpath](https://docs.architectury.dev/loom/using_libraries/),
 not only localRuntime. This is required for MixinExtras and Sodium’s service classes.
+
+Forge development launches register the color mixin only on client runs; production
+jars retain the explicit `MixinConfigs` manifest entry. This prevents a client-only
+launch argument from masking the server's real missing-dependency rejection. The
+production-jar gate requires the hook to exist and be registered in every loader's
+actual packaged metadata. Relevant Loom sources: [development launch arguments](https://github.com/architectury/architectury-loom/blob/dev/1.11/src/main/java/net/fabricmc/loom/task/launch/GenerateDLIConfigTask.java)
+and [production manifest handling](https://github.com/architectury/architectury-loom/blob/dev/1.11/src/main/java/net/fabricmc/loom/task/RemapTaskConfiguration.java).

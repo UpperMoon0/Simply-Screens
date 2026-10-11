@@ -18,7 +18,9 @@ from visual_cases import TARGETS, FACES, sample_count
 from shader_stack import load_lock, prepare, install_pack, native_mod_ids
 
 ROOT = Path(__file__).resolve().parents[1]
-VARIANTS = ('shader-off', 'original', 'fixed', 'fixed-repeat', 'bloom-off', 'glow-source-off')
+VARIANTS = ('shader-off', 'original', 'fixed', 'original-static', 'fixed-static', 'fixed-repeat', 'bloom-off', 'glow-source-off')
+PAIRED_VARIANTS = frozenset(VARIANTS[3:])
+PAIR_REFERENCE = 'fixed-static'
 
 
 # Public options of the pinned pack, not a modification to its source. Keep default
@@ -27,14 +29,18 @@ STATIC_OPTIONS = dict(CLOUD_STYLE_DEFINE='0', CLOUD_SPEED_MULT='0', CLOUD_SHADOW
                       LIGHTSHAFT_QUALI_DEFINE='0', MOTION_BLUR_EFFECT='-1', WAVING_SPEED='0.00')
 
 def pack_options(variant):
-    return STATIC_OPTIONS | dict(BLOOM_ENABLED='-1' if variant=='bloom-off' else '1', BLOOM_STRENGTH='0.32')
+    options=STATIC_OPTIONS | dict(BLOOM_ENABLED='-1' if variant=='bloom-off' else '1', BLOOM_STRENGTH='0.32')
+    # Keep the full color/depth matrix on default temporal AA. Only paired glow/alpha
+    # controls disable temporal history, whose process-dependent phase is a confound.
+    if variant in PAIRED_VARIANTS: options['TAA_DEFINE']='0'
+    return options
 
 def verify_pack_options(pack):
     # Fail before launch if an updated pack removes/renames an option; silently ignored
     # properties must not masquerade as a deterministic test environment.
     with zipfile.ZipFile(pack) as archive:
         source=archive.read('shaders/lib/common.glsl').decode()
-    for name in pack_options('fixed'):
+    for name in pack_options('fixed-static'):
         if not re.search(r'^\s*(?://)?#define\s+'+re.escape(name)+r'\b',source,re.M):
             raise ValueError('unsupported deterministic shader option: '+name)
 
@@ -44,10 +50,14 @@ def scenarios():
     for face in FACES:
         for distance,angle,occluded in ((8,0,False),(32,60,False),(8,0,True),(32,60,True)):
             result.append(dict(id=f'{face}-{distance}-{angle}-{occluded}',facing=face,size=8,
-                               distance=distance,angle=angle,occluded=occluded))
+                               distance=distance,angle=angle,occluded=occluded,backdrop=face=='NORTH' and distance==8 and not occluded))
     result.append(dict(id='NORTH-reload',facing='NORTH',size=8,distance=16,angle=0,occluded=False,reload=True))
-    result.append(dict(id='NORTH-alpha',facing='NORTH',size=8,distance=16,angle=0,occluded=False,alpha=True))
+    result.append(dict(id='NORTH-alpha',facing='NORTH',size=8,distance=16,angle=0,occluded=False,alpha=True,backdrop=True))
     return result
+
+def variant_scenarios(variant):
+    if variant not in PAIRED_VARIANTS: return scenarios()
+    return [s for s in scenarios() if s['id'] in ('NORTH-8-0-False','NORTH-alpha')]
 
 def instrument(stage):
     visual.instrument(stage)
@@ -77,6 +87,21 @@ def instrument(stage):
         visual.replace_once(server, command+'"time set noon");',
             command+f'"gamerule {clock} false");\n            '+
             command+f'"gamerule {weather} false");\n            '+command+'"time set noon");')
+        # A bright sky can become darker under a bloom blend, even when the image
+        # contributes correctly. Measure retained glow against a known dark surface.
+        visual.replace_once(server, '            if (request.get("occluded").getAsBoolean()) {',
+            '            JsonArray backgrounds = new JsonArray();\n'
+            '            if (request.has("backdrop") && request.get("backdrop").getAsBoolean()) {\n'
+            '                for (int x = -size / 2; x < size + size / 2; x++) for (int y = -size / 2; y < size + size / 2; y++) {\n'
+            '                    BlockPos pos = anchor.relative(width, x).relative(height, y).relative(facing, -2);\n'
+            '                    level.setBlockAndUpdate(pos, Blocks.BLACK_CONCRETE.defaultBlockState());\n'
+            '                    placed.add(pos);\n'
+            '                    backgrounds.add(JSON.toJsonTree(new int[]{pos.getX(), pos.getY(), pos.getZ()}));\n'
+            '                }\n'
+            '            }\n'
+            '            if (request.get("occluded").getAsBoolean()) {')
+        visual.replace_once(server, '            ready.add("occluders", boxes);',
+            '            ready.add("occluders", boxes);\n            ready.add("backgrounds", backgrounds);')
         driver=base/'testing/visual/VisualClient.java'
         text=driver.read_text().replace('    public static void afterRender(Minecraft mc) {',
             '    public static void beforeShaderFinalization(Minecraft mc) {}\n\n    public static void afterRender(Minecraft mc) {')
@@ -95,6 +120,11 @@ def instrument(stage):
             '            frame.add("loadedShaderMods", loadedMods);\n'
             '            frame.addProperty("sample", index);')
         text=text.replace('        if (anchorUnloadedScenario()) return anchorUnloadSceneSynchronized(mc, image);',
+            '        for (JsonElement element : scene.getAsJsonArray("backgrounds")) {\n'
+            '            JsonArray cell = element.getAsJsonArray();\n'
+            '            BlockPos pos = new BlockPos(cell.get(0).getAsInt(), cell.get(1).getAsInt(), cell.get(2).getAsInt());\n'
+            '            if (!mc.level.getBlockState(pos).is(net.minecraft.world.level.block.Blocks.BLACK_CONCRETE)) return false;\n'
+            '        }\n'
             '        for (JsonElement element : scene.getAsJsonArray("occluders")) {\n'
             '            JsonArray box = element.getAsJsonArray();\n'
             '            BlockPos pos = new BlockPos(box.get(0).getAsInt(), box.get(1).getAsInt(), box.get(2).getAsInt());\n'
@@ -109,11 +139,11 @@ def instrument(stage):
         hook.write_text(text.replace(needle,needle+' com.nstut.simplyscreens.testing.visual.VisualClient.afterRender(net.minecraft.client.Minecraft.getInstance());'))
 
 def validate_variant(variant, measurements, directory):
-    expected={s['id'] for s in scenarios()}
+    expected={s['id'] for s in variant_scenarios(variant)}
     if set(measurements)!=expected: raise ValueError('missing shader scenes')
     failures=[]
     expected_mods=set(json.loads((directory/'expected-mods.json').read_text()))
-    for scene in scenarios():
+    for scene in variant_scenarios(variant):
         result=measurements[scene['id']]
         if len(result['frames'])!=sample_count(scene): raise ValueError('incomplete shader samples')
         for index in range(sample_count(scene)):
@@ -123,7 +153,7 @@ def validate_variant(variant, measurements, directory):
             if frame.get('shaderPackActive') is not (variant!='shader-off'):
                 raise ValueError('wrong shader state; a disabled/failed shader is not visual evidence')
         if result['status']!='pass' and not scene.get('alpha'): failures.append(scene['id'])
-    if variant=='original':
+    if variant.startswith('original'):
         # A startup/occlusion error cannot count as reproduction: require an actual RGB-chart mismatch.
         if not reproduces_distortion(measurements):
             raise ValueError('INCONCLUSIVE: shader did not reproduce image color distortion')
@@ -142,8 +172,8 @@ def compare_alpha(evidence):
     measurements=[]
     for sample in range(sample_count(scene)):
         stem=f'{scene["id"]}-{sample:02d}'
-        frame=json.loads((evidence/'fixed'/f'{stem}.json').read_text())
-        value=shader_pixels.compare_transparency(evidence/'fixed'/f'{stem}.png',evidence/'original'/f'{stem}.png',frame)
+        frame=json.loads((evidence/PAIR_REFERENCE/f'{stem}.json').read_text())
+        value=shader_pixels.compare_transparency(evidence/PAIR_REFERENCE/f'{stem}.png',evidence/'original-static'/f'{stem}.png',frame)
         measurements.append(value)
     if max(measurements)>8: raise ValueError(f'transparent samples changed/double blended: {measurements}')
     return measurements
@@ -154,12 +184,12 @@ def ring_delta(evidence, control, sample):
     from PIL import Image
     scene=next(s for s in scenarios() if s['facing']=='NORTH' and s['distance']==8 and not s['occluded'])
     stem=f'{scene["id"]}-{sample:02d}'
-    frame=json.loads((evidence/'fixed'/f'{stem}.json').read_text())
+    frame=json.loads((evidence/PAIR_REFERENCE/f'{stem}.json').read_text())
     u,v,_,_=shader_pixels.regions(frame)
     # Geometric ring just outside the image; never selected by observed brightness.
     ring=(u>-.08)&(u<1.08)&(v>-.08)&(v<1.08)&((u<-.015)|(u>1.015)|(v<-.015)|(v>1.015))
     if ring.sum()<32: raise ValueError('insufficient glow-ring coverage')
-    on=np.asarray(Image.open(evidence/'fixed'/f'{stem}.png').convert('RGB'),dtype=float)
+    on=np.asarray(Image.open(evidence/PAIR_REFERENCE/f'{stem}.png').convert('RGB'),dtype=float)
     off=np.asarray(Image.open(evidence/control/f'{stem}.png').convert('RGB'),dtype=float)
     delta=on[ring]-off[ring]
     return float(np.mean(delta)),float(np.mean(np.abs(delta)))
@@ -168,7 +198,7 @@ def validate_stability(values):
     for key,limit in (('ring_signed',.05),('ring_absolute',1.),('alpha_p95',1.)):
         samples=values.get(key,[])
         if len(samples)!=4 or any(not isinstance(x,(int,float)) or not __import__('math').isfinite(x) or abs(x)>limit for x in samples):
-            raise ValueError('unstable paired shader background: '+key)
+            raise ValueError('unstable paired shader background: '+key+' '+repr(samples))
 
 def compare_stability(evidence):
     import shader_pixels
@@ -178,9 +208,9 @@ def compare_stability(evidence):
         signed,absolute=ring_delta(evidence,'fixed-repeat',sample)
         values['ring_signed'].append(signed);values['ring_absolute'].append(absolute)
         stem=f'{scene["id"]}-{sample:02d}'
-        frame=json.loads((evidence/'fixed'/f'{stem}.json').read_text())
+        frame=json.loads((evidence/PAIR_REFERENCE/f'{stem}.json').read_text())
         values['alpha_p95'].append(shader_pixels.compare_transparency(
-            evidence/'fixed'/f'{stem}.png',evidence/'fixed-repeat'/f'{stem}.png',frame))
+            evidence/PAIR_REFERENCE/f'{stem}.png',evidence/'fixed-repeat'/f'{stem}.png',frame))
     # An identical second process must have less than one third of the required glow
     # signal. This rejects cloud/time drift rather than crediting it as image bloom.
     validate_stability(values)
@@ -233,9 +263,9 @@ def run(target):
         for variant in VARIANTS:
             print(f"=== {target}: shader variant {variant} ===", flush=True)
             renderer.write_text(suppress_world_image(renderer_original,module) if variant=='glow-source-off' else renderer_original)
-            hook.write_text(original.replace('ScreenColorRestore.finishWorld();','ScreenColorRestore.beginFrame();') if variant=='original' else original)
+            hook.write_text(original.replace('ScreenColorRestore.finishWorld();','ScreenColorRestore.beginFrame();') if variant.startswith('original') else original)
             def configure(client):
-                install_pack(client,pack,enabled=variant!='shader-off')
+                install_pack(client,pack,enabled=variant!='shader-off',loader=target.split('-',1)[0])
                 # Same pack and grading settings. Change only bloom for the glow negative control.
                 (client/'shaderpacks'/f'{pack.name}.txt').write_text(
                     ''.join(f'{key}={value}\n' for key,value in pack_options(variant).items()))
@@ -243,7 +273,7 @@ def run(target):
                 shader_pixels.write_chart(directory)
                 visual.atomic_json(directory/'expected-mods.json',ids)
             results=visual.run_variant(stage,target,'fixed',evidence/variant,standalone,
-                scenario_list=scenarios(),fixture_writer=fixtures,pixel_measure=lambda path, frame: shader_pixels.measure(path,frame,
+                scenario_list=variant_scenarios(variant),fixture_writer=fixtures,pixel_measure=lambda path, frame: shader_pixels.measure(path,frame,
                     tolerance=12 if variant=='shader-off' and frame['distance']>=32 else shader_pixels.TOLERANCE),
                 runtime_setup=configure,client_args=(f'-PscreensShaderStack={cache}',),validate_outcome=False)
             validate_variant(variant,results,evidence/variant)
@@ -274,7 +304,7 @@ def evidence_files(directory):
     for variant in VARIANTS:
         base=directory/variant
         paths += [base/name for name in ('expected-mods.json','graphics.json','measurements.json')]
-        for scene in scenarios():
+        for scene in variant_scenarios(variant):
             for sample in range(sample_count(scene)):
                 paths += [base/f'{scene["id"]}-{sample:02d}.{extension}' for extension in ('png','json')]
     return paths

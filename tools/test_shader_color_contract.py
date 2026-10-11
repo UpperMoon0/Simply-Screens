@@ -54,6 +54,13 @@ class ShaderColorContractTest(unittest.TestCase):
         fragment = (base/'resources/assets/simply_screens/shaders/core/screen_color_restore.fsh').read_text()
         self.assertIn('0.99999', fragment)
 
+    def test_forge_dev_mixin_cli_is_client_scoped_and_production_manifest_is_retained(self):
+        build=(ROOT/'forge-1.20.1/build.gradle').read_text()
+        self.assertNotIn("forge { mixinConfig",build)
+        self.assertIn("loom.runConfigs.named('client'), loom.runConfigs.named('liveJoinTestClient')",build)
+        self.assertIn("programArgs '-mixin.config', 'simplyscreens-color.mixins.json'",build)
+        self.assertIn("manifest.attributes('MixinConfigs': 'simplyscreens-color.mixins.json')",build)
+
     def test_loader_registrations_are_client_only(self):
         for target in ('fabric-1.20.1', 'fabric-1.21.1'):
             metadata = json.loads((ROOT/target/'src/main/resources/fabric.mod.json').read_text())

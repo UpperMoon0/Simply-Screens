@@ -76,6 +76,18 @@ class ShaderStackTests(unittest.TestCase):
             root=Path(d);pack=root/'test.zip';pack.write_bytes(b'test')
             shader_stack.install_pack(root/'client',pack,False)
             self.assertIn('enableShaders=false',(root/'client/config/iris.properties').read_text())
+    def test_oculus_uses_its_native_config_filename_for_on_and_off(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);pack=root/'test.zip';pack.write_bytes(b'test')
+            for loader in ('fabric','forge','neoforge'):
+                for enabled in (False,True):
+                    client=root/(loader+str(enabled))
+                    shader_stack.install_pack(client,pack,enabled,loader=loader)
+                    filename='oculus.properties' if loader=='forge' else 'iris.properties'
+                    self.assertEqual(f'enableShaders={str(enabled).lower()}\nshaderPack=test.zip\n',
+                                     (client/'config'/filename).read_text())
+                    self.assertEqual([filename],[p.name for p in (client/'config').iterdir()])
+
     def test_glow_control_removes_world_vertices_but_keeps_replay(self):
         for module in shader_test.visual.MODULES:
             path=shader_test.ROOT/module/shader_test.visual.PACKAGE/'client/renderers/ScreenBlockEntityRenderer.java'
@@ -101,7 +113,9 @@ class ShaderStackTests(unittest.TestCase):
                 base=stage/module/shader_test.visual.PACKAGE
                 self.assertIn('loadedShaderMods',(base/'testing/visual/VisualClient.java').read_text())
                 self.assertIn('Blocks.RED_CONCRETE',(base/'testing/visual/VisualClient.java').read_text())
+                self.assertIn('Blocks.BLACK_CONCRETE',(base/'testing/visual/VisualClient.java').read_text())
                 server=(base/'testing/visual/VisualServer.java').read_text()
+                self.assertIn('Blocks.BLACK_CONCRETE',server)
                 self.assertIn('gamerule '+('minecraft:advance_time' if module=='neoforge-26.1.2' else 'doDaylightCycle')+' false',server)
                 self.assertIn('gamerule '+('minecraft:advance_weather' if module=='neoforge-26.1.2' else 'doWeatherCycle')+' false',server)
                 hook=(base/'client/mixin/GameRendererMixin.java').read_text()
@@ -124,12 +138,25 @@ class ShaderStackTests(unittest.TestCase):
         with self.assertRaises(ValueError):shader_test.validate_stability(changed)
 
     def test_deterministic_profile_keeps_default_temporal_aa_and_only_toggles_bloom(self):
-        a=shader_test.pack_options('fixed');b=shader_test.pack_options('bloom-off')
+        a=shader_test.pack_options('fixed-static');b=shader_test.pack_options('bloom-off')
         self.assertEqual(['BLOOM_ENABLED'],[k for k in a if a[k]!=b[k]])
         self.assertEqual('0',a['CLOUD_STYLE_DEFINE'])
         self.assertEqual('0',a['LIGHTSHAFT_QUALI_DEFINE'])
-        self.assertNotIn('TAA_DEFINE',a)
+        self.assertEqual('0',a['TAA_DEFINE'])
+        self.assertNotIn('TAA_DEFINE',shader_test.pack_options('fixed'))
+        self.assertNotIn('TAA_DEFINE',shader_test.pack_options('original'))
         self.assertEqual(a,shader_test.pack_options('fixed-repeat'))
+
+    def test_full_temporal_color_matrix_is_separate_from_static_pair_controls(self):
+        self.assertEqual(26,len(shader_test.variant_scenarios('fixed')))
+        self.assertEqual(26,len(shader_test.variant_scenarios('original')))
+        for variant in shader_test.PAIRED_VARIANTS:
+            self.assertEqual({'NORTH-8-0-False','NORTH-alpha'},
+                             {s['id'] for s in shader_test.variant_scenarios(variant)})
+            self.assertEqual('0',shader_test.pack_options(variant)['TAA_DEFINE'])
+        self.assertEqual('fixed-static',shader_test.PAIR_REFERENCE)
+        self.assertTrue(all(s.get('backdrop') for s in shader_test.variant_scenarios('fixed-static')))
+        self.assertTrue(any(not s.get('backdrop') for s in shader_test.variant_scenarios('fixed')))
 
     def test_receipt_gate_rejects_missing_targets(self):
         with tempfile.TemporaryDirectory() as d:

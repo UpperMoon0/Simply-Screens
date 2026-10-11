@@ -11,7 +11,7 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKETWEAVE_SLUG = "packetweave"
-PACKETWEAVE_PROJECT_ID = "1735096"
+PACKETWEAVE_PROJECT_ID = 1735096
 TARGETS = ("fabric-1.20.1", "forge-1.20.1", "fabric-1.21.1", "neoforge-1.21.1", "neoforge-26.1.2")
 
 
@@ -42,8 +42,11 @@ def verify_curseforge_metadata(metadata: dict) -> None:
     https://support.curseforge.com/support/solutions/articles/9000197321
     """
     projects = metadata.get("relations", {}).get("projects", [])
+    if any("projectID" in item and (type(item["projectID"]) is not int or item["projectID"] <= 0)
+           for item in projects):
+        raise ValueError("CurseForge projectID must be a positive JSON integer; publication is blocked")
     matches = [item for item in projects
-               if item.get("slug") == PACKETWEAVE_SLUG or str(item.get("projectID")) == PACKETWEAVE_PROJECT_ID]
+               if item.get("slug") == PACKETWEAVE_SLUG or str(item.get("projectID")) == str(PACKETWEAVE_PROJECT_ID)]
     expected = {"slug": PACKETWEAVE_SLUG, "projectID": PACKETWEAVE_PROJECT_ID,
                 "type": "requiredDependency"}
     if matches != [expected]:

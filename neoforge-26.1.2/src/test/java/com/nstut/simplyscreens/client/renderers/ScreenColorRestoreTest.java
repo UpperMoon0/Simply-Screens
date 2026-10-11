@@ -30,8 +30,9 @@ class ScreenColorRestoreTest {
         var depth = pipeline.getDepthStencilState();
         assertEquals(CompareOp.LESS_THAN_OR_EQUAL, depth.depthTest());
         assertFalse(depth.writeDepth());
-        assertEquals(-1.0f, depth.depthBiasScaleFactor());
-        assertEquals(-128.0f, depth.depthBiasConstant());
+        // One extra raster-pixel slope margin and16precision units beyond the world image.
+        assertEquals(-2.0f, depth.depthBiasScaleFactor());
+        assertEquals(-144.0f, depth.depthBiasConstant());
         assertTrue(pipeline.getColorTargetState().blendFunction().isEmpty());
     }
 }
