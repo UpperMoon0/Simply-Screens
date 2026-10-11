@@ -59,6 +59,17 @@ class BuildOpenUiTest(unittest.TestCase):
                     build_openui.build(Path("source"), attempts=3, retry_delay=0)
                 self.assertEqual(1, run.call_count)
 
+    def test_cold_ci_exercises_real_build_without_production_cache_changes(self):
+        workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/cold-openui.yml").read_text()
+        self.assertIn("timeout-minutes: 30", workflow)
+        self.assertIn("GRADLE_USER_HOME: ${{ runner.temp }}/cold-openui-gradle", workflow)
+        self.assertIn('test ! -e "$GRADLE_USER_HOME"', workflow)
+        self.assertIn('test ! -d "$HOME/.m2/repository/com/nstut"', workflow)
+        self.assertIn("python3 tools/build_openui.py --attempts 1", workflow)
+        self.assertIn("python3 tools/build_openui.py --verify-only", workflow)
+        self.assertNotIn("actions/cache@", workflow)
+        self.assertNotIn("cache: gradle", workflow)
+
     def test_expected_artifacts_cover_every_supported_target(self):
         paths = build_openui.artifact_paths("0.0.8", Path("/m2"))
         self.assertEqual(len(build_openui.TARGETS), len(paths))

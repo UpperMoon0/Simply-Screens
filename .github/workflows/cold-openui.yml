@@ -1,0 +1,55 @@
+name: Cold OpenUI preparation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/build_openui.py
+      - tools/test_build_openui.py
+      - .github/actions/openui/action.yml
+      - .github/workflows/cold-openui.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cold-openui-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cold-openui:
+    name: Cold isolated OpenUI build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GRADLE_USER_HOME: ${{ runner.temp }}/cold-openui-gradle
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/checkout@v4
+        with:
+          repository: UpperMoon0/OpenUI-MC
+          ref: f3f1954621f32606e732dd47d1de0eb430cf1eba
+          path: OpenUI-MC
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Build all five pinned targets without restored caches
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e "$GRADLE_USER_HOME"
+          test ! -d "$HOME/.m2/repository/com/nstut"
+          chmod +x OpenUI-MC/gradlew
+          mkdir -p build
+          python3 tools/build_openui.py --attempts 1 2>&1 | tee build/cold-openui.log
+          python3 tools/build_openui.py --verify-only
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cold-openui-build-log
+          path: build/cold-openui.log
+          if-no-files-found: ignore
