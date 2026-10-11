@@ -81,3 +81,6 @@ saves/
 *.dll
 *.so
 *.dylib
+
+# Local isolated dependency cache
+.gradle-home/

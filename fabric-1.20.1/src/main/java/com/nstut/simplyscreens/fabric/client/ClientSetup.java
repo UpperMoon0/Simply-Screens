@@ -16,6 +16,10 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
 public class ClientSetup implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
+        net.fabricmc.fabric.api.client.rendering.v1.CoreShaderRegistrationCallback.EVENT.register(context ->
+                context.register(new net.minecraft.resources.ResourceLocation("simply_screens", "color_restore"),
+                        com.mojang.blaze3d.vertex.DefaultVertexFormat.POSITION_TEX,
+                        com.nstut.simplyscreens.client.renderers.ScreenColorRestore::setShader));
         ClientImageManager.initialize();
         PacketRegistries.registerS2CPackets();
         BlockEntityRenderers.register(BlockEntityRegistries.SCREEN.get(), ScreenBlockEntityRenderer::new);

@@ -1,0 +1,19 @@
+// Opt-in development dependencies only. Production jars never bundle shader mods.
+// First run python tools/shader_stack.py --target <target> --client <run directory>.
+def stackDirectory = providers.gradleProperty('screensShaderStack')
+if (stackDirectory.isPresent()) {
+    def lock = new groovy.json.JsonSlurper().parse(rootProject.file('tools/shader/stack-lock.json'))
+    def artifacts = lock.stacks[project.name]
+    if (artifacts == null) throw new GradleException("No shader stack for ${project.name}")
+    def jars = artifacts.collect { artifact ->
+        def jar = new File(stackDirectory.get(), artifact.filename)
+        if (!jar.isFile()) throw new GradleException("Missing shader dependency ${jar}; run shader_stack.py first")
+        def digest = java.security.MessageDigest.getInstance('SHA-512').digest(jar.bytes).encodeHex().toString()
+        if (digest != artifact.sha512) throw new GradleException("Shader dependency checksum mismatch: ${jar}")
+        jar
+    }
+    dependencies {
+        if (plugins.hasPlugin('net.neoforged.moddev')) localRuntime files(jars)
+        else modLocalRuntime files(jars)
+    }
+}

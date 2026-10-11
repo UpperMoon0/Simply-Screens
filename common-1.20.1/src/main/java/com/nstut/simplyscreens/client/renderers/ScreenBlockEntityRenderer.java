@@ -245,6 +245,8 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
         PoseStack.Pose pose = poseStack.last();
 
         buildTexturedQuad(vertexBuffer, pose, packedOverlay, tile);
+        ScreenColorRestore.capture(texture, pose, tile.minX(), tile.minY(), tile.maxX(), tile.maxY(),
+                tile.minU(), tile.minV(), tile.maxU(), tile.maxV());
         poseStack.popPose();
     }
 

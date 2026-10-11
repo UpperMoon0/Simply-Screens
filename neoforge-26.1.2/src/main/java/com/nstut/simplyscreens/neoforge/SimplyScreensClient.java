@@ -3,6 +3,7 @@ package com.nstut.simplyscreens.neoforge;
 import com.nstut.simplyscreens.SimplyScreens;
 import com.nstut.simplyscreens.blocks.entities.BlockEntityRegistries;
 import com.nstut.simplyscreens.client.renderers.ScreenBlockEntityRenderer;
+import com.nstut.simplyscreens.client.renderers.ScreenColorRestore;
 import com.nstut.simplyscreens.helpers.ClientImageManager;
 import com.nstut.simplyscreens.client.ClientServerConfig;
 import com.nstut.simplyscreens.client.testing.UiSmokeTest;
@@ -20,6 +21,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.client.event.RegisterRenderPipelinesEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.level.LevelEvent;
 
@@ -27,6 +29,11 @@ import net.neoforged.neoforge.event.level.LevelEvent;
 @EventBusSubscriber(modid = SimplyScreens.MOD_ID, value = Dist.CLIENT)
 public final class SimplyScreensClient {
     public SimplyScreensClient(ModContainer container) {
+    }
+
+    @SubscribeEvent
+    public static void registerPipelines(RegisterRenderPipelinesEvent event) {
+        event.registerPipeline(ScreenColorRestore.PIPELINE);
     }
 
     @SubscribeEvent

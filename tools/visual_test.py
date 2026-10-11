@@ -420,7 +420,9 @@ def remove_runtime_when_quiet(runtime, timeout=20.0, quiet_period=0.75):
         time.sleep(0.1)
 
 
-def run_variant(stage, target, variant, directory, standalone, probe=False):
+def run_variant(stage, target, variant, directory, standalone, probe=False, *,
+                scenario_list=None, fixture_writer=None, pixel_measure=None,
+                runtime_setup=None, client_args=(), validate_outcome=True):
     from PIL import Image
     from visual_pixels import measure
     directory.mkdir(parents=True)
@@ -433,6 +435,8 @@ def run_variant(stage, target, variant, directory, standalone, probe=False):
         for y in range(32):
             alpha_pixels[x, y] = (240,24,240,alpha)
     alpha_fixture.save(directory / "fixture-alpha.png")
+    if fixture_writer is not None: fixture_writer(directory)
+    if pixel_measure is not None: measure = pixel_measure
     # Fresh runtime only; compiled outputs/Gradle caches are reused between variants.
     runtime = (stage / target / "run/live-join").resolve()
     if not runtime.is_relative_to(stage.resolve()):
@@ -445,9 +449,10 @@ def run_variant(stage, target, variant, directory, standalone, probe=False):
         file.write("server-ip=127.0.0.1\nlevel-type=minecraft:flat\nlevel-seed=1\nview-distance=16\nsimulation-distance=2\ngamemode=spectator\n")
     with (runtime / "client/options.txt").open("a") as file:
         file.write("renderDistance:16\nfov:0.0\nbobView:false\nmaxFps:60\nfullscreen:false\n")
+    if runtime_setup is not None: runtime_setup(runtime / "client")
     env = os.environ | {"SS_VISUAL_DIR": str(directory.resolve())}
     server_cmd = live.command(stage, f":{target}:runLiveJoinTestServer")
-    client_cmd = live.command(stage, f":{target}:runLiveJoinTestClient")
+    client_cmd = [*live.command(stage, f":{target}:runLiveJoinTestClient"), *client_args]
     if os.name != "nt" and not os.environ.get("DISPLAY"):
         client_cmd = ["xvfb-run", "-a", "-s", "-screen 0 1920x1080x24", *client_cmd]
     results = {}
@@ -462,7 +467,7 @@ def run_variant(stage, target, variant, directory, standalone, probe=False):
                 if time.monotonic() > deadline: raise TimeoutError("server startup timeout")
                 time.sleep(0.5)
             client = launch(client_cmd, stage, client_log, env)
-            selected = cases(variant)
+            selected = cases(variant) if scenario_list is None else scenario_list
             if probe:
                 selected = [c for c in selected if c["occluded"] or c.get("reload")
                             or (c["facing"] == "NORTH" and c["size"] == 8 and c["distance"] in (8,64,160))
@@ -505,7 +510,7 @@ def run_variant(stage, target, variant, directory, standalone, probe=False):
             if client.returncode != 0: raise RuntimeError("client nonzero exit overrides results")
             for name in ("server-fail.txt", "client-fail.txt"):
                 if (directory / name).exists(): raise RuntimeError((directory / name).read_text())
-            if not probe:
+            if not probe and validate_outcome:
                 expected_outcome(variant, results)
         finally:
             if client is not None: live.stop_tree(client)

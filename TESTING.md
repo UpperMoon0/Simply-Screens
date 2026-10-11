@@ -133,3 +133,13 @@ The five jobs share one OpenUI dependency build. Cheap harness/source checks run
 Screens 0.8.10 requires PacketWeave 0.1.1 or newer on both sides. Publish PacketWeave first, verify all five matching native artifacts on GitHub and CurseForge, and only then publish Screens. `tools/release_dependencies.py verify-release` blocks Screens release builds if the required GitHub release/artifacts are unavailable. The CurseForge upload step checks the official dependency catalog for the exact PacketWeave project ID/slug and declares `requiredDependency` for every target; minimum versions remain enforced by loader metadata because CurseForge relations cannot express them.
 
 Accepted uploads retain per-target file-ID/source-SHA/relation receipts. They do not prove moderation approval or public download availability. Inspect those public file pages and their dependency relations before declaring publication complete. An ambiguous failed upload is not automatically retried as a POST or reported as success.
+
+## 5. Shader image color preservation
+
+The shader-specific development installation, supported pinned matrix, precise
+opaque-color contract, transparency/postprocessing limitations, and real
+Complementary framebuffer controls are in [tools/shader/README.md](tools/shader/README.md).
+Run `python3 tools/shader_test.py --target <target>` after the normal dependencies
+are built. Renderer changes also require **Required shader color evidence** on
+the final exact PR head. Existing vanilla depth evidence does not imply shader
+compatibility, and source/unit tests do not imply a successful game launch.
