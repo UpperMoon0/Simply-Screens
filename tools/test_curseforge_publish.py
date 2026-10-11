@@ -69,8 +69,10 @@ class CurseForgePublishTests(unittest.TestCase):
                                                                          LOADER_NAME=loader, JAVA_VERSION_NAME=java)
                 self.assertEqual(0, result.returncode, result.stderr)
                 self.assertEqual(2, len(requests))
-                expected = {"slug": "packetweave", "projectID": "1735096", "type": "requiredDependency"}
+                expected = {"slug": "packetweave", "projectID": 1735096, "type": "requiredDependency"}
                 self.assertIn(expected, metadata["relations"]["projects"])
+                packetweave = next(p for p in metadata["relations"]["projects"] if p["slug"] == "packetweave")
+                self.assertIs(type(packetweave["projectID"]), int)
                 self.assertEqual(1, len(receipts))
                 self.assertEqual(metadata["relations"], receipts[0]["relations"])
                 self.assertEqual(12345, receipts[0]["file_id"])
