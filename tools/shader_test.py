@@ -57,7 +57,7 @@ def scenarios():
 
 def variant_scenarios(variant):
     if variant not in PAIRED_VARIANTS: return scenarios()
-    return [s for s in scenarios() if s['id'] in ('NORTH-8-0-False','NORTH-alpha')]
+    return [s | dict(settle=True) for s in scenarios() if s['id'] in ('NORTH-8-0-False','NORTH-alpha')]
 
 def instrument(stage):
     visual.instrument(stage)
@@ -132,12 +132,57 @@ def instrument(stage):
             '            if (!mc.level.getBlockState(pos).is(net.minecraft.world.level.block.Blocks.RED_CONCRETE)) return false;\n'
             '        }\n'
             '        if (anchorUnloadedScenario()) return anchorUnloadSceneSynchronized(mc, image);')
+        text=text.replace('            sampleArmed = false;\n            clearObservedStability();\n            capturing.set(true);',
+            '            if (scene.has("settle") && sample == 0 && !ShaderSettling.ready(mc, current)) return;\n'
+            '            sampleArmed = false;\n            clearObservedStability();\n            capturing.set(true);')
+        text=text.replace('if (++ticks > 1200 && sample < totalSamples)',
+            'if (++ticks > (scene.has("settle") ? 4000 : 1200) && sample < totalSamples)')
         driver.write_text(text)
+        probe=(stage/'tools/shader/ShaderSettling.java').read_text()
+        capture='Screenshot.takeScreenshot(mc.getMainRenderTarget(), ShaderSettling::accept);' if module=='neoforge-26.1.2' else 'accept(Screenshot.takeScreenshot(mc.getMainRenderTarget()));'
+        (base/'testing/visual/ShaderSettling.java').write_text(probe.replace('__PROBE__',capture))
         hook=base/'client/mixin/GameRendererMixin.java'
         text=hook.read_text()
         needle='ScreenColorRestore.finishWorld();'
         if text.count(needle)!=1: raise ValueError('post-shader instrumentation hook changed')
         hook.write_text(text.replace(needle,needle+' com.nstut.simplyscreens.testing.visual.VisualClient.afterRender(net.minecraft.client.Minecraft.getInstance());'))
+
+def validate_settling(directory, scene, recompute=False):
+    import math
+    proof=json.loads((directory/f'{scene}-settling.json').read_text())
+    samples=proof.get('samples',[])
+    if proof.get('scene')!=scene or proof.get('status')!='pass' or len(samples)!=10:
+        raise ValueError('missing completed framebuffer convergence proof')
+    if not isinstance(proof.get('probeCount'),int) or proof['probeCount']<10:
+        raise ValueError('insufficient convergence probes')
+    seconds=proof.get('seconds')
+    if not isinstance(seconds,(int,float)) or not math.isfinite(seconds) or not 20<=seconds<=121:
+        raise ValueError('invalid convergence duration')
+    expected={f'{scene}-settle-{i}.png' for i in range(10)}
+    if {p.get('file') for p in samples}!=expected: raise ValueError('missing convergence frame')
+    times=[p.get('seconds') for p in samples]
+    if any(not isinstance(t,(int,float)) or not math.isfinite(t) or t<0 or t>seconds for t in times):
+        raise ValueError('invalid convergence sample time')
+    ordered=sorted(times)
+    if ordered[-1]-ordered[0]<9 or any(b-a<.9 for a,b in zip(ordered,ordered[1:])):
+        raise ValueError('convergence window is too short')
+    means=[p.get('means',[]) for p in samples]
+    if any(len(m)!=16*12*3 or any(not isinstance(v,(int,float)) or not math.isfinite(v) or not 0<=v<=255 for v in m) for m in means):
+        raise ValueError('invalid convergence tile means')
+    spread=max(max(channel)-min(channel) for channel in zip(*means))
+    if spread>.01 or abs(spread-proof.get('maxTileChannelRange',-1))>1e-9:
+        raise ValueError('shader framebuffer is still changing')
+    if recompute:
+        import numpy as np
+        from PIL import Image
+        for sample in samples:
+            with Image.open(directory/sample['file']) as image:
+                rgb=np.asarray(image.convert('RGB'),dtype=float)
+            if rgb.shape!=(720,960,3): raise ValueError('wrong convergence image dimensions')
+            measured=rgb.reshape(12,60,16,60,3).mean(axis=(1,3)).reshape(-1)
+            if not np.allclose(measured,sample['means'],rtol=0,atol=1e-9):
+                raise ValueError('convergence metadata does not match framebuffer')
+    return proof
 
 def validate_variant(variant, measurements, directory):
     expected={s['id'] for s in variant_scenarios(variant)}
@@ -145,6 +190,7 @@ def validate_variant(variant, measurements, directory):
     failures=[]
     expected_mods=set(json.loads((directory/'expected-mods.json').read_text()))
     for scene in variant_scenarios(variant):
+        if variant in PAIRED_VARIANTS: validate_settling(directory,scene['id'])
         result=measurements[scene['id']]
         if len(result['frames'])!=sample_count(scene): raise ValueError('incomplete shader samples')
         for index in range(sample_count(scene)):
@@ -291,6 +337,8 @@ def run(target):
                 scenario_list=variant_scenarios(variant),fixture_writer=fixtures,pixel_measure=lambda path, frame: shader_pixels.measure(path,frame,
                     tolerance=12 if variant=='shader-off' and frame['distance']>=32 else shader_pixels.TOLERANCE),
                 runtime_setup=configure,client_args=(f'-PscreensShaderStack={cache}',),validate_outcome=False)
+            if variant in PAIRED_VARIANTS:
+                for scene in variant_scenarios(variant): validate_settling(evidence/variant,scene['id'],recompute=True)
             validate_variant(variant,results,evidence/variant)
             graphics=json.loads((evidence/variant/'graphics.json').read_text())
             if 'graphics' in receipt and receipt['graphics']!=graphics: raise ValueError('graphics backend changed between shader controls')
@@ -320,6 +368,9 @@ def evidence_files(directory):
         base=directory/variant
         paths += [base/name for name in ('expected-mods.json','graphics.json','measurements.json')]
         for scene in variant_scenarios(variant):
+            if variant in PAIRED_VARIANTS:
+                paths += [base/f'{scene["id"]}-settling.json']
+                paths += [base/f'{scene["id"]}-settle-{i}.png' for i in range(10)]
             for sample in range(sample_count(scene)):
                 paths += [base/f'{scene["id"]}-{sample:02d}.{extension}' for extension in ('png','json')]
     return paths

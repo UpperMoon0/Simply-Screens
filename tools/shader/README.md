@@ -193,3 +193,24 @@ References:
 - [NeoForge copy-builder API](https://github.com/neoforged/NeoForge/blob/26.1.x/patches/com/mojang/blaze3d/pipeline/RenderPipeline.java.patch)
 - [Iris copy origin hook](https://github.com/IrisShaders/Iris/blob/bff1e69cb6c5519d8745784aa9c8b92984de67e7/neoforge/src/main/java/net/irisshaders/iris/mixin/forge/PipelineMixin.java)
 - [Iris built-pipeline routing copy](https://github.com/IrisShaders/Iris/blob/bff1e69cb6c5519d8745784aa9c8b92984de67e7/neoforge/src/main/java/net/irisshaders/iris/mixin/forge/PipelineBuilderMixin.java)
+
+### Paired-control convergence
+
+Complementary's public shader properties smooth eye brightness over five seconds
+and some environment values over longer intervals. Static camera geometry and
+five rendered frames do not prove that those values have converged. The paired
+variants now hold each scene's first camera sample and take one real post-shader
+framebuffer probe per second. After at least 20 seconds, all RGB means in a fixed
+16-by-12 geometric grid must stay within 0.01/255 across ten consecutive probes
+spanning at least nine seconds. Otherwise the fixture fails after 120 seconds.
+Only then are the four normal raster samples captured. The full default-TAA
+color/depth matrix retains its original timing and is not settled this way.
+
+The ten convergence PNGs and their timestamps/tile means are retained per scene,
+recomputed from pixels by Python, and hashed into the receipt. The aggregate gate
+checks the complete convergence proof as well as the unchanged cross-process
+repeat, transparency, source-color, occlusion, and both glow controls. A stable
+wrong image cannot pass those independent image oracles. Tests reject incomplete,
+short, drifting, non-finite, misidentified, and pixel-mismatched convergence proof.
+
+[Complementary smoothed environment uniforms](https://github.com/ComplementaryDevelopment/ComplementaryReimagined/blob/main/shaders/shaders.properties)

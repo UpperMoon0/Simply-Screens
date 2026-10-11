@@ -64,6 +64,33 @@ class ShaderOracleTests(unittest.TestCase):
             self.assertEqual('pixel-failure',pixels.measure(p,self.frame)['status'])
             self.assertEqual('pass',pixels.measure(p,self.frame,tolerance=12)['status'])
 
+    def test_convergence_requires_measured_stable_images_and_time_window(self):
+        with tempfile.TemporaryDirectory() as d:
+            base=Path(d);scene='NORTH-8-0-False'
+            samples=[]
+            for i in range(10):
+                name=f'{scene}-settle-{i}.png'
+                Image.fromarray(np.full((720,960,3),30,dtype=np.uint8)).save(base/name)
+                samples.append(dict(file=name,seconds=11.+i,means=[30.]*(16*12*3)))
+            proof=dict(scene=scene,status='pass',probeCount=21,seconds=20.,maxTileChannelRange=0.,samples=samples)
+            path=base/f'{scene}-settling.json'
+            def write(value): path.write_text(json.dumps(value))
+            write(proof);shader_test.validate_settling(base,scene,recompute=True)
+            for mutate in (
+                lambda p:p.update(status='settling'),
+                lambda p:p.update(seconds=19.),
+                lambda p:p['samples'][0].update(seconds=19.5),
+                lambda p:p['samples'][0]['means'].__setitem__(0,30.02),
+                lambda p:p['samples'][0]['means'].__setitem__(0,float('nan')),
+                lambda p:p['samples'][0].update(file='unrelated.png'),
+            ):
+                bad=copy.deepcopy(proof);mutate(bad);write(bad)
+                with self.assertRaises(ValueError): shader_test.validate_settling(base,scene)
+            write(proof)
+            Image.fromarray(np.full((720,960,3),31,dtype=np.uint8)).save(base/samples[0]['file'])
+            with self.assertRaisesRegex(ValueError,'does not match framebuffer'):
+                shader_test.validate_settling(base,scene,recompute=True)
+
     def test_alpha_comparison_rejects_double_blending(self):
         with tempfile.TemporaryDirectory() as d:
             p,q=Path(d)/'a.png',Path(d)/'b.png'
@@ -124,6 +151,10 @@ class ShaderStackTests(unittest.TestCase):
                 self.assertIn('loadedShaderMods',(base/'testing/visual/VisualClient.java').read_text())
                 self.assertIn('Blocks.RED_CONCRETE',(base/'testing/visual/VisualClient.java').read_text())
                 self.assertIn('Blocks.BLACK_CONCRETE',(base/'testing/visual/VisualClient.java').read_text())
+                self.assertIn('ShaderSettling.ready(mc, current)',(base/'testing/visual/VisualClient.java').read_text())
+                probe=(base/'testing/visual/ShaderSettling.java').read_text()
+                self.assertNotIn('__PROBE__',probe)
+                self.assertIn('ShaderSettling::accept' if module=='neoforge-26.1.2' else 'accept(Screenshot.takeScreenshot',probe)
                 server=(base/'testing/visual/VisualServer.java').read_text()
                 self.assertIn('Blocks.BLACK_CONCRETE',server)
                 self.assertIn('for (int x = -20; x < 28; x++)',server)
@@ -166,7 +197,8 @@ class ShaderStackTests(unittest.TestCase):
                              {s['id'] for s in shader_test.variant_scenarios(variant)})
             self.assertEqual('0',shader_test.pack_options(variant)['TAA_DEFINE'])
         self.assertEqual('fixed-static',shader_test.PAIR_REFERENCE)
-        self.assertTrue(all(s.get('backdrop') for s in shader_test.variant_scenarios('fixed-static')))
+        self.assertTrue(all(s.get('backdrop') and s.get('settle') for s in shader_test.variant_scenarios('fixed-static')))
+        self.assertTrue(all(not s.get('settle') for s in shader_test.variant_scenarios('fixed')))
         self.assertTrue(any(not s.get('backdrop') for s in shader_test.variant_scenarios('fixed')))
 
     def test_receipt_gate_rejects_missing_targets(self):

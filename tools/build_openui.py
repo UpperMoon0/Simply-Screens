@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """Build the pinned OpenUI artifacts once, with narrow retries for transient repository failures."""
 from __future__ import annotations
 
@@ -17,7 +17,11 @@ TARGETS = (
     "neoforge-1.21.1",
     "neoforge-26.1.2",
 )
-TASKS = tuple(f":{target}:publishToMavenLocal" for target in TARGETS)
+FATAL_MARKERS = (
+    "compilation failed",
+    "compilation error",
+    "nosuchfileexception",
+)
 TRANSIENT_MARKERS = (
     "received status code 429",
     "received status code 500",
@@ -62,16 +66,19 @@ def verify_artifacts(version: str, maven_root: Path) -> None:
         raise RuntimeError(f"OpenUI Maven-local cache is incomplete:\n{formatted}")
 
 
-def gradle_command(project: Path) -> list[str]:
+def gradle_command(project: Path, target: str) -> list[str]:
+    if target not in TARGETS:
+        raise ValueError(f"Unsupported OpenUI target: {target}")
     wrapper = project / ("gradlew.bat" if os.name == "nt" else "gradlew")
     if not wrapper.is_file():
         raise RuntimeError(f"OpenUI Gradle wrapper missing: {wrapper}")
     return [
         str(wrapper),
-        *TASKS,
+        f":{target}:publishToMavenLocal",
         "--no-daemon",
         "--console=plain",
-        "--max-workers=4",
+        "--no-parallel",
+        "--max-workers=1",
     ]
 
 
@@ -96,6 +103,9 @@ def run_attempt(command: list[str], project: Path) -> tuple[int, str]:
 
 def transient_failure(output: str) -> bool:
     lowered = output.lower()
+    # An earlier recovered repository error must not mask a later fatal build error.
+    if any(marker in lowered for marker in FATAL_MARKERS):
+        return False
     return any(marker in lowered for marker in TRANSIENT_MARKERS)
 
 
@@ -108,16 +118,20 @@ def build(project: Path, attempts: int, retry_delay: float) -> None:
             f"but {project} publishes {actual!r}"
         )
 
-    command = gradle_command(project)
-    for attempt in range(1, attempts + 1):
-        print(f"OpenUI publish attempt {attempt}/{attempts}", flush=True)
-        code, output = run_attempt(command, project)
-        if code == 0:
-            return
-        if attempt == attempts or not transient_failure(output):
-            raise subprocess.CalledProcessError(code, command)
-        print("Transient dependency repository failure detected; retrying the publish invocation.", flush=True)
-        time.sleep(retry_delay * attempt)
+    # Architectury/Loom transform state must not cross Minecraft versions in
+    # one Gradle invocation. The release workflow already publishes separately.
+    # Override the pinned source's org.gradle.parallel=true as well.
+    for target in TARGETS:
+        command = gradle_command(project, target)
+        for attempt in range(1, attempts + 1):
+            print(f"OpenUI {target} publish attempt {attempt}/{attempts}", flush=True)
+            code, output = run_attempt(command, project)
+            if code == 0:
+                break
+            if attempt == attempts or not transient_failure(output):
+                raise subprocess.CalledProcessError(code, command)
+            print("Transient dependency repository failure detected; retrying this target only.", flush=True)
+            time.sleep(retry_delay * attempt)
 
 
 def main() -> int:
