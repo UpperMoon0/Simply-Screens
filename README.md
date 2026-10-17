@@ -109,3 +109,10 @@ Edit `config/simply_screens.properties`; server limits remain authoritative. Nam
 | `maxStorageTotal` | `2147483648` | Total stored bytes; 2 GiB |
 
 Both transfer-size limits are clamped to 1 KiB–100 MiB. The properties are `disableUrlDownload` and `maxUrlDownloadSize`; `disableDownload` and `maxDownloadSize` are not read by this version.
+
+### OpenUI on clients and dedicated servers
+
+OpenUI MC is required on clients only. Dedicated servers can run without it.
+On Fabric, the client requirement is checked before client initialization; missing or
+incompatible OpenUI versions produce an installation error before the UI loads.
+Forge and NeoForge declare the dependency with `side="CLIENT"`.

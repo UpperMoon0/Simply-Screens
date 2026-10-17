@@ -20,6 +20,9 @@
     ],
     "client": [
       "com.nstut.simplyscreens.fabric.client.ClientSetup"
+    ],
+    "preLaunch": [
+      "com.nstut.simplyscreens.fabric.OpenUiDependencyCheck"
     ]
   },
   "depends": {
@@ -28,11 +31,11 @@
     "java": ">=21",
     "architectury": ">=13.0.8",
     "fabric-api": "*",
-    "openui_mc": ">=0.0.8",
     "packetweave": ">=${packetweave_version}"
   },
   "suggests": {
-    "sable": "=2.0.5"
+    "sable": "=2.0.5",
+    "openui_mc": ">=0.0.8"
   },
   "mixins": [
     "simplyscreens-color.mixins.json"
