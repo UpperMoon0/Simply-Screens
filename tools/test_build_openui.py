@@ -25,6 +25,7 @@ class BuildOpenUiTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             project = Path(directory)
             (project / "gradlew").touch()
+            (project / "gradlew.bat").touch()
             for target in build_openui.TARGETS:
                 command = build_openui.gradle_command(project, target)
                 self.assertEqual([f":{target}:publishToMavenLocal"], [arg for arg in command if arg.startswith(":")])
