@@ -25,6 +25,8 @@ class ScreenAccessServiceTest {
     MinecraftServer server; ServerLevel level; ServerPlayer player; ScreenBlockEntity tile;
     ServerChunkCache chunks; ChunkMap tracking; LevelChunk chunk;
     MockedStatic<ServerImageManager> media;
+    MockedStatic<PacketRegistries> packets;
+    final List<UpdateScreenS2CPacket> updates = new ArrayList<>();
     String key;
     @BeforeAll static void bootstrap() { net.minecraft.SharedConstants.tryDetectVersion(); net.minecraft.server.Bootstrap.bootStrap(); }
     @BeforeEach void setup(@TempDir Path root) throws Exception {
@@ -41,11 +43,14 @@ class ScreenAccessServiceTest {
         key=ScreenNetworkService.network("station"); when(tile.accessKey()).thenReturn(key);
         assertTrue(ScreenRegistry.networks().createOwned(key,owner,image));
         media=mockStatic(ServerImageManager.class);
+        packets = mockStatic(PacketRegistries.class);
+        packets.when(() -> PacketRegistries.sendToPlayer(any(), any(UpdateScreenS2CPacket.class)))
+                .thenAnswer(call -> { updates.add(call.getArgument(1)); return null; });
         var metadata=new ImageMetadata("private",image.toString(),"png",owner.toString());
         media.when(()->ServerImageManager.getImageMetadata(server,image)).thenReturn(metadata);
         ScreenAccessService.refreshMedia(tile);
     }
-    @AfterEach void cleanup() { ScreenAccessService.untrack(tile); media.close(); }
+    @AfterEach void cleanup() { ScreenAccessService.clearLevel(level); packets.close(); media.close(); }
     void tracked() {
         when(chunks.getChunkNow(0,0)).thenReturn(chunk); when(chunk.getBlockEntity(pos)).thenReturn(tile);
         when(tracking.getPlayers(any(ChunkPos.class),eq(false))).thenReturn(List.of(player));
@@ -155,6 +160,79 @@ class ScreenAccessServiceTest {
         assertEquals(latest, child.getResolvedImageId());
         assertFalse(ScreenRegistry.networks().allowed(child.accessKey(), new Actor(visitor, false), Permission.VIEW));
         assertTrue(ScreenRegistry.networks().allowed(key, new Actor(visitor, false), Permission.VIEW));
+    }
+    @Test void linkedChangeAndClearReachLoadedChildWithoutItsAnchor() throws Exception {
+        ScreenBlockEntity child = loadedChild(image, false);
+        UUID replacement = UUID.randomUUID();
+        assertTrue(ScreenAccessService.canReadImage(player, image));
+        // Selection happens on a different physical display; this child's own anchor remains unloaded.
+        BlockPos remotePos = pos.offset(32, 0, 0);
+        ScreenBlockEntity remote = persistedTile(remotePos, remotePos);
+        remote.setDisplayId(UUID.randomUUID());
+        ScreenRegistry.updateDisplay(remote.getDisplayId(), "station", false, false);
+        when(server.getAllLevels()).thenReturn(List.of(level));
+        media.when(() -> ServerImageManager.getImageMetadata(server, replacement))
+                .thenReturn(new ImageMetadata("new", replacement.toString(), "png", owner.toString()));
+        when(player.getUUID()).thenReturn(owner);
+        assertTrue(ScreenAccessService.select(player, remote, replacement));
+        when(player.getUUID()).thenReturn(visitor);
+        assertEquals(replacement, child.getImageId());
+        assertTrue(ScreenAccessService.canReadImage(player, replacement));
+        assertFalse(ScreenAccessService.canReadImage(player, image));
+        ScreenRegistry.setImageId("station", null);
+        assertNull(child.getImageId());
+        assertFalse(ScreenAccessService.canReadImage(player, replacement));
+        ScreenRegistry.setImageId("station", image);
+        assertEquals(image, child.getImageId());
+        assertTrue(ScreenAccessService.canReadImage(player, image));
+        assertEquals(Arrays.asList(replacement, null, image), clientImages(child.getBlockPos()));
+        verify(level, never()).getChunkAt(any(BlockPos.class));
+        verify(child, never()).getAnchorEntity();
+    }
+    @Test void firstSelectionReachesInitiallyBlankAnchorlessChild() throws Exception {
+        assertTrue(ScreenRegistry.networks().select(key, new Actor(owner, false), null, 0));
+        ScreenBlockEntity child = loadedChild(null, false);
+        ScreenRegistry.reconcileContent(key, image);
+        assertEquals(image, child.getImageId());
+        assertTrue(ScreenAccessService.canReadImage(player, image));
+        assertEquals(List.of(image), clientImages(child.getBlockPos()));
+    }
+    @Test void linkedChangePreservesChildLocalOverride() throws Exception {
+        UUID local = UUID.randomUUID();
+        assertTrue(ScreenRegistry.networks().createOwned(ScreenNetworkService.display(display), owner, local));
+        ScreenBlockEntity child = loadedChild(local, true);
+        ScreenRegistry.setImageId("station", UUID.randomUUID());
+        assertEquals(local, child.getImageId());
+        assertEquals(local, child.getResolvedImageId());
+        assertTrue(ScreenAccessService.canReadImage(player, local));
+        assertTrue(clientImages(child.getBlockPos()).isEmpty());
+    }
+    @Test void linkedChangeIgnoresReplacedOrUnloadedChildInstances() throws Exception {
+        ScreenBlockEntity child = loadedChild(image, false);
+        when(chunk.getBlockEntity(child.getBlockPos())).thenReturn(null);
+        ScreenRegistry.setImageId("station", UUID.randomUUID());
+        assertEquals(image, child.getImageId());
+        assertTrue(clientImages(child.getBlockPos()).isEmpty());
+        // The stale reference was removed, so reappearing without a load cannot receive an update.
+        when(chunk.getBlockEntity(child.getBlockPos())).thenReturn(child);
+        ScreenRegistry.setImageId("station", UUID.randomUUID());
+        assertEquals(image, child.getImageId());
+    }
+    private List<UUID> clientImages(BlockPos position) {
+        return updates.stream().filter(packet -> position.equals(packet.pos)).map(packet -> packet.imageId).toList();
+    }
+    private ScreenBlockEntity loadedChild(UUID initialImage, boolean override) throws Exception {
+        ScreenBlockEntity child = persistedTile(pos.offset(16, 0, 0), pos);
+        ScreenRegistry.updateDisplay(display, "station", override, false);
+        var savedImage = ScreenBlockEntity.class.getDeclaredField("imageId");
+        savedImage.setAccessible(true);
+        savedImage.set(child, initialImage);
+        when(chunks.getChunkNow(1, 0)).thenReturn(chunk);
+        when(chunk.getBlockEntity(child.getBlockPos())).thenReturn(child);
+        when(tracking.getPlayers(any(ChunkPos.class), eq(false))).thenReturn(List.of(player));
+        ScreenAccessService.refreshMedia(child);
+        assertFalse(child.isAnchor());
+        return child;
     }
     private ScreenBlockEntity persistedTile(BlockPos position, BlockPos anchor) throws Exception {
         ScreenBlockEntity screen = mock(ScreenBlockEntity.class, CALLS_REAL_METHODS);

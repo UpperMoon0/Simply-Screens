@@ -56,9 +56,27 @@ public final class ScreenAccessService {
         if (screen.getLevel() == null || screen.getLevel().isClientSide || screen.isRemoved()) return;
         state(screen);
         UUID next = screen.getResolvedImageId();
-        if (Objects.equals(INDEXED.get(screen), next)) return;
+        if (INDEXED.containsKey(screen) && Objects.equals(INDEXED.get(screen), next)) return;
         untrack(screen);
-        if (next != null) { MEDIA.computeIfAbsent(next, ignored -> Collections.newSetFromMap(new IdentityHashMap<>())).add(screen); INDEXED.put(screen, next); }
+        // Blank displays must remain registered so a later selection can reach their loaded children.
+        INDEXED.put(screen, next);
+        if (next != null) MEDIA.computeIfAbsent(next, ignored -> Collections.newSetFromMap(new IdentityHashMap<>())).add(screen);
+    }
+    /** Event-driven content reconciliation, including loaded children whose anchor chunk is absent. */
+    public static void refreshLoadedContent(String key) {
+        for (ScreenBlockEntity screen : new ArrayList<>(INDEXED.keySet())) {
+            if (screen.isRemoved() || !(screen.getLevel() instanceof ServerLevel level)) {
+                untrack(screen);
+                continue;
+            }
+            var pos = screen.getBlockPos();
+            var chunk = level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4);
+            if (chunk == null || chunk.getBlockEntity(pos) != screen) {
+                untrack(screen);
+                continue;
+            }
+            if (key == null || key.equals(screen.contentKey())) screen.refreshAuthoritativeContent();
+        }
     }
     public static void clearLevel(net.minecraft.world.level.Level level) {
         for (ScreenBlockEntity screen : new ArrayList<>(INDEXED.keySet())) if (screen.getLevel() == level) untrack(screen);

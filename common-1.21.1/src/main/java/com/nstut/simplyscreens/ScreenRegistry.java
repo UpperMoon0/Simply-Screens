@@ -15,7 +15,10 @@ import java.util.UUID;
 public class ScreenRegistry {
     public static ScreenNetworkService networks() { return HELPER.networks(); }
     /** Internal load/import/deletion reconciliation; external adapters use ScreenAccessService. */
-    public static void reconcileContent(String key, UUID image) { HELPER.networks().reconcileImage(key, image); }
+    public static void reconcileContent(String key, UUID image) {
+        HELPER.networks().reconcileImage(key, image);
+        com.nstut.simplyscreens.helpers.ScreenAccessService.refreshLoadedContent(key);
+    }
     public static UUID forkDisplay(String source, UUID image) { return HELPER.networks().forkDisplay(source, image); }
     public static void detachDisplay(UUID id, String source, UUID image) { HELPER.networks().detachDisplay(id, source, image); }
     public static void registerDisplayAnchor(String anchor, UUID id) { HELPER.networks().registerAnchor(anchor, id); }
@@ -80,6 +83,8 @@ public class ScreenRegistry {
      */
     public static void setImageId(String screenId, UUID imageId) {
         HELPER.setImageId(screenId, imageId);
+        String normalized = ScreenRegistryHelper.normalizeScreenId(screenId);
+        if (!normalized.isEmpty()) com.nstut.simplyscreens.helpers.ScreenAccessService.refreshLoadedContent(ScreenNetworkService.network(normalized));
     }
 
     /**
@@ -92,7 +97,10 @@ public class ScreenRegistry {
     }
 
     public static void removeImageReferences(UUID imageId) {
-        if (HELPER.removeImageReferences(imageId)) HELPER.saveRegistry();
+        if (HELPER.removeImageReferences(imageId)) {
+            HELPER.saveRegistry();
+            com.nstut.simplyscreens.helpers.ScreenAccessService.refreshLoadedContent(null);
+        }
     }
 
     /**

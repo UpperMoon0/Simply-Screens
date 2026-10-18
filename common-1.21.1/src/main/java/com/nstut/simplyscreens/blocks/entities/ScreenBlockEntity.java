@@ -80,6 +80,22 @@ public class ScreenBlockEntity extends BlockEntity {
         return id == null || id.isEmpty() ? com.nstut.simplyscreens.ScreenNetworkService.display(displayId)
                 : com.nstut.simplyscreens.ScreenNetworkService.network(id);
     }
+    public String contentKey() {
+        return isLocalImageOverride() ? com.nstut.simplyscreens.ScreenNetworkService.display(displayId) : accessKey();
+    }
+    /** Reconcile one loaded tile without resolving or loading its physical anchor. */
+    public void refreshAuthoritativeContent() {
+        if (level == null || level.isClientSide || isRemoved()) return;
+        UUID resolved = getResolvedImageId();
+        var state = ScreenRegistry.networks().snapshot(accessKey());
+        if (state != null) networkRevision = state.revision();
+        if (!java.util.Objects.equals(imageId, resolved)) {
+            imageId = resolved;
+            setChanged();
+            updateClients();
+        }
+        com.nstut.simplyscreens.helpers.ScreenAccessService.refreshMedia(this);
+    }
     public void claimPlaced(java.util.UUID owner) {
         ScreenRegistry.networks().createOwned(accessKey(), owner, imageId);
         saveDisplayState();
