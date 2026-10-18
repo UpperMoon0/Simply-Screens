@@ -80,5 +80,9 @@
   "gui.simplyscreens.access.transfer": "Transfer ownership",
   "gui.simplyscreens.access.transfer_confirm": "Transfer ownership to %s? Your management access will be removed and the trusted list cleared.",
   "gui.simplyscreens.access.invalid_uuid": "Enter a valid player UUID.",
-  "gui.simplyscreens.access.override": "Local image override: %s"
+  "gui.simplyscreens.access.override": "Local image override: %s",
+  "gui.simplyscreens.access.policy.public": "Public",
+  "gui.simplyscreens.access.policy.trusted": "Trusted players",
+  "gui.simplyscreens.access.policy.owner_only": "Owner only",
+  "gui.simplyscreens.access.policy.operators": "Operators and owner"
 }

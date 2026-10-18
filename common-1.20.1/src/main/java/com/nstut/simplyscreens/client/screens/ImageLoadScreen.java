@@ -126,7 +126,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         return Ui.column(
                 buildPolicyControl("VIEW", "gui.simplyscreens.access.view", viewPolicy),
                 buildPolicyControl("CONTROL", "gui.simplyscreens.access.control", controlPolicy),
-                Ui.button(() -> Component.translatable("gui.simplyscreens.access.override", localOverride.get()), () -> accessAction("OVERRIDE", Boolean.toString(!localOverride.get()))),
+                Ui.button(() -> Component.translatable("gui.simplyscreens.access.override", Component.translatable(localOverride.get() ? "options.on" : "options.off")), () -> accessAction("OVERRIDE", Boolean.toString(!localOverride.get()))),
                 Ui.textField(accessPlayer).maxLength(36).placeholder(Component.translatable("gui.simplyscreens.access.uuid").getString()),
                 Ui.row(Ui.button(Component.translatable("gui.simplyscreens.access.trust"), () -> accessAction("TRUST", accessPlayer.get())).small(),
                         Ui.button(Component.translatable("gui.simplyscreens.access.untrust"), () -> accessAction("UNTRUST", accessPlayer.get())).small()).gap(6),
@@ -135,10 +135,14 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     }
     private UIComponent buildPolicyControl(String action, String label, Signal<String> signal) {
         return Ui.row(
-                Ui.button(() -> Component.translatable(label, signal.get()), () -> cyclePolicy(action)).flex(),
+                Ui.button(() -> Component.translatable(label, policyLabel(signal.get())), () -> cyclePolicy(action)).flex(),
                 Ui.button(Component.translatable("gui.simplyscreens.access.apply"), () -> applyPolicy(action)).small()
         ).gap(6);
     }
+    private static Component policyLabel(String policy) {
+        return Component.translatable("gui.simplyscreens.access.policy." + policy.toLowerCase(Locale.ROOT));
+    }
+
     private Signal<String> policySignal(String action) {
         return switch (action) {
             case "VIEW" -> viewPolicy;
