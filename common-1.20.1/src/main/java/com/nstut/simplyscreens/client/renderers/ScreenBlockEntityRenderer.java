@@ -80,7 +80,7 @@ public class ScreenBlockEntityRenderer implements BlockEntityRenderer<ScreenBloc
 
     @Override
     public int getViewDistance() {
-        return Config.VIEW_DISTANCE;
+        return com.nstut.simplyscreens.client.ui.SimplyScreensUiPreferences.getViewDistance();
     }
 
     @Override

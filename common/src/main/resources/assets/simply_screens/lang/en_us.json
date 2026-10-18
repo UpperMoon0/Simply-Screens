@@ -111,5 +111,16 @@
   "gui.simplyscreens.access.control_label.help": "Choose who can change the displayed image. This does not grant ownership, access management, or access to another player’s private image library. Operators have access in every mode. Operators only excludes non-OP owners; owners still manage access.",
   "gui.simplyscreens.access.remove.help": "Remove this player from the trusted list. Their access through Trusted mode is revoked; Public access is unaffected.",
   "gui.simplyscreens.screen.link.tooltip": "Apply this Screen ID to share images and access settings with linked screens. You must manage both displays/networks. Clear the ID and apply to detach this display.",
-  "gui.simplyscreens.theme.tooltip": "Switch between the light and dark interface themes."
-}
+  "gui.simplyscreens.theme.tooltip": "Switch between the light and dark interface themes.",
+
+  "gui.simplyscreens.personal.title": "Your display settings",
+
+  "gui.simplyscreens.personal.scope": "Only affects you, for all screens. Changes save automatically on this device.",
+
+  "gui.simplyscreens.personal.view_distance": "Screen render distance",
+
+  "gui.simplyscreens.personal.view_distance.help": "Maximum distance in blocks at which screens are drawn for you. Larger values show screens farther away and can use more graphics resources. Does not change other players or server view permissions.",
+
+  "gui.simplyscreens.personal.save_failed": "Could not save your display settings. Check that the config folder is writable."
+
+}

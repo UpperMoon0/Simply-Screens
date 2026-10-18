@@ -17,6 +17,20 @@ public final class SimplyScreensUiPreferences {
     private SimplyScreensUiPreferences() {
     }
 
+    private static boolean displayLoaded;
+    public static synchronized int getViewDistance() {
+        if (!displayLoaded) {
+            com.nstut.simplyscreens.Config.VIEW_DISTANCE = com.nstut.simplyscreens.client.DisplayPreferencesStore.load(configFile().getParent());
+            displayLoaded = true;
+        }
+        return com.nstut.simplyscreens.Config.VIEW_DISTANCE;
+    }
+    public static synchronized boolean setViewDistance(int distance) {
+        com.nstut.simplyscreens.Config.VIEW_DISTANCE = com.nstut.simplyscreens.client.DisplayPreferencesStore.clamp(distance);
+        displayLoaded = true;
+        return com.nstut.simplyscreens.client.DisplayPreferencesStore.save(configFile().getParent(), distance);
+    }
+
     private static Path configFile() {
         String override = System.getProperty("simplyscreens.ui.config.dir");
         Path directory = override != null

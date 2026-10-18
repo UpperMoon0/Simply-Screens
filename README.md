@@ -125,3 +125,10 @@ OpenUI MC is required on clients only. Dedicated servers can run without it.
 On Fabric, the client requirement is checked before client initialization; missing or
 incompatible OpenUI versions produce an installation error before the UI loads.
 Forge and NeoForge declare the dependency with `side="CLIENT"`.
+
+### Personal display settings
+
+Open a screen and choose **Settings > Your display settings** to change screen render distance
+(8-512 blocks). It applies immediately to all screens for you, saves on this device, and works
+without screen-management permissions. Existing mod-config values are imported once. Server
+visibility policies still apply. See [the settings audit](docs/settings.md) for all configuration options.

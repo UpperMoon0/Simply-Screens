@@ -86,6 +86,8 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     private final Computed<String> noMatchesText = Signals.computed(() ->
             Component.translatable("gui.simplyscreens.gallery.no_matches", search.get()).getString());
 
+    private final Signal<Double> personalViewDistance = Signals.of((double)com.nstut.simplyscreens.client.ui.SimplyScreensUiPreferences.getViewDistance());
+    private Subscription displaySubscription = Subscription.EMPTY;
     private Subscription aspectSubscription = Subscription.EMPTY;
     private Subscription settingsSubscription = Subscription.EMPTY;
     private boolean applyingRemoteState;
@@ -115,7 +117,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                 ? accessText("unclaimed").getString() : playerName(snapshot.state().owner()));
         if (!snapshot.success()) showError(Component.translatable("gui.simplyscreens.access.denied"));
     }
-    private void accessAction(String action, String value) {
+    protected void accessAction(String action, String value) {
         PacketRegistries.sendToServer(new com.nstut.simplyscreens.network.ScreenAccessC2SPacket(
                 blockEntityPos, accessKey, accessRevision, action, value));
     }
@@ -245,11 +247,16 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     @Override
     protected void init() {
         aspectSubscription.close();
+        displaySubscription.close();
         fetchDataFromBlockEntity();
         super.init();
         aspectSubscription = maintainAspectRatio.subscribe(value -> {
             if (applyingRemoteState || !hasAnchor()) return;
             PacketRegistries.sendToServer(new UpdateScreenAspectRatioC2SPacket(blockEntityPos, value));
+        });
+        displaySubscription = personalViewDistance.subscribe(value -> {
+            if (!com.nstut.simplyscreens.client.ui.SimplyScreensUiPreferences.setViewDistance((int)Math.round(value)))
+                showError(Component.translatable("gui.simplyscreens.personal.save_failed"));
         });
         bindSettingsRefresh();
         refreshImageList();
@@ -373,6 +380,17 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         return card;
     }
 
+    private UIComponent buildPersonalSettings() {
+        Component help = Component.translatable("gui.simplyscreens.personal.view_distance.help");
+        return Ui.card(Ui.column(
+            Ui.heading(Component.translatable("gui.simplyscreens.personal.title")),
+            Ui.text(Component.translatable("gui.simplyscreens.personal.scope")).wrap(),
+            Ui.row(Ui.text(Component.translatable("gui.simplyscreens.personal.view_distance")).wrap().flex().tooltip(help),
+                Ui.text(() -> Component.literal(Math.round(personalViewDistance.get()) + " blocks")).tooltip(help)).gap(6).align(Alignment.CENTER),
+            Ui.slider(personalViewDistance, 8, 512).fillWidth().tooltip(help).key("settings.view_distance")
+        ).gap(6)).outlined(true).padding(10).key("settings.personal");
+    }
+
     private UIComponent buildSettings() {
         UIComponent idField = Ui.textField(screenId)
                 .placeholder(Component.translatable("gui.simplyscreens.screen.id.placeholder").getString())
@@ -395,7 +413,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                         .wrap()
                         .maxLines(3)
         ).gap(8).child(Ui.divider()).child(buildAccess()));
-        return Ui.scroll(card);
+        return Ui.scroll(Ui.column(buildPersonalSettings(), card).gap(10)).key("settings.content");
     }
 
     private UIComponent buildImport() {
@@ -619,6 +637,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     @Override
     public void removed() {
         aspectSubscription.close();
+        displaySubscription.close();
         settingsSubscription.close();
         galleryState.close();
         filteredImages.close();
