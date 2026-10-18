@@ -20,11 +20,11 @@ public final class ScreenAccessService {
     }
     public static boolean select(ServerPlayer player, ScreenBlockEntity screen, UUID image) {
         if (!allowed(player, screen, Permission.CONTROL) || image != null && !library(player, image)) return false;
-        if (screen.isLocalImageOverride()) { screen.setImageId(image); ScreenPlaylistRuntime.stop(screen.contentKey()); return true; }
+        if (screen.isLocalImageOverride()) { ScreenPlaylistRuntime.stop(screen.contentKey()); screen.setImageId(image); return true; }
         State s = state(screen);
+        ScreenPlaylistRuntime.stop(screen.contentKey());
         if (!ScreenRegistry.networks().select(screen.accessKey(), actor(player), image, s.revision())) return false;
         screen.setImageId(image);
-        ScreenPlaylistRuntime.stop(screen.contentKey());
         return true;
     }
     public static boolean library(ServerPlayer player, UUID image) {
@@ -149,12 +149,15 @@ public final class ScreenAccessService {
                         var online = player.level().getServer().getPlayerList().getPlayerByName(name);
                         return online == null ? null : online.getUUID();
                     });
-                    if (target != null) changed = ScreenRegistry.networks().access(packet.key, actor(player), packet.revision, packet.action, target.toString());
+                    if (target != null) {
+                        // Discard private future media before ownership can change, including save failures.
+                        if ("TRANSFER".equals(packet.action)) ScreenPlaylistRuntime.invalidateAccess(screen.accessKey());
+                        changed = ScreenRegistry.networks().access(packet.key, actor(player), packet.revision, packet.action, target.toString());
+                    }
                 }
             } else changed = "CLAIM".equals(packet.action) ? ScreenRegistry.networks().claim(packet.key, actor(player))
                     : ScreenRegistry.networks().access(packet.key, actor(player), packet.revision, packet.action, packet.value);
         }
-        if (changed && "TRANSFER".equals(packet.action)) ScreenPlaylistRuntime.stop(screen.contentKey());
         boolean manage = allowed(player, screen, Permission.MANAGE);
         State next = state(screen);
         // Trusted-player UUIDs are management data, not a public roster.

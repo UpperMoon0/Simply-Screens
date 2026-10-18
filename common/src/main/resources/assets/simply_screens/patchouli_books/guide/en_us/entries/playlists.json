@@ -1,0 +1,33 @@
+{
+  "name": "Slide Playlists",
+  "category": "simply_screens:displays",
+  "icon": "simply_screens:screen",
+  "sortnum": 5,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "Build a playlist",
+      "text": "Use an image’s gallery … menu to add it to a saved playlist. In Playlists, use the searchable selector and New/Rename/Duplicate/Delete actions. Each slide’s … menu sets duration (1–86400 seconds), moves it or removes it."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Choose then play",
+      "text": "Selecting a saved playlist only changes the editor. Press Play to load it into the shared Screen ID timeline, or this physical display’s local override. Later edits and saved-playlist deletion leave the running snapshot unchanged."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Transport and queue",
+      "text": "Previous/Next navigate slides; Restart restarts the current slide. Pause/Resume retain the offset. Repeat cycles none/list/current; Shuffle uses one server-owned order. Queue Next/Last adds one-off 10-second slides without changing saved playlists."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Announcements",
+      "text": "Announce temporarily displays an image for 10 seconds, then restores the interrupted position and paused state. End it early from the transport … menu. Selecting a static gallery image discards that slideshow."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Save and access",
+      "text": "Offsets, queue and shuffle survive chunk unload and server restart; server downtime does not consume time. Commands and shutdown save immediately; automatic checkpoints run every five seconds. Only your own library can supply slides. Screen control and image-view rules still apply."
+    }
+  ]
+}

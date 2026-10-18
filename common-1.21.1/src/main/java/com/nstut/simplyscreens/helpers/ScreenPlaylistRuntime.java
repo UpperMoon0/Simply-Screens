@@ -15,32 +15,48 @@ import java.util.*;
 /** All native authorization and world interaction stays on the server thread. */
 public final class ScreenPlaylistRuntime {
     private static ScreenPlaylistService service;
-    private static long lastTick, lastSave, lastPrefetch;
+    private static long lastTick, lastSave, lastPrefetch, lastError;
+    private static Path worldRoot;
+    private static final Set<String> PENDING_CONTENT = new LinkedHashSet<>();
     private static final Map<UUID, long[]> REQUEST_BUDGET = new HashMap<>();
     private ScreenPlaylistRuntime() { }
     public static ScreenPlaylistService service() { return service; }
     public static void init(Path root) {
+        Path normalized = root.toAbsolutePath().normalize();
+        if (service != null && service.healthy() && normalized.equals(worldRoot)) return;
+        service = null; worldRoot = null; PENDING_CONTENT.clear();
         ScreenPlaylistService next = new ScreenPlaylistService();
         next.init(root);
-        service = next; lastTick = 0; lastSave = 0; lastPrefetch = 0; REQUEST_BUDGET.clear();
+        service = next; worldRoot = normalized; lastTick = 0; lastSave = 0; lastPrefetch = 0; REQUEST_BUDGET.clear();
         // Restored playback is authoritative before any chunk is loaded.
-        next.snapshots().forEach(ScreenPlaylistRuntime::apply);
+        next.snapshots().forEach((key, state) -> { if (state.status() != PlaybackSnapshot.Status.STOPPED) apply(key, state); });
     }
     public static void shutdown() {
-        if (service != null) service.save();
-        service = null; lastTick = 0; REQUEST_BUDGET.clear();
+        try { if (service != null) service.save(); }
+        finally { service = null; worldRoot = null; lastTick = 0; REQUEST_BUDGET.clear(); PENDING_CONTENT.clear(); }
     }
     public static void tick(MinecraftServer server) {
         if (service == null) return;
         long now = System.nanoTime();
         long elapsed = lastTick == 0 ? 0 : Math.max(0, (now - lastTick) / 1_000_000L);
         lastTick = now;
-        service.tick(elapsed).forEach(ScreenPlaylistRuntime::apply);
+                try {
+            PENDING_CONTENT.addAll(service.tick(elapsed).keySet());
+            // Failed content-store writes are retried from the latest timeline, never a stale slide.
+            for (String key : List.copyOf(PENDING_CONTENT).stream().limit(32).toList()) {
+                apply(key, service.snapshot(key)); PENDING_CONTENT.remove(key);
+            }
         if (lastPrefetch == 0 || now - lastPrefetch >= 2_000_000_000L) {
             ScreenAccessService.prefetch(server); lastPrefetch = now;
         }
         if (lastSave == 0 || now - lastSave >= 5_000_000_000L) {
             service.save(); lastSave = now;
+            REQUEST_BUDGET.keySet().removeIf(id -> server.getPlayerList().getPlayer(id) == null);
+        }
+        } catch (RuntimeException failure) {
+            if (lastError == 0 || now-lastError >= 5_000_000_000L) {
+                SimplyScreens.LOGGER.error("Slideshow persistence/reconciliation failed; will retry", failure); lastError=now;
+            }
         }
     }
     private static void apply(String key, PlaybackSnapshot snapshot) {
@@ -49,14 +65,31 @@ public final class ScreenPlaylistRuntime {
     }
     public static void stop(String key) {
         if (service == null) return;
-        var state = service.snapshot(key);
-        if (state.status() != PlaybackSnapshot.Status.STOPPED || !state.queue().isEmpty())
-            service.command(key, "STOP", state.revision());
+        // Static selection ends the session entirely, so a future restart cannot reapply its stopped image.
+        service.removeNetwork(key); PENDING_CONTENT.remove(key);
+    }
+    /** Ownership changes invalidate every associated resumable timeline, including unloaded overrides. */
+    public static void invalidateAccess(String accessKey) {
+        if (service == null) return;
+        for (String key : service.snapshots().keySet()) {
+            boolean related = key.equals(accessKey);
+            if (!related && key.startsWith("display/")) {
+                var display = ScreenRegistry.networks().displayState(UUID.fromString(key.substring(8)));
+                related = display != null && !display.screenId().isEmpty()
+                        && com.nstut.simplyscreens.ScreenNetworkService.network(display.screenId()).equals(accessKey);
+            }
+            if (related) stop(key);
+        }
     }
     public static void purgeImage(UUID image) {
         if (service == null) return;
+        var before = service.snapshots();
         service.purgeImage(image);
-        service.snapshots().forEach(ScreenPlaylistRuntime::apply);
+        service.snapshots().forEach((key, state) -> {
+            if (!Objects.equals(before.getOrDefault(key, PlaybackSnapshot.EMPTY).currentImage(), state.currentImage())) {
+                PENDING_CONTENT.add(key); apply(key, state); PENDING_CONTENT.remove(key);
+            }
+        });
     }
     public static boolean upcoming(String key, UUID image) {
         return service != null && service.snapshot(key).upcomingImages().contains(image);
@@ -77,8 +110,10 @@ public final class ScreenPlaylistRuntime {
         UUID actor = player.getUUID(), selected = request.playlist();
         boolean control = ScreenAccessService.allowed(player, screen, Permission.CONTROL);
         boolean success = "GET".equals(request.action());
-        if (!success && control && key.equals(request.key())) {
+        if (!success && control && key.equals(request.key())
+                && ScreenAccessService.state(screen).revision() == request.networkRevision()) {
             try {
+                UUID previousImage = service.snapshot(key).currentImage();
                 var library = service.library(actor);
                 NamedPlaylist saved = library.find(selected);
                 List<PlaylistSlide> slides = saved == null ? new ArrayList<>() : new ArrayList<>(saved.slides());
@@ -129,7 +164,9 @@ public final class ScreenPlaylistRuntime {
                     default -> success = service.command(key, request.action(), playback);
                 }
                 if (success && !Set.of("CREATE", "RENAME", "DUPLICATE", "DELETE", "ADD", "DURATION", "REMOVE", "MOVE").contains(request.action()))
-                    apply(key, service.snapshot(key));
+                    if (!Objects.equals(previousImage, service.snapshot(key).currentImage()) || "STOP".equals(request.action())) {
+                        PENDING_CONTENT.add(key); apply(key, service.snapshot(key)); PENDING_CONTENT.remove(key);
+                    }
             } catch (IllegalArgumentException | IndexOutOfBoundsException invalid) {
                 success = false;
             } catch (IllegalStateException failure) {

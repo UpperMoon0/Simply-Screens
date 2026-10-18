@@ -94,6 +94,8 @@ public class ScreenRegistry {
      * @param screenId The screen ID to remove
      */
     public static void removeScreenId(String screenId) {
+        String normalized = ScreenRegistryHelper.normalizeScreenId(screenId);
+        if (!normalized.isEmpty()) com.nstut.simplyscreens.helpers.ScreenPlaylistRuntime.stop(ScreenNetworkService.network(normalized));
         HELPER.removeScreenId(screenId);
     }
 

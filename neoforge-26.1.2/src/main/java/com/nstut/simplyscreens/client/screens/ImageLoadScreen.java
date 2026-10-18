@@ -53,7 +53,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     private static final java.util.concurrent.atomic.AtomicLong PLAYLIST_REQUEST_IDS = new java.util.concurrent.atomic.AtomicLong();
     private final Signal<com.nstut.simplyscreens.playlist.PlaylistWire.View> playlistView = Signals.of(null);
     private final Signal<List<com.nstut.simplyscreens.playlist.PlaylistWire.Summary>> savedPlaylists = Signals.of(List.of());
-    private record SlideRow(int index, com.nstut.simplyscreens.playlist.PlaylistWire.Slide slide) { }
+    private record SlideRow(int index, com.nstut.simplyscreens.playlist.PlaylistWire.Slide slide, long revision, UUID playlist) { }
     private final Signal<List<SlideRow>> savedSlides = Signals.of(List.of()), queuedSlides = Signals.of(List.of());
     private UUID selectedPlaylist;
     private long pendingPlaylistRequest;
@@ -68,9 +68,9 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         playlistMutationPending = false; pendingPlaylistRequest = 0;
         selectedPlaylist = view.selected(); playlistView.set(view); savedPlaylists.set(view.playlists());
         var rows = new ArrayList<SlideRow>();
-        for (int i=0;i<view.slides().size();i++) rows.add(new SlideRow(i,view.slides().get(i)));
+        for (int i=0;i<view.slides().size();i++) rows.add(new SlideRow(i,view.slides().get(i),view.libraryRevision(),view.selected()));
         savedSlides.set(List.copyOf(rows)); rows.clear();
-        for (int i=0;i<view.queue().size();i++) rows.add(new SlideRow(i,view.queue().get(i)));
+        for (int i=0;i<view.queue().size();i++) rows.add(new SlideRow(i,view.queue().get(i),view.playbackRevision(),null));
         queuedSlides.set(List.copyOf(rows));
         if (!view.success()) showError(pt("rejected"));
     }
@@ -131,12 +131,21 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                         pt("slide_actions"), () -> {
                             var menu = playlistMenu();
                             if (!queue) menu.item(pt("duration"), () -> durationDialog(row));
-                            if (row.index()>0) menu.item(pt("up"), () -> playlistAction(queue?"MOVE_QUEUE":"MOVE",null,row.index(),row.index()-1,0,""));
+                            if (row.index()>0) menu.item(pt("up"), () -> playlistRowAction(row,queue,queue?"MOVE_QUEUE":"MOVE",row.index()-1,0));
                             if (row.index()+1<(queue?queuedSlides.get():savedSlides.get()).size())
-                                menu.item(pt("down"), () -> playlistAction(queue?"MOVE_QUEUE":"MOVE",null,row.index(),row.index()+1,0,""));
-                            menu.separator().item(pt("remove"), () -> playlistAction(queue?"REMOVE_QUEUE":"REMOVE",null,row.index(),-1,0,""));
+                                menu.item(pt("down"), () -> playlistRowAction(row,queue,queue?"MOVE_QUEUE":"MOVE",row.index()+1,0));
+                            menu.separator().item(pt("remove"), () -> playlistRowAction(row,queue,queue?"REMOVE_QUEUE":"REMOVE",-1,0));
                             menu.show(uiRuntime().overlays());
                         }).enabledWhen(this::canControlPlaylist)).gap(5).align(Alignment.CENTER);
+    }
+    private boolean rowCurrent(SlideRow row, boolean queue) {
+        var view=playlistView.get();
+        return view!=null && (queue ? row.revision()==view.playbackRevision() :
+                row.revision()==view.libraryRevision() && java.util.Objects.equals(row.playlist(),selectedPlaylist));
+    }
+    private void playlistRowAction(SlideRow row, boolean queue, String action, int destination, long duration) {
+        if (!rowCurrent(row,queue)) { showError(pt("rejected")); return; }
+        playlistAction(action,null,row.index(),destination,duration,"");
     }
     private UIComponent buildPlaylistQueue() {
         return Ui.column(Ui.row(Ui.heading(pt("queue")).flex(),
@@ -157,6 +166,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                 .show(uiRuntime().overlays());
     }
     private void choosePlaylist(UUID addImage) {
+        if (playlistMutationPending) return;
         Signal<String> query=Signals.of(""); OverlayHandle[] handle={null};
         var matches=Signals.computed(() -> savedPlaylists.get().stream().filter(p -> p.name().toLowerCase(Locale.ROOT)
                 .contains(query.get().trim().toLowerCase(Locale.ROOT))).toList());
@@ -168,13 +178,13 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                 Ui.textField(query).placeholder(pt("search").getString()).maxLength(64).fillWidth(), list,
                 Ui.button(pt("create"), () -> {handle[0].close();playlistNameDialog("CREATE");}).ghost().small(),
                 Ui.button(Component.translatable("gui.simplyscreens.cancel"), () -> handle[0].close()).ghost()).gap(6)).padding(12);
-        dialog.width(Math.max(120,Math.min(320,width-32))); handle[0]=Dialog.show(uiRuntime().overlays(),dialog);
+        dialog.width(Math.max(120,Math.min(320,width-32))); handle[0]=Dialog.show(uiRuntime().overlays(),dialog,true,true,matches::close);
     }
     private void playlistNameDialog(String action) {
-        UUID target=selectedPlaylist;
+        UUID target=selectedPlaylist; long revision=playlistView.get()==null?-1:playlistView.get().libraryRevision();
         String old=savedPlaylists.get().stream().filter(p -> p.id().equals(target)).map(p -> p.name()).findFirst().orElse("");
         textPlaylistDialog(pt(action.toLowerCase(Locale.ROOT)), "CREATE".equals(action)?"":old, pt("name_help"), value -> {
-            String name=value.trim(); if(name.isBlank()||name.length()>64) return false;
+            String name=value.trim(); if(name.isBlank()||name.length()>64 || playlistView.get()==null || playlistView.get().libraryRevision()!=revision) return false;
             selectedPlaylist=target; playlistAction(action,null,-1,-1,0,name); return true;
         });
     }
@@ -182,7 +192,8 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         UUID target=selectedPlaylist;
         textPlaylistDialog(pt("duration"),Long.toString(row.slide().durationMillis()/1000),pt("duration_help"), value -> {
             try { long seconds=Long.parseLong(value.trim());if(seconds<1||seconds>86400)return false;
-                selectedPlaylist=target; playlistAction("DURATION",null,row.index(),-1,seconds*1000,"");return true;
+                if (!rowCurrent(row,false)) return false;
+                selectedPlaylist=target; playlistRowAction(row,false,"DURATION",-1,seconds*1000);return true;
             } catch(NumberFormatException bad) {return false;}
         });
     }

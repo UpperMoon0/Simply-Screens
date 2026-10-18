@@ -44,6 +44,7 @@ public final class ScreenPlaylistService {
         long shuffleSeed;
         List<PlaylistSlide> queue = new ArrayList<>();
         PlaylistSlide queuedSlide;
+        boolean advanceCanonicalOnce;
         boolean announcement;
         Session suspended;
         long revision;
@@ -55,6 +56,7 @@ public final class ScreenPlaylistService {
             result.offset = offset; result.status = status; result.repeat = repeat;
             result.shuffle = shuffle; result.shuffleSeed = shuffleSeed;
             result.queue = new ArrayList<>(queue); result.queuedSlide = queuedSlide;
+            result.advanceCanonicalOnce = advanceCanonicalOnce;
             result.announcement = announcement;
             result.suspended = suspended == null ? null : suspended.copy(); result.revision = revision;
             return result;
@@ -73,11 +75,12 @@ public final class ScreenPlaylistService {
             order = saved.order; cursor = saved.cursor; offset = saved.offset; status = saved.status;
             repeat = saved.repeat; shuffle = saved.shuffle; shuffleSeed = saved.shuffleSeed;
             queue = new ArrayList<>(saved.queue); queuedSlide = saved.queuedSlide;
+            advanceCanonicalOnce = saved.advanceCanonicalOnce;
             announcement = false; suspended = null; revision = latestRevision;
         }
         void stop() {
             if (announcement) restore();
-            status = Status.STOPPED; offset = 0; cursor = -1; queuedSlide = null; queue.clear();
+            status = Status.STOPPED; offset = 0; cursor = -1; queuedSlide = null; queue.clear(); advanceCanonicalOnce = false;
         }
         /** Queue entries play once, then continue after the retained canonical cursor. */
         void advance(boolean explicit) {
@@ -87,6 +90,7 @@ public final class ScreenPlaylistService {
                 queuedSlide = queue.remove(0); status = Status.PLAYING; return;
             }
             queuedSlide = null;
+            explicit |= advanceCanonicalOnce; advanceCanonicalOnce = false;
             if (order.isEmpty()) { status = Status.STOPPED; cursor = -1; return; }
             int next = !explicit && repeat == RepeatMode.CURRENT && cursor >= 0 ? cursor : cursor + 1;
             if (next >= order.size()) {
@@ -231,7 +235,7 @@ public final class ScreenPlaylistService {
                 if (next.announcement) next.restore();
                 else {
                     if (next.order.isEmpty()) return false;
-                    if (next.queuedSlide != null) next.queuedSlide = null;
+                    if (next.queuedSlide != null) { next.queuedSlide = null; next.advanceCanonicalOnce = false; }
                     else if (next.cursor > 0) next.cursor--;
                     else next.cursor = next.repeat == RepeatMode.LIST ? next.order.size() - 1 : 0;
                     if (next.cursor < 0) next.cursor = 0;
@@ -439,6 +443,7 @@ public final class ScreenPlaylistService {
             }
             state.slides = List.copyOf(slides); state.order = List.copyOf(order); state.cursor = cursor;
         }
+        if (removedCanonical && state.queuedSlide != null) state.advanceCanonicalOnce = true;
         if (removedCurrentQueue) { state.queuedSlide = null; changed = true; }
         if ((removedCurrentBase || removedCurrentQueue) && state.status != Status.STOPPED) {
             Status previous = state.status;
@@ -551,6 +556,7 @@ public final class ScreenPlaylistService {
         out.writeByte(state.repeat.ordinal()); out.writeBoolean(state.shuffle); out.writeLong(state.shuffleSeed);
         writeSlides(out, state.queue); out.writeBoolean(state.queuedSlide != null);
         if (state.queuedSlide != null) writeSlide(out, state.queuedSlide);
+        out.writeBoolean(state.advanceCanonicalOnce);
         out.writeLong(state.revision); out.writeBoolean(state.announcement);
         if (state.announcement) writeSession(out, state.suspended);
     }
@@ -565,6 +571,7 @@ public final class ScreenPlaylistService {
         state.status = value(Status.values(), in.readUnsignedByte()); state.repeat = value(RepeatMode.values(), in.readUnsignedByte());
         state.shuffle = in.readBoolean(); state.shuffleSeed = in.readLong(); state.queue = new ArrayList<>(readSlides(in, MAX_QUEUE));
         state.queuedSlide = in.readBoolean() ? readSlide(in) : null;
+        state.advanceCanonicalOnce = in.readBoolean();
         state.revision = in.readLong(); state.announcement = in.readBoolean();
         if (state.announcement) state.suspended = readSession(in, depth + 1);
         validateSession(state, depth); return state;
@@ -573,17 +580,21 @@ public final class ScreenPlaylistService {
         if (depth > 1 || state.revision < 0 || state.offset < 0 || state.slides.size() > NamedPlaylist.MAX_SLIDES
                 || state.order.size() != state.slides.size() || state.cursor < -1 || state.cursor >= state.order.size()
                 || state.queue.size() > MAX_QUEUE || state.status == null || state.repeat == null
-                || (state.sourceOwner == null) != (state.sourceId == null)) throw new IllegalArgumentException("Invalid playback state");
+                || (state.sourceOwner == null) != (state.sourceId == null)
+                || !state.slides.isEmpty() && state.sourceOwner == null
+                || state.advanceCanonicalOnce && state.queuedSlide == null) throw new IllegalArgumentException("Invalid playback state");
         Set<Integer> indices = new HashSet<>();
         for (int index : state.order) if (index < 0 || index >= state.slides.size() || !indices.add(index))
             throw new IllegalArgumentException("Invalid shuffle order");
+        if (!state.shuffle) for (int i = 0; i < state.order.size(); i++)
+            if (state.order.get(i) != i) throw new IllegalArgumentException("Invalid canonical order");
         if (state.announcement != (state.suspended != null) || state.announcement && (state.queuedSlide == null
                 || !state.slides.isEmpty() || !state.queue.isEmpty() || state.status == Status.STOPPED))
             throw new IllegalArgumentException("Invalid announcement");
         if (state.suspended != null) validateSession(state.suspended, depth + 1);
         PlaylistSlide current = state.current();
         if (state.status != Status.STOPPED && (current == null || state.offset >= current.durationMillis())
-                || state.status == Status.STOPPED && state.offset != 0) throw new IllegalArgumentException("Invalid playback offset");
+                || state.status == Status.STOPPED && (state.offset != 0 || state.cursor != -1 || state.queuedSlide != null)) throw new IllegalArgumentException("Invalid playback offset");
     }
     private static <E> E value(E[] values, int ordinal) throws IOException {
         if (ordinal < 0 || ordinal >= values.length) throw new IOException("Invalid playback enum");

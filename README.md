@@ -30,7 +30,7 @@ Minecraft 1.21.1 builds support optional **Sable 2.0.5 and 2.0.6** on Fabric and
   - Per-player upload concurrency and rate limits, bounded processing queues, and full image decode checks.
   - Atomic registry operations with automated `.bak` backups and crash recovery.
 
-## Installation and upgrade to 0.9.0
+## Installation and upgrade to 0.10.0
 
 Install the artifact matching **both** your Minecraft version and loader. The following mods are required:
 
@@ -41,7 +41,7 @@ Install the artifact matching **both** your Minecraft version and loader. The fo
 
 Download PacketWeave from its [release assets](https://github.com/UpperMoon0/PacketWeave/releases) or its approved [CurseForge files](https://www.curseforge.com/minecraft/mc-mods/packetweave/files). Do not install the development-only API/core jar as a substitute for the native loader jar. Missing PacketWeave or a version below 0.1.1 must be resolved before the loader can start Screens.
 
-When upgrading from 0.8.9, add PacketWeave to every client and server before launching. Keep the existing world, `simply_screens_images` directory, screen registry, and configuration. Version 0.9.0 automatically imports existing registry images/owners into a versioned `screen_networks.json`; existing media files and Screen IDs are preserved. Legacy unowned networks and blank-ID displays require an operator claim before editing. New player-placed displays belong to their placer. Added access packets require matching client/server Screens versions. Back up worlds before upgrading; see [ownership, migration, and recovery](docs/network-access.md) before changing permissions or restoring data.
+When upgrading from 0.8.9, add PacketWeave to every client and server before launching. Keep the existing world, `simply_screens_images` directory, screen registry, and configuration. Version 0.9.0 automatically imports existing registry images/owners into a versioned `screen_networks.json`; existing media files and Screen IDs are preserved. Legacy unowned networks and blank-ID displays require an operator claim before editing. New player-placed displays belong to their placer. Added access and playlist packets require matching client/server Screens versions. Version 0.10.0 stores personal playlists and active timelines in `screen_playlists.dat` with a validated backup; keep both with the world. Back up worlds before upgrading; see [ownership, migration, and recovery](docs/network-access.md) before changing permissions or restoring data.
 
 ## Shader compatibility in 0.8.11
 
@@ -132,3 +132,13 @@ Open a screen and choose **Settings > Your display settings** to change screen r
 (8-512 blocks). It applies immediately to all screens for you, saves on this device, and works
 without screen-management permissions. Existing mod-config values are imported once. Server
 visibility policies still apply. See [the settings audit](docs/settings.md) for all configuration options.
+
+## Named slide playlists (0.10.0)
+
+Open a screen and use the gallery's **…** menu to add an image to a saved playlist, queue it next/last, or announce it for 10 seconds. The **Playlists** tab has a searchable selector, New, Play and an actions menu for Rename/Duplicate/Delete. Each slide's menu changes its duration (1–86400 seconds), order or membership. Selecting a playlist changes only the editor; press Play to replace the active slideshow with a snapshot of that list.
+
+Transport stays visible while browsing: Previous, Play/Pause, Stop, Next, Restart current slide, Repeat (none/list/current), Shuffle and End announcement. **Queue** contains one-off slides before the next saved slide. An announcement temporarily takes over, then restores the precise interrupted position, including paused state. Saved edits/deletion leave the current snapshot intact; press Play to load edits. A removed image is removed from saved and running references. An image that cannot be decoded shows the existing error texture until its allotted duration expires.
+
+Linked screens use one authoritative content timeline, even with all their chunks unloaded. A local override has its own timeline. World saves preserve offsets, queue, repeat/shuffle and announcements; server downtime does not advance them. Normal autosave checkpoints are every five seconds, with immediate persistence on commands and clean shutdown. Selecting a static gallery image discards that display/network's previous slideshow. Ownership transfer discards resumable timelines belonging to that access group. Other access changes preserve playback but immediately govern future control and image downloads.
+
+Playlists are private to their creator (64 lists, 256 slides each). Playback/queue/announcement requires current screen control permission and image-library access; sharing a visible display never grants ownership of its media. Upcoming-image prefetch uses the same current tracking/view checks as display downloads and does not expose library names. Prefetch is capped at two images per viewer per two-second batch, each at most 8 MiB encoded. Client GPU cache is capped at 32 textures/128 MiB and a single decoded image at 16 megapixels.

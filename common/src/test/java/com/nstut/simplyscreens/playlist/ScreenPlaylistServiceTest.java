@@ -2,6 +2,10 @@ package com.nstut.simplyscreens.playlist;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.RandomAccessFile;
+import java.util.zip.CRC32;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -223,6 +227,44 @@ class ScreenPlaylistServiceTest {
         assertEquals(b, service.snapshot(key).currentImage()); assertEquals(Status.PAUSED, service.snapshot(key).status());
         assertEquals(0, service.snapshot(key).offsetMillis());
     }
+    @Test void deletingCanonicalAnchorDuringQueueResumesItsSuccessorEvenInRepeatCurrent(@TempDir Path root) {
+        service.init(root); playing(a, b, c); command("NEXT"); mode(RepeatMode.CURRENT, false);
+        queue(x, false); service.tick(1_000); assertEquals(x, service.snapshot(key).currentImage());
+        assertTrue(service.purgeImage(b)); service.save();
+        ScreenPlaylistService reloaded = new ScreenPlaylistService(); reloaded.init(root);
+        assertEquals(List.of(c), reloaded.snapshot(key).upcomingImages());
+        reloaded.tick(1_000); assertEquals(c, reloaded.snapshot(key).currentImage());
+        reloaded.tick(1_000); assertEquals(c, reloaded.snapshot(key).currentImage());
+    }
+    @Test void randomControlSequencesKeepSnapshotsAndPersistenceValid(@TempDir Path root) {
+        service.init(root); UUID id = saved(a, b, c); Random random = new Random(31);
+        List<UUID> images = List.of(a, b, c, x);
+        for (int n = 0; n < 1_000; n++) {
+            switch (random.nextInt(12)) {
+                case 0 -> service.play(key, owner, id, revision());
+                case 1 -> service.command(key, "PAUSE", revision());
+                case 2 -> service.command(key, "RESUME", revision());
+                case 3 -> service.command(key, "NEXT", revision());
+                case 4 -> service.command(key, "PREVIOUS", revision());
+                case 5 -> service.command(key, "STOP", revision());
+                case 6 -> service.announce(key, slide(images.get(random.nextInt(4))), revision());
+                case 7 -> service.command(key, "CANCEL_ANNOUNCEMENT", revision());
+                case 8 -> service.queue(key, slide(images.get(random.nextInt(4))), random.nextBoolean(), revision());
+                case 9 -> service.modes(key, RepeatMode.values()[random.nextInt(3)], random.nextBoolean(), revision());
+                case 10 -> service.tick(random.nextInt(5_000));
+                case 11 -> service.clearQueue(key, revision());
+            }
+            PlaybackSnapshot snapshot = service.snapshot(key);
+            assertTrue(snapshot.offsetMillis() >= 0);
+            assertTrue(snapshot.upcomingImages().size() <= 2);
+            if (snapshot.currentImage() != null) assertFalse(snapshot.upcomingImages().contains(snapshot.currentImage()));
+            if (snapshot.current() != null) assertTrue(snapshot.offsetMillis() < snapshot.current().durationMillis());
+            if (n % 50 == 0) {
+                service.save(); ScreenPlaylistService reloaded = new ScreenPlaylistService(); reloaded.init(root);
+                assertEquals(snapshot, reloaded.snapshot(key));
+            }
+        }
+    }
     @Test void persistsRunningPausedAndAnnouncementOffsetsWithoutCountingDowntime(@TempDir Path root) {
         service.init(root); UUID id = playing(a, b); mode(RepeatMode.LIST, true);
         service.tick(325); queue(c, false); command("PAUSE");
@@ -254,6 +296,61 @@ class ScreenPlaylistServiceTest {
         assertNull(refused.create(owner, "Unsafe", 0)); assertFalse(refused.play(key, owner, id, 0));
         assertThrows(IllegalStateException.class, refused::save);
         assertEquals("bad", Files.readString(primary));
+    }
+    @Test void checksumAndFramingRejectMalformedAndOversizedStores(@TempDir Path root) throws Exception {
+        Path primary = root.resolve(ScreenPlaylistService.FILE_NAME);
+        Path backup = root.resolve(ScreenPlaylistService.FILE_NAME + ".bak");
+        List<byte[]> malformed = new ArrayList<>();
+        malformed.add(framedPayload(-1, 0));
+        malformed.add(framedPayload(ScreenPlaylistService.MAX_OWNERS + 1, 0));
+        malformed.add(framedPayload(0, ScreenPlaylistService.MAX_NETWORKS + 1));
+        malformed.add(framedPayload(0, 0, 123)); // trailing payload data
+        byte[] brokenChecksum = framedPayload(0, 0); brokenChecksum[brokenChecksum.length - 1] = 1;
+        malformed.add(brokenChecksum);
+        byte[] brokenVersion = framedPayload(0, 0); brokenVersion[7] = 2;
+        malformed.add(brokenVersion);
+        for (byte[] bytes : malformed) {
+            Files.write(primary, bytes); Files.write(backup, bytes);
+            ScreenPlaylistService refused = new ScreenPlaylistService();
+            assertThrows(IllegalStateException.class, () -> refused.init(root));
+            assertFalse(refused.healthy());
+            assertArrayEquals(bytes, Files.readAllBytes(primary));
+        }
+        try (RandomAccessFile out = new RandomAccessFile(primary.toFile(), "rw")) {
+            out.setLength(ScreenPlaylistService.MAX_STORE_BYTES + 1L);
+        }
+        ScreenPlaylistService refused = new ScreenPlaylistService();
+        assertThrows(IllegalStateException.class, () -> refused.init(root));
+        assertFalse(refused.healthy());
+    }
+    @Test void validChecksumCannotHideDuplicateOwnerIdentities(@TempDir Path root) throws Exception {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (DataOutputStream out = new DataOutputStream(bytes)) {
+            out.writeInt(2);
+            for (int i = 0; i < 2; i++) {
+                out.writeLong(owner.getMostSignificantBits()); out.writeLong(owner.getLeastSignificantBits());
+                out.writeLong(0); out.writeInt(0);
+            }
+            out.writeInt(0);
+        }
+        byte[] framed = frame(bytes.toByteArray());
+        Files.write(root.resolve(ScreenPlaylistService.FILE_NAME), framed);
+        Files.write(root.resolve(ScreenPlaylistService.FILE_NAME + ".bak"), framed);
+        assertThrows(IllegalStateException.class, () -> new ScreenPlaylistService().init(root));
+    }
+    private static byte[] framedPayload(int... values) throws Exception {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (DataOutputStream out = new DataOutputStream(bytes)) {
+            for (int value : values) out.writeInt(value);
+        }
+        return frame(bytes.toByteArray());
+    }
+    private static byte[] frame(byte[] payload) throws Exception {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream(); CRC32 crc = new CRC32(); crc.update(payload);
+        try (DataOutputStream out = new DataOutputStream(bytes)) {
+            out.writeInt(0x5353504C); out.writeInt(1); out.writeInt(payload.length); out.writeLong(crc.getValue()); out.write(payload);
+        }
+        return bytes.toByteArray();
     }
     @Test void failedPersistenceRollsBackLibraryAndPlaybackMutations(@TempDir Path root) throws Exception {
         service.init(root); UUID id = playing(a, b); service.tick(123);
