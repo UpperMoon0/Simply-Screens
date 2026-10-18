@@ -1,15 +1,24 @@
 package com.nstut.simplyscreens.client.screens;
 
+import com.nstut.openui.api.UIComponent;
+import com.nstut.openui.minecraft.UiScreen;
+import com.nstut.openui.runtime.NativeWidgetHost;
+import com.nstut.openui.runtime.UiRuntime;
+import com.nstut.openui.state.Signal;
+import com.nstut.openui.state.Signals;
+import com.nstut.openui.state.Subscription;
 import com.nstut.simplyscreens.ScreenAccessSnapshot;
 import com.nstut.simplyscreens.ScreenNetworkService;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import com.nstut.simplyscreens.network.ScreenAccessC2SPacket;
+import net.minecraft.client.gui.Font;
 import net.minecraft.core.BlockPos;
 import net.minecraft.client.Minecraft;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -19,6 +28,7 @@ import org.mockito.MockedStatic;
 import java.nio.file.Path;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mockStatic;
@@ -88,6 +98,65 @@ class ImageLoadScreenAccessTest {
             assertEquals("TRUSTED", sent.getValue().value);
             assertEquals(action, sent.getValue().action);
             assertEquals(9, sent.getValue().revision);
+        }
+    }
+
+    @Test
+    void rebuildingAccessControlsDoesNotRetainSnapshotSubscriptions() throws ReflectiveOperationException {
+        ImageLoadScreen screen = new ImageLoadScreen(BlockPos.ZERO);
+        CountingAccessSignal source = trackAccessSnapshots(screen);
+        screen.updateAccess(BlockPos.ZERO, snapshot(1));
+        var build = ImageLoadScreen.class.getDeclaredMethod("buildAccess");
+        build.setAccessible(true);
+        for (int i = 0; i < 10; i++) {
+            ((UIComponent) build.invoke(screen)).dispose();
+            int reads = source.reads;
+            source.set(ScreenAccessSnapshot.fromJson(snapshot(i + 2)));
+            assertEquals(reads, source.reads, "Disposed Settings controls must not recompute on later snapshots");
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void closingTrustedDialogsDoesNotRetainSnapshotSubscriptions(boolean hasMembers) throws ReflectiveOperationException {
+        ImageLoadScreen screen = new ImageLoadScreen(BlockPos.ZERO);
+        CountingAccessSignal source = trackAccessSnapshots(screen);
+        var state = new ScreenNetworkService.State(UUID.randomUUID(), hasMembers ? Set.of(UUID.randomUUID()) : Set.of(),
+                ScreenNetworkService.Policy.TRUSTED, ScreenNetworkService.Policy.OWNER_ONLY, null, "STATIC", 0, 0, 1);
+        screen.updateAccess(BlockPos.ZERO, new ScreenAccessSnapshot("network/private", state, true, true, false).toJson());
+        var runtimeField = UiScreen.class.getDeclaredField("uiRuntime");
+        runtimeField.setAccessible(true);
+        var open = ImageLoadScreen.class.getDeclaredMethod("manageTrustedPlayers");
+        open.setAccessible(true);
+        try (var runtime = new UiRuntime(mock(Font.class), mock(NativeWidgetHost.class))) {
+            runtimeField.set(screen, runtime);
+            for (int i = 0; i < 10; i++) {
+                open.invoke(screen);
+                assertEquals(1, runtime.overlays().size());
+                runtime.overlays().closeTop();
+                assertEquals(0, runtime.overlays().size());
+                int reads = source.reads;
+                source.set(ScreenAccessSnapshot.fromJson(snapshot(i + 2)));
+                assertEquals(reads, source.reads, "Closed trusted dialogs must not recompute on later snapshots");
+            }
+        }
+    }
+
+    private static CountingAccessSignal trackAccessSnapshots(ImageLoadScreen screen) throws ReflectiveOperationException {
+        var field = ImageLoadScreen.class.getDeclaredField("accessView");
+        field.setAccessible(true);
+        CountingAccessSignal source = new CountingAccessSignal();
+        field.set(screen, source);
+        return source;
+    }
+
+    private static final class CountingAccessSignal implements Signal<ScreenAccessSnapshot> {
+        private final Signal<ScreenAccessSnapshot> delegate = Signals.of(null);
+        private int reads;
+        @Override public ScreenAccessSnapshot get() { reads++; return delegate.get(); }
+        @Override public void set(ScreenAccessSnapshot value) { delegate.set(value); }
+        @Override public Subscription subscribe(Consumer<? super ScreenAccessSnapshot> listener) {
+            return delegate.subscribe(listener);
         }
     }
 

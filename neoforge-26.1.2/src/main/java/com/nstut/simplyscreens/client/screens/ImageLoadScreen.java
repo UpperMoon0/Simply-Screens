@@ -94,6 +94,9 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     private final Signal<Boolean> localOverride = Signals.of(false);
     private final Signal<com.nstut.simplyscreens.ScreenAccessSnapshot> accessView = Signals.of(null);
     private final Signal<Boolean> accessManager = Signals.of(false);
+    private final Signal<Boolean> accessUnclaimed = Signals.of(true);
+    private final Signal<List<UUID>> trustedPlayers = Signals.of(List.of());
+    private final Signal<Boolean> trustedPlayersEmpty = Signals.of(true);
     private final Signal<String> viewPolicy = Signals.of("PUBLIC");
     private final Signal<String> controlPolicy = Signals.of("OWNER_ONLY");
 
@@ -104,6 +107,9 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         accessManager.set(snapshot.manage()); localOverride.set(snapshot.localOverride());
         viewPolicy.set(snapshot.state().view().name()); controlPolicy.set(snapshot.state().control().name());
         accessView.set(snapshot);
+        accessUnclaimed.set(snapshot.state().owner() == null);
+        trustedPlayers.set(snapshot.state().trusted().stream().sorted().toList());
+        trustedPlayersEmpty.set(trustedPlayers.get().isEmpty());
         accessSummary.set(snapshot.state().owner() == null
                 ? accessText("unclaimed").getString() : playerName(snapshot.state().owner()));
         if (!snapshot.success()) showError(Component.translatable("gui.simplyscreens.access.denied"));
@@ -125,8 +131,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         return Ui.column(
                 Ui.heading(accessText("title")),
                 Ui.row(Ui.text(accessText("owner")), Ui.text(accessSummary).marquee().flex(),
-                        Ui.switcher(accessManager).when(true, () -> Ui.switcher(Signals.computed(() ->
-                                accessView.get() != null && accessView.get().state().owner() == null))
+                        Ui.switcher(accessManager).when(true, () -> Ui.switcher(accessUnclaimed)
                                 .when(true, () -> Ui.button(accessText("claim"), () -> accessAction("CLAIM", "")).small())
                                 .when(false, () -> Ui.button(Component.literal("..."), () -> playerPolicyDialog(true))
                                         .ghost().small().tooltip(accessText("change_owner"))))).gap(6),
@@ -206,20 +211,18 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     }
     private void manageTrustedPlayers() {
         if (!accessManager.get()) return;
-        var members = Signals.computed(() -> accessView.get() == null ? List.<UUID>of()
-                : accessView.get().state().trusted().stream().sorted().toList());
         Card dialog = Ui.card().elevated(true).outlined(true).padding(12);
         OverlayHandle[] handle = { null };
         dialog.addChild(Ui.column(
                 Ui.heading(accessText("manage_trusted")),
                 Ui.text(accessText("trusted_help")).wrap(),
-                Ui.switcher(Signals.computed(() -> members.get().isEmpty()))
+                Ui.switcher(trustedPlayersEmpty)
                         .when(true, () -> Ui.text(accessText("none_trusted")))
-                        .when(false, () -> Ui.list(members, id -> Ui.row(
+                        .when(false, () -> Ui.list(trustedPlayers, id -> Ui.row(
                                 Ui.text(playerName(id)).marquee().flex().tooltip(id.toString()),
                                 Ui.button(accessText("remove"), () -> accessAction("UNTRUST", id.toString())).ghost().small()
                         ).gap(6)).key(UUID::toString).itemHeight(24).gap(3)
-                                .height(Math.min(160, Math.max(24, Math.min(members.get().size() * 27, height - 180))))),
+                                .height(Math.min(160, Math.max(24, Math.min(trustedPlayers.get().size() * 27, height - 180))))),
                 Ui.row(Ui.button(accessText("add_trusted"), () -> {
                     if (accessView.get() != null && accessView.get().state().trusted().size() >= 64) {
                         showError(accessText("trust_limit")); return;
