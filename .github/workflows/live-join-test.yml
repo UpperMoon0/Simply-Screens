@@ -14,6 +14,9 @@ on:
       - "neoforge-1.21.1/**"
       - "neoforge-26.1.2/**"
       - "tools/live_join_test.py"
+      - "tools/playlist_test.py"
+      - "tools/test_playlist_test.py"
+      - "tools/playlist/**"
       - "tools/assert_production_jar.py"
       - "tools/verify_packetweave_coinstallation.py"
       - "tools/PacketWeaveCoinstallation.java"
@@ -45,7 +48,7 @@ jobs:
 
   live-join:
     needs: dependencies
-    timeout-minutes: 40
+    timeout-minutes: 60
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -77,6 +80,15 @@ jobs:
       - run: chmod +x gradlew
       - name: Run automatic real-client join with standalone PacketWeave
         run: python3 tools/live_join_test.py --target "${{ matrix.target }}" --check-packetweave-dependency
+      - name: Run synchronized playlist lifecycle and populated UI tests
+        run: python3 tools/playlist_test.py --target "${{ matrix.target }}"
+      - name: Upload playlist evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playlist-${{ matrix.target }}
+          path: build/screen-playlist-evidence/**
+          if-no-files-found: error
       - name: Upload test diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -91,3 +103,21 @@ jobs:
             ${{ matrix.target }}/run/live-join/client/crash-reports
             ${{ matrix.target }}/run/live-join/server/crash-reports
           if-no-files-found: ignore
+
+  playlist-evidence:
+    name: Required playlist lifecycle evidence
+    if: always()
+    needs: live-join
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: playlist-*
+          path: playlist-evidence
+      - name: Verify all five exact-head playlist receipts
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 tools/playlist_test.py --verify-receipts playlist-evidence --head "$EXPECTED_HEAD"

@@ -54,4 +54,26 @@ class ImageLoadScreenPlaylistTest {
             action(screen,"PLAY");action(screen,"CREATE");action(screen,"STOP");packets.verifyNoInteractions();
         }
     }
+    @Test void refreshPreservesMutationUntilTimeoutThenRecovers() throws Exception {
+        var screen=new ImageLoadScreen(BlockPos.ZERO);
+        try(var packets=mockStatic(PacketRegistries.class)) {
+            action(screen,"GET");long read=(long)field(screen,"pendingPlaylistRequest");
+            screen.updatePlaylist(BlockPos.ZERO,view(read,true,null).json());
+            action(screen,"RESUME");long write=(long)field(screen,"pendingPlaylistRequest");
+            var dirty=ImageLoadScreen.class.getDeclaredField("playlistDirty");dirty.setAccessible(true);dirty.set(screen,true);
+            packets.reset();
+            for(int i=0;i<79;i++) screen.tick();
+            packets.verifyNoInteractions();assertTrue((boolean)field(screen,"playlistMutationPending"));
+            assertEquals(write,field(screen,"pendingPlaylistRequest"));
+            screen.tick();
+            assertFalse((boolean)field(screen,"playlistMutationPending"));
+            long recovered=(long)field(screen,"pendingPlaylistRequest");assertTrue(recovered>write);
+            screen.updatePlaylist(BlockPos.ZERO,view(write,true,UUID.randomUUID()).json());
+            assertNull(field(screen,"selectedPlaylist"));assertEquals(recovered,field(screen,"pendingPlaylistRequest"));
+            var capture=ArgumentCaptor.forClass(ScreenPlaylistC2SPacket.class);
+            packets.verify(()->PacketRegistries.sendToServer(capture.capture()));packets.verifyNoMoreInteractions();
+            assertEquals("GET",PlaylistWire.Request.parse(capture.getValue().json).action());
+        }
+    }
+
 }

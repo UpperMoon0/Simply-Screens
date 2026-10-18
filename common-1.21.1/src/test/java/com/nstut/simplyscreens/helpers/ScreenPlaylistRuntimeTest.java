@@ -60,12 +60,22 @@ class ScreenPlaylistRuntimeTest {
         send("CREATE",null,null,-1,-1,0,"Forbidden");assertFalse(latest.success());assertFalse(latest.control());
         assertTrue(store().library(actor).playlists().isEmpty());assertEquals(0,store().snapshot(key).revision());
     }
-    @Test void missingViewOrDistantTargetProducesNoLibraryDisclosure() {
+    @Test void missingBothPermissionsOrDistantTargetProducesNoLibraryDisclosure() {
         access.when(()->ScreenAccessService.allowed(player,tile,ScreenNetworkService.Permission.VIEW)).thenReturn(false);
+        access.when(()->ScreenAccessService.allowed(player,tile,ScreenNetworkService.Permission.CONTROL)).thenReturn(false);
         send("GET",null,null,-1,-1,0,"");assertNull(latest);packets.verifyNoInteractions();
         access.when(()->ScreenAccessService.allowed(player,tile,ScreenNetworkService.Permission.VIEW)).thenReturn(true);
         nearby.when(()->ScreenPacketSecurity.nearby(player,BlockPos.ZERO)).thenReturn(null);
         send("CREATE",null,null,-1,-1,0,"Forbidden");assertNull(latest);
+    }
+    @Test void controlDoesNotRequireViewAndPrivatePlaybackMetadataIsRedacted() {
+        UUID id=playlist();
+        access.when(()->ScreenAccessService.allowed(player,tile,ScreenNetworkService.Permission.VIEW)).thenReturn(false);
+        send("PLAY",id,null,-1,-1,0,"");
+        assertTrue(latest.success());assertEquals("PLAYING",latest.status());assertNull(latest.currentImage());
+        assertEquals(-1,latest.index());assertTrue(latest.upcoming().isEmpty());assertTrue(latest.queue().isEmpty());
+        assertEquals(image,latest.slides().get(0).image(),"Own saved library remains accessible to its controller");
+        send("PAUSE",id,null,-1,-1,0,"");assertTrue(latest.success());assertEquals("PAUSED",latest.status());
     }
     @Test void foreignPrivateImageCannotBeAddedQueuedOrAnnounced() {
         UUID id=playlist();

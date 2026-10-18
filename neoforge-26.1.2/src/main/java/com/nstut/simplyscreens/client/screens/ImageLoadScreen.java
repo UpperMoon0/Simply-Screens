@@ -55,10 +55,12 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     private final Signal<List<com.nstut.simplyscreens.playlist.PlaylistWire.Summary>> savedPlaylists = Signals.of(List.of());
     private record SlideRow(int index, com.nstut.simplyscreens.playlist.PlaylistWire.Slide slide, long revision, UUID playlist) { }
     private final Signal<List<SlideRow>> savedSlides = Signals.of(List.of()), queuedSlides = Signals.of(List.of());
+    private final Signal<Boolean> savedSlidesEmpty = Signals.of(true), queuedSlidesEmpty = Signals.of(true);
     private UUID selectedPlaylist;
     private long pendingPlaylistRequest;
     private boolean playlistMutationPending;
     private int playlistRefreshTicks;
+    private boolean playlistDirty;
     private static Component pt(String key, Object... args) { return Component.translatable("gui.simplyscreens.playlist." + key, args); }
     private boolean canControlPlaylist() { return playlistView.get() != null && playlistView.get().control() && !playlistMutationPending; }
     public void updatePlaylist(BlockPos pos, String json) {
@@ -69,9 +71,9 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         selectedPlaylist = view.selected(); playlistView.set(view); savedPlaylists.set(view.playlists());
         var rows = new ArrayList<SlideRow>();
         for (int i=0;i<view.slides().size();i++) rows.add(new SlideRow(i,view.slides().get(i),view.libraryRevision(),view.selected()));
-        savedSlides.set(List.copyOf(rows)); rows.clear();
+        savedSlides.set(List.copyOf(rows)); savedSlidesEmpty.set(rows.isEmpty()); rows.clear();
         for (int i=0;i<view.queue().size();i++) rows.add(new SlideRow(i,view.queue().get(i),view.playbackRevision(),null));
-        queuedSlides.set(List.copyOf(rows));
+        queuedSlides.set(List.copyOf(rows)); queuedSlidesEmpty.set(rows.isEmpty());
         if (!view.success()) showError(pt("rejected"));
     }
     private void playlistAction(String action, UUID image, int index, int destination, long duration, String value) {
@@ -87,9 +89,11 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     private void playlistAction(String action) { playlistAction(action, null, -1, -1, 10000, ""); }
     @Override public void tick() {
         super.tick();
-        if (++playlistRefreshTicks >= 40) {
-            // A rejected/expired packet must not leave the UI disabled forever.
-            playlistMutationPending = false; playlistAction("GET");
+        ++playlistRefreshTicks;
+        // A lost/rejected packet cannot leave mutations disabled forever; ordinary refresh never cancels a pending write.
+        if (playlistRefreshTicks >= 80) { playlistMutationPending = false; pendingPlaylistRequest = 0; }
+        if (!playlistMutationPending && (playlistDirty || playlistRefreshTicks >= 20)) {
+            playlistDirty = false; playlistAction("GET");
         }
     }
     private String slideName(UUID image) {
@@ -119,7 +123,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                         .separator().item(pt("delete"), this::confirmDeletePlaylist).show(uiRuntime().overlays()))
                         .enabledWhen(() -> canControlPlaylist() && selectedPlaylist != null)).gap(4).key("playlist.toolbar"),
                 Ui.text(pt("edit_help")).wrap(),
-                Ui.switcher(Signals.computed(() -> savedSlides.get().isEmpty()))
+                Ui.switcher(savedSlidesEmpty)
                         .when(true, () -> Ui.emptyState(pt("empty")).action(pt("browse"), () -> tab.set(Tab.GALLERY)))
                         .when(false, () -> Ui.list(savedSlides, row -> buildSlideRow(row, false)).key(row -> row.index()).itemHeight(28).gap(2).flex()).flex()).gap(6);
     }
@@ -151,7 +155,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         return Ui.column(Ui.row(Ui.heading(pt("queue")).flex(),
                 Ui.button(pt("clear_queue"), () -> playlistAction("CLEAR_QUEUE")).ghost().small()).gap(6),
                 Ui.text(pt("queue_help")).wrap(),
-                Ui.switcher(Signals.computed(() -> queuedSlides.get().isEmpty()))
+                Ui.switcher(queuedSlidesEmpty)
                         .when(true, () -> Ui.emptyState(pt("queue_empty")))
                         .when(false, () -> Ui.list(queuedSlides,row -> buildSlideRow(row,true)).key(row -> row.index()).itemHeight(28).gap(2).flex()).flex(),
                 Ui.text(() -> Component.literal(pt("upcoming").getString()+": "+(playlistView.get()==null?"":playlistView.get().upcoming().stream()
@@ -830,6 +834,8 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     }
 
     public void updateScreenState(UUID imageId, boolean maintainAspectRatio, String screenId) {
+        if (!java.util.Objects.equals(displayedImageId.get(), imageId) || !java.util.Objects.equals(this.screenId.get(), screenId))
+            playlistDirty = true;
         applyingRemoteState = true;
         try {
             displayedImageId.set(imageId);

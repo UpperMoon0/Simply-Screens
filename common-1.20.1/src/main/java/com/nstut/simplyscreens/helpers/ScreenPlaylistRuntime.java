@@ -103,12 +103,14 @@ public final class ScreenPlaylistRuntime {
     public static void handle(ServerPlayer player, BlockPos pos, String json) {
         if (service == null || !budget(player)) return;
         ScreenBlockEntity screen = ScreenPacketSecurity.nearby(player, pos);
-        if (screen == null || !ScreenAccessService.allowed(player, screen, Permission.VIEW)) return;
+        if (screen == null) return;
+        boolean viewAllowed = ScreenAccessService.allowed(player, screen, Permission.VIEW);
+        boolean control = ScreenAccessService.allowed(player, screen, Permission.CONTROL);
+        if (!viewAllowed && !control) return;
         PlaylistWire.Request request;
         try { request = PlaylistWire.Request.parse(json); } catch (RuntimeException invalid) { return; }
         String key = screen.contentKey();
         UUID actor = player.getUUID(), selected = request.playlist();
-        boolean control = ScreenAccessService.allowed(player, screen, Permission.CONTROL);
         boolean success = "GET".equals(request.action());
         if (!success && control && key.equals(request.key())
                 && ScreenAccessService.state(screen).revision() == request.networkRevision()) {
@@ -181,9 +183,9 @@ public final class ScreenPlaylistRuntime {
                 request.requestId(), success, control, saved == null ? null : saved.id(),
                 library.playlists().stream().map(p -> new PlaylistWire.Summary(p.id(), p.name(), p.slides().size())).toList(),
                 saved == null ? List.of() : saved.slides().stream().map(ScreenPlaylistRuntime::slide).toList(),
-                playback.announcing() ? "ANNOUNCEMENT" : playback.status().name(), playback.currentImage(), playback.slideIndex(),
-                playback.offsetMillis(), playback.repeat().name(), playback.shuffle(),
-                playback.queue().stream().map(ScreenPlaylistRuntime::slide).toList(), playback.upcomingImages());
+                playback.announcing() ? "ANNOUNCEMENT" : playback.status().name(), viewAllowed ? playback.currentImage() : null, viewAllowed ? playback.slideIndex() : -1,
+                viewAllowed ? playback.offsetMillis() : 0, playback.repeat().name(), playback.shuffle(),
+                viewAllowed ? playback.queue().stream().map(ScreenPlaylistRuntime::slide).toList() : List.of(), viewAllowed ? playback.upcomingImages() : List.of());
         PacketRegistries.sendToPlayer(player, new ScreenPlaylistS2CPacket(pos, view.json()));
     }
     private static PlaylistWire.Slide slide(PlaylistSlide s) { return new PlaylistWire.Slide(s.image(), s.durationMillis()); }

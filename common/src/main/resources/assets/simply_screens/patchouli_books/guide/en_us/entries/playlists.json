@@ -17,7 +17,7 @@
     {
       "type": "patchouli:text",
       "title": "Transport and queue",
-      "text": "Previous/Next navigate slides; Restart restarts the current slide. Pause/Resume retain the offset. Repeat cycles none/list/current; Shuffle uses one server-owned order. Queue Next/Last adds one-off 10-second slides without changing saved playlists."
+      "text": "Previous/Next navigate; Restart resets the current slide. Pause/Resume retain the offset. Repeat cycles none/list/current. Shuffle uses one server order. Queue Next/Last adds 10-second slides without changing saved playlists."
     },
     {
       "type": "patchouli:text",
@@ -27,7 +27,7 @@
     {
       "type": "patchouli:text",
       "title": "Save and access",
-      "text": "Offsets, queue and shuffle survive chunk unload and server restart; server downtime does not consume time. Commands and shutdown save immediately; automatic checkpoints run every five seconds. Only your own library can supply slides. Screen control and image-view rules still apply."
+      "text": "Offsets, queue and shuffle survive chunk unload and restart; downtime consumes no time. Commands, shutdown and five-second checkpoints save progress. Use your own image library. Screen control and image-view rules still apply."
     }
   ]
 }

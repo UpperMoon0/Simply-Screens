@@ -177,3 +177,13 @@ Personal display preferences have core persistence/migration coverage. Start a c
 The shared `playlist/ScreenPlaylistServiceTest` suite exercises real persisted timeline data: named CRUD, immutable running snapshots, bounded queues, pause/resume/restart/repeat/shuffle, exact announcement restore, image purge, restart offsets, transaction rollback, malformed-store recovery and randomized reload sequences. Native `ScreenPlaylistRuntimeTest`, `ScreenPlaylistPacketTest` and `ImageLoadScreenPlaylistTest` cover current permissions and target/revision guards, private-image rejection, local overrides, static-selection restart behavior, packet limits, stale responses and repeated-click suppression in each source version.
 
 Run `testAllVersions` for the full native suites. Run the test-only `tools/playlist_test.py` harness for real linked-screen/client/restart evidence across all five targets. The harness creates disposable instrumented copies after checking production jars; its probes must never ship. A join smoke or unit pass alone does not establish the playlist acceptance criteria.
+
+Playlist gate commands:
+
+```sh
+python3 tools/playlist_test.py --target fabric-1.21.1
+python3 tools/playlist_test.py --target neoforge-26.1.2 --compile-only
+python3 tools/playlist_test.py --verify-receipts downloaded-playlist-evidence --head "$GITHUB_SHA"
+```
+
+The live-client workflow runs this gate on all five targets and requires fresh, clean, exact-head receipts. Each target records 23 server/client scenarios, six populated Gallery/Playlists/Queue screenshots at normal and narrow window sizes, and exact pre-shutdown/boot timeline comparisons for paused and running restarts. Compile-only results deliberately cannot satisfy the gate. Evidence and logs are under `build/screen-playlist-evidence/`; instrumented working copies stay under `build/screen-playlist-work/`.
