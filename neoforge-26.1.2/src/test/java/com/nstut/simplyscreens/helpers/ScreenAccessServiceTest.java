@@ -54,6 +54,24 @@ class ScreenAccessServiceTest {
         when(chunks.getChunkNow(0,0)).thenReturn(chunk); when(chunk.getBlockEntity(pos)).thenReturn(tile);
         when(tracking.getPlayers(any(ChunkPos.class),eq(false))).thenReturn(List.of(player));
     }
+    @Test void ownerCanTrustAnOnlineNameButVisitorCannotTriggerNameLookup() {
+        UUID targetId = UUID.randomUUID();
+        var target = mock(ServerPlayer.class);
+        when(target.getUUID()).thenReturn(targetId);
+        when(target.getName()).thenReturn(net.minecraft.network.chat.Component.literal("Friend"));
+        when(server.getPlayerList().getPlayerByName("Friend")).thenReturn(target);
+        try (var nearby = mockStatic(ScreenPacketSecurity.class)) {
+            nearby.when(() -> ScreenPacketSecurity.nearby(player, pos)).thenReturn(tile);
+            ScreenAccessService.access(player, new ScreenAccessC2SPacket(pos, key, 0, "TRUST", "Friend"));
+            verify(server.getPlayerList(), never()).getPlayerByName(anyString());
+            assertTrue(ScreenRegistry.networks().snapshot(key).trusted().isEmpty());
+            when(player.getUUID()).thenReturn(owner);
+            ScreenAccessService.access(player, new ScreenAccessC2SPacket(pos, key, 0, "TRUST", "Friend"));
+            assertEquals(Set.of(targetId), ScreenRegistry.networks().snapshot(key).trusted());
+            verify(server.getPlayerList()).getPlayerByName("Friend");
+        }
+    }
+
     @Test void guessedPrivateUuidCannotReadWithoutTrackedDisplay() {
         assertFalse(ScreenAccessService.canReadImage(player,image));
         verifyNoInteractions(tracking);

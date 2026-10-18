@@ -110,6 +110,14 @@ public final class ScreenAccessService {
         if (!"GET".equals(packet.action) && screen.accessKey().equals(packet.key) && current.revision() == packet.revision) {
             if ("OVERRIDE".equals(packet.action) && allowed(player, screen, Permission.MANAGE) && ("true".equals(packet.value) || "false".equals(packet.value))) {
                 screen.useLocalImage(Boolean.parseBoolean(packet.value)); changed = true;
+            } else if (java.util.Set.of("TRUST", "UNTRUST", "TRANSFER").contains(packet.action)) {
+                if (allowed(player, screen, Permission.MANAGE)) {
+                    UUID target = ScreenPlayerInput.resolve(packet.value, name -> {
+                        var online = player.level().getServer().getPlayerList().getPlayerByName(name);
+                        return online == null ? null : online.getUUID();
+                    });
+                    if (target != null) changed = ScreenRegistry.networks().access(packet.key, actor(player), packet.revision, packet.action, target.toString());
+                }
             } else changed = "CLAIM".equals(packet.action) ? ScreenRegistry.networks().claim(packet.key, actor(player))
                     : ScreenRegistry.networks().access(packet.key, actor(player), packet.revision, packet.action, packet.value);
         }
@@ -118,8 +126,15 @@ public final class ScreenAccessService {
         // Trusted-player UUIDs are management data, not a public roster.
         State safe = manage ? next : new State(next.owner(), Set.of(), next.view(), next.control(),
                 null, next.mode(), next.slide(), next.offsetMillis(), next.revision());
+        var names = new HashMap<UUID, String>();
+        var visiblePlayers = new HashSet<>(safe.trusted());
+        if (safe.owner() != null) visiblePlayers.add(safe.owner());
+        for (UUID id : visiblePlayers) {
+            var online = player.level().getServer().getPlayerList().getPlayer(id);
+            if (online != null) names.put(id, online.getName().getString());
+        }
         var response = new com.nstut.simplyscreens.ScreenAccessSnapshot(screen.accessKey(), safe, manage,
-                "GET".equals(packet.action) || changed, screen.isLocalImageOverride());
+                "GET".equals(packet.action) || changed, screen.isLocalImageOverride(), names);
         com.nstut.simplyscreens.network.PacketRegistries.sendToPlayer(player,
                 new com.nstut.simplyscreens.network.ScreenAccessS2CPacket(packet.pos, response.toJson()));
     }

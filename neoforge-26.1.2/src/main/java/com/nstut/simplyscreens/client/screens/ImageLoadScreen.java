@@ -92,7 +92,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     private long accessRevision;
     private final Signal<String> accessSummary = Signals.of("");
     private final Signal<Boolean> localOverride = Signals.of(false);
-    private final Signal<String> accessPlayer = Signals.of("");
+    private final Signal<com.nstut.simplyscreens.ScreenAccessSnapshot> accessView = Signals.of(null);
     private final Signal<Boolean> accessManager = Signals.of(false);
     private final Signal<String> viewPolicy = Signals.of("PUBLIC");
     private final Signal<String> controlPolicy = Signals.of("OWNER_ONLY");
@@ -103,41 +103,71 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         accessKey = snapshot.key(); accessRevision = snapshot.state().revision();
         accessManager.set(snapshot.manage()); localOverride.set(snapshot.localOverride());
         viewPolicy.set(snapshot.state().view().name()); controlPolicy.set(snapshot.state().control().name());
-        accessSummary.set(Component.translatable("gui.simplyscreens.access.summary",
-                snapshot.state().owner() == null ? Component.translatable("gui.simplyscreens.access.unclaimed").getString() : snapshot.state().owner().toString(),
-                snapshot.state().trusted().toString()).getString());
+        accessView.set(snapshot);
+        accessSummary.set(snapshot.state().owner() == null
+                ? accessText("unclaimed").getString() : playerName(snapshot.state().owner()));
         if (!snapshot.success()) showError(Component.translatable("gui.simplyscreens.access.denied"));
     }
     private void accessAction(String action, String value) {
         PacketRegistries.sendToServer(new com.nstut.simplyscreens.network.ScreenAccessC2SPacket(
                 blockEntityPos, accessKey, accessRevision, action, value));
     }
+    private static Component accessText(String key, Object... args) {
+        return Component.translatable("gui.simplyscreens.access." + key, args);
+    }
+    private String playerName(UUID id) {
+        var client = Minecraft.getInstance();
+        if (client != null && client.player != null && id.equals(client.player.getUUID())) return accessText("you").getString();
+        var snapshot = accessView.get();
+        return snapshot == null ? id.toString() : snapshot.playerName(id);
+    }
     private UIComponent buildAccess() {
         return Ui.column(
-                Ui.heading(Component.translatable("gui.simplyscreens.access.title")),
-                Ui.text(accessSummary).wrap(),
-                Ui.row(Ui.button(Component.translatable("gui.simplyscreens.screen.refresh"), () -> accessAction("GET", "")).small(),
-                        Ui.button(Component.translatable("gui.simplyscreens.access.claim"), () -> accessAction("CLAIM", "")).small()).gap(6),
-                Ui.text(Component.translatable("gui.simplyscreens.access.help")).wrap(),
-                Ui.switcher(accessManager).when(true, this::buildManagedAccess)
-        ).gap(8);
-    }
-    private UIComponent buildManagedAccess() {
-        return Ui.column(
-                buildPolicyControl("VIEW", "gui.simplyscreens.access.view", viewPolicy),
-                buildPolicyControl("CONTROL", "gui.simplyscreens.access.control", controlPolicy),
-                Ui.button(() -> Component.translatable("gui.simplyscreens.access.override", Component.translatable(localOverride.get() ? "options.on" : "options.off")), () -> accessAction("OVERRIDE", Boolean.toString(!localOverride.get()))),
-                Ui.textField(accessPlayer).maxLength(36).placeholder(Component.translatable("gui.simplyscreens.access.uuid").getString()),
-                Ui.row(Ui.button(Component.translatable("gui.simplyscreens.access.trust"), () -> accessAction("TRUST", accessPlayer.get())).small(),
-                        Ui.button(Component.translatable("gui.simplyscreens.access.untrust"), () -> accessAction("UNTRUST", accessPlayer.get())).small()).gap(6),
-                Ui.button(Component.translatable("gui.simplyscreens.access.transfer"), this::confirmTransfer)
-        ).gap(8);
+                Ui.heading(accessText("title")),
+                Ui.row(Ui.text(accessText("owner")), Ui.text(accessSummary).marquee().flex(),
+                        Ui.switcher(accessManager).when(true, () -> Ui.switcher(Signals.computed(() ->
+                                accessView.get() != null && accessView.get().state().owner() == null))
+                                .when(true, () -> Ui.button(accessText("claim"), () -> accessAction("CLAIM", "")).small())
+                                .when(false, () -> Ui.button(Component.literal("..."), () -> playerPolicyDialog(true))
+                                        .ghost().small().tooltip(accessText("change_owner"))))).gap(6),
+                buildPolicyControl("VIEW", "view_label", viewPolicy),
+                buildPolicyControl("CONTROL", "control_label", controlPolicy),
+                Ui.row(Ui.text(() -> accessText("trusted_count", accessView.get() == null ? 0 : accessView.get().state().trusted().size()))
+                                .marquee().flex(),
+                        Ui.switcher(accessManager).when(true, () -> Ui.button(accessText("manage"), this::manageTrustedPlayers)
+                                .ghost().small().key("settings.trusted"))).gap(6),
+                Ui.text(accessText("help")).wrap(),
+                Ui.switcher(accessManager).when(true, () -> Ui.button(() -> accessText("override",
+                        Component.translatable(localOverride.get() ? "options.on" : "options.off")),
+                        () -> accessAction("OVERRIDE", Boolean.toString(!localOverride.get()))).small()),
+                Ui.button(Component.translatable("gui.simplyscreens.screen.refresh"), () -> accessAction("GET", "")).ghost().small()
+        ).gap(8).key("settings.access");
     }
     private UIComponent buildPolicyControl(String action, String label, Signal<String> signal) {
-        return Ui.row(
-                Ui.button(() -> Component.translatable(label, policyLabel(signal.get())), () -> cyclePolicy(action)).flex(),
-                Ui.button(Component.translatable("gui.simplyscreens.access.apply"), () -> applyPolicy(action)).small()
+        return Ui.row(Ui.text(accessText(label)).marquee().flex(),
+                Ui.switcher(accessManager)
+                        .when(true, () -> Ui.button(() -> policyLabel(signal.get()), () -> chooseAccessMode(action))
+                                .ghost().small().key("settings.access_" + action.toLowerCase(Locale.ROOT)))
+                        .when(false, () -> Ui.text(() -> policyLabel(signal.get())).marquee().flex())
         ).gap(6);
+    }
+    private void chooseAccessMode(String action) {
+        if (!accessManager.get()) return;
+        var client = Minecraft.getInstance();
+        var mouse = client.mouseHandler;
+        var window = client.getWindow();
+        var menu = Ui.contextMenu((int) (mouse.xpos() * width / window.getScreenWidth()),
+                (int) (mouse.ypos() * height / window.getScreenHeight()));
+        for (var policy : com.nstut.simplyscreens.ScreenNetworkService.Policy.values()) {
+            menu.item(policyLabel(policy.name()), () -> selectPolicy(action, policy.name()));
+        }
+        menu.show(uiRuntime().overlays());
+    }
+    void selectPolicy(String action, String policy) {
+        if (!accessManager.get()) return;
+        com.nstut.simplyscreens.ScreenNetworkService.Policy.valueOf(policy);
+        policySignal(action).set(policy);
+        accessAction(action, policySignal(action).get());
     }
     private static Component policyLabel(String policy) {
         return Component.translatable("gui.simplyscreens.access.policy." + policy.toLowerCase(Locale.ROOT));
@@ -150,33 +180,58 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
             default -> throw new IllegalArgumentException("Unknown policy: " + action);
         };
     }
-    void cyclePolicy(String action) {
-        Signal<String> signal = policySignal(action);
-        var policies = com.nstut.simplyscreens.ScreenNetworkService.Policy.values();
-        int index = com.nstut.simplyscreens.ScreenNetworkService.Policy.valueOf(signal.get()).ordinal();
-        // Cycling is only a local preview: intermediate PUBLIC permissions must never reach the server.
-        signal.set(policies[(index + 1) % policies.length].name());
-    }
-    void applyPolicy(String action) {
-        accessAction(action, policySignal(action).get());
-    }
-    private void confirmTransfer() {
-        try { UUID.fromString(accessPlayer.get()); } catch (IllegalArgumentException invalid) {
-            showError(Component.translatable("gui.simplyscreens.access.invalid_uuid")); return;
-        }
-        String recipient = accessPlayer.get();
-        Card dialog = Ui.card().elevated(true).outlined(true).padding(14);
+    private void playerPolicyDialog(boolean transfer) {
+        if (!accessManager.get()) return;
+        Signal<String> input = Signals.of("");
+        Signal<String> error = Signals.of("");
+        Card dialog = Ui.card().elevated(true).outlined(true).padding(12);
         OverlayHandle[] handle = { null };
         dialog.addChild(Ui.column(
-                Ui.text(Component.translatable("gui.simplyscreens.access.transfer_confirm", recipient)).wrap(),
-                Ui.row(Ui.button(Component.translatable("gui.simplyscreens.cancel"), () -> { if (handle[0] != null) handle[0].close(); }).ghost(),
-                        Ui.button(Component.translatable("gui.simplyscreens.access.transfer"), () -> {
-                            if (handle[0] != null) handle[0].close(); accessAction("TRANSFER", recipient);
-                        }).danger()).gap(6)).gap(10));
-        dialog.width(250).minHeight(90);
+                Ui.heading(accessText(transfer ? "change_owner" : "add_trusted")),
+                Ui.text(accessText(transfer ? "transfer_help" : "player_help")).wrap(),
+                Ui.textField(input).maxLength(36).placeholder(accessText("player_placeholder").getString()).fillWidth(),
+                Ui.text(error).wrap(),
+                Ui.row(Ui.button(Component.translatable("gui.simplyscreens.cancel"), () -> {
+                    if (handle[0] != null) handle[0].close();
+                }).ghost(), Ui.button(accessText(transfer ? "transfer" : "add"), () -> {
+                    String value = input.get().trim();
+                    if (com.nstut.simplyscreens.ScreenPlayerInput.resolve(value, name -> new UUID(0, 0)) == null) {
+                        error.set(accessText("invalid_player").getString()); return;
+                    }
+                    if (handle[0] != null) handle[0].close();
+                    accessAction(transfer ? "TRANSFER" : "TRUST", value);
+                }).primary()).gap(6)).gap(8));
+        dialog.width(Math.min(320, Math.max(160, width - 40)));
         handle[0] = Dialog.show(uiRuntime().overlays(), dialog);
     }
-
+    private void manageTrustedPlayers() {
+        if (!accessManager.get()) return;
+        var members = Signals.computed(() -> accessView.get() == null ? List.<UUID>of()
+                : accessView.get().state().trusted().stream().sorted().toList());
+        Card dialog = Ui.card().elevated(true).outlined(true).padding(12);
+        OverlayHandle[] handle = { null };
+        dialog.addChild(Ui.column(
+                Ui.heading(accessText("manage_trusted")),
+                Ui.text(accessText("trusted_help")).wrap(),
+                Ui.switcher(Signals.computed(() -> members.get().isEmpty()))
+                        .when(true, () -> Ui.text(accessText("none_trusted")))
+                        .when(false, () -> Ui.list(members, id -> Ui.row(
+                                Ui.text(playerName(id)).marquee().flex().tooltip(id.toString()),
+                                Ui.button(accessText("remove"), () -> accessAction("UNTRUST", id.toString())).ghost().small()
+                        ).gap(6)).key(UUID::toString).itemHeight(24).gap(3)
+                                .height(Math.min(160, Math.max(24, Math.min(members.get().size() * 27, height - 180))))),
+                Ui.row(Ui.button(accessText("add_trusted"), () -> {
+                    if (accessView.get() != null && accessView.get().state().trusted().size() >= 64) {
+                        showError(accessText("trust_limit")); return;
+                    }
+                    if (handle[0] != null) handle[0].close();
+                    playerPolicyDialog(false);
+                }).ghost(), Ui.button(Component.translatable("gui.simplyscreens.close"), () -> {
+                    if (handle[0] != null) handle[0].close();
+                }).ghost()).gap(6)).gap(8));
+        dialog.width(Math.min(320, Math.max(160, width - 40)));
+        handle[0] = Dialog.show(uiRuntime().overlays(), dialog);
+    }
 
     public ImageLoadScreen(BlockPos blockEntityPos) {
         super(Component.translatable("gui.simplyscreens.screen.title"));

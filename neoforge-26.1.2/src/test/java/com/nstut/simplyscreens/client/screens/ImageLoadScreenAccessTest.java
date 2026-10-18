@@ -49,45 +49,45 @@ class ImageLoadScreenAccessTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"VIEW", "CONTROL"})
-    void changingPrivatePolicyToTrustedSendsOnlyTheAppliedPolicy(String action) {
+    void refreshUsesLatestRevisionForMenuSelection(String action) {
         ImageLoadScreen screen = new ImageLoadScreen(BlockPos.ZERO);
         screen.updateAccess(BlockPos.ZERO, snapshot(7));
+        screen.updateAccess(BlockPos.ZERO, snapshot(8));
         try (var packets = mockStatic(PacketRegistries.class)) {
-            // OWNER_ONLY -> OPERATORS -> PUBLIC -> TRUSTED must remain a local preview.
-            screen.cyclePolicy(action);
-            screen.cyclePolicy(action);
-            screen.cyclePolicy(action);
-            packets.verifyNoInteractions();
-
-            screen.applyPolicy(action);
-            var sent = ArgumentCaptor.forClass(ScreenAccessC2SPacket.class);
-            packets.verify(() -> PacketRegistries.sendToServer(sent.capture()));
-            packets.verifyNoMoreInteractions();
-            assertEquals(BlockPos.ZERO, sent.getValue().pos);
-            assertEquals("network/private", sent.getValue().key);
-            assertEquals(7, sent.getValue().revision);
-            assertEquals(action, sent.getValue().action);
-            assertEquals("TRUSTED", sent.getValue().value);
-        }
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"VIEW", "CONTROL"})
-    void serverRefreshDiscardsUnappliedPolicyPreview(String action) {
-        ImageLoadScreen screen = new ImageLoadScreen(BlockPos.ZERO);
-        screen.updateAccess(BlockPos.ZERO, snapshot(7));
-        try (var packets = mockStatic(PacketRegistries.class)) {
-            screen.cyclePolicy(action);
-            screen.cyclePolicy(action);
-            packets.verifyNoInteractions();
-            screen.updateAccess(BlockPos.ZERO, snapshot(8));
-            screen.applyPolicy(action);
-
+            screen.selectPolicy(action, "OWNER_ONLY");
             var sent = ArgumentCaptor.forClass(ScreenAccessC2SPacket.class);
             packets.verify(() -> PacketRegistries.sendToServer(sent.capture()));
             packets.verifyNoMoreInteractions();
             assertEquals(8, sent.getValue().revision);
             assertEquals("OWNER_ONLY", sent.getValue().value);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"VIEW", "CONTROL"})
+    void nonManagerCannotSubmitMenuSelection(String action) {
+        ImageLoadScreen screen = new ImageLoadScreen(BlockPos.ZERO);
+        var snapshot = ScreenAccessSnapshot.fromJson(snapshot(7));
+        screen.updateAccess(BlockPos.ZERO, new ScreenAccessSnapshot(snapshot.key(), snapshot.state(), false, true, false).toJson());
+        try (var packets = mockStatic(PacketRegistries.class)) {
+            screen.selectPolicy(action, "PUBLIC");
+            packets.verifyNoInteractions();
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"VIEW", "CONTROL"})
+    void menuSelectionSendsOneChosenPolicyWithCurrentRevision(String action) {
+        ImageLoadScreen screen = new ImageLoadScreen(BlockPos.ZERO);
+        screen.updateAccess(BlockPos.ZERO, snapshot(9));
+        try (var packets = mockStatic(PacketRegistries.class)) {
+            screen.selectPolicy(action, "TRUSTED");
+            var sent = ArgumentCaptor.forClass(ScreenAccessC2SPacket.class);
+            packets.verify(() -> PacketRegistries.sendToServer(sent.capture()));
+            packets.verifyNoMoreInteractions();
+            assertEquals("TRUSTED", sent.getValue().value);
+            assertEquals(action, sent.getValue().action);
+            assertEquals(9, sent.getValue().revision);
         }
     }
 
