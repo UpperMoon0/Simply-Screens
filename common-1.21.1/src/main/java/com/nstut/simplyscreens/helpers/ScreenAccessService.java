@@ -108,7 +108,10 @@ public final class ScreenAccessService {
         State current = state(screen);
         boolean changed = false;
         if (!"GET".equals(packet.action) && screen.accessKey().equals(packet.key) && current.revision() == packet.revision) {
-            if ("OVERRIDE".equals(packet.action) && allowed(player, screen, Permission.MANAGE) && ("true".equals(packet.value) || "false".equals(packet.value))) {
+            if ("LINK".equals(packet.action)) {
+                String normalized = ScreenRegistryHelper.normalizeScreenId(packet.value);
+                if (packet.value.isBlank() || !normalized.isEmpty()) changed = relink(player, screen, normalized);
+            } else if ("OVERRIDE".equals(packet.action) && allowed(player, screen, Permission.MANAGE) && ("true".equals(packet.value) || "false".equals(packet.value))) {
                 screen.useLocalImage(Boolean.parseBoolean(packet.value)); changed = true;
             } else if (java.util.Set.of("TRUST", "UNTRUST", "TRANSFER").contains(packet.action)) {
                 if (allowed(player, screen, Permission.MANAGE)) {
@@ -134,7 +137,14 @@ public final class ScreenAccessService {
             if (online != null) names.put(id, online.getName().getString());
         }
         var response = new com.nstut.simplyscreens.ScreenAccessSnapshot(screen.accessKey(), safe, manage,
-                "GET".equals(packet.action) || changed, screen.isLocalImageOverride(), names);
+                "GET".equals(packet.action) || changed, screen.isLocalImageOverride(), names, packet.requestId);
+        if ("LINK".equals(packet.action)) {
+            // Restore authoritative display state even when the relink was rejected.
+            com.nstut.simplyscreens.network.PacketRegistries.sendToPlayer(player,
+                    new com.nstut.simplyscreens.network.UpdateScreenS2CPacket(packet.pos, screen.getBlockPos(),
+                            screen.getResolvedImageId(), screen.isMaintainAspectRatio(), screen.getScreenId(),
+                            screen.getScreenWidth(), screen.getScreenHeight()));
+        }
         com.nstut.simplyscreens.network.PacketRegistries.sendToPlayer(player,
                 new com.nstut.simplyscreens.network.ScreenAccessS2CPacket(packet.pos, response.toJson()));
     }

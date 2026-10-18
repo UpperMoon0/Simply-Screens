@@ -15,12 +15,17 @@ public final class ScreenAccessC2SPacket implements CustomPacketPayload {
     public final long revision;
     public final String action;
     public final String value;
+    public final long requestId;
     public ScreenAccessC2SPacket(BlockPos pos, String key, long revision, String action, String value) {
+        this(pos, key, revision, action, value, 0);
+    }
+    public ScreenAccessC2SPacket(BlockPos pos, String key, long revision, String action, String value, long requestId) {
         this.pos = pos;
         this.key = key;
         this.revision = revision;
         this.action = action;
         this.value = value;
+        this.requestId = requestId;
     }
     public ScreenAccessC2SPacket(RegistryFriendlyByteBuf buf) {
         pos = buf.readBlockPos();
@@ -28,6 +33,7 @@ public final class ScreenAccessC2SPacket implements CustomPacketPayload {
         revision = buf.readLong();
         action = buf.readUtf(128);
         value = buf.readUtf(128);
+        requestId = buf.readLong();
     }
     public void write(RegistryFriendlyByteBuf buf) {
         buf.writeBlockPos(pos);
@@ -35,6 +41,7 @@ public final class ScreenAccessC2SPacket implements CustomPacketPayload {
         buf.writeLong(revision);
         buf.writeUtf(action, 128);
         buf.writeUtf(value, 128);
+        buf.writeLong(requestId);
     }
     public static void handle(ScreenAccessC2SPacket packet, NetworkManager.PacketContext context) { context.queue(() -> { com.nstut.simplyscreens.helpers.ScreenAccessService.access((net.minecraft.server.level.ServerPlayer) context.getPlayer(), packet); }); }
 }

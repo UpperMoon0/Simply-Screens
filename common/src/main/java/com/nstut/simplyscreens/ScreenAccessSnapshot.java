@@ -4,9 +4,13 @@ import java.util.Map;
 import java.util.UUID;
 /** A bounded, redacted snapshot delivered only in response to a nearby GUI request. */
 public record ScreenAccessSnapshot(String key, ScreenNetworkService.State state, boolean manage, boolean success,
-                                   boolean localOverride, Map<UUID, String> playerNames) {
+                                   boolean localOverride, Map<UUID, String> playerNames, long requestId) {
     public ScreenAccessSnapshot(String key, ScreenNetworkService.State state, boolean manage, boolean success, boolean localOverride) {
-        this(key, state, manage, success, localOverride, Map.of());
+        this(key, state, manage, success, localOverride, Map.of(), 0);
+    }
+    public ScreenAccessSnapshot(String key, ScreenNetworkService.State state, boolean manage, boolean success,
+                                boolean localOverride, Map<UUID, String> playerNames) {
+        this(key, state, manage, success, localOverride, playerNames, 0);
     }
     public ScreenAccessSnapshot {
         var safe = new java.util.HashMap<UUID, String>();

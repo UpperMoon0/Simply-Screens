@@ -31,7 +31,6 @@ import com.nstut.simplyscreens.network.PacketRegistries;
 import com.nstut.simplyscreens.network.RemoveImageC2SPacket;
 import com.nstut.simplyscreens.network.RequestImageListC2SPacket;
 import com.nstut.simplyscreens.network.UpdateScreenAspectRatioC2SPacket;
-import com.nstut.simplyscreens.network.UpdateScreenIdC2SPacket;
 import com.nstut.simplyscreens.network.UpdateScreenSelectedImageC2SPacket;
 import com.nstut.simplyscreens.network.UploadImageChunkC2SPacket;
 import net.minecraft.client.Minecraft;
@@ -91,6 +90,8 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     private Subscription aspectSubscription = Subscription.EMPTY;
     private Subscription settingsSubscription = Subscription.EMPTY;
     private boolean applyingRemoteState;
+    private static final java.util.concurrent.atomic.AtomicLong LINK_REQUEST_IDS = new java.util.concurrent.atomic.AtomicLong();
+    private long pendingLinkRequest;
     private String accessKey = "";
     private long accessRevision;
     private final Signal<String> accessSummary = Signals.of("");
@@ -106,6 +107,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     public void updateAccess(BlockPos pos, String json) {
         if (!blockEntityPos.equals(pos)) return;
         var snapshot = com.nstut.simplyscreens.ScreenAccessSnapshot.fromJson(json);
+        if (snapshot.requestId() != 0 && snapshot.requestId() != pendingLinkRequest) return;
         accessKey = snapshot.key(); accessRevision = snapshot.state().revision();
         accessManager.set(snapshot.manage()); localOverride.set(snapshot.localOverride());
         viewPolicy.set(snapshot.state().view().name()); controlPolicy.set(snapshot.state().control().name());
@@ -115,11 +117,16 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         trustedPlayersEmpty.set(trustedPlayers.get().isEmpty());
         accessSummary.set(snapshot.state().owner() == null
                 ? accessText("unclaimed").getString() : playerName(snapshot.state().owner()));
+        if (snapshot.requestId() != 0 && snapshot.requestId() == pendingLinkRequest) {
+            pendingLinkRequest = 0;
+            screenId.set(snapshot.key().startsWith("network/") ? snapshot.key().substring("network/".length()) : "");
+            if (snapshot.success()) status.set(Component.translatable("gui.simplyscreens.status.linked"));
+        }
         if (!snapshot.success()) showError(Component.translatable("gui.simplyscreens.access.denied"));
     }
     protected void accessAction(String action, String value) {
         PacketRegistries.sendToServer(new com.nstut.simplyscreens.network.ScreenAccessC2SPacket(
-                blockEntityPos, accessKey, accessRevision, action, value));
+                blockEntityPos, accessKey, accessRevision, action, value, "LINK".equals(action) ? pendingLinkRequest : 0));
     }
     private static Component accessText(String key, Object... args) {
         return Component.translatable("gui.simplyscreens.access." + key, args);
@@ -458,10 +465,13 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
             showError(Component.translatable("gui.simplyscreens.screen.id.error.invalid"));
             return;
         }
-        screenId.set(normalized);
-        PacketRegistries.sendToServer(new UpdateScreenIdC2SPacket(blockEntityPos, normalized));
-        accessAction("GET", "");
-        status.set(Component.translatable("gui.simplyscreens.status.linked"));
+        linkScreenId(normalized);
+    }
+
+    void linkScreenId(String normalized) {
+        pendingLinkRequest = LINK_REQUEST_IDS.incrementAndGet();
+        status.set(Component.translatable("gui.simplyscreens.status.linking"));
+        accessAction("LINK", normalized);
     }
 
     private void confirmRemove(ImageEntry image) {

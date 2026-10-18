@@ -165,6 +165,74 @@ class ImageLoadScreenAccessTest {
         }
     }
 
+    @Test
+    void linkWaitsForItsAcknowledgementAndRestoresRejectedId() throws ReflectiveOperationException {
+        ImageLoadScreen screen = new ImageLoadScreen(BlockPos.ZERO);
+        screen.updateAccess(BlockPos.ZERO, snapshot(7));
+        try (var packets = mockStatic(PacketRegistries.class)) {
+            screen.linkScreenId("foreign");
+            var sent = ArgumentCaptor.forClass(ScreenAccessC2SPacket.class);
+            packets.verify(() -> PacketRegistries.sendToServer(sent.capture()));
+            packets.verifyNoMoreInteractions();
+            assertEquals("LINK", sent.getValue().action);
+            assertEquals("foreign", sent.getValue().value);
+            assertEquals(7, sent.getValue().revision);
+            org.junit.jupiter.api.Assertions.assertTrue(sent.getValue().requestId > 0);
+            assertStatus(screen, "gui.simplyscreens.status.linking");
+            // An unrelated GET refresh cannot acknowledge the link.
+            screen.updateAccess(BlockPos.ZERO, snapshot(8));
+            assertStatus(screen, "gui.simplyscreens.status.linking");
+            screen.updateAccess(BlockPos.ZERO, linkReply("private", false, sent.getValue().requestId));
+            assertEquals("private", signalValue(screen, "screenId"));
+            assertStatus(screen, "gui.simplyscreens.access.denied");
+        }
+    }
+
+    @Test
+    void onlyLatestLinkResponseCanReportSuccessAndDetachClearsId() throws ReflectiveOperationException {
+        ImageLoadScreen screen = new ImageLoadScreen(BlockPos.ZERO);
+        screen.updateAccess(BlockPos.ZERO, snapshot(7));
+        try (var packets = mockStatic(PacketRegistries.class)) {
+            screen.linkScreenId("first");
+            screen.linkScreenId("second");
+            var sent = ArgumentCaptor.forClass(ScreenAccessC2SPacket.class);
+            packets.verify(() -> PacketRegistries.sendToServer(sent.capture()), org.mockito.Mockito.times(2));
+            long first = sent.getAllValues().get(0).requestId, second = sent.getAllValues().get(1).requestId;
+            org.junit.jupiter.api.Assertions.assertNotEquals(first, second);
+            screen.updateAccess(BlockPos.ZERO, linkReply("first", true, first));
+            assertStatus(screen, "gui.simplyscreens.status.linking");
+            screen.updateAccess(BlockPos.ZERO, linkReply("second", true, second));
+            assertEquals("second", signalValue(screen, "screenId"));
+            assertStatus(screen, "gui.simplyscreens.status.linked");
+            screen.linkScreenId("");
+            packets.verify(() -> PacketRegistries.sendToServer(sent.capture()), org.mockito.Mockito.times(3));
+            long detach = sent.getAllValues().get(sent.getAllValues().size() - 1).requestId;
+            screen.updateAccess(BlockPos.ZERO, linkReply("", true, detach));
+            assertEquals("", signalValue(screen, "screenId"));
+            assertStatus(screen, "gui.simplyscreens.status.linked");
+            // A late response from an earlier request cannot overwrite the result.
+            screen.updateAccess(BlockPos.ZERO, linkReply("first", false, first));
+            assertEquals("", signalValue(screen, "screenId"));
+            assertStatus(screen, "gui.simplyscreens.status.linked");
+        }
+    }
+
+    private static Object signalValue(ImageLoadScreen screen, String name) throws ReflectiveOperationException {
+        var field = ImageLoadScreen.class.getDeclaredField(name);
+        field.setAccessible(true);
+        return ((Signal<?>) field.get(screen)).get();
+    }
+
+    private static void assertStatus(ImageLoadScreen screen, String key) throws ReflectiveOperationException {
+        assertEquals(net.minecraft.network.chat.Component.translatable(key), signalValue(screen, "status"));
+    }
+
+    private static String linkReply(String id, boolean success, long requestId) {
+        var state = ScreenAccessSnapshot.fromJson(snapshot(8)).state();
+        String key = id.isEmpty() ? ScreenNetworkService.display(UUID.randomUUID()) : ScreenNetworkService.network(id);
+        return new ScreenAccessSnapshot(key, state, true, success, false, java.util.Map.of(), requestId).toJson();
+    }
+
     private static CountingAccessSignal trackAccessSnapshots(ImageLoadScreen screen) throws ReflectiveOperationException {
         var field = ImageLoadScreen.class.getDeclaredField("accessView");
         field.setAccessible(true);
