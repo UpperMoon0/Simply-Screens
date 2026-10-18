@@ -9,6 +9,14 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class ImageLoadScreenPlaylistTest {
+    @org.junit.jupiter.api.io.TempDir static java.nio.file.Path preferences;
+    @org.junit.jupiter.api.BeforeAll static void isolatePreferences() {
+        System.setProperty("simplyscreens.ui.config.dir", preferences.toString());
+    }
+    @org.junit.jupiter.api.AfterAll static void restorePreferences() {
+        System.clearProperty("simplyscreens.ui.config.dir");
+    }
+
     void action(ImageLoadScreen screen,String action) throws Exception {
         var method=ImageLoadScreen.class.getDeclaredMethod("playlistAction",String.class);method.setAccessible(true);method.invoke(screen,action);
     }

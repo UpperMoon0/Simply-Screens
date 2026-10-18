@@ -9,6 +9,25 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class ImageLoadScreenPlaylistTest {
+    @org.junit.jupiter.api.io.TempDir static java.nio.file.Path preferences;
+    @org.junit.jupiter.api.BeforeAll static void isolatePreferences() {
+        System.setProperty("simplyscreens.ui.config.dir", preferences.toString());
+    }
+    @org.junit.jupiter.api.AfterAll static void restorePreferences() {
+        System.clearProperty("simplyscreens.ui.config.dir");
+    }
+
+    private org.mockito.MockedStatic<net.minecraft.client.Minecraft> clientInstance;
+    @org.junit.jupiter.api.BeforeEach void provideHeadlessClient() {
+        // The 26.1.2 Screen constructor reads the client font before init().
+        var client=mock(net.minecraft.client.Minecraft.class);
+        clientInstance=mockStatic(net.minecraft.client.Minecraft.class);
+        clientInstance.when(net.minecraft.client.Minecraft::getInstance).thenReturn(client);
+    }
+    @org.junit.jupiter.api.AfterEach void releaseHeadlessClient() {
+        if(clientInstance!=null) clientInstance.close();
+    }
+
     void action(ImageLoadScreen screen,String action) throws Exception {
         var method=ImageLoadScreen.class.getDeclaredMethod("playlistAction",String.class);method.setAccessible(true);method.invoke(screen,action);
     }
