@@ -9,7 +9,8 @@ import java.nio.file.Paths;
 import java.util.Properties;
 
 public class Config {
-    public static int VIEW_DISTANCE = 64;
+    /** Runtime client value loaded from the in-game personal display preferences. */
+    public static volatile int VIEW_DISTANCE = 64;
     public static int SCREEN_TICK_RATE = 100;
     public static boolean DISABLE_UPLOAD = false;
     public static boolean DISABLE_URL_DOWNLOAD = false;
@@ -52,7 +53,6 @@ public class Config {
             System.err.println("Failed to load config file: " + e.getMessage());
         }
 
-        VIEW_DISTANCE = clamp(getInt("viewDistance", VIEW_DISTANCE), 8, 512);
         SCREEN_TICK_RATE = clamp(getInt("screenTickRate", SCREEN_TICK_RATE), 1, 72_000);
         DISABLE_UPLOAD = getBoolean("disableUpload", DISABLE_UPLOAD);
         DISABLE_URL_DOWNLOAD = getBoolean("disableUrlDownload", DISABLE_URL_DOWNLOAD);
@@ -66,7 +66,6 @@ public class Config {
 
     private static void createDefaultConfig(Path path) throws IOException {
         Files.createDirectories(path.getParent());
-        properties.setProperty("viewDistance", String.valueOf(VIEW_DISTANCE));
         properties.setProperty("screenTickRate", String.valueOf(SCREEN_TICK_RATE));
         properties.setProperty("disableUpload", String.valueOf(DISABLE_UPLOAD));
         properties.setProperty("disableUrlDownload", String.valueOf(DISABLE_URL_DOWNLOAD));

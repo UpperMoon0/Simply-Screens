@@ -44,7 +44,7 @@ public class UpdateScreenSelectedImageC2SPacket {
             if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                 ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
                 if (anchor != null) {
-                    anchor.setImageId(imageId);
+                    com.nstut.simplyscreens.helpers.ScreenAccessService.select(player, anchor, imageId);
                 }
             }
         });

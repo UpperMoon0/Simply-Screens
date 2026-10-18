@@ -1,0 +1,22 @@
+{
+  "name": "Your First Screen",
+  "category": "simply_screens:getting_started",
+  "icon": "simply_screens:screen",
+  "sortnum": 1,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "Craft a Screen",
+      "text": "Craft a Screen using four iron ingots, four glass blocks and one amethyst shard. Place adjacent screen blocks in a rectangle to make a larger display."
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "simply_screens:screen"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Open the Screen",
+      "text": "Right-click the display to open its interface. Gallery selects saved images, Import adds images, and Settings controls links, image proportions, and access. A newly placed player display belongs to its placer."
+    }
+  ]
+}

@@ -34,6 +34,7 @@
     "packetweave": ">=${packetweave_version}"
   },
   "suggests": {
+    "patchouli": "*",
     "sable": ">=2.0.5 <3.0.0",
     "openui_mc": ">=0.0.8"
   },

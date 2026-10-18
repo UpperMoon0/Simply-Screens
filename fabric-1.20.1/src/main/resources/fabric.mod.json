@@ -37,6 +37,7 @@
     "simplyscreens-color.mixins.json"
   ],
   "suggests": {
+    "patchouli": "*",
     "openui_mc": ">=0.0.8"
   }
 }

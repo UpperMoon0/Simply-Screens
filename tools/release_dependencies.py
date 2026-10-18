@@ -28,6 +28,7 @@ def curseforge_relations(loader: str) -> dict:
     projects = [{"slug": "architectury-api", "type": "requiredDependency"},
                 {"slug": "openui-mc", "type": "requiredDependency"},
                 {"slug": PACKETWEAVE_SLUG, "projectID": PACKETWEAVE_PROJECT_ID, "type": "requiredDependency"}]
+    projects.append({"slug": "patchouli", "type": "optionalDependency"})
     if loader == "fabric":
         projects.append({"slug": "fabric-api", "type": "requiredDependency"})
     # CurseForge relations do not express minimum versions; loader metadata does.

@@ -26,12 +26,6 @@ public class FabricConfig {
             Properties props = new Properties();
             props.load(reader);
 
-            try {
-                int viewDistance = Integer.parseInt(props.getProperty("viewDistance", String.valueOf(Config.VIEW_DISTANCE)));
-                Config.VIEW_DISTANCE = viewDistance;
-            } catch (NumberFormatException e) {
-                SimplyScreens.LOGGER.error("Failed to parse view distance from config", e);
-            }
 
             try {
                 int screenTickRate = Integer.parseInt(props.getProperty("screenTickRate", String.valueOf(Config.SCREEN_TICK_RATE)));
@@ -58,7 +52,6 @@ public class FabricConfig {
     private static void writeConfig() {
         try (FileWriter writer = new FileWriter(CONFIG_FILE)) {
             Properties props = new Properties();
-            props.setProperty("viewDistance", String.valueOf(Config.VIEW_DISTANCE));
             props.setProperty("screenTickRate", String.valueOf(Config.SCREEN_TICK_RATE));
             props.setProperty("disableUpload", String.valueOf(Config.DISABLE_UPLOAD));
             props.setProperty("disableUrlDownload", String.valueOf(Config.DISABLE_URL_DOWNLOAD));

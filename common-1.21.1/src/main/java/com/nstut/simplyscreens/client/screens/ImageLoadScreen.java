@@ -31,7 +31,6 @@ import com.nstut.simplyscreens.network.PacketRegistries;
 import com.nstut.simplyscreens.network.RemoveImageC2SPacket;
 import com.nstut.simplyscreens.network.RequestImageListC2SPacket;
 import com.nstut.simplyscreens.network.UpdateScreenAspectRatioC2SPacket;
-import com.nstut.simplyscreens.network.UpdateScreenIdC2SPacket;
 import com.nstut.simplyscreens.network.UpdateScreenSelectedImageC2SPacket;
 import com.nstut.simplyscreens.network.UploadImageChunkC2SPacket;
 import net.minecraft.client.Minecraft;
@@ -86,8 +85,166 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     private final Computed<String> noMatchesText = Signals.computed(() ->
             Component.translatable("gui.simplyscreens.gallery.no_matches", search.get()).getString());
 
+    private final Signal<Double> personalViewDistance = Signals.of((double)com.nstut.simplyscreens.client.ui.SimplyScreensUiPreferences.getViewDistance());
+    private Subscription displaySubscription = Subscription.EMPTY;
     private Subscription aspectSubscription = Subscription.EMPTY;
+    private Subscription settingsSubscription = Subscription.EMPTY;
     private boolean applyingRemoteState;
+    private static final java.util.concurrent.atomic.AtomicLong LINK_REQUEST_IDS = new java.util.concurrent.atomic.AtomicLong();
+    private long pendingLinkRequest;
+    private String accessKey = "";
+    private long accessRevision;
+    private final Signal<String> accessSummary = Signals.of("");
+    private final Signal<Boolean> localOverride = Signals.of(false);
+    private final Signal<com.nstut.simplyscreens.ScreenAccessSnapshot> accessView = Signals.of(null);
+    private final Signal<Boolean> accessManager = Signals.of(false);
+    private final Signal<Boolean> accessUnclaimed = Signals.of(true);
+    private final Signal<List<UUID>> trustedPlayers = Signals.of(List.of());
+    private final Signal<Boolean> trustedPlayersEmpty = Signals.of(true);
+    private final Signal<String> viewPolicy = Signals.of("PUBLIC");
+    private final Signal<String> controlPolicy = Signals.of("OWNER_ONLY");
+
+    public void updateAccess(BlockPos pos, String json) {
+        if (!blockEntityPos.equals(pos)) return;
+        var snapshot = com.nstut.simplyscreens.ScreenAccessSnapshot.fromJson(json);
+        if (snapshot.requestId() != 0 && snapshot.requestId() != pendingLinkRequest) return;
+        accessKey = snapshot.key(); accessRevision = snapshot.state().revision();
+        accessManager.set(snapshot.manage()); localOverride.set(snapshot.localOverride());
+        viewPolicy.set(snapshot.state().view().name()); controlPolicy.set(snapshot.state().control().name());
+        accessView.set(snapshot);
+        accessUnclaimed.set(snapshot.state().owner() == null);
+        trustedPlayers.set(snapshot.state().trusted().stream().sorted().toList());
+        trustedPlayersEmpty.set(trustedPlayers.get().isEmpty());
+        accessSummary.set(snapshot.state().owner() == null
+                ? accessText("unclaimed").getString() : playerName(snapshot.state().owner()));
+        if (snapshot.requestId() != 0 && snapshot.requestId() == pendingLinkRequest) {
+            pendingLinkRequest = 0;
+            screenId.set(snapshot.key().startsWith("network/") ? snapshot.key().substring("network/".length()) : "");
+            if (snapshot.success()) status.set(Component.translatable("gui.simplyscreens.status.linked"));
+        }
+        if (!snapshot.success()) showError(Component.translatable("gui.simplyscreens.access.denied"));
+    }
+    protected void accessAction(String action, String value) {
+        PacketRegistries.sendToServer(new com.nstut.simplyscreens.network.ScreenAccessC2SPacket(
+                blockEntityPos, accessKey, accessRevision, action, value, "LINK".equals(action) ? pendingLinkRequest : 0));
+    }
+    private static Component accessText(String key, Object... args) {
+        return Component.translatable("gui.simplyscreens.access." + key, args);
+    }
+    private String playerName(UUID id) {
+        var client = Minecraft.getInstance();
+        if (client != null && client.player != null && id.equals(client.player.getUUID())) return accessText("you").getString();
+        var snapshot = accessView.get();
+        return snapshot == null ? id.toString() : snapshot.playerName(id);
+    }
+    private UIComponent buildAccess() {
+        return Ui.column(
+                Ui.heading(accessText("title")),
+                Ui.row(Ui.text(accessText("owner")), Ui.text(accessSummary).marquee().flex(),
+                        Ui.switcher(accessManager).when(true, () -> Ui.switcher(accessUnclaimed)
+                                .when(true, () -> Ui.button(accessText("claim"), () -> accessAction("CLAIM", "")).small().tooltip(accessText("claim.help")))
+                                .when(false, () -> Ui.button(Component.literal("..."), () -> playerPolicyDialog(true))
+                                        .ghost().small().tooltip(accessText("transfer_help"))))).gap(6),
+                buildPolicyControl("VIEW", "view_label", viewPolicy),
+                buildPolicyControl("CONTROL", "control_label", controlPolicy),
+                Ui.row(Ui.text(() -> accessText("trusted_count", accessView.get() == null ? 0 : accessView.get().state().trusted().size()))
+                                .marquee().flex(),
+                        Ui.switcher(accessManager).when(true, () -> Ui.button(accessText("manage"), this::manageTrustedPlayers)
+                                .ghost().small().tooltip(accessText("trusted_help")).key("settings.trusted"))).gap(6),
+                Ui.text(accessText("help")).wrap(),
+                Ui.switcher(accessManager).when(true, () -> Ui.button(() -> accessText("override",
+                        Component.translatable(localOverride.get() ? "options.on" : "options.off")),
+                        () -> accessAction("OVERRIDE", Boolean.toString(!localOverride.get()))).small()
+                        .tooltip(accessText("override.help")))
+        ).gap(8).key("settings.access");
+    }
+    private UIComponent buildPolicyControl(String action, String label, Signal<String> signal) {
+        return Ui.row(Ui.text(accessText(label)).marquee().flex().tooltip(accessText(label + ".help")),
+                Ui.switcher(accessManager)
+                        .when(true, () -> Ui.button(() -> policyLabel(signal.get()), () -> chooseAccessMode(action))
+                                .ghost().small().tooltip(accessText(label + ".help")).key("settings.access_" + action.toLowerCase(Locale.ROOT)))
+                        .when(false, () -> Ui.text(() -> policyLabel(signal.get())).marquee().flex().tooltip(accessText(label + ".help")))
+        ).gap(6).tooltip(accessText("policy_help"));
+    }
+    private void chooseAccessMode(String action) {
+        if (!accessManager.get()) return;
+        var client = Minecraft.getInstance();
+        var mouse = client.mouseHandler;
+        var window = client.getWindow();
+        var menu = Ui.contextMenu((int) (mouse.xpos() * width / window.getScreenWidth()),
+                (int) (mouse.ypos() * height / window.getScreenHeight()));
+        for (var policy : com.nstut.simplyscreens.ScreenNetworkService.Policy.values()) {
+            menu.item(policyLabel(policy.name()), () -> selectPolicy(action, policy.name()));
+        }
+        menu.show(uiRuntime().overlays());
+    }
+    void selectPolicy(String action, String policy) {
+        if (!accessManager.get()) return;
+        com.nstut.simplyscreens.ScreenNetworkService.Policy.valueOf(policy);
+        policySignal(action).set(policy);
+        accessAction(action, policySignal(action).get());
+    }
+    private static Component policyLabel(String policy) {
+        return Component.translatable("gui.simplyscreens.access.policy." + policy.toLowerCase(Locale.ROOT));
+    }
+
+    private Signal<String> policySignal(String action) {
+        return switch (action) {
+            case "VIEW" -> viewPolicy;
+            case "CONTROL" -> controlPolicy;
+            default -> throw new IllegalArgumentException("Unknown policy: " + action);
+        };
+    }
+    private void playerPolicyDialog(boolean transfer) {
+        if (!accessManager.get()) return;
+        Signal<String> input = Signals.of("");
+        Signal<String> error = Signals.of("");
+        Card dialog = Ui.card().elevated(true).outlined(true).padding(12);
+        OverlayHandle[] handle = { null };
+        dialog.addChild(Ui.column(
+                Ui.heading(accessText(transfer ? "change_owner" : "add_trusted")),
+                Ui.text(accessText(transfer ? "transfer_help" : "player_help")).wrap(),
+                Ui.textField(input).maxLength(36).placeholder(accessText("player_placeholder").getString()).fillWidth().tooltip(accessText("player_help")),
+                Ui.text(error).wrap(),
+                Ui.row(Ui.button(Component.translatable("gui.simplyscreens.cancel"), () -> {
+                    if (handle[0] != null) handle[0].close();
+                }).ghost(), Ui.button(accessText(transfer ? "transfer" : "add"), () -> {
+                    String value = input.get().trim();
+                    if (com.nstut.simplyscreens.ScreenPlayerInput.resolve(value, name -> new UUID(0, 0)) == null) {
+                        error.set(accessText("invalid_player").getString()); return;
+                    }
+                    if (handle[0] != null) handle[0].close();
+                    accessAction(transfer ? "TRANSFER" : "TRUST", value);
+                }).primary().tooltip(accessText(transfer ? "transfer_help" : "player_help"))).gap(6)).gap(8));
+        dialog.width(Math.min(320, Math.max(160, width - 40)));
+        handle[0] = Dialog.show(uiRuntime().overlays(), dialog);
+    }
+    private void manageTrustedPlayers() {
+        if (!accessManager.get()) return;
+        Card dialog = Ui.card().elevated(true).outlined(true).padding(12);
+        OverlayHandle[] handle = { null };
+        dialog.addChild(Ui.column(
+                Ui.heading(accessText("manage_trusted")),
+                Ui.text(accessText("trusted_help")).wrap(),
+                Ui.switcher(trustedPlayersEmpty)
+                        .when(true, () -> Ui.text(accessText("none_trusted")))
+                        .when(false, () -> Ui.list(trustedPlayers, id -> Ui.row(
+                                Ui.text(playerName(id)).marquee().flex().tooltip(id.toString()),
+                                Ui.button(accessText("remove"), () -> accessAction("UNTRUST", id.toString())).ghost().small().tooltip(accessText("remove.help"))
+                        ).gap(6)).key(UUID::toString).itemHeight(24).gap(3)
+                                .height(Math.min(160, Math.max(24, Math.min(trustedPlayers.get().size() * 27, height - 180))))),
+                Ui.row(Ui.button(accessText("add_trusted"), () -> {
+                    if (accessView.get() != null && accessView.get().state().trusted().size() >= 64) {
+                        showError(accessText("trust_limit")); return;
+                    }
+                    if (handle[0] != null) handle[0].close();
+                    playerPolicyDialog(false);
+                }).ghost().tooltip(accessText("player_help")), Ui.button(Component.translatable("gui.simplyscreens.close"), () -> {
+                    if (handle[0] != null) handle[0].close();
+                }).ghost()).gap(6)).gap(8));
+        dialog.width(Math.min(320, Math.max(160, width - 40)));
+        handle[0] = Dialog.show(uiRuntime().overlays(), dialog);
+    }
 
     public ImageLoadScreen(BlockPos blockEntityPos) {
         super(Component.translatable("gui.simplyscreens.screen.title"));
@@ -97,13 +254,27 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     @Override
     protected void init() {
         aspectSubscription.close();
+        displaySubscription.close();
         fetchDataFromBlockEntity();
         super.init();
         aspectSubscription = maintainAspectRatio.subscribe(value -> {
             if (applyingRemoteState || !hasAnchor()) return;
             PacketRegistries.sendToServer(new UpdateScreenAspectRatioC2SPacket(blockEntityPos, value));
         });
+        displaySubscription = personalViewDistance.subscribe(value -> {
+            if (!com.nstut.simplyscreens.client.ui.SimplyScreensUiPreferences.setViewDistance((int)Math.round(value)))
+                showError(Component.translatable("gui.simplyscreens.personal.save_failed"));
+        });
+        bindSettingsRefresh();
         refreshImageList();
+        accessAction("GET", "");
+    }
+
+    void bindSettingsRefresh() {
+        settingsSubscription.close();
+        settingsSubscription = tab.subscribe(value -> {
+            if (value == Tab.SETTINGS) accessAction("GET", "");
+        });
     }
 
     @Override
@@ -216,27 +387,40 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         return card;
     }
 
+    private UIComponent buildPersonalSettings() {
+        Component help = Component.translatable("gui.simplyscreens.personal.view_distance.help");
+        return Ui.card(Ui.column(
+            Ui.heading(Component.translatable("gui.simplyscreens.personal.title")),
+            Ui.text(Component.translatable("gui.simplyscreens.personal.scope")).wrap(),
+            Ui.row(Ui.text(Component.translatable("gui.simplyscreens.personal.view_distance")).wrap().flex().tooltip(help),
+                Ui.text(() -> Component.literal(Math.round(personalViewDistance.get()) + " blocks")).tooltip(help)).gap(6).align(Alignment.CENTER),
+            Ui.slider(personalViewDistance, 8, 512).fillWidth().tooltip(help).key("settings.view_distance")
+        ).gap(6)).outlined(true).padding(10).key("settings.personal");
+    }
+
     private UIComponent buildSettings() {
         UIComponent idField = Ui.textField(screenId)
                 .placeholder(Component.translatable("gui.simplyscreens.screen.id.placeholder").getString())
                 .maxLength(ScreenRegistryHelper.MAX_SCREEN_ID_LENGTH)
-                .flex();
-        ButtonWidget link = Ui.button(
-                Component.translatable("gui.simplyscreens.screen.link"), this::onLinkScreenId).primary();
+                .tooltip(Component.translatable("gui.simplyscreens.screen.id.tooltip")).flex();
+        UIComponent link = Ui.button(
+                Component.translatable("gui.simplyscreens.screen.link"), this::onLinkScreenId).primary()
+                .tooltip(Component.translatable("gui.simplyscreens.screen.link.tooltip"));
         Card card = Ui.card().outlined(true).padding(12);
         card.addChild(Ui.column(
                 Ui.text(Component.translatable("gui.simplyscreens.screen.id.label")),
                 Ui.row(idField, link).gap(6).align(Alignment.CENTER),
                 Ui.divider(),
                 Ui.row(
-                        Ui.toggle(maintainAspectRatio),
+                        Ui.toggle(maintainAspectRatio).tooltip(Component.translatable("gui.simplyscreens.screen.maintain_aspect.tooltip")),
                         Ui.text(Component.translatable("gui.simplyscreens.screen.maintain_aspect"))
+                                .tooltip(Component.translatable("gui.simplyscreens.screen.maintain_aspect.tooltip"))
                 ).gap(7).align(Alignment.CENTER),
                 Ui.text(Component.translatable("gui.simplyscreens.screen.maintain_aspect.help"))
                         .wrap()
                         .maxLines(3)
-        ).gap(8));
-        return Ui.scroll(card);
+        ).gap(8).child(Ui.divider()).child(buildAccess()));
+        return Ui.scroll(Ui.column(buildPersonalSettings(), card).gap(10)).key("settings.content");
     }
 
     private UIComponent buildImport() {
@@ -281,9 +465,13 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
             showError(Component.translatable("gui.simplyscreens.screen.id.error.invalid"));
             return;
         }
-        screenId.set(normalized);
-        PacketRegistries.sendToServer(new UpdateScreenIdC2SPacket(blockEntityPos, normalized, displayedImageId.get()));
-        status.set(Component.translatable("gui.simplyscreens.status.linked"));
+        linkScreenId(normalized);
+    }
+
+    void linkScreenId(String normalized) {
+        pendingLinkRequest = LINK_REQUEST_IDS.incrementAndGet();
+        status.set(Component.translatable("gui.simplyscreens.status.linking"));
+        accessAction("LINK", normalized);
     }
 
     private void confirmRemove(ImageEntry image) {
@@ -459,6 +647,8 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     @Override
     public void removed() {
         aspectSubscription.close();
+        displaySubscription.close();
+        settingsSubscription.close();
         galleryState.close();
         filteredImages.close();
         super.removed();

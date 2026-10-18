@@ -66,7 +66,7 @@ public class UpdateScreenSelectedImageC2SPacket implements CustomPacketPayload {
             if (blockEntity instanceof ScreenBlockEntity screenBlockEntity) {
                 ScreenBlockEntity anchor = screenBlockEntity.getAnchorEntity();
                 if (anchor != null) {
-                    anchor.setImageId(packet.imageId);
+                    com.nstut.simplyscreens.helpers.ScreenAccessService.select(player, anchor, packet.imageId);
                 }
             }
         });

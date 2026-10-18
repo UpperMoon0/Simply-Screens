@@ -1,0 +1,22 @@
+{
+  "name": "Using This Guide",
+  "category": "simply_screens:getting_started",
+  "icon": "minecraft:book",
+  "sortnum": 0,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "Get the Guide",
+      "text": "Install Patchouli for your Minecraft version and loader on the server and clients. This guide appears in the Simply Screens creative tab. Craft another copy with a book and an amethyst shard."
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "simply_screens:guide_book"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Optional Guide",
+      "text": "Simply Screens works without Patchouli. Only this guide and its recipe are unavailable. This release displays static images; playlists and slideshow controls are not included."
+    }
+  ]
+}

@@ -84,6 +84,8 @@ public class ScreenBlock extends Block implements EntityBlock {
     @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
         super.setPlacedBy(level, pos, state, placer, stack);
+        if (!level.isClientSide && placer instanceof net.minecraft.world.entity.player.Player && level.getBlockEntity(pos) instanceof ScreenBlockEntity screen)
+            screen.claimPlaced(placer.getUUID());
         if (!level.isClientSide) {
             Direction facing = state.getValue(FACING);
             ServerTickScheduler.schedule(() -> refreshScreens(level, pos, facing));

@@ -60,6 +60,7 @@ public class ClientSetup implements ClientModInitializer {
     }
 
     private static void onClientTick(net.minecraft.client.Minecraft client) {
+        if (Boolean.getBoolean("simplyscreens.personalSettingsTest")) { com.nstut.simplyscreens.client.testing.PersonalSettingsProbe.tick(client); return; }
         if (client.player == null || client.level == null) return;
         if (LiveJoinTestProtocol.isEnabled() && !UiSmokeTest.tick(client)) return;
         LiveJoinTestProtocol.markCompleted();

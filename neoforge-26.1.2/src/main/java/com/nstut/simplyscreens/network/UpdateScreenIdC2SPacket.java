@@ -75,7 +75,7 @@ public class UpdateScreenIdC2SPacket implements CustomPacketPayload {
             if (player == null) {
                 return;
             }
-            if (!ScreenPacketSecurity.canModify(player, packet.pos)) return;
+            if (!ScreenPacketSecurity.canManage(player, packet.pos)) return;
             ServerLevel level = player.level();
             var blockEntity = level.getBlockEntity(packet.pos);
 
@@ -87,12 +87,9 @@ public class UpdateScreenIdC2SPacket implements CustomPacketPayload {
                     if (packet.screenId != null && !packet.screenId.isBlank() && normalizedId.isEmpty()) return;
                     if (packet.selectedImageId != null && !ServerImageManager.canPlayerAccessImage(
                             player.level().getServer(), packet.selectedImageId, player.getUUID().toString())) return;
-                    if (!normalizedId.equals(anchor.getScreenId())) {
-                        if (!normalizedId.isEmpty() && !ScreenRegistry.claimScreenId(normalizedId, player.getUUID(), administrator)) return;
-                        anchor.setScreenId(normalizedId);
-                    }
+                    if (!com.nstut.simplyscreens.helpers.ScreenAccessService.relink(player, anchor, normalizedId)) return;
                     if (packet.selectedImageId != null) {
-                        anchor.setImageId(packet.selectedImageId);
+                        com.nstut.simplyscreens.helpers.ScreenAccessService.select(player, anchor, packet.selectedImageId);
                     }
                 }
             }

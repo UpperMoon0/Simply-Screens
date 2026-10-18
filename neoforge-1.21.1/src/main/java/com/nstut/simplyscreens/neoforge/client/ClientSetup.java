@@ -78,6 +78,7 @@ public class ClientSetup {
     }
 
     private static void onClientTick(Minecraft client) {
+        if (Boolean.getBoolean("simplyscreens.personalSettingsTest")) { com.nstut.simplyscreens.client.testing.PersonalSettingsProbe.tick(client); return; }
         if (client.player == null || client.level == null) return;
         if (LiveJoinTestProtocol.isEnabled() && !UiSmokeTest.tick(client)) return;
         LiveJoinTestProtocol.markCompleted();

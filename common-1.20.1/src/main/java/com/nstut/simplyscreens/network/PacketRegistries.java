@@ -22,11 +22,16 @@ public final class PacketRegistries {
     private static final ResourceLocation INVALIDATE_IMAGE = id("invalidate_image");
     private static final ResourceLocation CONFIG_SYNC = id("server_config_sync");
 
+    private static final ResourceLocation ACCESS_C2S = id("screen_access_c2s");
+    private static final ResourceLocation ACCESS_S2C = id("screen_access_s2c");
+
+
     private PacketRegistries() { }
 
     private static ResourceLocation id(String path) { return new ResourceLocation(SimplyScreens.MOD_ID, path); }
 
     public static void register() {
+        NetworkManager.registerReceiver(NetworkManager.c2s(), ACCESS_C2S, (buf, ctx) -> new ScreenAccessC2SPacket(buf).handle(() -> ctx));
         NetworkManager.registerReceiver(NetworkManager.c2s(), UPDATE_SELECTED, (buf, ctx) -> new UpdateScreenSelectedImageC2SPacket(buf).handle(() -> ctx));
         NetworkManager.registerReceiver(NetworkManager.c2s(), UPDATE_ASPECT, (buf, ctx) -> new UpdateScreenAspectRatioC2SPacket(buf).handle(() -> ctx));
         NetworkManager.registerReceiver(NetworkManager.c2s(), REQUEST_DOWNLOAD, (buf, ctx) -> new RequestImageDownloadC2SPacket(buf).handle(() -> ctx));
@@ -38,6 +43,7 @@ public final class PacketRegistries {
     }
 
     public static void registerS2CPackets() {
+        NetworkManager.registerReceiver(NetworkManager.s2c(), ACCESS_S2C, (buf, ctx) -> new ScreenAccessS2CPacket(buf).handle(() -> ctx));
         NetworkManager.registerReceiver(NetworkManager.s2c(), UPDATE_SCREEN, (buf, ctx) -> new UpdateScreenS2CPacket(buf).handle(() -> ctx));
         NetworkManager.registerReceiver(NetworkManager.s2c(), UPDATE_LIST, (buf, ctx) -> new UpdateImageListS2CPacket(buf).handle(() -> ctx));
         NetworkManager.registerReceiver(NetworkManager.s2c(), DOWNLOAD_CHUNK, (buf, ctx) -> new ImageDownloadChunkS2CPacket(buf).handle(() -> ctx));
@@ -56,6 +62,8 @@ public final class PacketRegistries {
     }
 
     private static ResourceLocation packetId(Object packet) {
+        if (packet instanceof ScreenAccessC2SPacket) return ACCESS_C2S;
+        if (packet instanceof ScreenAccessS2CPacket) return ACCESS_S2C;
         if (packet instanceof UpdateScreenSelectedImageC2SPacket) return UPDATE_SELECTED;
         if (packet instanceof UpdateScreenS2CPacket) return UPDATE_SCREEN;
         if (packet instanceof UpdateScreenAspectRatioC2SPacket) return UPDATE_ASPECT;
@@ -73,7 +81,9 @@ public final class PacketRegistries {
     }
 
     private static void write(Object packet, FriendlyByteBuf buf) {
-        if (packet instanceof UpdateScreenSelectedImageC2SPacket p) p.write(buf);
+        if (packet instanceof ScreenAccessC2SPacket p) p.write(buf);
+        else if (packet instanceof ScreenAccessS2CPacket p) p.write(buf);
+        else if (packet instanceof UpdateScreenSelectedImageC2SPacket p) p.write(buf);
         else if (packet instanceof UpdateScreenS2CPacket p) p.write(buf);
         else if (packet instanceof UpdateScreenAspectRatioC2SPacket p) p.write(buf);
         else if (packet instanceof RequestImageDownloadC2SPacket p) p.write(buf);

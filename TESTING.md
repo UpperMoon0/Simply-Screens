@@ -162,3 +162,12 @@ Those files and the Companion dependency are also unchanged on upstream main
 `227077f7f528c9beab1336a9fad2e27b754e4e70`. This supports the 2.x range;
 it does not prove compatibility with every future release. The metadata tests
 and transform tests do not establish a full All of Create Aeronautics 2.8 playtest.
+# Network access regressions (0.9.0)
+
+`testAllVersions` includes `ScreenNetworkServiceTest` and `ScreenAccessServiceTest` for all three Minecraft adapters. They test permission separation, legacy migration, empty-content restart recovery, backup corruption and failed-write rollback, immutable/bounded trust membership, private download packet rejection before file scheduling, tracked displays, chunk/dimension/disconnect revocation, replaced tiles, local content overrides, and source/destination ownership on relinks. See [the access guide](docs/network-access.md) for the complete contract and manual multiplayer limits. Existing live-join, framebuffer and shader checks still apply to all five loader targets.
+
+## Optional Patchouli guide
+
+`tools/test_patchouli_resources.py` covers optional loader metadata, loader-gated recipes (including rejection of missing conditions), guide references, page text budgets, and the transparent 64x64 texture format. `tools/assert_production_jar.py` also verifies physical book discovery, version-specific book models, contents, and recipe identity in each production jar. Use `-PscreensPatchouli=true` for native development runs with Patchouli; omit it to verify Screens without the guide dependency. See [guide integration](docs/patchouli.md). Page length checks are conservative resource checks, not live font/layout validation.
+
+Personal display preferences have core persistence/migration coverage. Start a client with JVM flag `-Dsimplyscreens.personalSettingsTest=true` to run eight native UI cases in both themes and four sizes. The probe verifies tooltip visibility, real slider input, disk persistence and reopening without a world or management permissions, saves screenshots, prints `SIMPLYSCREENS_PERSONAL_SETTINGS_PASS`, then exits. Use a disposable game directory.

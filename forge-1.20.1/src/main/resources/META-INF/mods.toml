@@ -49,3 +49,11 @@ mandatory = true
 versionRange = "[${packetweave_version},)"
 ordering = "AFTER"
 side = "BOTH"
+
+# Optional in-game guide; Screens never links Patchouli classes.
+[[dependencies.simply_screens]]
+modId = "patchouli"
+mandatory = false
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "BOTH"

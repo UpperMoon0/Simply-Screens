@@ -1,0 +1,12 @@
+{
+  "name": "Simply Screens Guide",
+  "landing_text": "Build displays, import images, link screens, and manage access. Choose a chapter to begin.",
+  "version": "1",
+  "creative_tab": "simply_screens:tab",
+  "use_resource_pack": true,
+  "model": "simply_screens:guide_book",
+  "book_texture": "patchouli:textures/gui/book_blue.png",
+  "show_progress": false,
+  "show_toasts": false,
+  "use_blocky_font": true
+}

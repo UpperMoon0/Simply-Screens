@@ -2,7 +2,7 @@
 
 A Minecraft mod that adds configurable screen blocks capable of displaying images from local files or the web, supporting dynamic multi-block structures and synchronized screen networks.
 
-The client interface is powered by **OpenUI MC 0.0.8 or newer**, which is a required client-side dependency matching your Minecraft version and loader. On Fabric, the OpenUI dependency is declared for both sides because Fabric metadata cannot scope dependencies to the client, so a dedicated server also needs the OpenUI mod installed to satisfy metadata checks even though Simply Screens' server logic never uses it.
+The client interface is powered by **OpenUI MC 0.0.8 or newer**, which is a required client-side dependency matching your Minecraft version and loader. Dedicated servers do not require OpenUI; Fabric checks the dependency during client startup.
 
 [![CurseForge](https://cf.way2muchnoise.eu/simply-screens.svg)](https://www.curseforge.com/minecraft/mc-mods/simply-screens)
 
@@ -16,10 +16,13 @@ Minecraft 1.21.1 builds support optional **Sable 2.0.5 and 2.0.6** on Fabric and
 - **Dynamic Multi-Block Scaling:** Combine multiple screen blocks in any rectangle (up to 64x64) — the display automatically adapts and spans across all blocks.
 - **Synchronized Screen Networks:** Group screens using a **Screen ID** to display identical media in real-time across your server.
 - **Aspect Ratio Control:** Choose between full stretching or aspect-ratio preservation.
+- **Ownership and Access:** Own standalone displays and networks, trust players, transfer ownership, and configure separate viewing/content-control policies in Settings. Management and relinking stay with owners and operators.
+- **Local Image Overrides:** Let an individual linked display show different content while keeping its aspect ratio and the rest of the network independent.
 - **In-Game Media Management:**
   - Upload PNG, JPG, and JPEG images directly from your computer via an in-game file dialog.
   - Download images from web URLs with built-in SSRF and security filtering.
   - Browse, select, and manage server-stored images in the screen GUI.
+- **Optional In-Game Guide:** Install Patchouli to get a Simply Screens guide in the creative tab, or craft it with a book and an amethyst shard. Covers images, links, display settings, and access. Screens also works without Patchouli.
 - **OpenUI Interface:** Responsive gallery, keyboard-friendly controls, removal confirmation, and a persisted live light/dark theme.
 - **Security & Hardening:**
   - Server-authoritative distance, permission, and ownership validation.
@@ -27,18 +30,18 @@ Minecraft 1.21.1 builds support optional **Sable 2.0.5 and 2.0.6** on Fabric and
   - Per-player upload concurrency and rate limits, bounded processing queues, and full image decode checks.
   - Atomic registry operations with automated `.bak` backups and crash recovery.
 
-## Installation and upgrade to 0.8.13
+## Installation and upgrade to 0.9.0
 
 Install the artifact matching **both** your Minecraft version and loader. The following mods are required:
 
 - **PacketWeave 0.1.1 or newer**, matching the same Minecraft version and loader, on the client **and** dedicated server.
 - **Architectury API**, matching the same Minecraft version and loader, on both sides.
 - **Fabric API** on Fabric.
-- **OpenUI MC 0.0.8 or newer** on clients; Fabric dedicated servers also need it to satisfy Fabric dependency metadata.
+- **OpenUI MC 0.0.8 or newer** on clients.
 
 Download PacketWeave from its [release assets](https://github.com/UpperMoon0/PacketWeave/releases) or its approved [CurseForge files](https://www.curseforge.com/minecraft/mc-mods/packetweave/files). Do not install the development-only API/core jar as a substitute for the native loader jar. Missing PacketWeave or a version below 0.1.1 must be resolved before the loader can start Screens.
 
-When upgrading from 0.8.9, add PacketWeave to every client and server before launching. Keep the existing world, `simply_screens_images` directory, screen registry, and configuration. This update does not require a media-file or world migration, and keeps the existing native Screens packet format. Back up worlds before any mod upgrade.
+When upgrading from 0.8.9, add PacketWeave to every client and server before launching. Keep the existing world, `simply_screens_images` directory, screen registry, and configuration. Version 0.9.0 automatically imports existing registry images/owners into a versioned `screen_networks.json`; existing media files and Screen IDs are preserved. Legacy unowned networks and blank-ID displays require an operator claim before editing. New player-placed displays belong to their placer. Added access packets require matching client/server Screens versions. Back up worlds before upgrading; see [ownership, migration, and recovery](docs/network-access.md) before changing permissions or restoring data.
 
 ## Shader compatibility in 0.8.11
 
@@ -53,6 +56,8 @@ to avoid double blending. Packs that rewrite depth, warp geometry, or apply late
 postprocessing can exceed this guarantee. The precise contract, empirical glow
 controls and reproducible development setup are documented in the matrix above.
 Upgrading from 0.8.10 needs no additional required mod or saved-data migration.
+
+Patchouli is optional. Install the matching loader/version on the server and clients to use the guide; see [guide integration and development setup](docs/patchouli.md).
 
 ## Getting Started
 
@@ -120,3 +125,10 @@ OpenUI MC is required on clients only. Dedicated servers can run without it.
 On Fabric, the client requirement is checked before client initialization; missing or
 incompatible OpenUI versions produce an installation error before the UI loads.
 Forge and NeoForge declare the dependency with `side="CLIENT"`.
+
+### Personal display settings
+
+Open a screen and choose **Settings > Your display settings** to change screen render distance
+(8-512 blocks). It applies immediately to all screens for you, saves on this device, and works
+without screen-management permissions. Existing mod-config values are imported once. Server
+visibility policies still apply. See [the settings audit](docs/settings.md) for all configuration options.

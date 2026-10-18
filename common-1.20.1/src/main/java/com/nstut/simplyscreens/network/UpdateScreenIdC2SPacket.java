@@ -51,7 +51,7 @@ public class UpdateScreenIdC2SPacket {
             if (player == null) {
                 return;
             }
-            if (!ScreenPacketSecurity.canModify(player, pos)) return;
+            if (!ScreenPacketSecurity.canManage(player, pos)) return;
             ServerLevel level = player.serverLevel();
             BlockEntity blockEntity = level.getBlockEntity(pos);
 
@@ -62,12 +62,9 @@ public class UpdateScreenIdC2SPacket {
                     if (screenId != null && !screenId.isBlank() && normalizedId.isEmpty()) return;
                     if (selectedImageId != null && !ServerImageManager.canPlayerAccessImage(
                             player.serverLevel().getServer(), selectedImageId, player.getUUID().toString())) return;
-                    if (!normalizedId.equals(anchor.getScreenId())) {
-                        if (!normalizedId.isEmpty() && !ScreenRegistry.claimScreenId(normalizedId, player.getUUID(), player.hasPermissions(2))) return;
-                        anchor.setScreenId(normalizedId);
-                    }
+                    if (!com.nstut.simplyscreens.helpers.ScreenAccessService.relink(player, anchor, normalizedId)) return;
                     if (selectedImageId != null) {
-                        anchor.setImageId(selectedImageId);
+                        com.nstut.simplyscreens.helpers.ScreenAccessService.select(player, anchor, selectedImageId);
                     }
                 }
             }

@@ -117,6 +117,7 @@ public final class VisualClient {
             // Clouds and their fog are unrelated occluders; only the explicit
             // foreground blocks belong to this depth-regression scene.
             mc.options.cloudStatus().set(net.minecraft.client.CloudStatus.OFF);
+            com.nstut.simplyscreens.client.ui.SimplyScreensUiPreferences.getViewDistance();
             Config.VIEW_DISTANCE = 512;
             if (mc.getWindow().getWidth() != VIEWPORT_WIDTH || mc.getWindow().getHeight() != VIEWPORT_HEIGHT) {
                 mc.getWindow().setWindowed(VIEWPORT_WIDTH, VIEWPORT_HEIGHT);

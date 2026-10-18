@@ -1,0 +1,25 @@
+// Resource-only optional integration; never package Patchouli or require its API.
+// BookRegistry discovers definitions from each physical loader mod root.
+if (!project.name.endsWith('26.1.2')) {
+    processResources {
+        from('../common/src/main/resources/data/simply_screens/patchouli_books') {
+            into 'data/simply_screens/patchouli_books'
+            if (project.name.endsWith('1.20.1')) {
+                filter { line -> line.replace('"model": "simply_screens:guide_book"', '"model": "simply_screens:item/guide_book"') }
+            }
+        }
+    }
+}
+// Opt in to native development runs; production metadata remains optional.
+if (providers.gradleProperty('screensPatchouli').map { it.toBoolean() }.getOrElse(false)) {
+    repositories { maven { url = 'https://maven.blamejared.com'; content { includeGroup 'vazkii.patchouli' } } }
+    def versions = [
+        'fabric-1.20.1': 'Patchouli:1.20.1-85-FABRIC',
+        'forge-1.20.1': 'Patchouli:1.20.1-85-FORGE',
+        'fabric-1.21.1': 'Patchouli:1.21.1-93-FABRIC',
+        'neoforge-1.21.1': 'Patchouli:1.21.1-93-NEOFORGE',
+        'neoforge-26.1.2': 'patchouli-neoforge:26.1-94'
+    ]
+    dependencies.add(project.name.endsWith('26.1.2') ? 'localRuntime' : 'modLocalRuntime',
+            "vazkii.patchouli:${versions[project.name]}")
+}

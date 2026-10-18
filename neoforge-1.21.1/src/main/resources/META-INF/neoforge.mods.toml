@@ -57,3 +57,11 @@ side = "BOTH"
 
 [[mixins]]
 config = "simplyscreens-color.mixins.json"
+
+# Optional in-game guide; Screens never links Patchouli classes.
+[[dependencies.simply_screens]]
+modId = "patchouli"
+type = "optional"
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "BOTH"

@@ -1,0 +1,18 @@
+{
+  "name": "Libraries and Privacy",
+  "category": "simply_screens:access",
+  "icon": "minecraft:chest",
+  "sortnum": 8,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "Private Libraries",
+      "text": "Network ownership and image-library ownership are separate. Sharing a screen permits viewing its displayed image according to its viewing policy; it does not grant browsing, deletion, or reuse of the owner's whole library."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Nearby Interaction",
+      "text": "Editing requires being nearby and able to interact with the display. Knowing an image UUID does not grant access to its bytes. Viewing through a screen requires the server to be tracking that permitted display for the player."
+    }
+  ]
+}

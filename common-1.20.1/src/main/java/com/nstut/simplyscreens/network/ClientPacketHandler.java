@@ -13,6 +13,10 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import java.util.UUID;
 
 public class ClientPacketHandler {
+    public static void handleScreenAccess(BlockPos pos, String json) {
+        if (Minecraft.getInstance().screen instanceof ImageLoadScreen screen) screen.updateAccess(pos, json);
+    }
+
     public static void handleUpdateScreen(BlockPos pos, BlockPos anchorPos, UUID imageId, boolean maintainAspectRatio, String screenId, int screenWidth, int screenHeight) {
         Level level = Minecraft.getInstance().level;
         if (level != null) {

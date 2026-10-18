@@ -1,0 +1,28 @@
+{
+  "name": "Viewing and Control",
+  "category": "simply_screens:access",
+  "icon": "minecraft:iron_door",
+  "sortnum": 6,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "Two Permissions",
+      "text": "Viewing access decides who can fetch the image shown on a screen. Control access decides who can change its image. Neither permission grants ownership, access management, or another player's private library."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Public and Trusted",
+      "text": "Public allows everyone for the selected permission. Trusted players allows the owner, operators, and players on the trusted list. Trusted membership has no effect until that permission uses Trusted players mode."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Owner and Operators",
+      "text": "Owner only permits the owner and operators. Operators only permits operators, even when the owner is not an operator. Owners still manage access and can change the policy. Viewing starts Public; control starts Owner only."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Access Updates",
+      "text": "Access settings reload when you open the screen or enter Settings. Each edit receives the server's latest settings. If someone changed them first, a stale edit is rejected and the latest settings are returned."
+    }
+  ]
+}
