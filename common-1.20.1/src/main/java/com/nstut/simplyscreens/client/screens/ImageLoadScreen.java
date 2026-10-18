@@ -144,8 +144,10 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                 Ui.text(accessText("help")).wrap(),
                 Ui.switcher(accessManager).when(true, () -> Ui.button(() -> accessText("override",
                         Component.translatable(localOverride.get() ? "options.on" : "options.off")),
-                        () -> accessAction("OVERRIDE", Boolean.toString(!localOverride.get()))).small()),
-                Ui.button(Component.translatable("gui.simplyscreens.screen.refresh"), () -> accessAction("GET", "")).ghost().small()
+                        () -> accessAction("OVERRIDE", Boolean.toString(!localOverride.get()))).small()
+                        .tooltip(accessText("override.help"))),
+                Ui.button(accessText("refresh"), () -> accessAction("GET", "")).ghost().small()
+                        .tooltip(accessText("refresh.help"))
         ).gap(8).key("settings.access");
     }
     private UIComponent buildPolicyControl(String action, String label, Signal<String> signal) {

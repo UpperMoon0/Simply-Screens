@@ -103,5 +103,8 @@
   "gui.simplyscreens.access.invalid_player": "Use an online player name or a complete UUID.",
   "gui.simplyscreens.access.trusted_help": "Trusted players receive access in Trusted mode. Only the owner and operators can manage access.",
   "gui.simplyscreens.access.trust_limit": "The trusted list is full (64 players).",
-  "gui.simplyscreens.close": "Close"
+  "gui.simplyscreens.close": "Close",
+  "gui.simplyscreens.access.override.help": "On: this display uses its own image instead of the image shared by its Screen ID. Image changes here affect only this display. Off: follow the shared image again. Useful for screens linked with the same Screen ID.",
+  "gui.simplyscreens.access.refresh": "Refresh access",
+  "gui.simplyscreens.access.refresh.help": "Reload ownership, trusted players, access permissions, and local override status from the server. Use this to see changes made by another player. This does not reload images."
 }
