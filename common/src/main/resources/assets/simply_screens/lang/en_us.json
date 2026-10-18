@@ -105,6 +105,10 @@
   "gui.simplyscreens.access.trust_limit": "The trusted list is full (64 players).",
   "gui.simplyscreens.close": "Close",
   "gui.simplyscreens.access.override.help": "On: this display uses its own image instead of the image shared by its Screen ID. Image changes here affect only this display. Off: follow the shared image again. Useful for screens linked with the same Screen ID.",
-  "gui.simplyscreens.access.refresh": "Refresh access",
-  "gui.simplyscreens.access.refresh.help": "Reload ownership, trusted players, access permissions, and local override status from the server. Use this to see changes made by another player. This does not reload images."
+  "gui.simplyscreens.access.claim.help": "Operators can claim an unowned legacy display to manage its access settings.",
+  "gui.simplyscreens.access.view_label.help": "Choose who can view images displayed by this screen. This does not grant access to the owner’s private image library. The owner and operators retain access.",
+  "gui.simplyscreens.access.control_label.help": "Choose who can change the displayed image. This does not grant ownership, access management, or access to another player’s private image library. The owner and operators retain access.",
+  "gui.simplyscreens.access.remove.help": "Remove this player from the trusted list. Their access through Trusted mode is revoked; Public access is unaffected.",
+  "gui.simplyscreens.screen.link.tooltip": "Apply this Screen ID to share images and access settings with linked screens. You must manage both displays/networks. Clear the ID and apply to detach this display.",
+  "gui.simplyscreens.theme.tooltip": "Switch between the light and dark interface themes."
 }

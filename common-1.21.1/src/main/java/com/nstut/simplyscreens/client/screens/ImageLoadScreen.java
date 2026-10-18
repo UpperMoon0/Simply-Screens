@@ -87,6 +87,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
             Component.translatable("gui.simplyscreens.gallery.no_matches", search.get()).getString());
 
     private Subscription aspectSubscription = Subscription.EMPTY;
+    private Subscription settingsSubscription = Subscription.EMPTY;
     private boolean applyingRemoteState;
     private String accessKey = "";
     private long accessRevision;
@@ -132,30 +133,28 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                 Ui.heading(accessText("title")),
                 Ui.row(Ui.text(accessText("owner")), Ui.text(accessSummary).marquee().flex(),
                         Ui.switcher(accessManager).when(true, () -> Ui.switcher(accessUnclaimed)
-                                .when(true, () -> Ui.button(accessText("claim"), () -> accessAction("CLAIM", "")).small())
+                                .when(true, () -> Ui.button(accessText("claim"), () -> accessAction("CLAIM", "")).small().tooltip(accessText("claim.help")))
                                 .when(false, () -> Ui.button(Component.literal("..."), () -> playerPolicyDialog(true))
-                                        .ghost().small().tooltip(accessText("change_owner"))))).gap(6),
+                                        .ghost().small().tooltip(accessText("transfer_help"))))).gap(6),
                 buildPolicyControl("VIEW", "view_label", viewPolicy),
                 buildPolicyControl("CONTROL", "control_label", controlPolicy),
                 Ui.row(Ui.text(() -> accessText("trusted_count", accessView.get() == null ? 0 : accessView.get().state().trusted().size()))
                                 .marquee().flex(),
                         Ui.switcher(accessManager).when(true, () -> Ui.button(accessText("manage"), this::manageTrustedPlayers)
-                                .ghost().small().key("settings.trusted"))).gap(6),
+                                .ghost().small().tooltip(accessText("trusted_help")).key("settings.trusted"))).gap(6),
                 Ui.text(accessText("help")).wrap(),
                 Ui.switcher(accessManager).when(true, () -> Ui.button(() -> accessText("override",
                         Component.translatable(localOverride.get() ? "options.on" : "options.off")),
                         () -> accessAction("OVERRIDE", Boolean.toString(!localOverride.get()))).small()
-                        .tooltip(accessText("override.help"))),
-                Ui.button(accessText("refresh"), () -> accessAction("GET", "")).ghost().small()
-                        .tooltip(accessText("refresh.help"))
+                        .tooltip(accessText("override.help")))
         ).gap(8).key("settings.access");
     }
     private UIComponent buildPolicyControl(String action, String label, Signal<String> signal) {
-        return Ui.row(Ui.text(accessText(label)).marquee().flex(),
+        return Ui.row(Ui.text(accessText(label)).marquee().flex().tooltip(accessText(label + ".help")),
                 Ui.switcher(accessManager)
                         .when(true, () -> Ui.button(() -> policyLabel(signal.get()), () -> chooseAccessMode(action))
-                                .ghost().small().key("settings.access_" + action.toLowerCase(Locale.ROOT)))
-                        .when(false, () -> Ui.text(() -> policyLabel(signal.get())).marquee().flex())
+                                .ghost().small().tooltip(accessText(label + ".help")).key("settings.access_" + action.toLowerCase(Locale.ROOT)))
+                        .when(false, () -> Ui.text(() -> policyLabel(signal.get())).marquee().flex().tooltip(accessText(label + ".help")))
         ).gap(6);
     }
     private void chooseAccessMode(String action) {
@@ -196,7 +195,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         dialog.addChild(Ui.column(
                 Ui.heading(accessText(transfer ? "change_owner" : "add_trusted")),
                 Ui.text(accessText(transfer ? "transfer_help" : "player_help")).wrap(),
-                Ui.textField(input).maxLength(36).placeholder(accessText("player_placeholder").getString()).fillWidth(),
+                Ui.textField(input).maxLength(36).placeholder(accessText("player_placeholder").getString()).fillWidth().tooltip(accessText("player_help")),
                 Ui.text(error).wrap(),
                 Ui.row(Ui.button(Component.translatable("gui.simplyscreens.cancel"), () -> {
                     if (handle[0] != null) handle[0].close();
@@ -207,7 +206,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                     }
                     if (handle[0] != null) handle[0].close();
                     accessAction(transfer ? "TRANSFER" : "TRUST", value);
-                }).primary()).gap(6)).gap(8));
+                }).primary().tooltip(accessText(transfer ? "transfer_help" : "player_help"))).gap(6)).gap(8));
         dialog.width(Math.min(320, Math.max(160, width - 40)));
         handle[0] = Dialog.show(uiRuntime().overlays(), dialog);
     }
@@ -222,7 +221,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                         .when(true, () -> Ui.text(accessText("none_trusted")))
                         .when(false, () -> Ui.list(trustedPlayers, id -> Ui.row(
                                 Ui.text(playerName(id)).marquee().flex().tooltip(id.toString()),
-                                Ui.button(accessText("remove"), () -> accessAction("UNTRUST", id.toString())).ghost().small()
+                                Ui.button(accessText("remove"), () -> accessAction("UNTRUST", id.toString())).ghost().small().tooltip(accessText("remove.help"))
                         ).gap(6)).key(UUID::toString).itemHeight(24).gap(3)
                                 .height(Math.min(160, Math.max(24, Math.min(trustedPlayers.get().size() * 27, height - 180))))),
                 Ui.row(Ui.button(accessText("add_trusted"), () -> {
@@ -231,7 +230,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                     }
                     if (handle[0] != null) handle[0].close();
                     playerPolicyDialog(false);
-                }).ghost(), Ui.button(Component.translatable("gui.simplyscreens.close"), () -> {
+                }).ghost().tooltip(accessText("player_help")), Ui.button(Component.translatable("gui.simplyscreens.close"), () -> {
                     if (handle[0] != null) handle[0].close();
                 }).ghost()).gap(6)).gap(8));
         dialog.width(Math.min(320, Math.max(160, width - 40)));
@@ -252,8 +251,16 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
             if (applyingRemoteState || !hasAnchor()) return;
             PacketRegistries.sendToServer(new UpdateScreenAspectRatioC2SPacket(blockEntityPos, value));
         });
+        bindSettingsRefresh();
         refreshImageList();
         accessAction("GET", "");
+    }
+
+    void bindSettingsRefresh() {
+        settingsSubscription.close();
+        settingsSubscription = tab.subscribe(value -> {
+            if (value == Tab.SETTINGS) accessAction("GET", "");
+        });
     }
 
     @Override
@@ -370,17 +377,19 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         UIComponent idField = Ui.textField(screenId)
                 .placeholder(Component.translatable("gui.simplyscreens.screen.id.placeholder").getString())
                 .maxLength(ScreenRegistryHelper.MAX_SCREEN_ID_LENGTH)
-                .flex();
-        ButtonWidget link = Ui.button(
-                Component.translatable("gui.simplyscreens.screen.link"), this::onLinkScreenId).primary();
+                .tooltip(Component.translatable("gui.simplyscreens.screen.id.tooltip")).flex();
+        UIComponent link = Ui.button(
+                Component.translatable("gui.simplyscreens.screen.link"), this::onLinkScreenId).primary()
+                .tooltip(Component.translatable("gui.simplyscreens.screen.link.tooltip"));
         Card card = Ui.card().outlined(true).padding(12);
         card.addChild(Ui.column(
                 Ui.text(Component.translatable("gui.simplyscreens.screen.id.label")),
                 Ui.row(idField, link).gap(6).align(Alignment.CENTER),
                 Ui.divider(),
                 Ui.row(
-                        Ui.toggle(maintainAspectRatio),
+                        Ui.toggle(maintainAspectRatio).tooltip(Component.translatable("gui.simplyscreens.screen.maintain_aspect.tooltip")),
                         Ui.text(Component.translatable("gui.simplyscreens.screen.maintain_aspect"))
+                                .tooltip(Component.translatable("gui.simplyscreens.screen.maintain_aspect.tooltip"))
                 ).gap(7).align(Alignment.CENTER),
                 Ui.text(Component.translatable("gui.simplyscreens.screen.maintain_aspect.help"))
                         .wrap()
@@ -610,6 +619,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     @Override
     public void removed() {
         aspectSubscription.close();
+        settingsSubscription.close();
         galleryState.close();
         filteredImages.close();
         super.removed();
