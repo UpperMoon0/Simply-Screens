@@ -1,17 +1,13 @@
 {
   "block.simply_screens.screen": "Screen",
-
   "item.simply_screens.screen": "Screen",
-
   "itemGroup.simply_screens": "Simply Screens",
-
   "simply_screens.screen.image_load_title": "Load Image",
   "simply_screens.screen.upload_from_computer": "Upload from Computer",
   "simply_screens.screen.select_image": "Select Image",
   "simply_screens.screen.no_image_selected": "No image selected",
   "simply_screens.screen.image_list": "Available Images",
   "simply_screens.screen.image_name": "Image Name",
-
   "gui.simplyscreens.screen.title": "Screen",
   "gui.simplyscreens.screen.search": "Search",
   "gui.simplyscreens.screen.search.placeholder": "Search...",
@@ -68,5 +64,20 @@
   "gui.simplyscreens.status.linked": "Screen link updated.",
   "gui.simplyscreens.status.removing": "Removing %s…",
   "gui.simplyscreens.status.uploading": "Uploading image…",
-  "gui.simplyscreens.status.downloading": "Downloading image from URL…"
+  "gui.simplyscreens.status.downloading": "Downloading image from URL…",
+  "gui.simplyscreens.access.title": "Ownership and access",
+  "gui.simplyscreens.access.summary": "Owner: %s\nTrusted players: %s",
+  "gui.simplyscreens.access.unclaimed": "Unclaimed (operator claim required)",
+  "gui.simplyscreens.access.denied": "Access denied or settings changed. Current settings have been refreshed.",
+  "gui.simplyscreens.access.claim": "Claim (operator)",
+  "gui.simplyscreens.access.help": "Viewing permits fetching displayed images. Control permits content changes. Only the owner or an operator can manage access and links. Library access stays separate.",
+  "gui.simplyscreens.access.view": "View: %s",
+  "gui.simplyscreens.access.control": "Control: %s",
+  "gui.simplyscreens.access.uuid": "Player UUID",
+  "gui.simplyscreens.access.trust": "Trust",
+  "gui.simplyscreens.access.untrust": "Untrust",
+  "gui.simplyscreens.access.transfer": "Transfer ownership",
+  "gui.simplyscreens.access.transfer_confirm": "Transfer ownership to %s? Your management access will be removed and the trusted list cleared.",
+  "gui.simplyscreens.access.invalid_uuid": "Enter a valid player UUID.",
+  "gui.simplyscreens.access.override": "Local image override: %s"
 }

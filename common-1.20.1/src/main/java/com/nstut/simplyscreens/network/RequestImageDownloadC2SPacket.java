@@ -52,6 +52,7 @@ public class RequestImageDownloadC2SPacket implements IPacket {
         context.get().queue(() -> {
             ServerPlayer player = (ServerPlayer) context.get().getPlayer();
             MinecraftServer server = player.getServer();
+            if (!com.nstut.simplyscreens.helpers.ScreenAccessService.canReadImage(player, imageId)) return;
             Path requestedPath = ServerImageManager.getImageFilePath(server, imageId);
             if (requestedPath == null || !Files.isRegularFile(requestedPath)) return;
             String transferKey = player.getUUID() + ":" + imageId;
@@ -103,6 +104,8 @@ public class RequestImageDownloadC2SPacket implements IPacket {
                             (chunkIndex, totalChunks, chunk) -> {
                                 if (server.getPlayerList().getPlayer(player.getUUID()) != player)
                                     throw new java.io.IOException("Player disconnected during media transfer");
+                                if (!com.nstut.simplyscreens.helpers.ScreenAccessService.canReadImage(player, imageId))
+                                    throw new java.io.IOException("Media access revoked");
                                 String packetExt = chunkIndex == 0 ? metadata.getExtension() : null;
                                 PacketRegistries.sendToPlayer(player, new ImageDownloadChunkS2CPacket(
                                         imageId, chunkIndex, totalChunks, chunk, packetExt));

@@ -66,6 +66,7 @@ public class RequestImageDownloadC2SPacket implements CustomPacketPayload {
         ServerPlayer player = (ServerPlayer) context.getPlayer();
         context.queue(() -> {
             MinecraftServer server = player.getServer();
+            if (!com.nstut.simplyscreens.helpers.ScreenAccessService.canReadImage(player, packet.imageId)) return;
             Path requestedPath = ServerImageManager.getImageFilePath(server, packet.imageId);
             if (requestedPath == null || !Files.isRegularFile(requestedPath)) return;
             String transferKey = player.getUUID() + ":" + packet.imageId;
@@ -114,6 +115,8 @@ public class RequestImageDownloadC2SPacket implements CustomPacketPayload {
                             (chunkIndex, totalChunks, chunk) -> {
                                 if (server.getPlayerList().getPlayer(player.getUUID()) != player)
                                     throw new java.io.IOException("Player disconnected during media transfer");
+                                if (!com.nstut.simplyscreens.helpers.ScreenAccessService.canReadImage(player, imageId))
+                                    throw new java.io.IOException("Media access revoked");
                                 String packetExt = chunkIndex == 0 ? metadata.getExtension() : null;
                                 PacketRegistries.sendToPlayer(player, new ImageDownloadChunkS2CPacket(
                                         imageId, chunkIndex, totalChunks, chunk, packetExt));

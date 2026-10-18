@@ -24,6 +24,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * This can be used by both 1.20.1 and 1.21.1 implementations.
  */
 public class ScreenRegistryHelper {
+    private final ScreenNetworkService networks = new ScreenNetworkService();
+    public ScreenNetworkService networks() { return networks; }
     public static final int MAX_SCREEN_ID_LENGTH = 64;
     public static final int MAX_SCREEN_IDS_PER_PLAYER = 64;
     private static final java.util.regex.Pattern VALID_SCREEN_ID =
@@ -73,6 +75,7 @@ public class ScreenRegistryHelper {
         ownersFilePath = worldSavePath.resolve("screen_registry_owners.json").toAbsolutePath().normalize();
         redirectsFilePath = worldSavePath.resolve("anchor_redirects.json").toAbsolutePath().normalize();
         loadRegistry();
+        networks.init(worldSavePath, screenIdToImageId, screenIdToOwnerId);
         initialized = true;
     }
 
@@ -89,6 +92,7 @@ public class ScreenRegistryHelper {
      * Saves the screen registry to disk.
      */
     public void saveRegistry() {
+        networks.save();
         if (registryFilePath == null) return;
 
         try {
@@ -189,7 +193,9 @@ public class ScreenRegistryHelper {
      * @return The image UUID, or null if not found
      */
     public UUID getImageId(String screenId) {
-        return screenIdToImageId.get(screenId);
+        if (screenId == null || normalizeScreenId(screenId).isEmpty()) return null;
+        ScreenNetworkService.State state = networks.snapshot(ScreenNetworkService.network(screenId));
+        return state == null ? screenIdToImageId.get(screenId) : state.image();
     }
 
     /**
@@ -200,6 +206,7 @@ public class ScreenRegistryHelper {
      */
     public void setImageId(String screenId, UUID imageId) {
         if (screenId == null || screenId.isEmpty()) return;
+        networks.reconcileImage(ScreenNetworkService.network(screenId), imageId);
         if (imageId == null) {
             screenIdToImageId.remove(screenId);
         } else {
@@ -214,13 +221,18 @@ public class ScreenRegistryHelper {
      */
     public void removeScreenId(String screenId) {
         String normalized = normalizeScreenId(screenId);
+        if (!normalized.isEmpty()) networks.remove(ScreenNetworkService.network(normalized));
         screenIdToImageId.remove(normalized);
         screenIdToOwnerId.remove(normalized);
     }
 
     public boolean removeImageReferences(UUID imageId) {
         if (imageId == null) return false;
-        return screenIdToImageId.entrySet().removeIf(entry -> imageId.equals(entry.getValue()));
+        boolean changed = screenIdToImageId.entrySet().removeIf(entry -> imageId.equals(entry.getValue()));
+        for (String key : networks.keys()) if (imageId.equals(networks.snapshot(key).image())) {
+            networks.reconcileImage(key, null); changed = true;
+        }
+        return changed;
     }
 
     /**
@@ -229,7 +241,9 @@ public class ScreenRegistryHelper {
      * @return Set of all screen IDs
      */
     public Set<String> getAllScreenIds() {
-        return Set.copyOf(screenIdToImageId.keySet());
+        Set<String> ids = new HashSet<>(screenIdToImageId.keySet());
+        for (String key : networks.keys()) if (key.startsWith("network/")) ids.add(key.substring(8));
+        return Set.copyOf(ids);
     }
 
     public static String formatPos(int x, int y, int z) {
@@ -346,25 +360,29 @@ public class ScreenRegistryHelper {
     public boolean claimScreenId(String screenId, UUID playerId, boolean administrator) {
         screenId = normalizeScreenId(screenId);
         if (screenId.isEmpty() || playerId == null) return false;
-        UUID owner = screenIdToOwnerId.get(screenId);
-        if (owner != null) return administrator || owner.equals(playerId);
-        // Existing owner-less IDs are legacy data and require an administrator to claim.
-        if (screenIdToImageId.containsKey(screenId) && !administrator) return false;
-        long ownedIds = screenIdToOwnerId.values().stream().filter(playerId::equals).count();
-        if (!administrator && ownedIds >= MAX_SCREEN_IDS_PER_PLAYER) return false;
-        screenIdToOwnerId.put(screenId, playerId);
+        String key = ScreenNetworkService.network(screenId);
+        ScreenNetworkService.State state = networks.snapshot(key);
+        if (state == null) {
+            if (!networks.createOwned(key, playerId, getImageId(screenId))) return false;
+        } else if (!networks.claim(key, new ScreenNetworkService.Actor(playerId, administrator))) return false;
+        screenIdToOwnerId.put(screenId, networks.snapshot(key).owner());
         return true;
     }
 
     public boolean canWriteScreenId(String screenId, UUID playerId, boolean administrator) {
         screenId = normalizeScreenId(screenId);
-        if (screenId.isEmpty()) return true;
-        UUID owner = screenIdToOwnerId.get(screenId);
-        return administrator || (owner != null && owner.equals(playerId));
+        // A blank/invalid name cannot identify a standalone display's owner.
+        // Physical packet adapters must authorize its persistent display key instead.
+        if (screenId.isEmpty()) return false;
+        return networks.allowed(ScreenNetworkService.network(screenId),
+                new ScreenNetworkService.Actor(playerId, administrator), ScreenNetworkService.Permission.CONTROL);
     }
 
     public UUID getScreenIdOwner(String screenId) {
-        return screenIdToOwnerId.get(normalizeScreenId(screenId));
+        screenId = normalizeScreenId(screenId);
+        if (screenId.isEmpty()) return null;
+        var state = networks.snapshot(ScreenNetworkService.network(screenId));
+        return state == null ? screenIdToOwnerId.get(screenId) : state.owner();
     }
 
     public static String normalizeScreenId(String screenId) {

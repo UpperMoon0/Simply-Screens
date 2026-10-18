@@ -9,6 +9,8 @@ public class PacketRegistries {
     public static void register() {
         if (Platform.getEnv() == EnvType.SERVER) registerS2CPayloadTypes();
 
+        NetworkManager.registerReceiver(NetworkManager.c2s(), ScreenAccessC2SPacket.TYPE, ScreenAccessC2SPacket.CODEC, ScreenAccessC2SPacket::handle);
+
         // Register client to server packets
         NetworkManager.registerReceiver(NetworkManager.c2s(),
             UpdateScreenSelectedImageC2SPacket.TYPE,
@@ -52,6 +54,7 @@ public class PacketRegistries {
     }
 
     static void registerS2CPayloadTypes() {
+        NetworkManager.registerS2CPayloadType(ScreenAccessS2CPacket.TYPE, ScreenAccessS2CPacket.CODEC);
         NetworkManager.registerS2CPayloadType(UpdateScreenS2CPacket.TYPE, UpdateScreenS2CPacket.CODEC);
         NetworkManager.registerS2CPayloadType(UpdateImageListS2CPacket.TYPE, UpdateImageListS2CPacket.CODEC);
         NetworkManager.registerS2CPayloadType(ImageDownloadChunkS2CPacket.TYPE, ImageDownloadChunkS2CPacket.CODEC);
@@ -60,6 +63,7 @@ public class PacketRegistries {
     }
     
     public static void registerS2CPackets() {
+        NetworkManager.registerReceiver(NetworkManager.s2c(), ScreenAccessS2CPacket.TYPE, ScreenAccessS2CPacket.CODEC, ScreenAccessS2CPacket::handle);
         NetworkManager.registerReceiver(NetworkManager.s2c(),
             UpdateScreenS2CPacket.TYPE,
             UpdateScreenS2CPacket.CODEC,

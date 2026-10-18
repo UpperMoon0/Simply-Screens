@@ -32,6 +32,76 @@ import org.jetbrains.annotations.NotNull;
 @Getter
 public class ScreenBlockEntity extends BlockEntity {
     private UUID imageId;
+    private UUID displayId = UUID.randomUUID();
+    private long networkRevision;
+    private boolean localImageOverride;
+    private boolean needsIdentityFork;
+    private boolean unresolvedDisplayIdentity;
+    public void useLocalImage(boolean enabled) {
+        localImageOverride = enabled;
+        saveDisplayState();
+        if (!enabled && screenId != null && !screenId.isEmpty()) applyLinkedImageId(ScreenRegistry.getImageId(screenId));
+        else forceImageId(imageId);
+    }
+
+    private com.nstut.simplyscreens.ScreenNetworkService.DisplayState savedDisplayState() {
+        return level == null || level.isClientSide ? null : ScreenRegistry.networks().displayState(displayId);
+    }
+    public String getScreenId() {
+        var saved = savedDisplayState();
+        return saved == null ? screenId : saved.screenId();
+    }
+    public boolean isLocalImageOverride() {
+        var saved = savedDisplayState();
+        return saved == null ? localImageOverride : saved.override();
+    }
+    private String anchorIdentityKey(BlockPos pos) {
+        return ScreenRegistry.getDimensionId(level) + "/" + com.nstut.simplyscreens.ScreenRegistryHelper.formatPos(pos.getX(), pos.getY(), pos.getZ());
+    }
+    private void saveDisplayState() {
+        if (isAnchor() && level != null) ScreenRegistry.registerDisplayAnchor(anchorIdentityKey(worldPosition), displayId);
+        ScreenRegistry.updateDisplay(displayId, screenId == null ? "" : screenId, localImageOverride, maintainAspectRatio);
+    }
+    private void restoreDisplayState() {
+        if (unresolvedDisplayIdentity && anchorPos != null) {
+            UUID known = ScreenRegistry.networks().displayAt(anchorIdentityKey(anchorPos));
+            if (known != null) { displayId = known; unresolvedDisplayIdentity = false; setChanged(); }
+            else if (isAnchor()) { unresolvedDisplayIdentity = false; saveDisplayState(); setChanged(); }
+        }
+        var saved = savedDisplayState();
+        if (saved == null) return;
+        screenId = saved.screenId(); localImageOverride = saved.override(); maintainAspectRatio = saved.aspect();
+        var content = ScreenRegistry.networks().snapshot(accessKey());
+        if (localImageOverride) content = ScreenRegistry.networks().snapshot(com.nstut.simplyscreens.ScreenNetworkService.display(displayId));
+        if (content != null) imageId = content.image();
+    }
+    public String accessKey() {
+        String id = getScreenId();
+        return id == null || id.isEmpty() ? com.nstut.simplyscreens.ScreenNetworkService.display(displayId)
+                : com.nstut.simplyscreens.ScreenNetworkService.network(id);
+    }
+    public void claimPlaced(java.util.UUID owner) {
+        ScreenRegistry.networks().createOwned(accessKey(), owner, imageId);
+        saveDisplayState();
+        setChanged();
+    }
+    private void forkDisplayIdentity(ScreenBlockEntity source) {
+        com.nstut.simplyscreens.helpers.ScreenAccessService.state(source);
+        displayId = ScreenRegistry.forkDisplay(source.accessKey(), source.getImageId());
+        saveDisplayState();
+        networkRevision = 0;
+        localImageOverride = source.localImageOverride;
+        setChanged();
+    }
+    public void copyDisplayIdentity(ScreenBlockEntity source) {
+        displayId = source.displayId;
+        unresolvedDisplayIdentity = false;
+        needsIdentityFork = false;
+        networkRevision = source.networkRevision;
+        localImageOverride = source.localImageOverride;
+        setChanged();
+    }
+
     private String screenId = ""; // User-defined ID for linking screens together
     private BlockPos anchorPos;
     private int screenWidth = 1;
@@ -60,6 +130,11 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     private void writePersistentData(CompoundTag tag) {
+        tag.putUUID("displayId", displayId);
+        tag.putLong("networkRevision", networkRevision);
+        tag.putBoolean("localImageOverride", localImageOverride);
+        tag.putBoolean("needsIdentityFork", needsIdentityFork);
+        tag.putBoolean("unresolvedDisplayIdentity", unresolvedDisplayIdentity);
         if (imageId != null) {
             tag.putUUID("imageId", imageId);
         }
@@ -78,6 +153,11 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     private void readPersistentData(CompoundTag tag) {
+        if (tag.hasUUID("displayId")) displayId = tag.getUUID("displayId");
+        networkRevision = tag.getLong("networkRevision");
+        localImageOverride = tag.getBoolean("localImageOverride");
+        needsIdentityFork = tag.getBoolean("needsIdentityFork");
+        unresolvedDisplayIdentity = !tag.hasUUID("displayId") || tag.getBoolean("unresolvedDisplayIdentity");
         if (tag.hasUUID("imageId")) {
             imageId = tag.getUUID("imageId");
         } else {
@@ -163,10 +243,12 @@ public class ScreenBlockEntity extends BlockEntity {
         if (level != null && level.isClientSide) {
             return imageId;
         }
-        if (screenId != null && !screenId.isEmpty()) {
-            return ScreenRegistry.getImageId(screenId);
-        }
-        return imageId;
+        var saved = savedDisplayState();
+        boolean override = saved == null ? localImageOverride : saved.override();
+        String id = getScreenId();
+        if (!override && id != null && !id.isEmpty()) return ScreenRegistry.getImageId(id);
+        var content = ScreenRegistry.networks().snapshot(com.nstut.simplyscreens.ScreenNetworkService.display(displayId));
+        return content == null ? imageId : content.image();
     }
 
     public void forceScreenId(String screenId) {
@@ -176,10 +258,11 @@ public class ScreenBlockEntity extends BlockEntity {
 
         String oldScreenId = this.screenId;
         this.screenId = com.nstut.simplyscreens.ScreenRegistryHelper.normalizeScreenId(screenId);
+        saveDisplayState();
         UUID linkedImage = this.screenId.isEmpty() ? null : ScreenRegistry.getImageId(this.screenId);
-        if (linkedImage != null) {
+        if (!localImageOverride && !this.screenId.isEmpty() && ScreenRegistry.networks().snapshot(accessKey()) != null) {
             this.imageId = linkedImage;
-        } else if (!this.screenId.isEmpty() && this.imageId != null) {
+        } else if (!localImageOverride && !this.screenId.isEmpty() && this.imageId != null) {
             ScreenRegistry.setImageId(this.screenId, this.imageId);
             ScreenRegistry.saveRegistry();
         }
@@ -214,6 +297,7 @@ public class ScreenBlockEntity extends BlockEntity {
     // Internal setter that doesn't trigger update (for child blocks)
     public void setScreenIdInternal(String screenId) {
         this.screenId = com.nstut.simplyscreens.ScreenRegistryHelper.normalizeScreenId(screenId);
+        com.nstut.simplyscreens.helpers.ScreenAccessService.refreshMedia(this);
     }
 
     public void setMaintainAspectRatio(boolean maintainAspectRatio) {
@@ -239,6 +323,7 @@ public class ScreenBlockEntity extends BlockEntity {
         }
 
         this.maintainAspectRatio = maintainAspectRatio;
+        saveDisplayState();
         setChanged();
 
         Direction facing = getFacing();
@@ -282,6 +367,9 @@ public class ScreenBlockEntity extends BlockEntity {
         }
 
         this.imageId = imageId;
+        ScreenRegistry.reconcileContent(localImageOverride ? com.nstut.simplyscreens.ScreenNetworkService.display(displayId) : accessKey(), imageId);
+        var networkState = ScreenRegistry.networks().snapshot(accessKey());
+        if (networkState != null) networkRevision = networkState.revision();
         setChanged();
 
         Direction facing = getFacing();
@@ -298,7 +386,7 @@ public class ScreenBlockEntity extends BlockEntity {
             }
         }
 
-        if (screenId != null && !screenId.isEmpty()) {
+        if (!localImageOverride && screenId != null && !screenId.isEmpty()) {
             ScreenRegistry.setImageId(screenId, imageId);
             ScreenRegistry.saveRegistry();
             broadcastImageIdToLinkedScreens(imageId);
@@ -334,6 +422,9 @@ public class ScreenBlockEntity extends BlockEntity {
     }
 
     private void applyLinkedImageId(UUID linkedImageId) {
+        if (localImageOverride && screenId != null && !screenId.isEmpty()) return;
+        var networkState = ScreenRegistry.networks().snapshot(accessKey());
+        if (networkState != null) networkRevision = networkState.revision();
         this.imageId = linkedImageId;
         setChanged();
         Direction facing = getFacing();
@@ -358,7 +449,9 @@ public class ScreenBlockEntity extends BlockEntity {
         this.screenHeight = height;
         this.anchorPos = anchor;
         this.maintainAspectRatio = maintainAspect;
+        if (anchor != null && getLoadedBlockEntity(anchor) instanceof ScreenBlockEntity source) copyDisplayIdentity(source);
         setChanged();
+        com.nstut.simplyscreens.helpers.ScreenAccessService.refreshMedia(this);
 
         updateClients();
 
@@ -374,6 +467,7 @@ public class ScreenBlockEntity extends BlockEntity {
     public void tick() {
         if (level == null || level.isClientSide) return;
 
+        com.nstut.simplyscreens.helpers.ScreenAccessService.refreshMedia(this);
         if (isAnchor()) {
             if (needsStructureRefresh && ++tickSinceLastUpdate >= Config.SCREEN_TICK_RATE) {
                 tickSinceLastUpdate = 0;
@@ -383,7 +477,7 @@ public class ScreenBlockEntity extends BlockEntity {
                 ScreenRegistry.registerScreen(level, worldPosition, screenId);
                 screenLinkRegistered = true;
                 UUID registryImage = ScreenRegistry.getImageId(screenId);
-                if (!java.util.Objects.equals(registryImage, imageId)) {
+                if (!localImageOverride && !java.util.Objects.equals(registryImage, imageId)) {
                     applyLinkedImageId(registryImage);
                 }
             }
@@ -402,6 +496,7 @@ public class ScreenBlockEntity extends BlockEntity {
 
     @Override
     public void setRemoved() {
+        com.nstut.simplyscreens.helpers.ScreenAccessService.untrack(this);
         com.nstut.simplyscreens.helpers.ServerImageManager.untrackLoadedScreen(this);
         if (level != null && !level.isClientSide && isAnchor()) ScreenRegistry.unregisterScreen(level, worldPosition, screenId);
         super.setRemoved();
@@ -411,6 +506,13 @@ public class ScreenBlockEntity extends BlockEntity {
 
     void reconcileAfterLoad() {
         if (level == null || level.isClientSide || isRemoved()) return;
+        restoreDisplayState();
+        com.nstut.simplyscreens.helpers.ScreenAccessService.state(this);
+        if (isAnchor()) {
+            var authoritative = ScreenRegistry.networks().snapshot(accessKey());
+            if (!localImageOverride && authoritative != null && !java.util.Objects.equals(authoritative.image(), imageId)) applyLinkedImageId(authoritative.image());
+        }
+        com.nstut.simplyscreens.helpers.ScreenAccessService.refreshMedia(this);
         if (isAnchor()) {
             if ((screenId == null || screenId.isEmpty()) && imageId != null
                     && com.nstut.simplyscreens.helpers.ServerImageManager.getImageMetadata(level.getServer(), imageId) == null) {
@@ -420,6 +522,7 @@ public class ScreenBlockEntity extends BlockEntity {
             synchronizeLoadedChildren();
             return;
         }
+        updateClients();
         if (anchorPos == null) return;
         BlockPos currentAnchorPos = anchorPos;
         ScreenBlockEntity anchor = getLoadedAnchor(currentAnchorPos);
@@ -432,6 +535,7 @@ public class ScreenBlockEntity extends BlockEntity {
             }
         }
         if (anchor != null) {
+            copyDisplayIdentity(anchor);
             Direction facing = anchor.getFacing();
             if (isInsideRectangle(worldPosition, anchor.worldPosition, facing, anchor.screenWidth, anchor.screenHeight)) {
                 updateScreen(anchor.imageId, anchor.screenWidth, anchor.screenHeight, anchor.worldPosition, anchor.maintainAspectRatio);
@@ -485,6 +589,7 @@ public class ScreenBlockEntity extends BlockEntity {
         BlockPos farCorner = calculateStructureBounds(facing);
 
         if (farCorner != null) {
+            if (needsIdentityFork) { forkDisplayIdentity(this); needsIdentityFork = false; }
             needsStructureRefresh = false;
             calculateScreenDimensions(facing, farCorner);
             int newWidth = this.screenWidth;
@@ -502,6 +607,7 @@ public class ScreenBlockEntity extends BlockEntity {
                     if (pos.equals(worldPosition)) continue;
                     BlockEntity be = getLoadedBlockEntity(pos);
                     if (be instanceof ScreenBlockEntity other && other.isAnchor()) {
+                        if (!currentHasMetadata && childMetadata == null && (other.imageId != null || other.screenId != null && !other.screenId.isEmpty())) copyDisplayIdentity(other);
                         if (childMetadata == null && (other.imageId != null || other.screenId != null && !other.screenId.isEmpty())) {
                             childMetadata = new ScreenMetadata(other.imageId, other.screenId, other.maintainAspectRatio);
                         }
@@ -521,7 +627,7 @@ public class ScreenBlockEntity extends BlockEntity {
                 ScreenRegistry.registerScreen(level, worldPosition, this.screenId);
                 screenLinkRegistered = true;
                 UUID registryImage = ScreenRegistry.getImageId(this.screenId);
-                if (!java.util.Objects.equals(registryImage, this.imageId)) {
+                if (!localImageOverride && !java.util.Objects.equals(registryImage, this.imageId)) {
                     this.imageId = registryImage;
                 }
             }
@@ -550,6 +656,8 @@ public class ScreenBlockEntity extends BlockEntity {
                         BlockEntity be = getLoadedBlockEntity(leftoverPos);
                         if (be instanceof ScreenBlockEntity leftover && !leftover.isAnchor() && worldPosition.equals(leftover.anchorPos)) {
                             leftover.anchorPos = leftoverPos;
+                            leftover.copyDisplayIdentity(this);
+                            leftover.needsIdentityFork = true;
                             leftover.imageId = this.imageId;
                             leftover.screenId = this.screenId;
                             leftover.maintainAspectRatio = this.maintainAspectRatio;
@@ -649,6 +757,7 @@ public class ScreenBlockEntity extends BlockEntity {
         BlockEntity entity = getLoadedBlockEntity(pos);
         if (!(entity instanceof ScreenBlockEntity screen) || !entity.getBlockState().hasProperty(ScreenBlock.FACING)
                 || entity.getBlockState().getValue(ScreenBlock.FACING) != facing) return false;
+        if (!com.nstut.simplyscreens.helpers.ScreenAccessService.canMerge(this, screen)) return false;
         BlockPos foreignAnchor = screen.getAnchorPos();
         if (screen.isAnchor() && !screen.getBlockPos().equals(this.worldPosition)) {
             allowedMergeAnchors.add(screen.getBlockPos());
@@ -811,6 +920,7 @@ public class ScreenBlockEntity extends BlockEntity {
         BlockEntity newAnchorBe = newAnchorPos != null ? getLoadedBlockEntity(newAnchorPos) : null;
         if (newAnchorBe instanceof ScreenBlockEntity newAnchor) {
             ScreenRegistry.redirectAnchor(level, worldPosition, newAnchorPos);
+            newAnchor.copyDisplayIdentity(this);
             newAnchor.updateScreen(this.imageId, promotion.width(), promotion.height(), newAnchorPos, this.maintainAspectRatio);
             newAnchor.setScreenIdInternal(this.screenId);
             newAnchor.screenLinkRegistered = false;
@@ -846,6 +956,8 @@ public class ScreenBlockEntity extends BlockEntity {
                         continue;
                     }
                     leftover.anchorPos = pos;
+                    leftover.copyDisplayIdentity(this);
+                    leftover.needsIdentityFork = true;
                     leftover.imageId = this.imageId;
                     leftover.screenId = this.screenId;
                     leftover.maintainAspectRatio = this.maintainAspectRatio;

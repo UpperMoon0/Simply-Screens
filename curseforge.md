@@ -8,6 +8,8 @@ Simply Screens adds configurable screen blocks that display images from your loc
 - **Dynamic Multi-Block Displays:** Place multiple screen blocks together in a rectangular shape (up to 64x64 blocks). The screen automatically connects, detects its structure, and stretches or scales the image across all connected blocks.
 - **Synchronized Screen Networks:** Link multiple screens across your world using a shared **Screen ID** so all connected screens display the same image simultaneously.
 - **Aspect Ratio Control:** Toggle between stretching the image to fill the screen or maintaining its original aspect ratio.
+- **Ownership and Access:** Own displays and networks, trust players, transfer ownership, and choose separate view/control policies. Manage these settings in the existing Settings tab.
+- **Local Image Override:** Show different content on one linked display without changing the network. Aspect ratio remains local to each display.
 - **Local File Uploads:** Upload PNG, JPG, and JPEG images directly from your computer via an in-game file picker.
 - **Safe Web Downloads:** Download images directly from URLs with built-in security protections.
 - **Multiplayer Synchronized:** Fully server-authoritative and dedicated-multiplayer ready with client-side synchronization and robust cross-chunk structure recovery.
@@ -34,11 +36,11 @@ Simply Screens adds configurable screen blocks that display images from your loc
 - **PacketWeave 0.1.1 or newer**, matching your Minecraft version and loader, on clients and dedicated servers
 - **Architectury API** matching your Minecraft version and loader
 - **Fabric API** on Fabric
-- **OpenUI MC 0.0.8 or newer** matching your Minecraft version and loader (clients; also required on Fabric dedicated servers by Fabric metadata)
+- **OpenUI MC 0.0.8 or newer** matching your Minecraft version and loader (clients only)
 
-## Upgrading to 0.8.11
+## Upgrading to 0.9.0
 
-Add the matching native PacketWeave jar to every client and server. Screens uses its public transfer API and does not bundle a second copy. Existing saved media, world data, and configuration need no migration; back up the world before upgrading. The loader requires PacketWeave 0.1.1 or newer, and release files declare it as a required CurseForge dependency.
+Add the matching native PacketWeave jar to every client and server. Screens uses its public transfer API and does not bundle a second copy. Back up the world before upgrading. Existing media and Screen IDs are preserved; the registry is automatically imported into a versioned network store. Legacy unowned displays/networks require an operator claim in Settings before editing. Private unused images cannot be downloaded merely by knowing their UUID; viewing a permitted tracked display remains supported. Install matching Screens versions on clients and servers. The loader requires PacketWeave 0.1.1 or newer, and release files declare it as a required CurseForge dependency. See the [access and recovery guide](https://github.com/UpperMoon0/Simply-Screens/blob/main/docs/network-access.md) for policy and backup details.
 
 ## Shader image colors
 

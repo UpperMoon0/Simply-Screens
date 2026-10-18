@@ -162,3 +162,6 @@ Those files and the Companion dependency are also unchanged on upstream main
 `227077f7f528c9beab1336a9fad2e27b754e4e70`. This supports the 2.x range;
 it does not prove compatibility with every future release. The metadata tests
 and transform tests do not establish a full All of Create Aeronautics 2.8 playtest.
+# Network access regressions (0.9.0)
+
+`testAllVersions` includes `ScreenNetworkServiceTest` and `ScreenAccessServiceTest` for all three Minecraft adapters. They test permission separation, legacy migration, empty-content restart recovery, backup corruption and failed-write rollback, immutable/bounded trust membership, private download packet rejection before file scheduling, tracked displays, chunk/dimension/disconnect revocation, replaced tiles, local content overrides, and source/destination ownership on relinks. See [the access guide](docs/network-access.md) for the complete contract and manual multiplayer limits. Existing live-join, framebuffer and shader checks still apply to all five loader targets.

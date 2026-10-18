@@ -88,6 +88,73 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
 
     private Subscription aspectSubscription = Subscription.EMPTY;
     private boolean applyingRemoteState;
+    private String accessKey = "";
+    private long accessRevision;
+    private final Signal<String> accessSummary = Signals.of("");
+    private final Signal<Boolean> localOverride = Signals.of(false);
+    private final Signal<String> accessPlayer = Signals.of("");
+    private final Signal<Boolean> accessManager = Signals.of(false);
+    private final Signal<String> viewPolicy = Signals.of("PUBLIC");
+    private final Signal<String> controlPolicy = Signals.of("OWNER_ONLY");
+
+    public void updateAccess(BlockPos pos, String json) {
+        if (!blockEntityPos.equals(pos)) return;
+        var snapshot = com.nstut.simplyscreens.ScreenAccessSnapshot.fromJson(json);
+        accessKey = snapshot.key(); accessRevision = snapshot.state().revision();
+        accessManager.set(snapshot.manage()); localOverride.set(snapshot.localOverride());
+        viewPolicy.set(snapshot.state().view().name()); controlPolicy.set(snapshot.state().control().name());
+        accessSummary.set(Component.translatable("gui.simplyscreens.access.summary",
+                snapshot.state().owner() == null ? Component.translatable("gui.simplyscreens.access.unclaimed").getString() : snapshot.state().owner().toString(),
+                snapshot.state().trusted().toString()).getString());
+        if (!snapshot.success()) showError(Component.translatable("gui.simplyscreens.access.denied"));
+    }
+    private void accessAction(String action, String value) {
+        PacketRegistries.sendToServer(new com.nstut.simplyscreens.network.ScreenAccessC2SPacket(
+                blockEntityPos, accessKey, accessRevision, action, value));
+    }
+    private UIComponent buildAccess() {
+        return Ui.column(
+                Ui.heading(Component.translatable("gui.simplyscreens.access.title")),
+                Ui.text(accessSummary).wrap(),
+                Ui.row(Ui.button(Component.translatable("gui.simplyscreens.screen.refresh"), () -> accessAction("GET", "")).small(),
+                        Ui.button(Component.translatable("gui.simplyscreens.access.claim"), () -> accessAction("CLAIM", "")).small()).gap(6),
+                Ui.text(Component.translatable("gui.simplyscreens.access.help")).wrap(),
+                Ui.switcher(accessManager).when(true, this::buildManagedAccess)
+        ).gap(8);
+    }
+    private UIComponent buildManagedAccess() {
+        return Ui.column(
+                Ui.button(() -> Component.translatable("gui.simplyscreens.access.view", viewPolicy.get()), () -> cyclePolicy("VIEW", viewPolicy)),
+                Ui.button(() -> Component.translatable("gui.simplyscreens.access.control", controlPolicy.get()), () -> cyclePolicy("CONTROL", controlPolicy)),
+                Ui.button(() -> Component.translatable("gui.simplyscreens.access.override", localOverride.get()), () -> accessAction("OVERRIDE", Boolean.toString(!localOverride.get()))),
+                Ui.textField(accessPlayer).maxLength(36).placeholder(Component.translatable("gui.simplyscreens.access.uuid").getString()),
+                Ui.row(Ui.button(Component.translatable("gui.simplyscreens.access.trust"), () -> accessAction("TRUST", accessPlayer.get())).small(),
+                        Ui.button(Component.translatable("gui.simplyscreens.access.untrust"), () -> accessAction("UNTRUST", accessPlayer.get())).small()).gap(6),
+                Ui.button(Component.translatable("gui.simplyscreens.access.transfer"), this::confirmTransfer)
+        ).gap(8);
+    }
+    private void cyclePolicy(String action, Signal<String> signal) {
+        var policies = com.nstut.simplyscreens.ScreenNetworkService.Policy.values();
+        int index = com.nstut.simplyscreens.ScreenNetworkService.Policy.valueOf(signal.get()).ordinal();
+        accessAction(action, policies[(index + 1) % policies.length].name());
+    }
+    private void confirmTransfer() {
+        try { UUID.fromString(accessPlayer.get()); } catch (IllegalArgumentException invalid) {
+            showError(Component.translatable("gui.simplyscreens.access.invalid_uuid")); return;
+        }
+        String recipient = accessPlayer.get();
+        Card dialog = Ui.card().elevated(true).outlined(true).padding(14);
+        OverlayHandle[] handle = { null };
+        dialog.addChild(Ui.column(
+                Ui.text(Component.translatable("gui.simplyscreens.access.transfer_confirm", recipient)).wrap(),
+                Ui.row(Ui.button(Component.translatable("gui.simplyscreens.cancel"), () -> { if (handle[0] != null) handle[0].close(); }).ghost(),
+                        Ui.button(Component.translatable("gui.simplyscreens.access.transfer"), () -> {
+                            if (handle[0] != null) handle[0].close(); accessAction("TRANSFER", recipient);
+                        }).danger()).gap(6)).gap(10));
+        dialog.width(250).minHeight(90);
+        handle[0] = Dialog.show(uiRuntime().overlays(), dialog);
+    }
+
 
     public ImageLoadScreen(BlockPos blockEntityPos) {
         super(Component.translatable("gui.simplyscreens.screen.title"));
@@ -104,6 +171,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
             PacketRegistries.sendToServer(new UpdateScreenAspectRatioC2SPacket(blockEntityPos, value));
         });
         refreshImageList();
+        accessAction("GET", "");
     }
 
     @Override
@@ -235,7 +303,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                 Ui.text(Component.translatable("gui.simplyscreens.screen.maintain_aspect.help"))
                         .wrap()
                         .maxLines(3)
-        ).gap(8));
+        ).gap(8).child(Ui.divider()).child(buildAccess()));
         return Ui.scroll(card);
     }
 
@@ -282,7 +350,8 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
             return;
         }
         screenId.set(normalized);
-        PacketRegistries.sendToServer(new UpdateScreenIdC2SPacket(blockEntityPos, normalized, displayedImageId.get()));
+        PacketRegistries.sendToServer(new UpdateScreenIdC2SPacket(blockEntityPos, normalized));
+        accessAction("GET", "");
         status.set(Component.translatable("gui.simplyscreens.status.linked"));
     }
 

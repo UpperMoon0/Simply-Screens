@@ -13,6 +13,14 @@ import java.util.UUID;
  * This implementation uses ScreenRegistryHelper for shared logic.
  */
 public class ScreenRegistry {
+    public static ScreenNetworkService networks() { return HELPER.networks(); }
+    /** Internal load/import/deletion reconciliation; external adapters use ScreenAccessService. */
+    public static void reconcileContent(String key, UUID image) { HELPER.networks().reconcileImage(key, image); }
+    public static UUID forkDisplay(String source, UUID image) { return HELPER.networks().forkDisplay(source, image); }
+    public static void registerDisplayAnchor(String anchor, UUID id) { HELPER.networks().registerAnchor(anchor, id); }
+    public static void updateDisplay(UUID id, String link, boolean override, boolean aspect) {
+        HELPER.networks().updateDisplay(id, link, override, aspect);
+    }
     
     // Helper instance for shared logic
     private static final ScreenRegistryHelper HELPER = new ScreenRegistryHelper(SimplyScreens.LOGGER);
@@ -171,6 +179,7 @@ public class ScreenRegistry {
     public static void clearLevel(Level level) {
         if (level.isClientSide()) return;
         LINK_INDEX.clear(level);
+        com.nstut.simplyscreens.helpers.ScreenAccessService.clearLevel(level);
     }
 
     public static List<BlockPos> getPositionsForScreenId(Level level, String screenId) {
