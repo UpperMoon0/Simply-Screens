@@ -68,3 +68,15 @@ jar {
 apply from: file('../packetweave.gradle')
 
 loom { mixin { defaultRefmapName = 'simplyscreens-color.refmap.json' } }
+
+// Exercise NeoForge's Maven version-range semantics alongside Fabric's parser.
+dependencies {
+    testImplementation 'org.apache.maven:maven-artifact:3.8.5'
+}
+test {
+    systemProperty 'sable.compat.root', rootProject.projectDir.absolutePath
+    inputs.files(
+        rootProject.file('fabric-1.21.1/src/main/resources/fabric.mod.json'),
+        rootProject.file('neoforge-1.21.1/src/main/resources/META-INF/neoforge.mods.toml')
+    )
+}

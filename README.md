@@ -6,6 +6,10 @@ The client interface is powered by **OpenUI MC 0.0.8 or newer**, which is a requ
 
 [![CurseForge](https://cf.way2muchnoise.eu/simply-screens.svg)](https://www.curseforge.com/minecraft/mc-mods/simply-screens)
 
+## Sable compatibility
+
+Minecraft 1.21.1 builds support optional **Sable 2.0.5 and 2.0.6** on Fabric and NeoForge. The dependency range allows later 2.x releases using the same Companion 1.6.0 API; those future releases are not yet runtime-verified. Sable 3 requires a new compatibility review. Sable is not required for ordinary screens.
+
 ## Features
 
 - **Screen Blocks:** Display customizable images in-game on wall, floor, or ceiling mounts.
@@ -23,7 +27,7 @@ The client interface is powered by **OpenUI MC 0.0.8 or newer**, which is a requ
   - Per-player upload concurrency and rate limits, bounded processing queues, and full image decode checks.
   - Atomic registry operations with automated `.bak` backups and crash recovery.
 
-## Installation and upgrade to 0.8.11
+## Installation and upgrade to 0.8.13
 
 Install the artifact matching **both** your Minecraft version and loader. The following mods are required:
 
