@@ -136,6 +136,34 @@ def stop_server_for_restart(process: subprocess.Popen[str], timeout=90) -> None:
         raise RuntimeError(f"Failed server shutdown (exit {code}) cannot certify persistence")
 
 
+def capture_shutdown_diagnostics(process: subprocess.Popen[str], evidence: Path) -> None:
+    """Observe the dedicated JVM and its launcher separately; never alter either."""
+    report = {"wrapperPid": process.pid, "wrapperExit": process.poll()}
+    try:
+        boot = json.loads((evidence / "boot.json").read_text())
+        pid = boot.get("serverPid")
+        if type(pid) is not int or pid <= 0:
+            raise ValueError("Missing dedicated JVM PID in boot receipt")
+        report["serverPid"] = pid
+        if os.name != "nt":
+            report["serverProcessPresent"] = Path(f"/proc/{pid}").exists()
+            result = subprocess.run(["ps", "-eo", "pid,ppid,stat,comm"], capture_output=True, text=True, timeout=10)
+            (evidence / "shutdown-process-tree.txt").write_text(result.stdout + result.stderr)
+        java = Path(f"/proc/{pid}/exe")
+        jcmd = java.resolve().with_name("jcmd") if java.exists() else None
+        if jcmd is None or not jcmd.is_file():
+            executable = shutil.which("jcmd")
+            jcmd = Path(executable) if executable else None
+        if jcmd is not None:
+            result = subprocess.run([str(jcmd), str(pid), "Thread.print", "-l"],
+                                    capture_output=True, text=True, timeout=20)
+            report["threadDumpExit"] = result.returncode
+            (evidence / "shutdown-thread-dump.txt").write_text(result.stdout + result.stderr)
+    except Exception as error:
+        report["diagnosticError"] = str(error)
+    atomic_json(evidence / "shutdown-diagnostics.json", report)
+
+
 def validate_pair(directory: Path, scenario: str, server: dict, client: dict) -> None:
     required = {"id", "action", "boot", "connection", "status", "image", "offset", "revision", "positions", "unloaded", "controlPath"}
     if not required <= server.keys() or not required <= client.keys():
@@ -240,7 +268,11 @@ class LiveRun:
     def restart(self, name, status):
         old_boot = json.loads((self.evidence / "boot.json").read_text())["boot"]
         live.stop_tree(self.client); self.client = None
-        stop_server_for_restart(self.server)
+        try:
+            stop_server_for_restart(self.server)
+        except Exception:
+            capture_shutdown_diagnostics(self.server, self.evidence)
+            raise
         self.server = None
         shutdown = json.loads((self.evidence / f"shutdown-{old_boot}.json").read_text())
         atomic_json(self.evidence / "request.json", dict(id=name, action="RESTART_READ"))

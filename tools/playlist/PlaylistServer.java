@@ -43,6 +43,7 @@ public final class PlaylistServer {
             if (!bootWritten) {
                 JsonObject boot = state(service.snapshot(KEY));
                 boot.addProperty("boot", BOOT);
+                boot.addProperty("serverPid", ProcessHandle.current().pid());
                 write("boot-" + BOOT + ".json", boot);
                 write("boot.json", boot);
                 bootWritten = true;

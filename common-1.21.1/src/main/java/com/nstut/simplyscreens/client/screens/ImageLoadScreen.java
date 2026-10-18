@@ -560,12 +560,13 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     }
 
     private UIComponent buildGalleryResults() {
-        return Ui.list(filteredImages, this::buildImageRow)
+        return Ui.responsive(context -> Ui.list(filteredImages, this::buildImageRow)
                 .key(row -> row.image().imageId())
-                .itemHeight(60)
+                // Stacked thumbnail/actions need 30 + 5 + 24 + 16 padding pixels.
+                .itemHeight(context.width() < 301 ? 78 : 60)
                 .gap(6)
                 .fillWidth()
-                .fillHeight();
+                .fillHeight());
     }
 
     private UIComponent buildImageRow(ImageRow row) {

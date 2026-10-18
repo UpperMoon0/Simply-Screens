@@ -94,6 +94,23 @@ class PlaylistHarnessTests(unittest.TestCase):
         process.poll.return_value = 0
         with self.assertRaises(RuntimeError): harness.stop_server_for_restart(process)
 
+    def test_shutdown_diagnostics_target_boot_jvm_not_gradle_wrapper(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            evidence = Path(tmp)
+            (evidence / "boot.json").write_text(json.dumps({"serverPid": 987654321}))
+            process = Mock(pid=1234); process.poll.return_value = None
+            completed = harness.subprocess.CompletedProcess([], 0, "thread snapshot", "")
+            with patch.object(harness.shutil, "which", return_value="/fake/jcmd"), \
+                 patch.object(harness.subprocess, "run", return_value=completed) as observe:
+                harness.capture_shutdown_diagnostics(process, evidence)
+            commands = [call.args[0] for call in observe.call_args_list]
+            self.assertIn(["/fake/jcmd", "987654321", "Thread.print", "-l"], commands)
+            report = json.loads((evidence / "shutdown-diagnostics.json").read_text())
+            self.assertEqual(1234, report["wrapperPid"])
+            self.assertEqual(987654321, report["serverPid"])
+            self.assertIsNone(report["wrapperExit"])
+            self.assertEqual("thread snapshot", (evidence / "shutdown-thread-dump.txt").read_text())
+
     def test_fixture_pngs_are_deterministic_and_do_not_need_pillow(self):
         with tempfile.TemporaryDirectory() as tmp:
             a, b = Path(tmp) / "a.png", Path(tmp) / "b.png"
@@ -190,6 +207,7 @@ class PlaylistHarnessTests(unittest.TestCase):
             self.assertNotIn(forbidden, server + client)
         self.assertIn('write("shutdown-" + BOOT + ".json", receipt)', server)
         self.assertIn('write("boot-" + BOOT + ".json", boot)', server)
+        self.assertIn('boot.addProperty("serverPid", ProcessHandle.current().pid())', server)
 
     def test_verifier_rejects_missing_matrix_even_if_one_receipt_claims_success(self):
         with tempfile.TemporaryDirectory() as tmp:
