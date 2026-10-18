@@ -52,6 +52,8 @@ def instrument(stage: Path) -> None:
             source = source.replace("__CHUNK_LOADED__", f"mc.level.getChunkSource().getChunk(pos.getX() >> 4, pos.getZ() >> 4, {chunk_status}, false) != null")
             capture = "Screenshot.takeScreenshot(mc.getMainRenderTarget(), pixels -> save(pixels, stem));" if newest else "save(Screenshot.takeScreenshot(mc.getMainRenderTarget()), stem);"
             source = source.replace("__CAPTURE__", capture)
+            source = source.replace("__RESIZE__", "ui.resize(" + ("" if newest else "mc, ")
+                                    + "mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());")
             if re.search(r"__[A-Z_]+__", source):
                 raise RuntimeError(f"unexpanded playlist driver placeholder: {name}/{module}")
             (drivers / (name + ".java")).write_text(source, encoding="utf-8")
@@ -113,6 +115,27 @@ def assert_restore(shutdown: dict, boot: dict, expected_status: str) -> None:
         raise ValueError("Persisted cursor changed across restart before the first elapsed server tick")
 
 
+def stop_server_for_restart(process: subprocess.Popen[str], timeout=90) -> None:
+    """Finish forwarded console input so Gradle can exit after Minecraft saves.
+
+    Keeping the input pipe open can leave Gradle's input forwarder alive after
+    the server has finished. Never certify a restart by terminating that process.
+    The caller's failure cleanup may stop a hung process, but cannot turn it green.
+    """
+    if process.poll() is not None or process.stdin is None:
+        raise RuntimeError("Playlist server exited before the requested clean shutdown")
+    process.stdin.write("stop\n")
+    process.stdin.flush()
+    process.stdin.close()
+    process.stdin = None
+    try:
+        code = process.wait(timeout=timeout)
+    except subprocess.TimeoutExpired as error:
+        raise RuntimeError("Playlist server did not exit naturally after stop and console EOF") from error
+    if code != 0:
+        raise RuntimeError(f"Failed server shutdown (exit {code}) cannot certify persistence")
+
+
 def validate_pair(directory: Path, scenario: str, server: dict, client: dict) -> None:
     required = {"id", "action", "boot", "connection", "status", "image", "offset", "revision", "positions", "unloaded", "controlPath"}
     if not required <= server.keys() or not required <= client.keys():
@@ -142,6 +165,9 @@ def validate_pair(directory: Path, scenario: str, server: dict, client: dict) ->
         expected = {f"{scenario}-{tab}-{size}.png" for tab in ("gallery", "playlist", "queue") for size in ("normal", "narrow")}
         if set(client.get("screenshots", [])) != expected:
             raise ValueError("Missing populated normal/narrow UI screenshots")
+        rows = client.get("visibleRows", {})
+        if set(rows) != expected or any(type(count) is not int or count < 1 for count in rows.values()):
+            raise ValueError("Populated gallery/playlist/queue has no fully visible list row")
         for name in expected:
             width, height = png_size(directory / name)
             if width < 300 or height < 200:
@@ -214,9 +240,7 @@ class LiveRun:
     def restart(self, name, status):
         old_boot = json.loads((self.evidence / "boot.json").read_text())["boot"]
         live.stop_tree(self.client); self.client = None
-        live.stop_tree(self.server, graceful_server=True)
-        if self.server.returncode != 0:
-            raise RuntimeError("A forced or failed server shutdown cannot certify persistence")
+        stop_server_for_restart(self.server)
         self.server = None
         shutdown = json.loads((self.evidence / f"shutdown-{old_boot}.json").read_text())
         atomic_json(self.evidence / "request.json", dict(id=name, action="RESTART_READ"))
@@ -275,7 +299,7 @@ def run(root: Path, target: str, compile_only=False):
         with (live_run.runtime / "server/server.properties").open("a") as file:
             file.write("server-ip=127.0.0.1\nlevel-type=minecraft:flat\nlevel-seed=1\nview-distance=16\nsimulation-distance=2\ngamemode=creative\n")
         with (live_run.runtime / "client/options.txt").open("a") as file:
-            file.write("renderDistance:16\nmaxFps:60\nfullscreen:false\n")
+            file.write("renderDistance:16\nmaxFps:60\nfullscreen:false\ntutorialStep:none\n")
         for name, color in {"a": (240, 30, 30), "b": (30, 240, 30), "c": (30, 30, 240), "x": (240, 240, 30)}.items():
             png_fixture(evidence / f"fixture-{name}.png", color)
         live_run.start_server(); live_run.start_client()

@@ -183,7 +183,7 @@ public final class ScreenPlaylistRuntime {
                 request.requestId(), success, control, saved == null ? null : saved.id(),
                 library.playlists().stream().map(p -> new PlaylistWire.Summary(p.id(), p.name(), p.slides().size())).toList(),
                 saved == null ? List.of() : saved.slides().stream().map(ScreenPlaylistRuntime::slide).toList(),
-                playback.announcing() ? "ANNOUNCEMENT" : playback.status().name(), viewAllowed ? playback.currentImage() : null, viewAllowed ? playback.slideIndex() : -1,
+                playback.announcing() && playback.playing() ? "ANNOUNCEMENT" : playback.status().name(), viewAllowed ? playback.currentImage() : null, viewAllowed ? playback.slideIndex() : -1,
                 viewAllowed ? playback.offsetMillis() : 0, playback.repeat().name(), playback.shuffle(),
                 viewAllowed ? playback.queue().stream().map(ScreenPlaylistRuntime::slide).toList() : List.of(), viewAllowed ? playback.upcomingImages() : List.of());
         PacketRegistries.sendToPlayer(player, new ScreenPlaylistS2CPacket(pos, view.json()));

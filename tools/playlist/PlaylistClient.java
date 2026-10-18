@@ -1,6 +1,8 @@
 package com.nstut.simplyscreens.testing.playlist;
 
 import com.google.gson.*;
+import com.nstut.openui.api.UIComponent;
+import com.nstut.openui.controls.VirtualList;
 import com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity;
 import com.nstut.simplyscreens.client.screens.ImageLoadScreen;
 import com.nstut.simplyscreens.helpers.ClientImageManager;
@@ -23,6 +25,7 @@ public final class PlaylistClient {
     private static ImageLoadScreen ui;
     private static JsonObject ready;
     private static final List<String> screenshots = new ArrayList<>();
+    private static final Map<String, Integer> visibleRows = new LinkedHashMap<>();
 
     public static boolean tick(Minecraft mc) {
         try {
@@ -34,7 +37,7 @@ public final class PlaylistClient {
             if (!next.get("id").getAsString().equals(request.get("id").getAsString())) return false;
             if (!next.get("id").getAsString().equals(current)) {
                 current = next.get("id").getAsString(); ready = next;
-                ticks = stable = uiStep = uiTicks = 0; complete = false; ui = null; screenshots.clear();
+                ticks = stable = uiStep = uiTicks = 0; complete = false; ui = null; screenshots.clear(); visibleRows.clear();
             }
             if (complete) return false;
             if (++ticks > 3_600) throw new IllegalStateException("Client scenario timeout: " + current);
@@ -59,6 +62,7 @@ public final class PlaylistClient {
             receipt.addProperty("clientChunksUnloaded", unloaded); receipt.addProperty("textureReady", !unloaded && image != null);
             receipt.addProperty("stableClientTicks", stable); receipt.addProperty("clientTicks", ticks);
             receipt.add("screenshots", JSON.toJsonTree(screenshots));
+            receipt.add("visibleRows", JSON.toJsonTree(visibleRows));
             write("client-" + current + ".json", receipt); complete = true;
         } catch (Throwable failure) { fail(failure); }
         return false;
@@ -79,14 +83,33 @@ public final class PlaylistClient {
         if (uiTicks == 0) {
             boolean narrow = uiStep >= 3;
             mc.getWindow().setWindowed(narrow ? 360 : 960, narrow ? 280 : 720);
-            ui.resize(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+            __RESIZE__
             ui.smokeSelectTab(uiStep % 3);
         }
         if (++uiTicks < 25) return false;
         String stem = current + "-" + List.of("gallery", "playlist", "queue").get(uiStep % 3) + (uiStep >= 3 ? "-narrow" : "-normal");
+        int count = visibleFullRows(ui.uiRuntime().root(), 0, 0,
+                mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+        visibleRows.put(stem + ".png", count);
+        if (count < 1) throw new IllegalStateException("No fully visible list row in " + stem);
         capturing.set(true);
         __CAPTURE__
         return false;
+    }
+    /** Count actual mounted rows wholly inside the list, its ancestors and viewport. */
+    private static int visibleFullRows(UIComponent node, int left, int top, int right, int bottom) {
+        left = Math.max(left, node.getX()); top = Math.max(top, node.getY());
+        right = Math.min(right, node.getX() + node.getWidth());
+        bottom = Math.min(bottom, node.getY() + node.getHeight());
+        if (right <= left || bottom <= top) return 0;
+        int count = 0;
+        for (UIComponent child : node.children()) {
+            if (node instanceof VirtualList<?>) {
+                if (child.getWidth() > 0 && child.getHeight() > 0 && child.getX() >= left && child.getY() >= top
+                        && child.getX() + child.getWidth() <= right && child.getY() + child.getHeight() <= bottom) count++;
+            } else count += visibleFullRows(child, left, top, right, bottom);
+        }
+        return count;
     }
     private static void save(com.mojang.blaze3d.platform.NativeImage pixels, String stem) {
         try (pixels) {

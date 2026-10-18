@@ -4,7 +4,7 @@ from pathlib import Path
 import shutil
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import playlist_test as harness
 
@@ -68,6 +68,32 @@ class PlaylistHarnessTests(unittest.TestCase):
         with self.assertRaises(ValueError): harness.assert_restore(shutdown, boot, "PLAYING")
         harness.assert_restore(self.state(status="PLAYING"), self.state("server-2", "PLAYING"), "PLAYING")
 
+    def test_restart_shutdown_closes_console_before_waiting_for_natural_exit(self):
+        process = Mock()
+        process.poll.return_value = None
+        process.wait.return_value = 0
+        stream = process.stdin
+        harness.stop_server_for_restart(process)
+        stream.write.assert_called_once_with("stop\n")
+        stream.flush.assert_called_once_with()
+        stream.close.assert_called_once_with()
+        process.wait.assert_called_once_with(timeout=90)
+        self.assertIsNone(process.stdin)
+        self.assertLess(process.mock_calls.index(unittest.mock.call.stdin.close()),
+                        process.mock_calls.index(unittest.mock.call.wait(timeout=90)))
+
+    def test_restart_shutdown_never_certifies_timeout_or_nonzero_exit(self):
+        for result in (1, -15, harness.subprocess.TimeoutExpired("server", 90)):
+            process = Mock()
+            process.poll.return_value = None
+            if isinstance(result, Exception): process.wait.side_effect = result
+            else: process.wait.return_value = result
+            with self.subTest(result=result), patch.object(harness.live, "stop_tree") as forced:
+                with self.assertRaises(RuntimeError): harness.stop_server_for_restart(process)
+                forced.assert_not_called()
+        process.poll.return_value = 0
+        with self.assertRaises(RuntimeError): harness.stop_server_for_restart(process)
+
     def test_fixture_pngs_are_deterministic_and_do_not_need_pillow(self):
         with tempfile.TemporaryDirectory() as tmp:
             a, b = Path(tmp) / "a.png", Path(tmp) / "b.png"
@@ -82,13 +108,20 @@ class PlaylistHarnessTests(unittest.TestCase):
             directory = Path(tmp)
             server, client = self.pair("populated-ui")
             server["action"] = client["action"] = "UI"
+            client["visibleRows"] = {}
             for tab in ("gallery", "playlist", "queue"):
                 for size in ("normal", "narrow"):
                     filename = f"populated-ui-{tab}-{size}.png"
                     # Only the header is relevant to this validation unit test; live captures are complete PNGs.
                     (directory / filename).write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\rIHDR" + (960).to_bytes(4, "big") + (720).to_bytes(4, "big"))
                     client["screenshots"].append(filename)
+                    client["visibleRows"][filename] = 1
             harness.validate_pair(directory, "populated-ui", server, client)
+            for tab in ("gallery", "playlist", "queue"):
+                hidden = copy.deepcopy(client)
+                hidden["visibleRows"][f"populated-ui-{tab}-normal.png"] = 0
+                with self.subTest(tab=tab), self.assertRaisesRegex(ValueError, "fully visible"):
+                    harness.validate_pair(directory, "populated-ui", server, hidden)
             client["screenshots"].pop()
             with self.assertRaises(ValueError): harness.validate_pair(directory, "populated-ui", server, client)
 
@@ -112,14 +145,18 @@ class PlaylistHarnessTests(unittest.TestCase):
                 self.assertNotIn("__TELEPORT__", server)
                 self.assertNotIn("__CHUNK_LOADED__", client)
                 self.assertNotIn("__CAPTURE__", client)
+                self.assertNotIn("__RESIZE__", client)
                 self.assertIn("PlaylistServer.tick(server)", (package / "ServerTickScheduler.java").read_text())
                 self.assertIn("playlistProbeCounts()", (package / "client/screens/ImageLoadScreen.java").read_text())
                 if module == "neoforge-26.1.2":
                     self.assertIn("0.0f, true);", server)
                     self.assertIn("pixels -> save(pixels, stem)", client)
+                    self.assertIn("ui.resize(mc.getWindow()", client)
+                    self.assertNotIn("ui.resize(mc,", client)
                 else:
                     self.assertNotIn("0.0f, true);", server)
                     self.assertIn("save(Screenshot.takeScreenshot", client)
+                    self.assertIn("ui.resize(mc, mc.getWindow()", client)
             with self.assertRaises((RuntimeError, FileExistsError)): harness.instrument(stage)
         for path, contents in before.items(): self.assertEqual(contents, (harness.ROOT / path).read_bytes())
 
@@ -147,6 +184,8 @@ class PlaylistHarnessTests(unittest.TestCase):
         self.assertIn("level.getChunkSource().getChunkNow", server)
         self.assertIn("screen.getImageId()", client)
         self.assertIn("ClientImageManager.getTextureLocation(image)", client)
+        self.assertIn("node instanceof VirtualList<?>", client)
+        self.assertIn("child.getY() + child.getHeight() <= bottom", client)
         for forbidden in ("ClientboundForgetLevelChunkPacket", "setImageId(", "updateScreen(", "service.tick("):
             self.assertNotIn(forbidden, server + client)
         self.assertIn('write("shutdown-" + BOOT + ".json", receipt)', server)

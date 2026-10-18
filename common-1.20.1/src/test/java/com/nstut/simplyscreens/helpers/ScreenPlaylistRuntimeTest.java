@@ -131,4 +131,11 @@ class ScreenPlaylistRuntimeTest {
         assertThrows(RuntimeException.class,()->PlaylistWire.Request.parse("null"));
         assertThrows(RuntimeException.class,()->PlaylistWire.Request.parse("{}"));
     }
+    @Test void pausedAnnouncementExposesResumableTransportStatus() {
+        UUID id=playlist();send("PLAY",id,null,-1,-1,0,"");
+        send("ANNOUNCE",id,image,-1,-1,1000,"");assertEquals("ANNOUNCEMENT",latest.status());
+        send("PAUSE",id,null,-1,-1,0,"");assertEquals("PAUSED",latest.status());assertTrue(store().snapshot(key).announcing());
+        send("RESUME",id,null,-1,-1,0,"");assertEquals("ANNOUNCEMENT",latest.status());
+    }
+
 }
