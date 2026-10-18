@@ -13,6 +13,20 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import java.util.UUID;
 
 public class ClientPacketHandler {
+    public static void handleScreenPrefetch(BlockPos pos, String json) {
+        var client = Minecraft.getInstance();
+        if (client.level == null || !(client.level.getBlockEntity(pos) instanceof ScreenBlockEntity)) return;
+        try {
+            String[] ids = json.isEmpty() ? new String[0] : json.split(",", -1);
+            if (ids.length > 2) return;
+            for (String id : ids) ClientImageManager.prefetch(UUID.fromString(id));
+        } catch (IllegalArgumentException malformed) { /* Bounded server hint, never an arbitrary URL. */ }
+    }
+
+    public static void handleScreenPlaylist(BlockPos pos, String json) {
+        if (Minecraft.getInstance().screen instanceof ImageLoadScreen screen) screen.updatePlaylist(pos, json);
+    }
+
     public static void handleScreenAccess(BlockPos pos, String json) {
         if (Minecraft.getInstance().screen instanceof ImageLoadScreen screen) screen.updateAccess(pos, json);
     }

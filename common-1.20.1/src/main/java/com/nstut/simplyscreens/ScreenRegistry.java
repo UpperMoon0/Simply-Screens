@@ -40,6 +40,7 @@ public class ScreenRegistry {
     public static void init(java.nio.file.Path worldSavePath) {
         LINK_INDEX.clearAll();
         HELPER.init(worldSavePath);
+        com.nstut.simplyscreens.helpers.ScreenPlaylistRuntime.init(worldSavePath);
     }
 
     /**
@@ -97,6 +98,7 @@ public class ScreenRegistry {
     }
 
     public static void removeImageReferences(UUID imageId) {
+        com.nstut.simplyscreens.helpers.ScreenPlaylistRuntime.purgeImage(imageId);
         if (HELPER.removeImageReferences(imageId)) {
             HELPER.saveRegistry();
             com.nstut.simplyscreens.helpers.ScreenAccessService.refreshLoadedContent(null);

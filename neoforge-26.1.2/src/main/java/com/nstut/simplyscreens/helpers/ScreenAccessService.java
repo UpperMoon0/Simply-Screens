@@ -20,10 +20,11 @@ public final class ScreenAccessService {
     }
     public static boolean select(ServerPlayer player, ScreenBlockEntity screen, UUID image) {
         if (!allowed(player, screen, Permission.CONTROL) || image != null && !library(player, image)) return false;
-        if (screen.isLocalImageOverride()) { screen.setImageId(image); return true; }
+        if (screen.isLocalImageOverride()) { screen.setImageId(image); ScreenPlaylistRuntime.stop(screen.contentKey()); return true; }
         State s = state(screen);
         if (!ScreenRegistry.networks().select(screen.accessKey(), actor(player), image, s.revision())) return false;
         screen.setImageId(image);
+        ScreenPlaylistRuntime.stop(screen.contentKey());
         return true;
     }
     public static boolean library(ServerPlayer player, UUID image) {
@@ -90,9 +91,11 @@ public final class ScreenAccessService {
         if (player == null || player.level().getServer().getPlayerList().getPlayer(player.getUUID()) != player) return false;
         if (library(player, image)) return true;
         Set<ScreenBlockEntity> refs = MEDIA.get(image);
-        if (refs == null) return false;
-        for (ScreenBlockEntity tile : refs) {
-            if (tile.isRemoved() || tile.getLevel() != player.level() || !image.equals(tile.getResolvedImageId())) continue;
+        if (refs == null) refs = Set.of();
+        Set<ScreenBlockEntity> candidates = new HashSet<>(refs);
+        for (ScreenBlockEntity tile : INDEXED.keySet()) if (ScreenPlaylistRuntime.upcoming(tile.contentKey(), image)) candidates.add(tile);
+        for (ScreenBlockEntity tile : candidates) {
+            if (tile.isRemoved() || tile.getLevel() != player.level() || !(image.equals(tile.getResolvedImageId()) || ScreenPlaylistRuntime.upcoming(tile.contentKey(), image))) continue;
             ServerLevel level = (ServerLevel) tile.getLevel();
             var pos = tile.getBlockPos();
             var chunk = level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4);
@@ -101,6 +104,33 @@ public final class ScreenAccessService {
             if (allowed(player, tile, Permission.VIEW)) return true;
         }
         return false;
+    }
+    /** At most two upcoming images per tracked viewer per batch; no names or library data. */
+    public static void prefetch(net.minecraft.server.MinecraftServer server) {
+        Map<ServerPlayer, Set<UUID>> sent = new IdentityHashMap<>();
+        for (ScreenBlockEntity tile : new ArrayList<>(INDEXED.keySet())) {
+            if (tile.isRemoved() || !(tile.getLevel() instanceof ServerLevel level)) continue;
+            var pos = tile.getBlockPos();
+            var chunk = level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4);
+            if (chunk == null || chunk.getBlockEntity(pos) != tile || ScreenPlaylistRuntime.service() == null) continue;
+            var upcoming = ScreenPlaylistRuntime.service().snapshot(tile.contentKey()).upcomingImages();
+            if (upcoming.isEmpty()) continue;
+            for (ServerPlayer player : level.getChunkSource().chunkMap.getPlayers(new ChunkPos(pos.getX() >> 4, pos.getZ() >> 4), false)) {
+                if (!allowed(player, tile, Permission.VIEW)) continue;
+                Set<UUID> budget = sent.computeIfAbsent(player, ignored -> new HashSet<>());
+                List<String> ids = new ArrayList<>();
+                for (UUID id : upcoming) {
+                    if (budget.size() >= 2 || budget.contains(id)) continue;
+                    var path = ServerImageManager.getImageFilePath(server, id);
+                    try {
+                        if (path == null || !java.nio.file.Files.isRegularFile(path) || java.nio.file.Files.size(path) > 8L * 1024 * 1024) continue;
+                    } catch (java.io.IOException missing) { continue; }
+                    budget.add(id); ids.add(id.toString());
+                }
+                if (!ids.isEmpty()) com.nstut.simplyscreens.network.PacketRegistries.sendToPlayer(player,
+                        new com.nstut.simplyscreens.network.ScreenPrefetchS2CPacket(pos, String.join(",", ids)));
+            }
+        }
     }
     public static void access(ServerPlayer player, com.nstut.simplyscreens.network.ScreenAccessC2SPacket packet) {
         ScreenBlockEntity screen = ScreenPacketSecurity.nearby(player, packet.pos);
@@ -124,6 +154,7 @@ public final class ScreenAccessService {
             } else changed = "CLAIM".equals(packet.action) ? ScreenRegistry.networks().claim(packet.key, actor(player))
                     : ScreenRegistry.networks().access(packet.key, actor(player), packet.revision, packet.action, packet.value);
         }
+        if (changed && "TRANSFER".equals(packet.action)) ScreenPlaylistRuntime.stop(screen.contentKey());
         boolean manage = allowed(player, screen, Permission.MANAGE);
         State next = state(screen);
         // Trusted-player UUIDs are management data, not a public roster.

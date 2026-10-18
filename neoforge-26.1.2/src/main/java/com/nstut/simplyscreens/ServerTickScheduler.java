@@ -41,6 +41,7 @@ public final class ServerTickScheduler {
 
         LifecycleEvent.SERVER_STOPPED.register(server -> {
             if (activeServer == server) {
+                com.nstut.simplyscreens.helpers.ScreenPlaylistRuntime.shutdown();
                 TASKS.clear();
                 activeServer = null;
             }
@@ -57,6 +58,7 @@ public final class ServerTickScheduler {
 
     private static void process(MinecraftServer server) {
         activeServer = server;
+        com.nstut.simplyscreens.helpers.ScreenPlaylistRuntime.tick(server);
 
         if (TASKS.isEmpty()) {
             return;

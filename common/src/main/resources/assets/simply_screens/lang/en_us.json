@@ -1,240 +1,166 @@
 {
-
   "block.simply_screens.screen": "Screen",
-
   "item.simply_screens.screen": "Screen",
-
   "itemGroup.simply_screens": "Simply Screens",
-
   "simply_screens.screen.image_load_title": "Load Image",
-
   "simply_screens.screen.upload_from_computer": "Upload from Computer",
-
   "simply_screens.screen.select_image": "Select Image",
-
   "simply_screens.screen.no_image_selected": "No image selected",
-
   "simply_screens.screen.image_list": "Available Images",
-
   "simply_screens.screen.image_name": "Image Name",
-
   "gui.simplyscreens.screen.title": "Screen",
-
   "gui.simplyscreens.screen.search": "Search",
-
   "gui.simplyscreens.screen.search.placeholder": "Search...",
-
   "gui.simplyscreens.screen.maintain_aspect": "Maintain Aspect Ratio",
-
   "gui.simplyscreens.screen.maintain_aspect.tooltip": "Toggle image stretching to maintain the original aspect ratio",
-
   "gui.simplyscreens.screen.select": "Select",
-
   "gui.simplyscreens.screen.upload": "Upload from Computer",
-
   "gui.simplyscreens.screen.upload.error.size": "File size exceeds the maximum allowed size of %sMB.",
-
   "gui.simplyscreens.screen.dialog.select_image": "Select Image",
-
   "gui.simplyscreens.screen.dialog.image_files": "Image Files",
-
   "gui.simplyscreens.screen.dialog.upload_error": "Upload Error",
-
   "gui.simplyscreens.screen.id.placeholder": "Screen ID...",
-
   "gui.simplyscreens.screen.id.label": "Screen ID:",
-
   "gui.simplyscreens.screen.id.tooltip": "Enter a screen ID to link multiple screens to the same image",
-
   "gui.simplyscreens.screen.search.tooltip": "Search for images by name",
-
   "gui.simplyscreens.screen.add_image.tooltip": "Add a new image from your computer or a URL",
-
   "gui.simplyscreens.screen.url.label": "Download from URL:",
-
   "gui.simplyscreens.screen.link": "Link",
-
   "gui.simplyscreens.screen.url.placeholder": "Image URL...",
-
   "gui.simplyscreens.screen.url.tooltip": "Enter an image URL to download from the internet",
-
   "gui.simplyscreens.screen.go": "Go",
-
   "gui.simplyscreens.screen.url.error.invalid": "Invalid URL. Must start with http:// or https://",
-
   "gui.simplyscreens.screen.remove": "Remove",
-
   "gui.simplyscreens.screen.remove.tooltip": "Remove this image from your library",
-
   "gui.simplyscreens.theme.light": "☀ Light",
-
   "gui.simplyscreens.theme.dark": "☾ Dark",
-
   "gui.simplyscreens.tab.gallery": "Gallery",
-
   "gui.simplyscreens.tab.settings": "Settings",
-
   "gui.simplyscreens.tab.import": "Import",
-
   "gui.simplyscreens.screen.refresh": "Refresh",
-
   "gui.simplyscreens.screen.add_image": "Add image",
-
   "gui.simplyscreens.screen.clear_search": "Clear search",
-
   "gui.simplyscreens.screen.choose": "Choose",
-
   "gui.simplyscreens.screen.url.load": "Load",
-
   "gui.simplyscreens.gallery.empty": "No images uploaded",
-
   "gui.simplyscreens.gallery.no_matches": "No images match \"%s\"",
-
   "gui.simplyscreens.gallery.displayed": "Displayed",
-
   "gui.simplyscreens.gallery.selected": "Selected",
-
   "gui.simplyscreens.gallery.none_displayed": "No image currently displayed",
-
   "gui.simplyscreens.gallery.now_displaying": "Displaying: %s",
-
   "gui.simplyscreens.screen.maintain_aspect.help": "Preserve the image proportions instead of stretching it to fill the screen.",
-
   "gui.simplyscreens.import.computer": "From computer",
-
   "gui.simplyscreens.import.computer.help": "Upload a PNG, JPG, or JPEG image to this server.",
-
   "gui.simplyscreens.import.url": "From URL",
-
   "gui.simplyscreens.import.disabled": "Image imports are disabled by the server",
-
   "gui.simplyscreens.screen.upload.error.type": "Choose a PNG, JPG, or JPEG image.",
-
   "gui.simplyscreens.screen.upload.error.read": "The selected image could not be read.",
-
   "gui.simplyscreens.screen.id.error.invalid": "Screen IDs may use letters, numbers, dots, underscores, colons, and hyphens.",
-
   "gui.simplyscreens.cancel": "Cancel",
-
   "gui.simplyscreens.error": "Simply Screens",
-
   "gui.simplyscreens.remove.confirm.title": "Remove image?",
-
   "gui.simplyscreens.remove.confirm.body": "\"%s\" will be removed from your server library.",
-
   "gui.simplyscreens.status.selected": "The selected image is now displayed.",
-
   "gui.simplyscreens.status.linking": "Linking Screen ID...",
   "gui.simplyscreens.status.linked": "Screen link updated.",
-
   "gui.simplyscreens.status.removing": "Removing %s…",
-
   "gui.simplyscreens.status.uploading": "Uploading image…",
-
   "gui.simplyscreens.status.downloading": "Downloading image from URL…",
-
   "gui.simplyscreens.access.title": "Access",
-
   "gui.simplyscreens.access.apply": "Apply",
-
   "gui.simplyscreens.access.summary": "Owner: %s\nTrusted players: %s",
-
   "gui.simplyscreens.access.unclaimed": "Unclaimed (operator claim required)",
-
   "gui.simplyscreens.access.denied": "Change failed. Refresh and check permissions, the player name or UUID, and the trusted-player limit.",
-
   "gui.simplyscreens.access.claim": "Claim",
-
   "gui.simplyscreens.access.help": "Viewing and control permissions are separate from private image-library access.",
-
   "gui.simplyscreens.access.policy_help": "Operators have access in every mode. Owner only allows the owner; Operators only excludes non-OP owners. Owners can always manage access.",
-
   "gui.simplyscreens.access.view": "View: %s",
-
   "gui.simplyscreens.access.control": "Control: %s",
-
   "gui.simplyscreens.access.uuid": "Player UUID",
-
   "gui.simplyscreens.access.trust": "Trust",
-
   "gui.simplyscreens.access.untrust": "Untrust",
-
   "gui.simplyscreens.access.transfer": "Transfer ownership",
-
   "gui.simplyscreens.access.transfer_confirm": "Transfer ownership to %s? Your management access will be removed and the trusted list cleared.",
-
   "gui.simplyscreens.access.invalid_uuid": "Enter a valid player UUID.",
-
   "gui.simplyscreens.access.override": "Local image override: %s",
-
   "gui.simplyscreens.access.policy.public": "Public",
-
   "gui.simplyscreens.access.policy.trusted": "Trusted players",
-
   "gui.simplyscreens.access.policy.owner_only": "Owner only",
-
   "gui.simplyscreens.access.policy.operators": "Operators only",
-
   "gui.simplyscreens.access.owner": "Owner",
-
   "gui.simplyscreens.access.change_owner": "Change owner",
-
   "gui.simplyscreens.access.you": "You",
-
   "gui.simplyscreens.access.view_label": "Viewing access",
-
   "gui.simplyscreens.access.control_label": "Control access",
-
   "gui.simplyscreens.access.trusted_count": "Trusted players: %s",
-
   "gui.simplyscreens.access.manage": "Manage",
-
   "gui.simplyscreens.access.manage_trusted": "Manage trusted players",
-
   "gui.simplyscreens.access.add_trusted": "Add player",
-
   "gui.simplyscreens.access.none_trusted": "No trusted players",
-
   "gui.simplyscreens.access.remove": "Remove",
-
   "gui.simplyscreens.access.add": "Add",
-
   "gui.simplyscreens.access.player_placeholder": "Player name or UUID",
-
   "gui.simplyscreens.access.player_help": "Use an online player name or an offline player UUID.",
-
   "gui.simplyscreens.access.transfer_help": "Use an online player name or UUID. Transferring ownership may remove your management access.",
-
   "gui.simplyscreens.access.invalid_player": "Use an online player name or a complete UUID.",
-
   "gui.simplyscreens.access.trusted_help": "Trusted players receive access in Trusted mode. Only the owner and operators can manage access.",
-
   "gui.simplyscreens.access.trust_limit": "The trusted list is full (64 players).",
-
   "gui.simplyscreens.close": "Close",
-
   "gui.simplyscreens.access.override.help": "On: this display uses its own image instead of the image shared by its Screen ID. Image changes here affect only this display. Off: follow the shared image again. Useful for screens linked with the same Screen ID.",
-
   "gui.simplyscreens.access.claim.help": "Operators can claim an unowned legacy display to manage its access settings.",
-
   "gui.simplyscreens.access.view_label.help": "Choose who can view images displayed by this screen. This does not grant access to the owner’s private image library. Operators have access in every mode. Operators only excludes non-OP owners; owners still manage access.",
-
   "gui.simplyscreens.access.control_label.help": "Choose who can change the displayed image. This does not grant ownership, access management, or access to another player’s private image library. Operators have access in every mode. Operators only excludes non-OP owners; owners still manage access.",
-
   "gui.simplyscreens.access.remove.help": "Remove this player from the trusted list. Their access through Trusted mode is revoked; Public access is unaffected.",
-
   "gui.simplyscreens.screen.link.tooltip": "Apply this Screen ID to share images and access settings with linked screens. You must manage both displays/networks. Clear the ID and apply to detach this display.",
-
   "gui.simplyscreens.theme.tooltip": "Switch between the light and dark interface themes.",
-
   "gui.simplyscreens.personal.title": "Your display settings",
-
   "gui.simplyscreens.personal.scope": "Only affects you, for all screens. Changes save automatically on this device.",
-
   "gui.simplyscreens.personal.view_distance": "Screen render distance",
-
   "gui.simplyscreens.personal.view_distance.help": "Maximum distance in blocks at which screens are drawn for you. Larger values show screens farther away and can use more graphics resources. Does not change other players or server view permissions.",
-
-  "gui.simplyscreens.personal.save_failed": "Could not save your display settings. Check that the config folder is writable."
-
+  "gui.simplyscreens.personal.save_failed": "Could not save your display settings. Check that the config folder is writable.",
+  "gui.simplyscreens.playlist.tab": "Playlists",
+  "gui.simplyscreens.playlist.queue": "Queue",
+  "gui.simplyscreens.playlist.choose": "Choose playlist",
+  "gui.simplyscreens.playlist.play": "Play saved playlist",
+  "gui.simplyscreens.playlist.create": "New playlist",
+  "gui.simplyscreens.playlist.actions": "Playlist actions",
+  "gui.simplyscreens.playlist.rename": "Rename playlist",
+  "gui.simplyscreens.playlist.duplicate": "Duplicate playlist",
+  "gui.simplyscreens.playlist.delete": "Delete playlist",
+  "gui.simplyscreens.playlist.edit_help": "Editing saved slides does not change the running slideshow. Press Play to load your changes.",
+  "gui.simplyscreens.playlist.empty": "No slides yet. Add images from the gallery.",
+  "gui.simplyscreens.playlist.browse": "Browse images",
+  "gui.simplyscreens.playlist.slide_actions": "Slide actions",
+  "gui.simplyscreens.playlist.duration": "Slide duration",
+  "gui.simplyscreens.playlist.up": "Move up",
+  "gui.simplyscreens.playlist.down": "Move down",
+  "gui.simplyscreens.playlist.remove": "Remove slide",
+  "gui.simplyscreens.playlist.clear_queue": "Clear queue",
+  "gui.simplyscreens.playlist.queue_help": "Queued slides play once before the next saved slide. Saved playlists are unchanged.",
+  "gui.simplyscreens.playlist.queue_empty": "Nothing queued",
+  "gui.simplyscreens.playlist.upcoming": "Up next",
+  "gui.simplyscreens.playlist.add": "Add to playlist",
+  "gui.simplyscreens.playlist.queue_next": "Play next (10 seconds)",
+  "gui.simplyscreens.playlist.queue_last": "Add to queue (10 seconds)",
+  "gui.simplyscreens.playlist.announce": "Announce for 10 seconds",
+  "gui.simplyscreens.playlist.search": "Search playlists…",
+  "gui.simplyscreens.playlist.name_help": "Use a unique name, up to 64 characters.",
+  "gui.simplyscreens.playlist.duration_help": "Duration in seconds, from 1 to 86400.",
+  "gui.simplyscreens.playlist.save": "Save",
+  "gui.simplyscreens.playlist.invalid": "Enter a valid name or duration.",
+  "gui.simplyscreens.playlist.delete_help": "Delete “%s”? Its running snapshot will continue until stopped.",
+  "gui.simplyscreens.playlist.loading": "Loading slideshow…",
+  "gui.simplyscreens.playlist.nothing_playing": "Nothing playing",
+  "gui.simplyscreens.playlist.previous": "Previous slide",
+  "gui.simplyscreens.playlist.pause": "Pause slideshow",
+  "gui.simplyscreens.playlist.resume": "Resume slideshow",
+  "gui.simplyscreens.playlist.stop": "Stop slideshow",
+  "gui.simplyscreens.playlist.next": "Next slide",
+  "gui.simplyscreens.playlist.restart": "Restart slideshow",
+  "gui.simplyscreens.playlist.repeat": "Repeat",
+  "gui.simplyscreens.playlist.shuffle": "Shuffle",
+  "gui.simplyscreens.playlist.cancel_announcement": "End announcement and resume",
+  "gui.simplyscreens.playlist.rejected": "Playlist changed or permission was denied. Refreshed the latest state.",
+  "gui.simplyscreens.tab.playlist": "Playlists",
+  "gui.simplyscreens.tab.queue": "Queue"
 }

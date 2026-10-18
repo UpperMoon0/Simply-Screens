@@ -32,6 +32,38 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ClientImageManager {
+    // Slideshow browsing must not retain one GPU allocation per slide indefinitely.
+    private static final long MAX_TEXTURE_BYTES = 128L * 1024 * 1024;
+    private static final int MAX_TEXTURES = 32;
+    private static final java.util.LinkedHashMap<UUID, Long> TEXTURE_BUDGET = new java.util.LinkedHashMap<>(32, .75f, true);
+    private static final Map<UUID, String> CACHED_EXTENSIONS = new ConcurrentHashMap<>();
+    private static long prefetchWindow;
+    private static int prefetchRequests;
+    public static void prefetch(UUID image) {
+        if (image == null || IN_MEMORY_CACHE.containsKey(image) || FAILED_IMAGES.contains(image)) return;
+        long now = System.nanoTime();
+        if (now - prefetchWindow >= 2_000_000_000L) { prefetchWindow = now; prefetchRequests = 0; }
+        if (prefetchRequests >= 2) return;
+        prefetchRequests++;
+        getImageTexture(image);
+    }
+    private static void cacheTexture(UUID id, DynamicTexture texture) {
+        var pixels = texture.getPixels();
+        long bytes = pixels == null ? 0 : (long)pixels.getWidth()*pixels.getHeight()*4;
+        evictTexture(id);
+        while (!TEXTURE_BUDGET.isEmpty() && (TEXTURE_BUDGET.size() >= MAX_TEXTURES
+                || TEXTURE_BUDGET.values().stream().mapToLong(Long::longValue).sum()+bytes > MAX_TEXTURE_BYTES))
+            evictTexture(TEXTURE_BUDGET.keySet().iterator().next());
+        IN_MEMORY_CACHE.put(id,texture); TEXTURE_BUDGET.put(id,bytes);
+    }
+    private static void evictTexture(UUID id) {
+        TEXTURE_BUDGET.remove(id);
+        var location = TEXTURE_LOCATIONS.remove(id);
+        var texture = IN_MEMORY_CACHE.remove(id);
+        if (location != null) Minecraft.getInstance().getTextureManager().release(location);
+        else if (texture != null) texture.close();
+    }
+
     private static final Path CACHE_DIR = Minecraft.getInstance().gameDirectory.toPath().resolve("simply_screens_cache");
     private static final Map<UUID, DynamicTexture> IN_MEMORY_CACHE = new ConcurrentHashMap<>();
     private static final Map<UUID, Identifier> TEXTURE_LOCATIONS = new ConcurrentHashMap<>();
@@ -51,6 +83,7 @@ public class ClientImageManager {
 
     public static void invalidateImage(UUID imageId) {
         if (imageId == null) return;
+        TEXTURE_BUDGET.remove(imageId); CACHED_EXTENSIONS.remove(imageId);
         DynamicTexture texture = IN_MEMORY_CACHE.remove(imageId);
         Identifier location = TEXTURE_LOCATIONS.remove(imageId);
         if (location != null) {
@@ -110,17 +143,20 @@ public class ClientImageManager {
         }
 
         if (IN_MEMORY_CACHE.containsKey(imageId)) {
+            TEXTURE_BUDGET.get(imageId);
             return IN_MEMORY_CACHE.get(imageId);
         }
 
         ImageMetadata metadata = METADATA_CACHE.get(imageId);
+        if (metadata == null && CACHED_EXTENSIONS.containsKey(imageId))
+            metadata = new ImageMetadata(imageId.toString(), imageId.toString(), CACHED_EXTENSIONS.get(imageId));
         if (metadata != null) {
             Path imagePath = getImagePath(imageId, metadata.getExtension());
             if (Files.exists(imagePath)) {
                 try (InputStream inputStream = Files.newInputStream(imagePath)) {
                     NativeImage nativeImage = loadImage(inputStream, metadata.getExtension());
                     DynamicTexture texture = new DynamicTexture(() -> "Simply Screens image " + imageId, nativeImage);
-                    IN_MEMORY_CACHE.put(imageId, texture);
+                    cacheTexture(imageId, texture);
                     return texture;
                 } catch (IOException e) {
                     SimplyScreens.LOGGER.error("Failed to load image from disk cache", e);
@@ -138,11 +174,12 @@ public class ClientImageManager {
         Path imagePath = getImagePath(imageId, extension);
         try {
             Files.write(imagePath, imageData);
+            CACHED_EXTENSIONS.put(imageId, extension);
 
             try (InputStream inputStream = Files.newInputStream(imagePath)) {
                 NativeImage nativeImage = loadImage(inputStream, extension);
                 DynamicTexture texture = new DynamicTexture(() -> "Simply Screens image " + imageId, nativeImage);
-                IN_MEMORY_CACHE.put(imageId, texture);
+                cacheTexture(imageId, texture);
             } catch (IOException e) {
                 SimplyScreens.LOGGER.error("Failed to load image from disk cache after saving", e);
                 FAILED_IMAGES.add(imageId);
@@ -155,7 +192,7 @@ public class ClientImageManager {
 
     public static Identifier getTextureLocation(UUID imageId) {
         Identifier existing = TEXTURE_LOCATIONS.get(imageId);
-        if (existing != null) return existing;
+        if (existing != null) { TEXTURE_BUDGET.get(imageId); return existing; }
 
         DynamicTexture texture = getImageTexture(imageId);
         if (texture != null) {
@@ -191,6 +228,18 @@ public class ClientImageManager {
     }
 
     private static NativeImage loadImage(InputStream inputStream, String extension) throws IOException {
+        byte[] encoded = inputStream.readAllBytes();
+        try (var imageInput = ImageIO.createImageInputStream(new ByteArrayInputStream(encoded))) {
+            var readers = ImageIO.getImageReaders(imageInput);
+            if (!readers.hasNext()) throw new IOException("Unsupported image encoding");
+            var reader = readers.next();
+            try {
+                reader.setInput(imageInput);
+                long pixels = (long)reader.getWidth(0)*reader.getHeight(0);
+                if (pixels <= 0 || pixels > 16L*1024*1024) throw new IOException("Image exceeds 16 megapixel decode budget");
+            } finally { reader.dispose(); }
+        }
+        inputStream = new ByteArrayInputStream(encoded);
         if ("png".equals(extension)) {
             return NativeImage.read(inputStream);
         }
@@ -254,6 +303,7 @@ public class ClientImageManager {
     }
 
     public static void clearCache() {
+        TEXTURE_BUDGET.clear(); CACHED_EXTENSIONS.clear(); prefetchWindow = 0; prefetchRequests = 0;
         DOWNLOADS.clear();
         PENDING_DOWNLOADS.clear();
         METADATA_CACHE.clear();
