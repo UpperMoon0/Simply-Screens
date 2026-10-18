@@ -247,6 +247,38 @@ class ScreenAccessServiceTest {
         doNothing().when(screen).setChanged();
         return screen;
     }
+    @Test void copiedItemPlacementStartsFreshOwnedDisplay() throws Exception {
+        ScreenRegistry.updateDisplay(display, "station", true, false);
+        ScreenBlockEntity placed = persistedTile(pos.offset(32, 0, 0), pos);
+        placed.setScreenWidth(12);
+        placed.setScreenHeight(9);
+        placed.setNetworkRevision(44);
+        placed.setLocalImageOverride(true);
+        placed.setNeedsIdentityFork(true);
+        placed.setUnresolvedDisplayIdentity(true);
+        placed.claimPlaced(visitor);
+        assertNotEquals(display, placed.getDisplayId());
+        assertEquals(placed.getBlockPos(), placed.getAnchorPos());
+        assertTrue(placed.isAnchor());
+        assertEquals(1, placed.getScreenWidth());
+        assertEquals(1, placed.getScreenHeight());
+        assertEquals(0, placed.getNetworkRevision());
+        assertEquals("", placed.getScreenId());
+        assertNull(placed.getImageId());
+        assertNull(placed.getResolvedImageId());
+        assertFalse(placed.isLocalImageOverride());
+        assertFalse(placed.isNeedsIdentityFork());
+        assertFalse(placed.isUnresolvedDisplayIdentity());
+        State fresh = ScreenRegistry.networks().snapshot(placed.accessKey());
+        assertEquals(visitor, fresh.owner());
+        assertTrue(fresh.trusted().isEmpty());
+        assertNull(fresh.image());
+        assertEquals(owner, ScreenRegistry.networks().snapshot(key).owner());
+        assertEquals(image, ScreenRegistry.networks().snapshot(key).image());
+        assertEquals("station", ScreenRegistry.networks().displayState(display).screenId());
+        assertTrue(ScreenRegistry.networks().displayState(display).override());
+    }
+
     @Test void physicalSplitDetachesNetworkAndCopiesAuthoritativeContent() throws Exception {
         ScreenBlockEntity split = mock(ScreenBlockEntity.class, CALLS_REAL_METHODS);
         split.setDisplayId(display);

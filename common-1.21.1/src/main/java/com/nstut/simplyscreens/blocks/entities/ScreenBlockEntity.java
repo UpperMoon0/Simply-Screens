@@ -97,7 +97,23 @@ public class ScreenBlockEntity extends BlockEntity {
         com.nstut.simplyscreens.helpers.ScreenAccessService.refreshMedia(this);
     }
     public void claimPlaced(java.util.UUID owner) {
-        ScreenRegistry.networks().createOwned(accessKey(), owner, imageId);
+        // Item block-entity data is applied before setPlacedBy. A copied item
+        // must never reuse another physical display's identity or private media.
+        displayId = UUID.randomUUID();
+        imageId = null;
+        screenId = "";
+        networkRevision = 0;
+        localImageOverride = false;
+        needsIdentityFork = false;
+        unresolvedDisplayIdentity = false;
+        anchorPos = worldPosition;
+        screenWidth = 1;
+        screenHeight = 1;
+        maintainAspectRatio = true;
+        tickSinceLastUpdate = 0;
+        screenLinkRegistered = false;
+        needsStructureRefresh = true;
+        ScreenRegistry.networks().createOwned(accessKey(), owner, null);
         saveDisplayState();
         setChanged();
     }
