@@ -22,7 +22,7 @@
     {
       "type": "patchouli:text",
       "title": "Your display",
-      "text": "Open Settings > Your display settings to set Screen render distance, 8-512 blocks. It applies immediately to all screens for you and saves automatically on this device. It works for read-only viewers too. This does not change other players, server chunk distance or viewing permissions."
+      "text": "Settings > Your display settings offers 8-512 block render distance. It applies to all screens for you, saves on this device, and works for read-only viewers. Server viewing permissions still apply."
     }
   ]
 }
