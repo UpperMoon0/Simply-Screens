@@ -1,0 +1,20 @@
+# Named image playlists (issue #15)
+
+Implementation in progress after v0.9.0. This draft is not ready to merge.
+
+## Experience
+
+Follow Simply Speakers' current playlist flow: gallery item actions add slides or queue them; a searchable saved-playlist selector changes only the editor; explicit Play selects the playback source; compact transport remains visible across tabs. Named playlists support create, rename, duplicate, delete, per-slide duration and reorder. A separate queue distinguishes one-off requests from saved slides. Announcement interrupts temporarily and resumes the exact suspended position.
+
+## State and security
+
+Use an independent server-owned timeline keyed by the authoritative content key, preserving Screen ID synchronization and local overrides. Server ticks advance even when every linked chunk is unloaded. Persist offsets and ordering; server downtime does not consume a slide. Saved edits do not rewrite a running snapshot. Playlist library mutations are scoped to the actor; playback requires current screen control permission and referenced images must be in the actor's authorized library. Wire messages and resource usage are bounded. Private image downloading continues to require current screen visibility and chunk tracking.
+
+## Verification required before completion
+
+- Shared timeline/store tests: CRUD/reorder, repeat/shuffle, queue, announcement resume, persisted offset, deletion and corruption recovery.
+- Native security/codec/UI tests for 1.20.1, 1.21.1 and 26.1.2.
+- All five loader builds and live clients, synchronized distant displays and late join/chunk reload/restart evidence.
+- Existing access/media/rendering regressions and independent review on final head.
+
+The PR will claim issue closure only after the full acceptance scope and evidence are complete.
