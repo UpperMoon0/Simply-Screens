@@ -1,6 +1,6 @@
 # Named image playlists (issue #15)
 
-Implementation in progress after v0.9.0. This draft is not ready to merge.
+Named slide playlists in v0.10.0 build on the v0.9.0 screen-network and access model.
 
 ## Experience
 
@@ -10,11 +10,11 @@ Follow Simply Speakers' current playlist flow: gallery item actions add slides o
 
 Use an independent server-owned timeline keyed by the authoritative content key, preserving Screen ID synchronization and local overrides. Server ticks advance even when every linked chunk is unloaded. Persist offsets and ordering; server downtime does not consume a slide. Saved edits do not rewrite a running snapshot. Playlist library mutations are scoped to the actor; playback requires current screen control permission and referenced images must be in the actor's authorized library. Wire messages and resource usage are bounded. Private image downloading continues to require current screen visibility and chunk tracking.
 
-## Verification required before completion
+## Required verification gates
 
 - Shared timeline/store tests: CRUD/reorder, repeat/shuffle, queue, announcement resume, persisted offset, deletion and corruption recovery.
 - Native security/codec/UI tests for 1.20.1, 1.21.1 and 26.1.2.
 - All five loader builds and live clients, synchronized distant displays and late join/chunk reload/restart evidence.
 - Existing access/media/rendering regressions and independent review on final head.
 
-The PR will claim issue closure only after the full acceptance scope and evidence are complete.
+Issue acceptance requires all gates on the exact candidate head; unit tests and ordinary join smoke alone do not establish live playlist correctness.

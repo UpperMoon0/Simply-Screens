@@ -74,8 +74,7 @@ class PlaylistHarnessTests(unittest.TestCase):
         process.wait.return_value = 0
         stream = process.stdin
         harness.stop_server_for_restart(process)
-        stream.write.assert_called_once_with("stop\n")
-        stream.flush.assert_called_once_with()
+        stream.write.assert_not_called()
         stream.close.assert_called_once_with()
         process.wait.assert_called_once_with(timeout=90)
         self.assertIsNone(process.stdin)
@@ -174,6 +173,11 @@ class PlaylistHarnessTests(unittest.TestCase):
                     self.assertNotIn("0.0f, true);", server)
                     self.assertIn("save(Screenshot.takeScreenshot", client)
                     self.assertIn("ui.resize(mc, mc.getWindow()", client)
+            for target in harness.TARGETS:
+                build = (stage / target / "build.gradle").read_text()
+                self.assertEqual(target != "neoforge-26.1.2", "-javaagent:" in build)
+                if target != "neoforge-26.1.2":
+                    self.assertIn('name in ["runLiveJoinTestClient", "runLiveJoinTestServer"]', build)
             with self.assertRaises((RuntimeError, FileExistsError)): harness.instrument(stage)
         for path, contents in before.items(): self.assertEqual(contents, (harness.ROOT / path).read_bytes())
 
@@ -208,6 +212,8 @@ class PlaylistHarnessTests(unittest.TestCase):
         self.assertIn('write("shutdown-" + BOOT + ".json", receipt)', server)
         self.assertIn('write("boot-" + BOOT + ".json", boot)', server)
         self.assertIn('boot.addProperty("serverPid", ProcessHandle.current().pid())', server)
+        self.assertIn('server.halt(false)', server)
+        self.assertLess(server.index('server.halt(false)'), server.index('getPlayers().isEmpty()'))
 
     def test_verifier_rejects_missing_matrix_even_if_one_receipt_claims_success(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -20,6 +20,7 @@ import subprocess
 import sys
 import time
 import uuid
+import zipfile
 import zlib
 
 import live_join_test as live
@@ -36,6 +37,10 @@ SCENARIOS = (
     "paused-restart", "resume-for-restart", "running-restart",
 )
 RESTORE_FIELDS = ("status", "image", "offset", "revision", "playlist", "announcing", "queued", "queueSize", "repeat")
+LAUNCHER_PATCHES = (
+    "PATCH 5.2.91 dev/architectury/transformer/transformers/classpath/ReadClasspathProviderImpl",
+    "PATCH 5.2.91 dev/architectury/transformer/shadowed/impl/dev/architectury/tinyremapper/TinyRemapper",
+)
 
 
 def instrument(stage: Path) -> None:
@@ -79,6 +84,39 @@ def instrument(stage: Path) -> None:
         else:
             replace_once(build, 'programArgs "--quickPlayMultiplayer", "127.0.0.1:25575"',
                          'programArgs "--quickPlayMultiplayer", "127.0.0.1:25575", "--username", "PlaylistVerifier", "--width", "960", "--height", "720"')
+            # Repair only the proven Architectury development-launcher leak.
+            # No production jar, original Gradle file, game class or mod pool changes.
+            with build.open("a", encoding="utf-8") as file:
+                file.write('\ntasks.withType(JavaExec).configureEach {\n'
+                           '    if (name in ["runLiveJoinTestClient", "runLiveJoinTestServer"]) {\n'
+                           '        jvmArgs "-javaagent:" + rootProject.file("build/playlist-dev-launcher/agent.jar").absolutePath\n'
+                           '    }\n}\n')
+
+
+def build_launcher_agent(stage: Path) -> Path:
+    """Compile a standalone JDK-only test agent, never part of a mod source set."""
+    javac = shutil.which("javac")
+    if javac is None:
+        raise RuntimeError("A JDK javac is required for the playlist development-launcher agent")
+    output = stage / "build/playlist-dev-launcher"
+    classes = output / "classes"; classes.mkdir(parents=True)
+    subprocess.run([javac, "--release", "17", "-d", str(classes),
+                    str(stage / "tools/playlist/DevLauncherAgent.java")], check=True)
+    jar = output / "agent.jar"
+    with zipfile.ZipFile(jar, "w") as archive:
+        archive.writestr("META-INF/MANIFEST.MF", "Manifest-Version: 1.0\nPremain-Class: com.nstut.simplyscreens.testing.playlist.DevLauncherAgent\n\n")
+        for path in sorted(classes.rglob("*.class")):
+            archive.write(path, path.relative_to(classes).as_posix())
+    return jar
+
+
+def validate_launcher_patches(evidence: Path, target: str, pid: int) -> list[str]:
+    if target == "neoforge-26.1.2":
+        return []  # ModDevGradle does not use Architectury's development transformer.
+    lines = (evidence / f"launcher-agent-{pid}.txt").read_text().splitlines()
+    if len(lines) != 2 or set(lines) != set(LAUNCHER_PATCHES):
+        raise ValueError("Missing, duplicate, failed or unexpected Architectury launcher patch")
+    return sorted(lines)
 
 
 def png_fixture(path: Path, color: tuple[int, int, int]) -> None:
@@ -116,7 +154,7 @@ def assert_restore(shutdown: dict, boot: dict, expected_status: str) -> None:
 
 
 def stop_server_for_restart(process: subprocess.Popen[str], timeout=90) -> None:
-    """Finish forwarded console input so Gradle can exit after Minecraft saves.
+    """Wait for the test driver's normal Minecraft halt(false), then natural exit.
 
     Keeping the input pipe open can leave Gradle's input forwarder alive after
     the server has finished. Never certify a restart by terminating that process.
@@ -124,14 +162,12 @@ def stop_server_for_restart(process: subprocess.Popen[str], timeout=90) -> None:
     """
     if process.poll() is not None or process.stdin is None:
         raise RuntimeError("Playlist server exited before the requested clean shutdown")
-    process.stdin.write("stop\n")
-    process.stdin.flush()
     process.stdin.close()
     process.stdin = None
     try:
         code = process.wait(timeout=timeout)
     except subprocess.TimeoutExpired as error:
-        raise RuntimeError("Playlist server did not exit naturally after stop and console EOF") from error
+        raise RuntimeError("Playlist server did not exit naturally after halt request and console EOF") from error
     if code != 0:
         raise RuntimeError(f"Failed server shutdown (exit {code}) cannot certify persistence")
 
@@ -229,11 +265,16 @@ class LiveRun:
         self.health(need_client=need_client)
 
     def start_server(self):
+        boot_path = self.evidence / "boot.json"
+        previous_boot = json.loads(boot_path.read_text()).get("boot") if boot_path.exists() else None
         self.server_runs += 1
         path = self.evidence / f"server-process-{self.server_runs}.log"
         log = path.open("w", encoding="utf-8"); self.logs.append(log)
         self.server = launch(live.command(self.stage, f":{self.target}:runLiveJoinTestServer"), self.stage, log, self.env)
         self.wait(lambda: any(marker in path.read_text(errors="replace") for marker in live.SERVER_READY_MARKERS), 480, need_client=False)
+        self.wait(lambda: boot_path.exists() and json.loads(boot_path.read_text()).get("boot") != previous_boot,
+                  need_client=False)
+        validate_launcher_patches(self.evidence, self.target, json.loads(boot_path.read_text())["serverPid"])
 
     def start_client(self):
         self.client_runs += 1
@@ -266,8 +307,11 @@ class LiveRun:
         return server, client
 
     def restart(self, name, status):
-        old_boot = json.loads((self.evidence / "boot.json").read_text())["boot"]
+        old_state = json.loads((self.evidence / "boot.json").read_text())
+        old_boot = old_state["boot"]
+        patches = validate_launcher_patches(self.evidence, self.target, old_state["serverPid"])
         live.stop_tree(self.client); self.client = None
+        atomic_json(self.evidence / f"stop-{old_boot}.json", {"boot": old_boot})
         try:
             stop_server_for_restart(self.server)
         except Exception:
@@ -283,7 +327,7 @@ class LiveRun:
         assert_restore(shutdown, boot, status)
         self.start_client()
         pair = self.scenario(name, "RESTART_READ")
-        return dict(status="pass", shutdown=shutdown, boot=boot), pair
+        return dict(status="pass", shutdown=shutdown, boot=boot, exit_code=0, launcher_patches=patches), pair
 
     def finish(self):
         (self.evidence / "finish.txt").write_text("done", encoding="utf-8")
@@ -321,6 +365,7 @@ def run(root: Path, target: str, compile_only=False):
         if compile_only:
             receipt["status"] = "compile-only"
             return
+        if target != "neoforge-26.1.2": build_launcher_agent(stage)
         standalone = live.packetweave_jar(root, target)
         receipt["packetweave"] = dict(version=live.native_version(standalone, target), sha256=hashlib.sha256(standalone.read_bytes()).hexdigest())
         live_run = LiveRun(stage, target, evidence)
@@ -395,6 +440,9 @@ def verify_receipts(directory: Path, head: str) -> None:
         for name, status in (("paused", "PAUSED"), ("running", "PLAYING")):
             restart = receipt.get("restarts", {}).get(name, {})
             if restart.get("status") != "pass": raise ValueError("Missing exact restart evidence")
+            expected_patches = [] if receipt["target"] == "neoforge-26.1.2" else sorted(LAUNCHER_PATCHES)
+            if restart.get("exit_code") != 0 or restart.get("launcher_patches") != expected_patches:
+                raise ValueError("Missing natural shutdown or scoped development-launcher evidence")
             assert_restore(restart.get("shutdown", {}), restart.get("boot", {}), status)
         for scenario in SCENARIOS:
             server = json.loads((path.parent / f"server-{scenario}.json").read_text())

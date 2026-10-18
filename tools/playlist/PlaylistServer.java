@@ -32,7 +32,7 @@ public final class PlaylistServer {
     private static JsonObject active, fixture;
     private static PlaybackSnapshot before;
     private static long started, commandId;
-    private static boolean bootWritten, complete;
+    private static boolean bootWritten, complete, stopping;
     private static ServerPlayer lastPlayer;
     private static int connection;
 
@@ -47,6 +47,13 @@ public final class PlaylistServer {
                 write("boot-" + BOOT + ".json", boot);
                 write("boot.json", boot);
                 bootWritten = true;
+            }
+            // Console forwarding differs between Gradle launchers. This is the
+            // normal vanilla StopCommand path, requested only by the test runner.
+            // The real lifecycle callback must still persist and write its receipt.
+            if (Files.exists(DIR.resolve("stop-" + BOOT + ".json"))) {
+                if (!stopping) { stopping = true; server.halt(false); }
+                return;
             }
             if (server.getPlayerList().getPlayers().isEmpty()) { lastPlayer = null; return; }
             ServerPlayer player = server.getPlayerList().getPlayers().get(0);
