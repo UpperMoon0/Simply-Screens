@@ -151,4 +151,15 @@ class ScreenNetworkServiceTest {
         assertFalse(helper.canWriteScreenId("",friend,false));
         assertFalse(helper.canWriteScreenId("invalid name",friend,true));
     }
+    @Test void corruptWorldSwitchCannotExposePreviousWorldPermissions(@TempDir Path root) throws Exception {
+        var s=new ScreenNetworkService(); s.init(root.resolve("good"),Map.of("station",image),Map.of("station",owner));
+        assertTrue(s.allowed(key,user,Permission.MANAGE));
+        Path broken=root.resolve("broken"); Files.createDirectory(broken);
+        Files.writeString(broken.resolve("screen_networks.json"),"broken");
+        assertThrows(IllegalStateException.class,()->s.init(broken,Map.of(),Map.of()));
+        assertFalse(s.allowed(key,user,Permission.MANAGE)); assertFalse(s.allowed(key,admin,Permission.MANAGE));
+        assertNull(s.snapshot(key)); assertTrue(s.keys().isEmpty());
+        assertFalse(s.createOwned(key,friend,null));
+        assertThrows(IllegalStateException.class,()->s.ensure(key,null,friend));
+    }
 }

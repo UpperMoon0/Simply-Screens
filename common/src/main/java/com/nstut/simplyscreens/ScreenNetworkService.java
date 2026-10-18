@@ -39,6 +39,10 @@ public final class ScreenNetworkService {
     private final Map<UUID, DisplayState> displays = new HashMap<>();
     private final Map<String, UUID> anchors = new HashMap<>();
     private Path file;
+    private boolean healthy = true;
+    private void requireHealthy() {
+        if (!healthy) throw new IllegalStateException("Screen network store is unavailable");
+    }
 
     public static String network(String id) {
         String normalized = ScreenRegistryHelper.normalizeScreenId(id);
@@ -46,11 +50,12 @@ public final class ScreenNetworkService {
         return "network/" + normalized;
     }
     public static String display(UUID id) { return "display/" + Objects.requireNonNull(id); }
-    public synchronized State snapshot(String key) { return states.get(key); }
-    public synchronized Set<String> keys() { return Set.copyOf(states.keySet()); }
-    public synchronized DisplayState displayState(UUID id) { return displays.get(id); }
-    public synchronized UUID displayAt(String anchor) { return anchors.get(anchor); }
+    public synchronized State snapshot(String key) { return healthy ? states.get(key) : null; }
+    public synchronized Set<String> keys() { return healthy ? Set.copyOf(states.keySet()) : Set.of(); }
+    public synchronized DisplayState displayState(UUID id) { return healthy ? displays.get(id) : null; }
+    public synchronized UUID displayAt(String anchor) { return healthy ? anchors.get(anchor) : null; }
     synchronized void registerAnchor(String anchor, UUID id) {
+        requireHealthy();
         UUID old = anchors.put(anchor, id);
         if (id.equals(old)) return;
         try { save(); } catch (RuntimeException failure) {
@@ -59,6 +64,7 @@ public final class ScreenNetworkService {
         }
     }
     synchronized void updateDisplay(UUID id, String screenId, boolean override, boolean aspect) {
+        requireHealthy();
         DisplayState next = new DisplayState(screenId, override, aspect);
         DisplayState previous = displays.put(id, next);
         if (next.equals(previous)) return;
@@ -68,6 +74,7 @@ public final class ScreenNetworkService {
         }
     }
     public synchronized State ensure(String key, UUID legacyImage, UUID legacyOwner) {
+        requireHealthy();
         validateKey(key);
         State existing = states.get(key);
         if (existing != null) return existing;
@@ -77,6 +84,7 @@ public final class ScreenNetworkService {
         return created;
     }
     public synchronized boolean allowed(String key, Actor actor, Permission permission) {
+        if (!healthy) return false;
         State s = states.get(key);
         if (s == null || actor == null) return false;
         if (actor.operator()) return true;
@@ -86,6 +94,7 @@ public final class ScreenNetworkService {
         return p == Policy.PUBLIC || p == Policy.TRUSTED && actor.id() != null && s.trusted().contains(actor.id());
     }
     public synchronized boolean claim(String key, Actor actor) {
+        if (!healthy) return false;
         State s = states.get(key);
         if (s == null || actor == null || actor.id() == null) return false;
         if (s.owner() != null) return allowed(key, actor, Permission.MANAGE);
@@ -95,6 +104,7 @@ public final class ScreenNetworkService {
         return true;
     }
     public synchronized boolean createOwned(String key, UUID owner, UUID image) {
+        if (!healthy) return false;
         validateKey(key);
         if (owner == null || states.containsKey(key)) return false;
         long owned = states.entrySet().stream().filter(e -> e.getKey().startsWith("network/") && owner.equals(e.getValue().owner())).count();
@@ -103,12 +113,14 @@ public final class ScreenNetworkService {
         return true;
     }
     public synchronized boolean select(String key, Actor actor, UUID image, long expectedRevision) {
+        if (!healthy) return false;
         State s = states.get(key);
         if (s == null || s.revision() != expectedRevision || !allowed(key, actor, Permission.CONTROL)) return false;
         if (!Objects.equals(image, s.image())) commit(key, s.revise(s.owner(), s.trusted(), s.view(), s.control(), image));
         return true;
     }
     public synchronized boolean access(String key, Actor actor, long expectedRevision, String action, String value) {
+        if (!healthy) return false;
         State s = states.get(key);
         if (s == null || s.revision() != expectedRevision || !allowed(key, actor, Permission.MANAGE)) return false;
         UUID owner = s.owner();
@@ -134,6 +146,7 @@ public final class ScreenNetworkService {
     }
     /** Internal structure split/detach: preserve access while giving the physical display independent content. */
     synchronized UUID forkDisplay(String source, UUID image) {
+        requireHealthy();
         State s = Objects.requireNonNull(states.get(source), "Missing source display");
         UUID id = UUID.randomUUID();
         commit(display(id), new State(s.owner(), s.trusted(), s.view(), s.control(), image,
@@ -141,10 +154,12 @@ public final class ScreenNetworkService {
         return id;
     }
     synchronized void remove(String key) {
+        requireHealthy();
         State old = states.remove(key);
         try { save(); } catch (RuntimeException failure) { if (old != null) states.put(key, old); throw failure; }
     }
     private void commit(String key, State state) {
+        requireHealthy();
         State previous = states.put(key, state);
         try { save(); } catch (RuntimeException failure) {
             if (previous == null) states.remove(key); else states.put(key, previous);
@@ -153,7 +168,8 @@ public final class ScreenNetworkService {
     }
     public synchronized void init(Path root, Map<String, UUID> images, Map<String, UUID> owners) {
         Path next = root.resolve("screen_networks.json").toAbsolutePath().normalize();
-        if (next.equals(file)) return;
+        if (healthy && next.equals(file)) return;
+        healthy = false;
         Map<String, State> loaded = new HashMap<>();
         Map<UUID, DisplayState> loadedDisplays = new HashMap<>();
         Map<String, UUID> loadedAnchors = new HashMap<>();
@@ -175,7 +191,8 @@ public final class ScreenNetworkService {
         }
         states.clear(); states.putAll(loaded); displays.clear(); displays.putAll(loadedDisplays);
         anchors.clear(); anchors.putAll(loadedAnchors); file = next;
-        save();
+        healthy = true;
+        try { save(); } catch (RuntimeException failure) { healthy = false; throw failure; }
     }
     private static Store read(Path path) throws IOException {
         Store raw = JSON.fromJson(Files.readString(path), Store.class);
@@ -205,6 +222,7 @@ public final class ScreenNetworkService {
     private static String networkUnchecked(String id) { return "network/" + ScreenRegistryHelper.normalizeScreenId(id); }
     private static Path backup(Path p) { return p.resolveSibling(p.getFileName() + ".bak"); }
     public synchronized void save() {
+        requireHealthy();
         if (file == null) return;
         try {
             Files.createDirectories(file.getParent());
