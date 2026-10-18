@@ -125,9 +125,107 @@ class ScreenAccessServiceTest {
     @Test void detachPreservesCurrentImageAndInheritedPermissionsAfterTransfer() {
         when(player.getUUID()).thenReturn(owner);
         assertTrue(ScreenAccessService.relink(player,tile,""));
-        var capture=org.mockito.ArgumentCaptor.forClass(UUID.class);
-        verify(tile).setDisplayId(capture.capture());
-        State independent=ScreenRegistry.networks().snapshot(ScreenNetworkService.display(capture.getValue()));
+        verify(tile, never()).setDisplayId(any());
+        State independent=ScreenRegistry.networks().snapshot(ScreenNetworkService.display(display));
         assertEquals(owner,independent.owner()); assertEquals(image,independent.image());
     }
+    @Test void unloadedChildFollowsDetachedIdentityWithoutLoadedAnchor() throws Exception {
+        when(player.getUUID()).thenReturn(owner);
+        ScreenBlockEntity anchor = persistedTile(pos, pos);
+        ScreenRegistry.updateDisplay(display, "station", false, false);
+        UUID latest = UUID.randomUUID();
+        assertTrue(ScreenRegistry.networks().select(key, new Actor(owner, false), latest, 0));
+        // No loaded children exist while the anchor is detached.
+        assertTrue(ScreenAccessService.relink(player, anchor, ""));
+        assertEquals(display, anchor.getDisplayId());
+        String independent = ScreenNetworkService.display(display);
+        State detached = ScreenRegistry.networks().snapshot(independent);
+        assertEquals(latest, detached.image());
+        assertTrue(ScreenRegistry.networks().access(independent, new Actor(owner, false),
+                detached.revision(), "VIEW", "OWNER_ONLY"));
+        assertTrue(ScreenRegistry.networks().select(key, new Actor(owner, false), image, 1));
+        // Load a child's stale saved link later, with no anchor chunk available.
+        ScreenBlockEntity child = persistedTile(pos.offset(16, 0, 0), pos);
+        var restore = ScreenBlockEntity.class.getDeclaredMethod("restoreDisplayState");
+        restore.setAccessible(true);
+        restore.invoke(child);
+        assertEquals(display, child.getDisplayId());
+        assertEquals("", child.getScreenId());
+        assertEquals(latest, child.getImageId());
+        assertEquals(latest, child.getResolvedImageId());
+        assertFalse(ScreenRegistry.networks().allowed(child.accessKey(), new Actor(visitor, false), Permission.VIEW));
+        assertTrue(ScreenRegistry.networks().allowed(key, new Actor(visitor, false), Permission.VIEW));
+    }
+    private ScreenBlockEntity persistedTile(BlockPos position, BlockPos anchor) throws Exception {
+        ScreenBlockEntity screen = mock(ScreenBlockEntity.class, CALLS_REAL_METHODS);
+        screen.setDisplayId(display);
+        screen.setAnchorPos(anchor);
+        var base = net.minecraft.world.level.block.entity.BlockEntity.class;
+        var savedPosition = base.getDeclaredField("worldPosition");
+        savedPosition.setAccessible(true);
+        savedPosition.set(screen, position);
+        var savedLevel = base.getDeclaredField("level");
+        savedLevel.setAccessible(true);
+        savedLevel.set(screen, level);
+        var savedLink = ScreenBlockEntity.class.getDeclaredField("screenId");
+        savedLink.setAccessible(true);
+        savedLink.set(screen, "station");
+        var savedImage = ScreenBlockEntity.class.getDeclaredField("imageId");
+        savedImage.setAccessible(true);
+        savedImage.set(screen, image);
+        doReturn(mock(net.minecraft.world.level.block.state.BlockState.class)).when(screen).getBlockState();
+        doNothing().when(screen).setChanged();
+        return screen;
+    }
+    @Test void physicalSplitDetachesNetworkAndCopiesAuthoritativeContent() throws Exception {
+        ScreenBlockEntity split = mock(ScreenBlockEntity.class, CALLS_REAL_METHODS);
+        split.setDisplayId(display);
+        var link = ScreenBlockEntity.class.getDeclaredField("screenId");
+        link.setAccessible(true);
+        link.set(split, "station");
+        UUID latest = UUID.randomUUID();
+        assertTrue(ScreenRegistry.networks().select(key, new Actor(owner, false), latest, 0));
+        var fork = ScreenBlockEntity.class.getDeclaredMethod("forkDisplayIdentity", ScreenBlockEntity.class);
+        fork.setAccessible(true);
+        fork.invoke(split, split);
+        assertNotEquals(display, split.getDisplayId());
+        assertEquals("", split.getScreenId());
+        assertFalse(split.isLocalImageOverride());
+        assertEquals(latest, split.getResolvedImageId());
+        State independent = ScreenRegistry.networks().snapshot(split.accessKey());
+        assertEquals(owner, independent.owner());
+        assertTrue(ScreenRegistry.networks().select(split.accessKey(), new Actor(owner, false), null, independent.revision()));
+        assertEquals(latest, ScreenRegistry.networks().snapshot(key).image());
+        assertNull(split.getResolvedImageId());
+    }
+
+    @Test void failedOverrideSaveRestoresRawFlag() throws Exception {
+        ScreenBlockEntity real = mock(ScreenBlockEntity.class, CALLS_REAL_METHODS);
+        real.setDisplayId(display);
+        var override = ScreenBlockEntity.class.getDeclaredField("localImageOverride");
+        override.setAccessible(true);
+        override.setBoolean(real, true);
+        var link = ScreenBlockEntity.class.getDeclaredField("screenId");
+        link.setAccessible(true);
+        link.set(real, "station");
+        try (var registry = mockStatic(ScreenRegistry.class)) {
+            registry.when(() -> ScreenRegistry.updateDisplay(display, "station", false, false))
+                    .thenThrow(new IllegalStateException("disk unavailable"));
+            assertThrows(IllegalStateException.class, () -> real.useLocalImage(false));
+            assertTrue(override.getBoolean(real));
+            registry.verify(() -> ScreenRegistry.reconcileContent(anyString(), any()), never());
+        }
+    }
+
+    @Test void selfSynchronizationPreservesDeferredIdentityFork() throws Exception {
+        ScreenBlockEntity split = mock(ScreenBlockEntity.class, CALLS_REAL_METHODS);
+        split.setDisplayId(display);
+        var pending = ScreenBlockEntity.class.getDeclaredField("needsIdentityFork");
+        pending.setAccessible(true);
+        pending.setBoolean(split, true);
+        split.copyDisplayIdentity(split);
+        assertTrue(pending.getBoolean(split));
+        assertEquals(display, split.getDisplayId());
+    }
+
 }

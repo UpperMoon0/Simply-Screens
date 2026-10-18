@@ -51,6 +51,49 @@ class ScreenRegistryHelperTest {
         assertTrue(helper2.isInitialized(), "Second init should keep initialized flag true");
     }
 
+    @Test
+    void failedWorldSwitchCanRetryTheRepairedWorld(@TempDir Path tempDir) throws IOException {
+        Path first = tempDir.resolve("first");
+        Path second = tempDir.resolve("second");
+        UUID owner = UUID.randomUUID();
+        helper.init(first);
+        assertTrue(helper.claimScreenId("first-network", owner, false));
+
+        ScreenRegistryHelper other = new ScreenRegistryHelper(logger);
+        other.init(second);
+        assertTrue(other.claimScreenId("second-network", owner, false));
+        String validStore = Files.readString(second.resolve("screen_networks.json"));
+        Files.writeString(second.resolve("screen_networks.json"), "broken");
+        Files.writeString(second.resolve("screen_networks.json.bak"), "broken");
+
+        assertThrows(IllegalStateException.class, () -> helper.init(second));
+        assertFalse(helper.isInitialized());
+        assertFalse(helper.canWriteScreenId("first-network", owner, false));
+
+        Files.writeString(second.resolve("screen_networks.json"), validStore);
+        assertDoesNotThrow(() -> helper.init(second));
+        assertTrue(helper.isInitialized());
+        assertTrue(helper.canWriteScreenId("second-network", owner, false));
+        assertFalse(helper.canWriteScreenId("first-network", owner, false));
+    }
+
+    @Test
+    void failedWorldSwitchCanReturnToThePreviousWorld(@TempDir Path tempDir) throws IOException {
+        Path good = tempDir.resolve("good");
+        Path broken = tempDir.resolve("broken");
+        UUID owner = UUID.randomUUID();
+        helper.init(good);
+        assertTrue(helper.claimScreenId("station", owner, false));
+        Files.createDirectories(broken);
+        Files.writeString(broken.resolve("screen_networks.json"), "broken");
+
+        assertThrows(IllegalStateException.class, () -> helper.init(broken));
+        assertFalse(helper.isInitialized());
+        assertDoesNotThrow(() -> helper.init(good));
+        assertTrue(helper.isInitialized());
+        assertTrue(helper.canWriteScreenId("station", owner, false));
+    }
+
     // 1.3 setImageId stores mapping
     @Test
     void setImageId_storesMapping() {

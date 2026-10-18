@@ -107,8 +107,7 @@ public final class ScreenNetworkService {
         if (!healthy) return false;
         validateKey(key);
         if (owner == null || states.containsKey(key)) return false;
-        long owned = states.entrySet().stream().filter(e -> e.getKey().startsWith("network/") && owner.equals(e.getValue().owner())).count();
-        if (key.startsWith("network/") && owned >= ScreenRegistryHelper.MAX_SCREEN_IDS_PER_PLAYER) return false;
+        if (key.startsWith("network/") && atNetworkLimit(owner)) return false;
         commit(key, new State(owner, Set.of(), Policy.PUBLIC, Policy.OWNER_ONLY, image, "STATIC", 0, 0, 0));
         return true;
     }
@@ -132,12 +131,23 @@ public final class ScreenNetworkService {
                 case "CONTROL" -> control = Policy.valueOf(value);
                 case "TRUST" -> { if (trusted.size() >= 64) return false; trusted.add(UUID.fromString(value)); }
                 case "UNTRUST" -> trusted.remove(UUID.fromString(value));
-                case "TRANSFER" -> { owner = UUID.fromString(value); trusted.clear(); }
+                case "TRANSFER" -> {
+                    UUID recipient = UUID.fromString(value);
+                    if (key.startsWith("network/") && !recipient.equals(owner) && atNetworkLimit(recipient)) return false;
+                    owner = recipient;
+                    trusted.clear();
+                }
                 default -> { return false; }
             }
         } catch (IllegalArgumentException invalid) { return false; }
         commit(key, s.revise(owner, trusted, view, control, s.image()));
         return true;
+    }
+    private boolean atNetworkLimit(UUID owner) {
+        return states.entrySet().stream()
+                .filter(e -> e.getKey().startsWith("network/") && owner.equals(e.getValue().owner()))
+                .limit(ScreenRegistryHelper.MAX_SCREEN_IDS_PER_PLAYER)
+                .count() >= ScreenRegistryHelper.MAX_SCREEN_IDS_PER_PLAYER;
     }
     /** Internal reconciliation only. External callers must use select with an actor and revision. */
     synchronized void reconcileImage(String key, UUID image) {
@@ -152,6 +162,16 @@ public final class ScreenNetworkService {
         commit(display(id), new State(s.owner(), s.trusted(), s.view(), s.control(), image,
                 "STATIC", 0, 0, 0));
         return id;
+    }
+    /** Internal unlink: retain the physical identity so unloaded children follow the detached display. */
+    synchronized void detachDisplay(UUID id, String source, UUID image) {
+        requireHealthy();
+        State inherited = Objects.requireNonNull(states.get(source), "Missing source display");
+        String key = display(id);
+        State previous = states.get(key);
+        long revision = previous == null ? 0 : Math.addExact(previous.revision(), 1);
+        commit(key, new State(inherited.owner(), inherited.trusted(), inherited.view(), inherited.control(),
+                image, "STATIC", 0, 0, revision));
     }
     synchronized void remove(String key) {
         requireHealthy();

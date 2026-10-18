@@ -66,6 +66,7 @@
   "gui.simplyscreens.status.uploading": "Uploading image…",
   "gui.simplyscreens.status.downloading": "Downloading image from URL…",
   "gui.simplyscreens.access.title": "Ownership and access",
+  "gui.simplyscreens.access.apply": "Apply",
   "gui.simplyscreens.access.summary": "Owner: %s\nTrusted players: %s",
   "gui.simplyscreens.access.unclaimed": "Unclaimed (operator claim required)",
   "gui.simplyscreens.access.denied": "Access denied or settings changed. Current settings have been refreshed.",

@@ -17,6 +17,7 @@ public class ScreenRegistry {
     /** Internal load/import/deletion reconciliation; external adapters use ScreenAccessService. */
     public static void reconcileContent(String key, UUID image) { HELPER.networks().reconcileImage(key, image); }
     public static UUID forkDisplay(String source, UUID image) { return HELPER.networks().forkDisplay(source, image); }
+    public static void detachDisplay(UUID id, String source, UUID image) { HELPER.networks().detachDisplay(id, source, image); }
     public static void registerDisplayAnchor(String anchor, UUID id) { HELPER.networks().registerAnchor(anchor, id); }
     public static void updateDisplay(UUID id, String link, boolean override, boolean aspect) {
         HELPER.networks().updateDisplay(id, link, override, aspect);

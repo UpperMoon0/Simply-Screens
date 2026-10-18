@@ -124,8 +124,8 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     }
     private UIComponent buildManagedAccess() {
         return Ui.column(
-                Ui.button(() -> Component.translatable("gui.simplyscreens.access.view", viewPolicy.get()), () -> cyclePolicy("VIEW", viewPolicy)),
-                Ui.button(() -> Component.translatable("gui.simplyscreens.access.control", controlPolicy.get()), () -> cyclePolicy("CONTROL", controlPolicy)),
+                buildPolicyControl("VIEW", "gui.simplyscreens.access.view", viewPolicy),
+                buildPolicyControl("CONTROL", "gui.simplyscreens.access.control", controlPolicy),
                 Ui.button(() -> Component.translatable("gui.simplyscreens.access.override", localOverride.get()), () -> accessAction("OVERRIDE", Boolean.toString(!localOverride.get()))),
                 Ui.textField(accessPlayer).maxLength(36).placeholder(Component.translatable("gui.simplyscreens.access.uuid").getString()),
                 Ui.row(Ui.button(Component.translatable("gui.simplyscreens.access.trust"), () -> accessAction("TRUST", accessPlayer.get())).small(),
@@ -133,10 +133,28 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                 Ui.button(Component.translatable("gui.simplyscreens.access.transfer"), this::confirmTransfer)
         ).gap(8);
     }
-    private void cyclePolicy(String action, Signal<String> signal) {
+    private UIComponent buildPolicyControl(String action, String label, Signal<String> signal) {
+        return Ui.row(
+                Ui.button(() -> Component.translatable(label, signal.get()), () -> cyclePolicy(action)).flex(),
+                Ui.button(Component.translatable("gui.simplyscreens.access.apply"), () -> applyPolicy(action)).small()
+        ).gap(6);
+    }
+    private Signal<String> policySignal(String action) {
+        return switch (action) {
+            case "VIEW" -> viewPolicy;
+            case "CONTROL" -> controlPolicy;
+            default -> throw new IllegalArgumentException("Unknown policy: " + action);
+        };
+    }
+    void cyclePolicy(String action) {
+        Signal<String> signal = policySignal(action);
         var policies = com.nstut.simplyscreens.ScreenNetworkService.Policy.values();
         int index = com.nstut.simplyscreens.ScreenNetworkService.Policy.valueOf(signal.get()).ordinal();
-        accessAction(action, policies[(index + 1) % policies.length].name());
+        // Cycling is only a local preview: intermediate PUBLIC permissions must never reach the server.
+        signal.set(policies[(index + 1) % policies.length].name());
+    }
+    void applyPolicy(String action) {
+        accessAction(action, policySignal(action).get());
     }
     private void confirmTransfer() {
         try { UUID.fromString(accessPlayer.get()); } catch (IllegalArgumentException invalid) {

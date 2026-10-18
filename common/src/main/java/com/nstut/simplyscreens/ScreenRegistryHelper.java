@@ -68,6 +68,9 @@ public class ScreenRegistryHelper {
         Path nextPath = worldSavePath.resolve("screen_registry.json").toAbsolutePath().normalize();
         if (initialized && nextPath.equals(registryFilePath)) return;
         if (initialized) saveRegistry();
+        // A failed world switch must remain retryable after its store is repaired.
+        // Do not treat the new paths as initialized or try to save an unhealthy store.
+        initialized = false;
         screenIdToImageId.clear();
         screenIdToOwnerId.clear();
         anchorRedirects.clear();

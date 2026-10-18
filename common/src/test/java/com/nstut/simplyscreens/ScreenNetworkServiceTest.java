@@ -14,6 +14,24 @@ class ScreenNetworkServiceTest {
     ScreenNetworkService create() {
         var service = new ScreenNetworkService(); assertTrue(service.createOwned(key, owner, image)); return service;
     }
+    @Test void detachPreservesPhysicalIdentityAndAdvancesItsExistingRevision() {
+        var s = create();
+        UUID id = UUID.randomUUID();
+        String physical = ScreenNetworkService.display(id);
+        assertTrue(s.createOwned(physical, stranger, null));
+        State previous = s.snapshot(physical);
+        assertTrue(s.access(key, user, 0, "TRUST", friend.toString()));
+        assertTrue(s.access(key, user, 1, "VIEW", "TRUSTED"));
+        s.detachDisplay(id, key, image);
+        State detached = s.snapshot(physical);
+        assertEquals(owner, detached.owner());
+        assertEquals(Set.of(friend), detached.trusted());
+        assertEquals(Policy.TRUSTED, detached.view());
+        assertEquals(image, detached.image());
+        assertTrue(detached.revision() > previous.revision());
+        assertFalse(s.access(physical, user, previous.revision(), "VIEW", "PUBLIC"));
+        assertEquals(image, s.snapshot(key).image());
+    }
     @Test void separatesViewingControlManagementAndAutomation() {
         var s = create();
         assertTrue(s.allowed(key, Actor.automation(), Permission.VIEW));
@@ -59,6 +77,34 @@ class ScreenNetworkServiceTest {
         assertFalse(s.allowed(key,user,Permission.MANAGE));
         assertFalse(s.allowed(key,user,Permission.CONTROL));
         assertTrue(s.allowed(key,trusted,Permission.MANAGE));
+    }
+    @Test void ownershipTransferCannotExceedTheRecipientsNetworkLimit() {
+        var s = create();
+        assertTrue(s.access(key, user, 0, "TRUST", stranger.toString()));
+        for (int i = 0; i < ScreenRegistryHelper.MAX_SCREEN_IDS_PER_PLAYER; i++)
+            assertTrue(s.createOwned(ScreenNetworkService.network("friend-" + i), friend, null));
+        State before = s.snapshot(key);
+        assertFalse(s.access(key, user, before.revision(), "TRANSFER", friend.toString()));
+        assertEquals(before, s.snapshot(key));
+        assertTrue(s.allowed(key, user, Permission.MANAGE));
+        assertFalse(s.allowed(key, trusted, Permission.MANAGE));
+    }
+    @Test void ownershipTransferCanFillTheRecipientsLastNetworkSlot() {
+        var s = create();
+        for (int i = 0; i < ScreenRegistryHelper.MAX_SCREEN_IDS_PER_PLAYER - 1; i++)
+            assertTrue(s.createOwned(ScreenNetworkService.network("friend-" + i), friend, null));
+        assertTrue(s.access(key, user, 0, "TRANSFER", friend.toString()));
+        assertFalse(s.createOwned(ScreenNetworkService.network("one-too-many"), friend, null));
+        assertTrue(s.access(key, trusted, 1, "TRANSFER", friend.toString()));
+    }
+    @Test void standaloneDisplayTransfersDoNotConsumeTheNetworkQuota() {
+        var s = create();
+        for (int i = 0; i < ScreenRegistryHelper.MAX_SCREEN_IDS_PER_PLAYER; i++)
+            assertTrue(s.createOwned(ScreenNetworkService.network("friend-" + i), friend, null));
+        String standalone = ScreenNetworkService.display(UUID.randomUUID());
+        assertTrue(s.createOwned(standalone, owner, image));
+        assertTrue(s.access(standalone, user, 0, "TRANSFER", friend.toString()));
+        assertEquals(friend, s.snapshot(standalone).owner());
     }
     @Test void snapshotsAreImmutableAndInputsAreValidated() {
         var s=create();

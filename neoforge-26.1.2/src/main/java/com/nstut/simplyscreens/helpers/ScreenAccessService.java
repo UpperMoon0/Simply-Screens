@@ -35,10 +35,10 @@ public final class ScreenAccessService {
         if (!allowed(player, anchor, Permission.MANAGE)) return false;
         if (id.equals(anchor.getScreenId())) return true;
         if (id.isEmpty()) {
-            UUID independent = ScreenRegistry.forkDisplay(anchor.accessKey(), anchor.getImageId());
-            anchor.setDisplayId(independent);
+            UUID image = anchor.getResolvedImageId();
+            ScreenRegistry.detachDisplay(anchor.getDisplayId(), anchor.accessKey(), image);
             anchor.setScreenId("");
-            anchor.setImageId(anchor.getImageId());
+            anchor.setImageId(image);
             return true;
         }
         String key = ScreenNetworkService.network(id);
