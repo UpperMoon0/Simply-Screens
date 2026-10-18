@@ -5,12 +5,16 @@ import com.nstut.simplyscreens.ScreenNetworkService;
 import com.nstut.simplyscreens.network.PacketRegistries;
 import com.nstut.simplyscreens.network.ScreenAccessC2SPacket;
 import net.minecraft.core.BlockPos;
+import net.minecraft.client.Minecraft;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 
 import java.nio.file.Path;
 import java.util.Set;
@@ -18,9 +22,22 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.mock;
 
 class ImageLoadScreenAccessTest {
     @TempDir static Path tempDir;
+    private MockedStatic<Minecraft> clientInstance;
+
+    @BeforeEach void provideHeadlessClient() {
+        // In 26.1.2, Screen reads the client font during construction, before init().
+        Minecraft client = mock(Minecraft.class);
+        clientInstance = mockStatic(Minecraft.class);
+        clientInstance.when(Minecraft::getInstance).thenReturn(client);
+    }
+
+    @AfterEach void releaseHeadlessClient() {
+        if (clientInstance != null) clientInstance.close();
+    }
 
     @BeforeAll static void isolatePreferences() {
         System.setProperty("simplyscreens.ui.config.dir", tempDir.toString());
