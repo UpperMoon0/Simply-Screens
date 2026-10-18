@@ -155,7 +155,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                         .when(true, () -> Ui.button(() -> policyLabel(signal.get()), () -> chooseAccessMode(action))
                                 .ghost().small().tooltip(accessText(label + ".help")).key("settings.access_" + action.toLowerCase(Locale.ROOT)))
                         .when(false, () -> Ui.text(() -> policyLabel(signal.get())).marquee().flex().tooltip(accessText(label + ".help")))
-        ).gap(6);
+        ).gap(6).tooltip(accessText("policy_help"));
     }
     private void chooseAccessMode(String action) {
         if (!accessManager.get()) return;

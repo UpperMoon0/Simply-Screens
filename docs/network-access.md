@@ -11,7 +11,9 @@ Place a screen as a player to own the new standalone display. In **Settings**, t
 | PUBLIC | Everyone; anonymous automation may use explicitly public control |
 | TRUSTED | Owner, trusted player UUIDs, and operators |
 | OWNER_ONLY | Owner and operators |
-| OPERATORS | Operators, plus the owner who retains management/control |
+| OPERATORS | Operators only; non-OP owners cannot view/control under this policy, but retain access management |
+
+Both mods use the same labels: **Public**, **Trusted players**, **Owner only**, and **Operators only**. Operators have administrative access in every mode. Owner only includes the operator override; Operators only excludes non-OP owners from the selected viewing/control permission. Owners can always change access policies or transfer ownership to recover from this restriction. Selecting a mode never grants OP status.
 
 Viewing defaults to PUBLIC; content control defaults to OWNER_ONLY. Trust membership only applies when the corresponding policy is TRUSTED. Trusted content control allows selecting the caller's media and using upload/import, without granting access management or relinking. The caller must still be nearby and able to interact with the block. Aspect ratio stays local to the physical display. A manager can enable **Local image override** to change one linked display without changing the shared image; disabling it rejoins the network's current image.
 

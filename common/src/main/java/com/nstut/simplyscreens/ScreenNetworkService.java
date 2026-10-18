@@ -88,10 +88,16 @@ public final class ScreenNetworkService {
         State s = states.get(key);
         if (s == null || actor == null) return false;
         if (actor.operator()) return true;
-        if (s.owner() != null && s.owner().equals(actor.id())) return true;
-        if (permission == Permission.MANAGE) return false;
+        boolean owner = s.owner() != null && s.owner().equals(actor.id());
+        // Owners retain access management, including recovery from Operators only.
+        if (permission == Permission.MANAGE) return owner;
         Policy p = permission == Permission.VIEW ? s.view() : s.control();
-        return p == Policy.PUBLIC || p == Policy.TRUSTED && actor.id() != null && s.trusted().contains(actor.id());
+        return switch (p) {
+            case PUBLIC -> true;
+            case TRUSTED -> owner || actor.id() != null && s.trusted().contains(actor.id());
+            case OWNER_ONLY -> owner;
+            case OPERATORS -> false;
+        };
     }
     public synchronized boolean claim(String key, Actor actor) {
         if (!healthy) return false;

@@ -32,6 +32,35 @@ class ScreenNetworkServiceTest {
         assertFalse(s.access(physical, user, previous.revision(), "VIEW", "PUBLIC"));
         assertEquals(image, s.snapshot(key).image());
     }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(Policy.class)
+    void accessModesMatchSpeakerPermissionsAndKeepManagementRecoverable(Policy policy) {
+        var s = create();
+        assertTrue(s.access(key, user, s.snapshot(key).revision(), "TRUST", friend.toString()));
+        for (Permission permission : new Permission[]{Permission.VIEW, Permission.CONTROL}) {
+            assertTrue(s.access(key, user, s.snapshot(key).revision(), permission.name(), policy.name()));
+            assertEquals(policy != Policy.OPERATORS, s.allowed(key, user, permission));
+            assertEquals(policy == Policy.PUBLIC || policy == Policy.TRUSTED, s.allowed(key, trusted, permission));
+            assertEquals(policy == Policy.PUBLIC, s.allowed(key, new Actor(stranger, false), permission));
+            assertEquals(policy == Policy.PUBLIC, s.allowed(key, Actor.automation(), permission));
+            assertTrue(s.allowed(key, admin, permission));
+        }
+        assertTrue(s.allowed(key, user, Permission.MANAGE));
+        assertTrue(s.allowed(key, admin, Permission.MANAGE));
+        assertFalse(s.allowed(key, trusted, Permission.MANAGE));
+        assertFalse(s.allowed(key, Actor.automation(), Permission.MANAGE));
+    }
+    @Test void operatorsOnlyRejectsOwnerContentChangesButOwnerCanRestoreOwnerOnly() {
+        var s = create();
+        assertTrue(s.access(key, user, 0, "CONTROL", "OPERATORS"));
+        State restricted = s.snapshot(key);
+        assertFalse(s.select(key, user, null, restricted.revision()));
+        assertEquals(restricted, s.snapshot(key));
+        assertTrue(s.select(key, admin, null, restricted.revision()));
+        assertTrue(s.access(key, user, s.snapshot(key).revision(), "CONTROL", "OWNER_ONLY"));
+        assertTrue(s.select(key, user, image, s.snapshot(key).revision()));
+    }
+
     @Test void separatesViewingControlManagementAndAutomation() {
         var s = create();
         assertTrue(s.allowed(key, Actor.automation(), Permission.VIEW));
