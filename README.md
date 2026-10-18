@@ -22,6 +22,7 @@ Minecraft 1.21.1 builds support optional **Sable 2.0.5 and 2.0.6** on Fabric and
   - Upload PNG, JPG, and JPEG images directly from your computer via an in-game file dialog.
   - Download images from web URLs with built-in SSRF and security filtering.
   - Browse, select, and manage server-stored images in the screen GUI.
+- **Optional In-Game Guide:** Install Patchouli to get a Simply Screens guide in the creative tab, or craft it with a book and an amethyst shard. Covers images, links, display settings, and access. Screens also works without Patchouli.
 - **OpenUI Interface:** Responsive gallery, keyboard-friendly controls, removal confirmation, and a persisted live light/dark theme.
 - **Security & Hardening:**
   - Server-authoritative distance, permission, and ownership validation.
@@ -55,6 +56,8 @@ to avoid double blending. Packs that rewrite depth, warp geometry, or apply late
 postprocessing can exceed this guarantee. The precise contract, empirical glow
 controls and reproducible development setup are documented in the matrix above.
 Upgrading from 0.8.10 needs no additional required mod or saved-data migration.
+
+Patchouli is optional. Install the matching loader/version on the server and clients to use the guide; see [guide integration and development setup](docs/patchouli.md).
 
 ## Getting Started
 

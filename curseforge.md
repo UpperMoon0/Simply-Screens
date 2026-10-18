@@ -75,3 +75,7 @@ Server limits are authoritative. `disableDownload` and `maxDownloadSize` are not
 
 - [Join the Discord community](https://discord.gg/4vD9WuT2As)
 - [Report bugs on GitHub](https://github.com/UpperMoon0/Simply-Screens/issues)
+
+### Optional guide
+
+Install Patchouli for your Minecraft version and loader on the server and clients for the Simply Screens Guide. Find it in the creative tab or craft a book with an amethyst shard. Patchouli is optional; all screen features work without it.

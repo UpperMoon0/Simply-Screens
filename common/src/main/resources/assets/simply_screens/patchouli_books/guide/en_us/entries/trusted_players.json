@@ -1,0 +1,23 @@
+{
+  "name": "Trusted Players",
+  "category": "simply_screens:access",
+  "icon": "minecraft:player_head",
+  "sortnum": 7,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "Manage Players",
+      "text": "In Settings, use Manage beside Trusted players. Add an online player name or a complete UUID for an offline player. The list supports up to 64 players. Remove revokes their access through Trusted mode."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Change Owner",
+      "text": "Use the menu beside Owner to transfer ownership. Enter an online name or UUID. Transferring clears the old trusted list and may remove your management access. Operators keep administrative access."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Unclaimed Displays",
+      "text": "An operator can claim an unowned legacy display before it can be edited. New displays placed by a player belong to that player. Automated placement leaves displays unclaimed."
+    }
+  ]
+}

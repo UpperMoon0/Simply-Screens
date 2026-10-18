@@ -1,0 +1,21 @@
+{
+  "type": "patchouli:shaped_book_recipe",
+  "pattern": [
+    "BA"
+  ],
+  "key": {
+    "B": {
+      "item": "minecraft:book"
+    },
+    "A": {
+      "item": "minecraft:amethyst_shard"
+    }
+  },
+  "book": "simply_screens:guide",
+  "conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "patchouli"
+    }
+  ]
+}

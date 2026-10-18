@@ -15,7 +15,8 @@ class ReleaseDependencyTests(unittest.TestCase):
             projects = curseforge_relations(loader)["projects"]
             packetweave = [p for p in projects if p["slug"] == "packetweave"]
             self.assertEqual([{"slug": "packetweave", "projectID": 1735096, "type": "requiredDependency"}], packetweave)
-            self.assertTrue(all(p["type"] == "requiredDependency" for p in projects))
+            self.assertTrue(all(p["type"] == "requiredDependency" for p in projects if p["slug"] != "patchouli"))
+            self.assertEqual([{"slug": "patchouli", "type": "optionalDependency"}], [p for p in projects if p["slug"] == "patchouli"])
             self.assertEqual(loader == "fabric", any(p["slug"] == "fabric-api" for p in projects))
         with self.assertRaises(ValueError):
             curseforge_relations("unknown")

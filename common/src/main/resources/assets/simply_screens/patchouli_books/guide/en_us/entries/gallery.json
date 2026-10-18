@@ -1,0 +1,18 @@
+{
+  "name": "Using the Gallery",
+  "category": "simply_screens:getting_started",
+  "icon": "minecraft:item_frame",
+  "sortnum": 3,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "Select an Image",
+      "text": "Use Gallery to browse your available images. Search by name, then select an image to display it. The Displayed badge marks the current image. Gallery Refresh reloads the available image list."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Remove an Image",
+      "text": "Remove asks for confirmation before deleting an image. Deletion affects displays using that image. Being allowed to control a screen does not let you delete or browse another player's private images."
+    }
+  ]
+}

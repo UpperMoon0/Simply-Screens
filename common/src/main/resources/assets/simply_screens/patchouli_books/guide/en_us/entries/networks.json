@@ -1,0 +1,23 @@
+{
+  "name": "Linked Screens",
+  "category": "simply_screens:displays",
+  "icon": "simply_screens:screen",
+  "sortnum": 4,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "Share a Screen ID",
+      "text": "In Settings, enter a Screen ID and apply it to link displays. Displays with the same ID follow the shared image, including across dimensions. Creating a network makes you its owner."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Joining a Network",
+      "text": "Linking requires management rights for both this display and the destination network. Matching IDs alone do not bypass another owner's access rules. Viewing and control policies belong to the linked network."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Detach a Display",
+      "text": "Clear the Screen ID and apply it to detach this display. It keeps its current image and ownership settings, but stops following the network. Screens with different ownership or access settings do not automatically merge."
+    }
+  ]
+}

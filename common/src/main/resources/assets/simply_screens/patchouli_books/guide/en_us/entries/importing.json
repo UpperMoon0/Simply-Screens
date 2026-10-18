@@ -1,0 +1,23 @@
+{
+  "name": "Importing Images",
+  "category": "simply_screens:getting_started",
+  "icon": "minecraft:paper",
+  "sortnum": 2,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "From Your Computer",
+      "text": "Open Import and choose the computer upload action. Select a PNG, JPG, or JPEG file. The image is stored on the server. Server settings can disable uploads or limit file size and storage."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "From a URL",
+      "text": "Use Import to enter an image URL and load it. Private and local network addresses are blocked. Use a direct public image link. The server can disable URL downloads or limit their size."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Import Permissions",
+      "text": "You need control access to change this display. Importing does not give other players access to your private image library. A public display can still let permitted viewers see its selected image."
+    }
+  ]
+}

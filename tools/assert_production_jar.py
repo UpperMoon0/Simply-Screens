@@ -152,6 +152,11 @@ def main() -> int:
         return 1
     jar = jars[0]
     problems = packetweave_dependency_errors(jar) + obsolete_entries(jar) + color_mixin_registration_errors(jar)
+    from check_patchouli_jar import validate_archive
+    try:
+        validate_archive(jar, Path(args.module).name)
+    except (ValueError, KeyError) as error:
+        problems.append(f"Optional Patchouli guide: {error}")
     if problems:
         print(f"Invalid Simply Screens production jar {jar}:\n  " + "\n  ".join(problems), file=sys.stderr)
         return 1

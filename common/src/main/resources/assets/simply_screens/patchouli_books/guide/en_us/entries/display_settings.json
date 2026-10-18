@@ -1,0 +1,23 @@
+{
+  "name": "Display Settings",
+  "category": "simply_screens:displays",
+  "icon": "minecraft:glass",
+  "sortnum": 5,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "Image Proportions",
+      "text": "Maintain aspect ratio preserves the original image proportions instead of stretching it to fill the screen. This setting belongs to the physical display, so linked screens can choose different proportions."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Local Override",
+      "text": "Turn Local image override on to let one linked display use its own image. Selecting images here then affects only this display. Other displays with the same Screen ID keep following the shared image."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Follow the Network",
+      "text": "Turn Local image override off to show the network's current image again. The override is useful for linked displays; it does not grant extra permissions or expose private library images."
+    }
+  ]
+}

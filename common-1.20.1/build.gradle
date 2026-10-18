@@ -67,6 +67,9 @@ tasks.register('transformResources', Copy) {
     group = 'build'
     
     from(project(':common').sourceSets.main.resources)
+    filesMatching('data/simply_screens/patchouli_books/guide/book.json') {
+        filter { line -> line.replace('"model": "simply_screens:guide_book"', '"model": "simply_screens:item/guide_book"') }
+    }
     into(layout.buildDirectory.dir('transformed-resources'))
     
     // Rename data pack folders from singular (1.21.1) to plural (1.20.1)

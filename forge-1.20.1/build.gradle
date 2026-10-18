@@ -92,3 +92,5 @@ tasks.withType(Jar).configureEach {
 }
 
 apply from: file('../shader-runtime.gradle')
+
+apply from: file('../patchouli.gradle')

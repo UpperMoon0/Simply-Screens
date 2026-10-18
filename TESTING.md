@@ -165,3 +165,7 @@ and transform tests do not establish a full All of Create Aeronautics 2.8 playte
 # Network access regressions (0.9.0)
 
 `testAllVersions` includes `ScreenNetworkServiceTest` and `ScreenAccessServiceTest` for all three Minecraft adapters. They test permission separation, legacy migration, empty-content restart recovery, backup corruption and failed-write rollback, immutable/bounded trust membership, private download packet rejection before file scheduling, tracked displays, chunk/dimension/disconnect revocation, replaced tiles, local content overrides, and source/destination ownership on relinks. See [the access guide](docs/network-access.md) for the complete contract and manual multiplayer limits. Existing live-join, framebuffer and shader checks still apply to all five loader targets.
+
+## Optional Patchouli guide
+
+`tools/test_patchouli_resources.py` covers optional loader metadata, loader-gated recipes (including rejection of missing conditions), guide references, page text budgets, and the transparent 64x64 texture format. `tools/assert_production_jar.py` also verifies physical book discovery, version-specific book models, contents, and recipe identity in each production jar. Use `-PscreensPatchouli=true` for native development runs with Patchouli; omit it to verify Screens without the guide dependency. See [guide integration](docs/patchouli.md). Page length checks are conservative resource checks, not live font/layout validation.

@@ -1,0 +1,6 @@
+{
+  "name": "Ownership and Access",
+  "description": "Control viewing, editing, and trusted players.",
+  "icon": "minecraft:iron_door",
+  "sortnum": 2
+}
