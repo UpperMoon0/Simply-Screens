@@ -95,4 +95,47 @@ class ImageLoadScreenPlaylistTest {
         }
     }
 
+    @Test void playlistEditorDoesNotPauseAnIntegratedServer() {
+        assertFalse(new ImageLoadScreen(BlockPos.ZERO).isPauseScreen());
+    }
+    @Test void compactPlayerStartsTheSelectedSavedPlaylistInsteadOfResumingAnEmptySession() throws Exception {
+        var screen = new ImageLoadScreen(BlockPos.ZERO); UUID list = UUID.randomUUID(), image = UUID.randomUUID();
+        try (var packets = mockStatic(PacketRegistries.class)) {
+            action(screen, "GET"); long request = (long)field(screen, "pendingPlaylistRequest");
+            var state = new PlaylistWire.View("network/test",7,4,3,request,true,true,list,
+                    List.of(new PlaylistWire.Summary(list,"Slides",1)),List.of(new PlaylistWire.Slide(image,10000)),
+                    "STOPPED",null,-1,0,"NONE",false,List.of(),List.of());
+            screen.updatePlaylist(BlockPos.ZERO,state.json()); packets.reset();
+            screen.togglePlaylistPlayback();
+            var capture = ArgumentCaptor.forClass(ScreenPlaylistC2SPacket.class);
+            packets.verify(() -> PacketRegistries.sendToServer(capture.capture()));
+            var start = PlaylistWire.Request.parse(capture.getValue().json);
+            assertEquals("PLAY",start.action()); assertEquals(list,start.playlist());
+        }
+    }
+    @Test void slowReadIsNotContinuouslySupersededByPolling() throws Exception {
+        var screen = new ImageLoadScreen(BlockPos.ZERO);
+        try (var packets = mockStatic(PacketRegistries.class)) {
+            action(screen,"GET"); long request=(long)field(screen,"pendingPlaylistRequest"); packets.reset();
+            for (int i=0;i<60;i++) screen.tick();
+            packets.verifyNoInteractions(); assertEquals(request,field(screen,"pendingPlaylistRequest"));
+            screen.updatePlaylist(BlockPos.ZERO,view(request,true,null).json());
+            assertNotNull(((com.nstut.openui.state.Signal<?>)field(screen,"playlistView")).get());
+        }
+    }
+    @Test void creatingAPlaylistFromAnImageAddsTheImageAfterTheCreateReply() throws Exception {
+        var screen = new ImageLoadScreen(BlockPos.ZERO); UUID image=UUID.randomUUID(),list=UUID.randomUUID();
+        try (var packets = mockStatic(PacketRegistries.class)) {
+            action(screen,"GET"); screen.updatePlaylist(BlockPos.ZERO,view((long)field(screen,"pendingPlaylistRequest"),true,null).json());
+            var pending=ImageLoadScreen.class.getDeclaredField("pendingCreateImage");pending.setAccessible(true);pending.set(screen,image);
+            action(screen,"CREATE");long create=(long)field(screen,"pendingPlaylistRequest");packets.reset();
+            screen.updatePlaylist(BlockPos.ZERO,view(create,true,list).json());
+            var capture=ArgumentCaptor.forClass(ScreenPlaylistC2SPacket.class);
+            packets.verify(()->PacketRegistries.sendToServer(capture.capture()));
+            var add=PlaylistWire.Request.parse(capture.getValue().json);
+            assertEquals("ADD",add.action());assertEquals(list,add.playlist());assertEquals(image,add.image());
+            assertNull(field(screen,"pendingCreateImage"));
+        }
+    }
+
 }

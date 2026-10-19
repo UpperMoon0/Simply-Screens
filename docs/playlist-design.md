@@ -8,7 +8,9 @@ Follow Simply Speakers' current playlist flow: gallery item actions add slides o
 
 ## State and security
 
-Use an independent server-owned timeline keyed by the authoritative content key, preserving Screen ID synchronization and local overrides. Server ticks advance even when every linked chunk is unloaded. Persist offsets and ordering; server downtime does not consume a slide. Saved edits do not rewrite a running snapshot. Playlist library mutations are scoped to the actor; playback requires current screen control permission and referenced images must be in the actor's authorized library. Wire messages and resource usage are bounded. Private image downloading continues to require current screen visibility and chunk tracking.
+Use an independent server-owned timeline keyed by the authoritative content key, preserving Screen ID synchronization and local overrides. Active server ticks advance the timeline even when every linked chunk is unloaded; paused single-player time and server downtime do not consume a slide. The editor itself does not pause the world. Persist offsets and ordering. Saved edits do not rewrite a running snapshot. Playlist library mutations are scoped to the actor; playback requires current screen control permission and referenced images must be in the actor's authorized library. Wire messages and resource usage are bounded. Private image downloading continues to require current screen visibility and chunk tracking.
+
+The playlist toolbar's Play always loads the selected saved snapshot. The persistent player pauses/resumes active playback; when stopped it starts queued slides first, or the selected saved list if the queue is empty. Creating a playlist from an image's Add to playlist menu also adds that image after the creation acknowledgement. Compact layouts retain playback status and repeat/shuffle state. Playlist names are truncated within their controls, with the full name available on hover.
 
 ## Required verification gates
 

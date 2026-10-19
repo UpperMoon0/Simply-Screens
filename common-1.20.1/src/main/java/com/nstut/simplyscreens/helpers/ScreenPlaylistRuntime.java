@@ -15,7 +15,8 @@ import java.util.*;
 /** All native authorization and world interaction stays on the server thread. */
 public final class ScreenPlaylistRuntime {
     private static ScreenPlaylistService service;
-    private static long lastTick, lastSave, lastPrefetch, lastError;
+    private static long lastSave, lastPrefetch, lastError;
+    private static final PlaybackTickClock CLOCK = new PlaybackTickClock();
     private static Path worldRoot;
     private static final Set<String> PENDING_CONTENT = new LinkedHashSet<>();
     private static final Map<UUID, long[]> REQUEST_BUDGET = new HashMap<>();
@@ -27,19 +28,18 @@ public final class ScreenPlaylistRuntime {
         service = null; worldRoot = null; PENDING_CONTENT.clear();
         ScreenPlaylistService next = new ScreenPlaylistService();
         next.init(root);
-        service = next; worldRoot = normalized; lastTick = 0; lastSave = 0; lastPrefetch = 0; REQUEST_BUDGET.clear();
+        service = next; worldRoot = normalized; CLOCK.reset(); lastSave = 0; lastPrefetch = 0; REQUEST_BUDGET.clear();
         // Restored playback is authoritative before any chunk is loaded.
         next.snapshots().forEach((key, state) -> { if (state.status() != PlaybackSnapshot.Status.STOPPED) apply(key, state); });
     }
     public static void shutdown() {
         try { if (service != null) service.save(); }
-        finally { service = null; worldRoot = null; lastTick = 0; REQUEST_BUDGET.clear(); PENDING_CONTENT.clear(); }
+        finally { service = null; worldRoot = null; CLOCK.reset(); REQUEST_BUDGET.clear(); PENDING_CONTENT.clear(); }
     }
     public static void tick(MinecraftServer server) {
         if (service == null) return;
         long now = System.nanoTime();
-        long elapsed = lastTick == 0 ? 0 : Math.max(0, (now - lastTick) / 1_000_000L);
-        lastTick = now;
+        long elapsed = CLOCK.advance(server.getTickCount());
                 try {
             PENDING_CONTENT.addAll(service.tick(elapsed).keySet());
             // Failed content-store writes are retried from the latest timeline, never a stale slide.

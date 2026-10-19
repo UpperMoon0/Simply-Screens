@@ -103,7 +103,7 @@ class PlaylistHarnessTests(unittest.TestCase):
                  patch.object(harness.subprocess, "run", return_value=completed) as observe:
                 harness.capture_shutdown_diagnostics(process, evidence)
             commands = [call.args[0] for call in observe.call_args_list]
-            self.assertIn(["/fake/jcmd", "987654321", "Thread.print", "-l"], commands)
+            self.assertIn([str(Path("/fake/jcmd")), "987654321", "Thread.print", "-l"], commands)
             report = json.loads((evidence / "shutdown-diagnostics.json").read_text())
             self.assertEqual(1234, report["wrapperPid"])
             self.assertEqual(987654321, report["serverPid"])
