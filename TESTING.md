@@ -178,7 +178,7 @@ The shared `playlist/ScreenPlaylistServiceTest` suite exercises real persisted t
 
 Run `testAllVersions` for the full native suites. Run the test-only `tools/playlist_test.py` harness for real linked-screen/client/restart evidence across all five targets. The harness creates disposable instrumented copies after checking production jars; its probes must never ship. A join smoke or unit pass alone does not establish the playlist acceptance criteria.
 
-`PlaybackTickClockTest` covers a paused integrated server and tick-counter rollover. Native editor regressions cover non-pausing screens, starting a selected saved list from an empty session, creation followed by adding the originating image, and slow read replies surviving periodic polling. Populated layout tests set the actual screen dimensions and check player/action bounds and complete slide rows at five viewport sizes. Also test single-player directly: start a two-slide list, keep its editor open, pause the game, and resume; the first slide must neither blank immediately nor consume the paused time.
+`PlaybackTickClockTest` covers a paused integrated server and tick-counter rollover. Native editor regressions cover non-pausing screens, starting a selected saved list from an empty session, creation followed by adding the originating image, and slow read replies surviving periodic polling. Populated layout tests set the actual screen dimensions and check player/action bounds and at least two complete slide rows at five viewport sizes. Also test single-player directly: start a two-slide list, keep its editor open, pause the game, and resume; the first slide must neither blank immediately nor consume the paused time.
 
 Playlist gate commands:
 

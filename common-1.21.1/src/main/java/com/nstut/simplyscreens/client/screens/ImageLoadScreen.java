@@ -173,7 +173,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     }
     private UIComponent buildSlideRow(SlideRow row, boolean queue) {
         return Ui.row(Ui.text(Component.literal(Integer.toString(row.index()+1))).width(20),
-                Ui.text(Component.literal(slideName(row.slide().image()))).marquee().flex(),
+                Ui.text(() -> Component.literal(slideName(row.slide().image()))).ellipsis().flex(),
                 Ui.text(Component.literal(row.slide().durationMillis()/1000+"s")),
                 new com.nstut.simplyscreens.client.ui.ScreenIconButton(com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.MORE,
                         pt("slide_actions"), () -> {
@@ -317,6 +317,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     private final Signal<Boolean> maintainAspectRatio = Signals.of(true);
     private final Signal<String> imageUrl = Signals.of("");
     private final Signal<Component> status = Signals.of(Component.empty());
+    private final Computed<Boolean> statusVisible = Signals.computed(() -> !status.get().getString().isBlank());
 
     private final Computed<List<ImageRow>> filteredImages = Signals.computed(() -> {
         String query = search.get().trim().toLowerCase(Locale.ROOT);
@@ -547,7 +548,8 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                     .tab(Tab.SETTINGS, Component.translatable("gui.simplyscreens.tab.settings")), views).gap(6).flex();
         }
         VStack content = Ui.column(buildHeader(), Ui.divider(), navigation, Ui.divider(), buildPlaylistTransport(),
-                Ui.text(() -> status.get()).wrap().maxLines(2)).gap(height < 300 ? 4 : 6);
+                Ui.switcher(statusVisible).when(true, () -> Ui.text(() -> status.get()).wrap().maxLines(2))
+                        .when(false, Ui::column)).gap(height < 300 ? 4 : 6);
         content.height(Math.max(180, Math.min(440, height - (height < 300 ? 32 : 48))));
         content.fillWidth();
 
@@ -564,7 +566,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     }
 
     private UIComponent buildHeader() {
-        if (height < 300) return Ui.row(Ui.text(this::displayedImageName).marquee().flex(), buildThemeToggle()).gap(8).align(Alignment.CENTER);
+        if (height < 300) return Ui.row(Ui.text(this::displayedImageName).ellipsis().flex(), buildThemeToggle()).gap(8).align(Alignment.CENTER);
         return Ui.row(
                 Ui.column(
                         Ui.heading(Component.translatable("gui.simplyscreens.screen.title")),
@@ -911,6 +913,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         aspectSubscription.close();
         displaySubscription.close();
         settingsSubscription.close();
+        statusVisible.close();
         galleryState.close();
         filteredImages.close();
         super.removed();

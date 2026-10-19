@@ -71,8 +71,8 @@ class ImageLoadScreenLayoutTest {
                 assertTargetsInside(component,component.getX(),component.getX()+component.getWidth());
             }
             UIComponent rows=findList(root);assertTrue(rows!=null,"Missing slides");
-            assertTrue(rows.children().stream().anyMatch(row -> row.getY()>=rows.getY() &&
-                    row.getY()+row.getHeight()<=rows.getY()+rows.getHeight()),"No complete slide at "+size[0]+"x"+size[1]);
+            assertTrue(rows.children().stream().filter(row -> row.getY()>=rows.getY() &&
+                    row.getY()+row.getHeight()<=rows.getY()+rows.getHeight()).count()>=2,"Fewer than two complete slides at "+size[0]+"x"+size[1]);
         }
     }
     private static UIComponent find(UIComponent node,String key) {
