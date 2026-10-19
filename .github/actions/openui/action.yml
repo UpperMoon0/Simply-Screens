@@ -14,13 +14,13 @@ runs:
       uses: actions/cache@v4
       with:
         path: ~/.m2/repository/com/nstut/
-        key: openui-v2-${{ runner.os }}-${{ runner.arch }}-jdk21-f3f1954621f32606e732dd47d1de0eb430cf1eba
+        key: openui-v2-${{ runner.os }}-${{ runner.arch }}-jdk21-1c44920fcc40e486ec5edf1cf82b98c1b633d5bd
     - name: Checkout pinned OpenUI source
       if: steps.openui.outputs.cache-hit != 'true'
       uses: actions/checkout@v4
       with:
         repository: UpperMoon0/OpenUI-MC
-        ref: f3f1954621f32606e732dd47d1de0eb430cf1eba
+        ref: 1c44920fcc40e486ec5edf1cf82b98c1b633d5bd
         path: OpenUI-MC
     - name: Publish missing OpenUI artifacts
       if: steps.openui.outputs.cache-hit != 'true'

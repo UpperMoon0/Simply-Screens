@@ -2,7 +2,7 @@
 
 A Minecraft mod that adds configurable screen blocks capable of displaying images from local files or the web, supporting dynamic multi-block structures and synchronized screen networks.
 
-The client interface is powered by **OpenUI MC 0.0.8 or newer**, which is a required client-side dependency matching your Minecraft version and loader. Dedicated servers do not require OpenUI; Fabric checks the dependency during client startup.
+The client interface is powered by **OpenUI MC 0.0.13 or newer**, which is a required client-side dependency matching your Minecraft version and loader. Dedicated servers do not require OpenUI; Fabric checks the dependency during client startup.
 
 [![CurseForge](https://cf.way2muchnoise.eu/simply-screens.svg)](https://www.curseforge.com/minecraft/mc-mods/simply-screens)
 
@@ -37,7 +37,7 @@ Install the artifact matching **both** your Minecraft version and loader. The fo
 - **PacketWeave 0.1.1 or newer**, matching the same Minecraft version and loader, on the client **and** dedicated server.
 - **Architectury API**, matching the same Minecraft version and loader, on both sides.
 - **Fabric API** on Fabric.
-- **OpenUI MC 0.0.8 or newer** on clients.
+- **OpenUI MC 0.0.13 or newer** on clients.
 
 Download PacketWeave from its [release assets](https://github.com/UpperMoon0/PacketWeave/releases) or its approved [CurseForge files](https://www.curseforge.com/minecraft/mc-mods/packetweave/files). Do not install the development-only API/core jar as a substitute for the native loader jar. Missing PacketWeave or a version below 0.1.1 must be resolved before the loader can start Screens.
 

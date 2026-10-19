@@ -6,7 +6,7 @@ The guide covers setup, image imports, the gallery, linked Screen IDs, aspect ra
 
 ## Development
 
-Add `-PscreensPatchouli=true` to a native client/server run to load the pinned matching Patchouli runtime. The default is off. The integration has no Java references to Patchouli, no bundled jar, and no required Patchouli dependency. Recipes use native loader conditions evaluated before parsing, including the custom 1.20.1 book serializer.
+Native development client/server runs load the pinned matching Patchouli runtime by default through `screensPatchouli=true` in `gradle.properties`. Use `-PscreensPatchouli=false` to test without it. The integration has no Java references to Patchouli, no bundled jar, and no required Patchouli dependency. Recipes use native loader conditions evaluated before parsing, including the custom 1.20.1 book serializer.
 
 Book definitions must be in the physical loader mod root for discovery; localized contents and item textures come from the shared resource pack. Patchouli 1.20.1 uses a full item model path, 1.21.1 prefixes it internally, and 26.1.2 uses an item model definition. All three formats are supplied.
 

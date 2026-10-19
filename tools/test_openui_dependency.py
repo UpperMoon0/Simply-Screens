@@ -79,6 +79,26 @@ class OpenUiDependencyTest(unittest.TestCase):
                 self.assertRegex(block, r'side\s*=\s*"CLIENT"')
                 self.assertRegex(block, r'(?:mandatory\s*=\s*true|type\s*=\s*"required")')
 
+    def test_minimum_is_consistent_across_loaders_docs_and_ci_pins(self):
+        minimum = properties()['openui_version']
+        for path in ROOT.glob('fabric-*/src/main/resources/fabric.mod.json'):
+            self.assertEqual('>=' + minimum, json.loads(path.read_text(encoding='utf-8'))['suggests']['openui_mc'], str(path))
+        paths = list(ROOT.glob('forge-*/src/main/resources/META-INF/mods.toml'))
+        paths += list(ROOT.glob('neoforge-*/src/main/resources/META-INF/neoforge.mods.toml'))
+        paths += list(ROOT.glob('neoforge-*/src/main/templates/META-INF/neoforge.mods.toml'))
+        for path in paths:
+            blocks = re.split(r'\[\[dependencies\.[^\]]+\]\]', path.read_text(encoding='utf-8'))[1:]
+            block, = [b for b in blocks if re.search(r'modId\s*=\s*"openui_mc"', b)]
+            self.assertRegex(block, r'versionRange\s*=\s*"' + re.escape('[' + minimum + ',)') + '"', str(path))
+        self.assertIn('OpenUI MC ' + minimum + ' or newer', (ROOT / 'README.md').read_text(encoding='utf-8'))
+        action = (ROOT / '.github/actions/openui/action.yml').read_text(encoding='utf-8')
+        pin, = re.findall(r'^        ref: ([a-f0-9]{40})$', action, re.M)
+        self.assertIn('-jdk21-' + pin, action)
+        for workflow in ('release.yml', 'cold-openui.yml'):
+            text = (ROOT / '.github/workflows' / workflow).read_text(encoding='utf-8')
+            self.assertTrue(re.findall(r'repository: UpperMoon0/OpenUI-MC', text))
+            self.assertEqual({pin}, set(re.findall(r'^\s+ref: ([a-f0-9]{40})$', text, re.M)))
+
     def test_fabric_server_and_client_contract(self):
         # No Minecraft or OpenUI classes on this classpath: the prelaunch check
         # must remain safe before game/client classes can be initialized.
@@ -109,7 +129,8 @@ class OpenUiDependencyTest(unittest.TestCase):
                     requirement = json.loads(rendered)['suggests']['openui_mc']
                     minimum = requirement.removeprefix('>=')
                     fixtures = []
-                    for version in ('0.0.0', minimum, '999.0.0'):
+                    previous = minimum.rsplit('.', 1)[0] + '.' + str(int(minimum.rsplit('.', 1)[1]) - 1)
+                    for version in (previous, minimum, '999.0.0'):
                         fixture = temporary / (version + '.json')
                         fixture.write_text(json.dumps(dict(schemaVersion=1, id='openui_mc', version=version)))
                         fixtures.append(str(fixture))
