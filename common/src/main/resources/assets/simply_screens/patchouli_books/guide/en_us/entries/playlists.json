@@ -7,7 +7,7 @@
     {
       "type": "patchouli:text",
       "title": "Build a playlist",
-      "text": "Use an image’s gallery … menu to add it to a saved playlist. In Playlists, use the searchable selector and New/Rename/Duplicate/Delete actions. Each slide’s … menu sets duration (1–86400 seconds), moves it or removes it."
+      "text": "Add images through the gallery … menu. Choose or create a list in Playlists. Drag rows to reorder saved slides or the queue. Each slide’s … menu changes duration (1–86400 seconds) or removes it."
     },
     {
       "type": "patchouli:text",

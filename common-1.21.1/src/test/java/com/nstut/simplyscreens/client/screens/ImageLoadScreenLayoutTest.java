@@ -16,8 +16,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
+
 
 class ImageLoadScreenLayoutTest {
     @TempDir
@@ -52,6 +52,7 @@ class ImageLoadScreenLayoutTest {
     }
 
     @Test void populatedPlaylistKeepsThePlayerAndActionTargetsInsideCompactAndWidePanels() throws Exception {
+        for (String playbackStatus : new String[]{"PLAYING","ANNOUNCEMENT"})
         for (int[] size : new int[][]{{320,240},{360,280},{480,270},{640,360},{960,540}}) {
             ImageLoadScreen screen=new ImageLoadScreen(BlockPos.ZERO); screen.width=size[0];screen.height=size[1];
             java.util.UUID list=java.util.UUID.randomUUID(), image=java.util.UUID.randomUUID();
@@ -62,7 +63,7 @@ class ImageLoadScreenLayoutTest {
             screen.updatePlaylist(BlockPos.ZERO,new com.nstut.simplyscreens.playlist.PlaylistWire.View(
                     "network/test",0,1,1,1,true,true,list,
                     List.of(new com.nstut.simplyscreens.playlist.PlaylistWire.Summary(list,"Long playlist name ".repeat(3).trim(),12)),
-                    slides,"PLAYING",image,0,1000,"LIST",true,List.of(),List.of()).json());
+                    slides,playbackStatus,image,0,1000,"LIST",true,List.of(),List.of()).json());
             screen.smokeSelectTab(1);
             UIComponent root=screen.buildUI(); root.layoutTree(stubFont(),0,0,size[0],size[1]);
             for (String key : List.of("playlist.toolbar","playlist.transport","playlist.now_playing","playlist.modes")) {
@@ -70,11 +71,79 @@ class ImageLoadScreenLayoutTest {
                 assertTrue(component.getHeight()>0 && component.getY()>=0 && component.getY()+component.getHeight()<=size[1],key+" outside viewport");
                 assertTargetsInside(component,component.getX(),component.getX()+component.getWidth());
             }
+            UIComponent controls=find(root,"playlist.controls");assertNotNull(controls);
+            UIComponent first=controls.children().get(0),last=controls.children().get(controls.children().size()-1);
+            assertEquals(controls.getX()+controls.getWidth()/2.0,
+                    (first.getX()+last.getX()+last.getWidth())/2.0,1.0,"Player controls must be centered");
+            assertEquals("ANNOUNCEMENT".equals(playbackStatus)?8:7,controls.children().size(),"End announcement must only appear during an announcement");
             UIComponent rows=findList(root);assertTrue(rows!=null,"Missing slides");
             assertTrue(rows.children().stream().filter(row -> row.getY()>=rows.getY() &&
                     row.getY()+row.getHeight()<=rows.getY()+rows.getHeight()).count()>=2,"Fewer than two complete slides at "+size[0]+"x"+size[1]);
         }
     }
+
+    @Test void draggingPlaylistAndQueueRowsSendsOneAuthoritativeMove() throws Exception {
+        for (boolean reverse : new boolean[]{false,true})
+        for (boolean queue : new boolean[]{false,true}) {
+            ImageLoadScreen screen=new ImageLoadScreen(BlockPos.ZERO);
+            java.util.UUID list=java.util.UUID.randomUUID(),image=java.util.UUID.randomUUID();
+            var pending=ImageLoadScreen.class.getDeclaredField("pendingPlaylistRequest");pending.setAccessible(true);pending.set(screen,1L);
+            var slides=java.util.stream.IntStream.range(0,3).mapToObj(i ->
+                    new com.nstut.simplyscreens.playlist.PlaylistWire.Slide(image,10000)).toList();
+            screen.updatePlaylist(BlockPos.ZERO,new com.nstut.simplyscreens.playlist.PlaylistWire.View(
+                    "network/test",7,4,3,1,true,true,list,
+                    List.of(new com.nstut.simplyscreens.playlist.PlaylistWire.Summary(list,"Slides",3)),slides,
+                    "PLAYING",image,0,1000,"LIST",false,slides,List.of()).json());
+            var rowsField=ImageLoadScreen.class.getDeclaredField(queue?"queuedSlides":"savedSlides");rowsField.setAccessible(true);
+            var rows=(List<?>)((com.nstut.openui.state.Signal<?>)rowsField.get(screen)).get();
+            var builder=ImageLoadScreen.class.getDeclaredMethod("buildSlideRow",rows.get(0).getClass(),boolean.class);builder.setAccessible(true);
+            int from=reverse?2:0,to=reverse?0:2;
+            UIComponent first=(UIComponent)builder.invoke(screen,rows.get(from),queue);
+            UIComponent last=(UIComponent)builder.invoke(screen,rows.get(to),queue);
+            var source=(com.nstut.openui.dnd.Draggable<?>)first.children().get(0).children().get(0);
+            var target=(com.nstut.openui.dnd.DragTarget<?>)last;
+            assertFalse(((com.nstut.openui.dnd.DragTarget<?>)first).accepts(source.getData()),"Same-row drops must be ignored");
+            UIComponent other=(UIComponent)builder.invoke(screen,rows.get(to),!queue);
+            assertFalse(((com.nstut.openui.dnd.DragTarget<?>)other).accepts(source.getData()),"Cannot drag between the saved list and queue");
+            var viewField=ImageLoadScreen.class.getDeclaredField("playlistView");viewField.setAccessible(true);
+            @SuppressWarnings("unchecked") var signal=(com.nstut.openui.state.Signal<com.nstut.simplyscreens.playlist.PlaylistWire.View>)viewField.get(screen);
+            var original=signal.get();
+            signal.set(withAccessAndRevisions(original,false,4,3));
+            assertFalse(target.accepts(source.getData()),"Read-only viewers cannot reorder");
+            signal.set(withAccessAndRevisions(original,true,5,4));
+            assertFalse(target.accepts(source.getData()),"A drag from an older revision cannot reorder");
+            signal.set(original);assertTrue(target.accepts(source.getData()));
+            UIComponent root=com.nstut.openui.api.Ui.column(first.height(28),last.height(28)).gap(2);
+            var runtime=new com.nstut.openui.runtime.UiRuntime(stubFont(),new com.nstut.openui.runtime.NativeWidgetHost(){
+                public void add(net.minecraft.client.gui.components.AbstractWidget widget) { }
+                public void remove(net.minecraft.client.gui.components.AbstractWidget widget) { }
+            });
+            runtime.setRoot(root);runtime.setViewport(0,0,300,60);root.layoutTree(stubFont(),0,0,300,60);
+            try(var packets=org.mockito.Mockito.mockStatic(com.nstut.simplyscreens.network.PacketRegistries.class)) {
+                runtime.mouseClicked(first.getX()+40,first.getY()+10,0);
+                runtime.mouseDragged(310,80,0,270,70);runtime.mouseReleased(310,80,0);
+                packets.verifyNoInteractions();
+                runtime.mouseClicked(first.getX()+40,first.getY()+10,0);
+                runtime.mouseDragged(last.getX()+40,last.getY()+10,0,0,30);
+                runtime.mouseReleased(last.getX()+40,last.getY()+10,0);
+                var capture=org.mockito.ArgumentCaptor.forClass(com.nstut.simplyscreens.network.ScreenPlaylistC2SPacket.class);
+                packets.verify(()->com.nstut.simplyscreens.network.PacketRegistries.sendToServer(capture.capture()));
+                packets.verifyNoMoreInteractions();
+                var move=com.nstut.simplyscreens.playlist.PlaylistWire.Request.parse(capture.getValue().json);
+                assertEquals(queue?"MOVE_QUEUE":"MOVE",move.action());assertEquals(from,move.index());assertEquals(to,move.destination());
+                assertEquals(4,move.libraryRevision());assertEquals(3,move.playbackRevision());
+            }
+            runtime.close();
+        }
+    }
+
+    private static com.nstut.simplyscreens.playlist.PlaylistWire.View withAccessAndRevisions(
+            com.nstut.simplyscreens.playlist.PlaylistWire.View v,boolean control,long library,long playback) {
+        return new com.nstut.simplyscreens.playlist.PlaylistWire.View(v.key(),v.networkRevision(),library,playback,
+                v.requestId(),v.success(),control,v.selected(),v.playlists(),v.slides(),v.status(),v.currentImage(),v.index(),
+                v.offsetMillis(),v.repeat(),v.shuffle(),v.queue(),v.upcoming());
+    }
+
     private static UIComponent find(UIComponent node,String key) {
         if (key.equals(node.key())) return node;
         for (UIComponent child:node.children()) {UIComponent found=find(child,key);if(found!=null)return found;}

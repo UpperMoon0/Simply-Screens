@@ -16,7 +16,7 @@
     {
       "type": "patchouli:text",
       "title": "Optional Guide",
-      "text": "Simply Screens works without Patchouli. Only this guide and its recipe are unavailable. This release displays static images; playlists and slideshow controls are not included."
+      "text": "Simply Screens works without Patchouli. Only this guide and its recipe are unavailable. Use Playlists to save and play slideshows, and Queue for one-off images. The player controls remain available in every tab."
     }
   ]
 }

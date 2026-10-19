@@ -56,6 +56,9 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     private record SlideRow(int index, com.nstut.simplyscreens.playlist.PlaylistWire.Slide slide, long revision, UUID playlist) { }
     private final Signal<List<SlideRow>> savedSlides = Signals.of(List.of()), queuedSlides = Signals.of(List.of());
     private final Signal<Boolean> savedSlidesEmpty = Signals.of(true), queuedSlidesEmpty = Signals.of(true);
+    private record SlideDrag(SlideRow row, boolean queue) { }
+    private final Computed<Boolean> announcementActive = Signals.computed(() ->
+            playlistView.get() != null && "ANNOUNCEMENT".equals(playlistView.get().status()));
     private UUID selectedPlaylist;
     private long pendingPlaylistRequest;
     private boolean playlistMutationPending;
@@ -172,19 +175,23 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         menu.show(uiRuntime().overlays());
     }
     private UIComponent buildSlideRow(SlideRow row, boolean queue) {
-        return Ui.row(Ui.text(Component.literal(Integer.toString(row.index()+1))).width(20),
+        UIComponent label = Ui.row(Ui.text(Component.literal("\u2261 " + (row.index()+1))).width(28),
                 Ui.text(() -> Component.literal(slideName(row.slide().image()))).ellipsis().flex(),
-                Ui.text(Component.literal(row.slide().durationMillis()/1000+"s")),
+                Ui.text(Component.literal(row.slide().durationMillis()/1000+"s"))).gap(5).align(Alignment.CENTER);
+        UIComponent draggable = Ui.draggable(new SlideDrag(row, queue), label)
+                .feedback(() -> Ui.text(Component.literal(slideName(row.slide().image())))).flex();
+        UIComponent content = Ui.row(draggable,
                 new com.nstut.simplyscreens.client.ui.ScreenIconButton(com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.MORE,
                         pt("slide_actions"), () -> {
                             var menu = playlistMenu();
                             if (!queue) menu.item(pt("duration"), () -> durationDialog(row));
-                            if (row.index()>0) menu.item(pt("up"), () -> playlistRowAction(row,queue,queue?"MOVE_QUEUE":"MOVE",row.index()-1,0));
-                            if (row.index()+1<(queue?queuedSlides.get():savedSlides.get()).size())
-                                menu.item(pt("down"), () -> playlistRowAction(row,queue,queue?"MOVE_QUEUE":"MOVE",row.index()+1,0));
                             menu.separator().item(pt("remove"), () -> playlistRowAction(row,queue,queue?"REMOVE_QUEUE":"REMOVE",-1,0));
                             menu.show(uiRuntime().overlays());
                         }).enabledWhen(this::canControlPlaylist)).gap(5).align(Alignment.CENTER);
+        return Ui.dragTarget(SlideDrag.class, content)
+                .accept(drag -> canControlPlaylist() && drag.queue() == queue
+                        && drag.row().index() != row.index() && rowCurrent(drag.row(), queue) && rowCurrent(row, queue))
+                .onDrop(event -> playlistRowAction(event.data().row(), queue, queue ? "MOVE_QUEUE" : "MOVE", row.index(), 0));
     }
     private boolean rowCurrent(SlideRow row, boolean queue) {
         var view=playlistView.get();
@@ -272,8 +279,8 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         var view=playlistView.get();
         return view!=null && java.util.Set.of("PLAYING", "ANNOUNCEMENT").contains(view.status());
     }
-    private UIComponent buildPlaylistTransport() {
-        UIComponent controls = Ui.row(transportIcon(com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.PREVIOUS,"previous","PREVIOUS"),
+    private UIComponent buildPlaylistControls(boolean announcement) {
+        var controls = Ui.row(transportIcon(com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.PREVIOUS,"previous","PREVIOUS"),
                         new com.nstut.simplyscreens.client.ui.ScreenIconButton(
                                 () -> playlistPlaying()?
                                         com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.PAUSE:com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.PLAY,
@@ -287,11 +294,15 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                                 () -> Component.literal(pt("repeat").getString()+": "+(playlistView.get()==null?"NONE":playlistView.get().repeat())), () -> {var v=playlistView.get();if(v!=null)playlistAction("REPEAT",null,-1,-1,0,
                                         switch(v.repeat()){case "NONE"->"LIST";case "LIST"->"CURRENT";default->"NONE";});}).enabledWhen(this::canControlPlaylist),
                         new com.nstut.simplyscreens.client.ui.ScreenIconButton(() -> com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.SHUFFLE,
-                                () -> Component.literal(pt("shuffle").getString()+": "+(playlistView.get()!=null&&playlistView.get().shuffle())), () -> {var v=playlistView.get();if(v!=null)playlistAction("SHUFFLE",null,-1,-1,0,Boolean.toString(!v.shuffle()));}).enabledWhen(this::canControlPlaylist),
-                        new com.nstut.simplyscreens.client.ui.ScreenIconButton(com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.MORE,
-                                pt("actions"), () -> playlistMenu().item(pt("cancel_announcement"),()->playlistAction("CANCEL_ANNOUNCEMENT")).show(uiRuntime().overlays())).enabledWhen(this::canControlPlaylist)
-                ).gap(4).align(Alignment.CENTER);
-        return Ui.column(Ui.text(this::playbackLabel).marquee().key("playlist.now_playing"), controls,
+                                () -> Component.literal(pt("shuffle").getString()+": "+(playlistView.get()!=null&&playlistView.get().shuffle())), () -> {var v=playlistView.get();if(v!=null)playlistAction("SHUFFLE",null,-1,-1,0,Boolean.toString(!v.shuffle()));}).enabledWhen(this::canControlPlaylist)
+                ).gap(4).align(Alignment.CENTER).justify(Justification.CENTER);
+        if (announcement) controls.child(new com.nstut.simplyscreens.client.ui.ScreenIconButton(com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.MORE,
+                                pt("actions"), () -> playlistMenu().item(pt("cancel_announcement"),()->playlistAction("CANCEL_ANNOUNCEMENT")).show(uiRuntime().overlays())).enabledWhen(this::canControlPlaylist));
+        return controls.key("playlist.controls");
+    }
+    private UIComponent buildPlaylistTransport() {
+        return Ui.column(Ui.text(this::playbackLabel).marquee().key("playlist.now_playing"),
+                Ui.switcher(announcementActive).when(true, () -> buildPlaylistControls(true)).when(false, () -> buildPlaylistControls(false)),
                 Ui.text(this::playbackModes).marquee().key("playlist.modes")).gap(3).key("playlist.transport");
     }
 
@@ -914,6 +925,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         displaySubscription.close();
         settingsSubscription.close();
         statusVisible.close();
+        announcementActive.close();
         galleryState.close();
         filteredImages.close();
         super.removed();
