@@ -59,6 +59,11 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     private record SlideDrag(SlideRow row, boolean queue) { }
     private final Computed<Boolean> announcementActive = Signals.computed(() ->
             playlistView.get() != null && "ANNOUNCEMENT".equals(playlistView.get().status()));
+    private final Computed<Boolean> elapsedVisible = Signals.computed(() -> {
+        var view=playlistView.get();
+        return view!=null && !"STOPPED".equals(view.status()) && view.currentImage()!=null
+                && java.util.Objects.equals(view.currentImage(),this.displayedImageId.get());
+    });
     private UUID selectedPlaylist;
     private long pendingPlaylistRequest;
     private boolean playlistMutationPending;
@@ -135,17 +140,17 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         else if (!queuedSlides.get().isEmpty()) playlistAction("RESUME");
         else if (!savedSlides.get().isEmpty()) playlistAction("PLAY");
     }
-    private Component playbackLabel() {
-        var view = playlistView.get();
-        if (view == null) return pt("loading");
-        if ("STOPPED".equals(view.status())) return pt("idle");
-        return pt("now_playing", pt("status." + view.status().toLowerCase(Locale.ROOT)),
-                view.offsetMillis() / 1000);
+    private Component elapsedLabel() {
+        var view=playlistView.get();
+        return Component.translatable("gui.simplyscreens.gallery.elapsed",view==null?0:view.offsetMillis()/1000);
     }
-    private Component playbackModes() {
-        var view = playlistView.get();
-        return pt("modes", pt("repeat." + (view == null ? "none" : view.repeat().toLowerCase(Locale.ROOT))),
-                pt(view != null && view.shuffle() ? "order.random" : "order.saved"));
+    private String loopTextureName() {
+        var view=playlistView.get();
+        return view==null?"loop_off":switch(view.repeat()) {
+            case "LIST" -> "loop_all";
+            case "CURRENT" -> "loop_current";
+            default -> "loop_off";
+        };
     }
     private UIComponent playlistHelp(String key) {
         return height < 300 ? Ui.column() : Ui.text(pt(key)).wrap();
@@ -204,14 +209,19 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         playlistAction(action,null,row.index(),destination,duration,"");
     }
     private UIComponent buildPlaylistQueue() {
-        return Ui.column(Ui.row(Ui.heading(pt("queue")).flex(),
-                Ui.button(pt("clear_queue"), () -> playlistAction("CLEAR_QUEUE")).ghost().small()).gap(6),
-                playlistHelp("queue_help"),
-                Ui.switcher(queuedSlidesEmpty)
-                        .when(true, () -> Ui.emptyState(pt("queue_empty")))
-                        .when(false, () -> Ui.list(queuedSlides,row -> buildSlideRow(row,true)).key(row -> row.index()).itemHeight(28).gap(2).flex()).flex(),
-                Ui.text(() -> Component.literal(pt("upcoming").getString()+": "+(playlistView.get()==null?"":playlistView.get().upcoming().stream()
-                        .map(this::slideName).collect(java.util.stream.Collectors.joining(", "))))).marquee()).gap(6);
+        return Ui.switcher(queuedSlidesEmpty)
+                .when(true, () -> Ui.stack(Ui.column(
+                        Ui.text(pt("queue_empty")).centered().wrap(),
+                        Ui.text(pt("queue_empty_help")).centered().wrap()).gap(6).fillWidth())
+                        .align(Alignment.CENTER,Alignment.CENTER))
+                .when(false, () -> Ui.column(
+                        Ui.row(Ui.spacer().flex(),
+                                new com.nstut.simplyscreens.client.ui.ClippedTextButton(() -> pt("clear_queue"),
+                                        () -> playlistAction("CLEAR_QUEUE")).enabledWhen(this::canControlPlaylist).ghost().small()
+                                        .key("playlist.clear_queue")).gap(6),
+                        playlistHelp("queue_help"),
+                        Ui.list(queuedSlides,row -> buildSlideRow(row,true)).key(row -> row.index()).itemHeight(28).gap(2).flex()
+                ).gap(6)).key("playlist.queue_content");
     }
     private void galleryPlaylistActions(UUID image) {
         if (!canControlPlaylist()) return;
@@ -293,18 +303,17 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                         transportIcon(com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.RESTART,"restart","RESTART"),
                         new com.nstut.simplyscreens.client.ui.ScreenIconButton(() -> com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.REPEAT,
                                 () -> pt("repeat_value", pt("repeat."+(playlistView.get()==null?"none":playlistView.get().repeat().toLowerCase(Locale.ROOT)))), () -> {var v=playlistView.get();if(v!=null)playlistAction("REPEAT",null,-1,-1,0,
-                                        switch(v.repeat()){case "NONE"->"LIST";case "LIST"->"CURRENT";default->"NONE";});}).enabledWhen(this::canControlPlaylist),
+                                        switch(v.repeat()){case "NONE"->"LIST";case "LIST"->"CURRENT";default->"NONE";});}).texture(this::loopTextureName).enabledWhen(this::canControlPlaylist),
                         new com.nstut.simplyscreens.client.ui.ScreenIconButton(() -> com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.SHUFFLE,
-                                () -> pt("order_value", pt(playlistView.get()!=null&&playlistView.get().shuffle()?"order.random":"order.saved")), () -> {var v=playlistView.get();if(v!=null)playlistAction("SHUFFLE",null,-1,-1,0,Boolean.toString(!v.shuffle()));}).enabledWhen(this::canControlPlaylist)
+                                () -> pt("order_value", pt(playlistView.get()!=null&&playlistView.get().shuffle()?"order.random":"order.saved")), () -> {var v=playlistView.get();if(v!=null)playlistAction("SHUFFLE",null,-1,-1,0,Boolean.toString(!v.shuffle()));}).texture(() -> playlistView.get()!=null && playlistView.get().shuffle()?"order_random":"order_saved").enabledWhen(this::canControlPlaylist)
                 ).gap(4).align(Alignment.CENTER).justify(Justification.CENTER);
         if (announcement) controls.child(new com.nstut.simplyscreens.client.ui.ScreenIconButton(com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.MORE,
                                 pt("slideshow_actions"), () -> playlistMenu().item(pt("cancel_announcement"),()->playlistAction("CANCEL_ANNOUNCEMENT")).show(uiRuntime().overlays())).enabledWhen(this::canControlPlaylist));
         return controls.key("playlist.controls");
     }
     private UIComponent buildPlaylistTransport() {
-        return Ui.column(Ui.text(this::playbackLabel).marquee().key("playlist.now_playing"),
-                Ui.switcher(announcementActive).when(true, () -> buildPlaylistControls(true)).when(false, () -> buildPlaylistControls(false)),
-                Ui.text(this::playbackModes).marquee().key("playlist.modes")).gap(3).key("playlist.transport");
+        return Ui.switcher(announcementActive).when(true, () -> buildPlaylistControls(true))
+                .when(false, () -> buildPlaylistControls(false)).key("playlist.transport");
     }
 
     private UIComponent transportIcon(com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon icon,String label,String action) {
@@ -578,14 +587,13 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     }
 
     private UIComponent buildHeader() {
-        if (height < 300) return Ui.row(Ui.text(this::displayedImageName).ellipsis().flex(), buildThemeToggle()).gap(8).align(Alignment.CENTER);
-        return Ui.row(
-                Ui.column(
-                        Ui.heading(Component.translatable("gui.simplyscreens.screen.title")),
-                        Ui.text(this::displayedImageName)
-                ).gap(2).flex(),
-                buildThemeToggle()
-        ).gap(8).align(Alignment.CENTER).justify(Justification.SPACE_BETWEEN);
+        UIComponent imageStatus=Ui.row(
+                Ui.text(this::displayedImageName).ellipsis().flex().key("gallery.displayed_image"),
+                Ui.switcher(elapsedVisible).when(true, () -> Ui.text(this::elapsedLabel).ellipsis().maxWidth(48)
+                                .tooltip(Component.translatable("gui.simplyscreens.gallery.elapsed.help")).key("playlist.elapsed"))
+                        .when(false, Ui::column)
+        ).gap(4).align(Alignment.CENTER).flex();
+        return Ui.row(imageStatus,buildThemeToggle()).gap(8).align(Alignment.CENTER).key("screen.header");
     }
 
     private UIComponent buildGallery() {
@@ -597,7 +605,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                 Component.translatable("gui.simplyscreens.screen.refresh"), this::refreshImageList)
                 .ghost().small();
         return Ui.column(
-                Ui.row(searchField, refresh, Ui.button(Component.literal("+"), () -> tab.set(Tab.IMPORT)).ghost().small().tooltip(Component.translatable("gui.simplyscreens.screen.add_image"))).gap(6).align(Alignment.CENTER),
+                Ui.row(searchField, refresh, new com.nstut.simplyscreens.client.ui.ScreenIconButton(com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.PLUS, Component.translatable("gui.simplyscreens.screen.add_image"), () -> tab.set(Tab.IMPORT))).gap(6).align(Alignment.CENTER),
                 Ui.switcher(galleryState)
                         .when(GalleryState.EMPTY, this::buildEmptyGallery)
                         .when(GalleryState.NO_MATCHES, this::buildNoMatches)
@@ -719,7 +727,8 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
             ).gap(6)).outlined(true).padding(12));
         }
         if (ClientServerConfig.disableUpload() && ClientServerConfig.disableUrlDownload()) {
-            content.child(Ui.emptyState(Component.translatable("gui.simplyscreens.import.disabled")));
+            content.child(Ui.stack(Ui.text(Component.translatable("gui.simplyscreens.import.disabled")).centered().wrap())
+                    .align(Alignment.CENTER,Alignment.CENTER));
         }
         return Ui.scroll(content);
     }
@@ -729,7 +738,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         selectedImageId.set(imageId);
         PacketRegistries.sendToServer(new UpdateScreenSelectedImageC2SPacket(blockEntityPos, imageId));
         displayedImageId.set(imageId);
-        status.set(Component.translatable("gui.simplyscreens.status.selected"));
+        status.set(Component.empty());
     }
 
     private void onLinkScreenId() {
@@ -927,6 +936,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         settingsSubscription.close();
         statusVisible.close();
         announcementActive.close();
+        elapsedVisible.close();
         galleryState.close();
         filteredImages.close();
         super.removed();

@@ -4,9 +4,9 @@ Named slide playlists in v0.10.0 build on the v0.9.0 screen-network and access m
 
 ## Experience
 
-Gallery actions add images to saved slide playlists or to temporary slides in Up next. A searchable selector changes only the editor; Start displays a saved slideshow. Centered slideshow controls remain visible across tabs. Named playlists support create, rename, duplicate, delete, per-slide duration and drag reordering.
+Gallery actions add images to saved slide playlists or to temporary slides in Up next. A searchable selector changes only the editor; Start displays a saved slideshow. A centered single-row icon toolbar remains visible across tabs; elapsed slide time appears beside the displayed image in the header. Loop off/all/current and saved/random order use distinct mode textures with hover tooltips. Named playlists support create, rename, duplicate, delete, per-slide duration and drag reordering.
 
-Up next distinguishes temporary images from saved slides. Show now displays an image for 10 seconds, then returns to the exact interrupted slide, timer and paused state. Return to slideshow ends that temporary image early.
+Up next distinguishes temporary images from saved slides. It omits the repeated tab heading, hides Clear while empty, and does not expose image-prefetch hints as an exact next-slide list. Show now displays an image for 10 seconds, then returns to the exact interrupted slide, timer and paused state. Return to slideshow ends that temporary image early.
 
 Use display terminology in the interface: Displaying, Start slideshow, Show next, Loop and Saved/Random slide order. Internal protocol action names retain their existing identifiers.
 

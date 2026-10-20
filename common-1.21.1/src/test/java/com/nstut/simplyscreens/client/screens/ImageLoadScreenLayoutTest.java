@@ -64,13 +64,20 @@ class ImageLoadScreenLayoutTest {
                     "network/test",0,1,1,1,true,true,list,
                     List.of(new com.nstut.simplyscreens.playlist.PlaylistWire.Summary(list,"Long playlist name ".repeat(3).trim(),12)),
                     slides,playbackStatus,image,0,1000,"LIST",true,List.of(),List.of()).json());
+            screen.updateScreenState(image,true,"");
             screen.smokeSelectTab(1);
             UIComponent root=screen.buildUI(); root.layoutTree(stubFont(),0,0,size[0],size[1]);
-            for (String key : List.of("playlist.toolbar","playlist.transport","playlist.now_playing","playlist.modes")) {
+            for (String key : List.of("playlist.toolbar","playlist.transport")) {
                 UIComponent component=find(root,key);assertTrue(component!=null,key);
                 assertTrue(component.getHeight()>0 && component.getY()>=0 && component.getY()+component.getHeight()<=size[1],key+" outside viewport");
                 assertTargetsInside(component,component.getX(),component.getX()+component.getWidth());
             }
+            UIComponent header=find(root,"screen.header"),elapsed=find(root,"playlist.elapsed");
+            assertNotNull(elapsed,"Elapsed time must be shown with the displayed image");
+            assertSame(elapsed,find(header,"playlist.elapsed"));
+            assertNull(find(find(root,"playlist.transport"),"playlist.elapsed"));
+            assertEquals(24,find(root,"playlist.transport").getHeight(),"The footer must contain one button row only");
+            assertNull(find(root,"playlist.now_playing"));assertNull(find(root,"playlist.modes"));
             UIComponent controls=find(root,"playlist.controls");assertNotNull(controls);
             UIComponent first=controls.children().get(0),last=controls.children().get(controls.children().size()-1);
             assertEquals(controls.getX()+controls.getWidth()/2.0,
@@ -182,6 +189,22 @@ class ImageLoadScreenLayoutTest {
             assertEquals("MOVE",move.action());assertEquals(0,move.index());assertEquals(1,move.destination());assertEquals(5,move.libraryRevision());
         }
         runtime.close();
+    }
+
+
+    @Test void emptyTemporarySlidesHideTheClearActionAndPrefetchLabels() throws Exception {
+        for (boolean hasFollowing : new boolean[]{false,true}) {
+            var screen=new ImageLoadScreen(BlockPos.ZERO);screen.width=320;screen.height=240;
+            var list=java.util.UUID.randomUUID();var image=java.util.UUID.randomUUID();
+            var pending=ImageLoadScreen.class.getDeclaredField("pendingPlaylistRequest");pending.setAccessible(true);pending.set(screen,1L);
+            screen.updatePlaylist(BlockPos.ZERO,new com.nstut.simplyscreens.playlist.PlaylistWire.View("network/test",0,1,1,1,true,true,list,
+                    List.of(new com.nstut.simplyscreens.playlist.PlaylistWire.Summary(list,"Slides",1)),
+                    List.of(new com.nstut.simplyscreens.playlist.PlaylistWire.Slide(image,10000)),
+                    "PLAYING",image,0,1000,hasFollowing?"LIST":"CURRENT",false,List.of(),hasFollowing?List.of(image):List.of()).json());
+            screen.smokeSelectTab(2);UIComponent root=screen.buildUI();root.layoutTree(stubFont(),0,0,320,240);
+            assertNull(find(root,"playlist.clear_queue"),"An empty queue must not offer an unusable Clear action");
+            assertNull(find(root,"playlist.following_slides"),"Image prefetch hints must not be shown as an exact next-slide list");
+        }
     }
 
     private static UIComponent find(UIComponent node,String key) {

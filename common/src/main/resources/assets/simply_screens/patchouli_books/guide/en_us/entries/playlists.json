@@ -22,12 +22,12 @@
     {
       "type": "patchouli:text",
       "title": "Slideshow controls",
-      "text": "Previous and Next change slides. Restart resets the current slide’s timer.$(br2)Pause holds the current image and timer. Resume continues from that point."
+      "text": "The header shows the image and elapsed slide time.$(br2)Previous and Next change slides. Restart resets the timer. Pause holds the current image and timer; Resume continues from that point."
     },
     {
       "type": "patchouli:text",
       "title": "Loop and order",
-      "text": "Loop cycles between Off, All slides and Current slide.$(br2)Slide order is either Saved order or Random. Linked screens always show the same sequence."
+      "text": "The loop icon changes between Off, All slides and Current slide.$(br2)The order icon switches between Saved order and Random. Hover either icon to read its current mode."
     },
     {
       "type": "patchouli:text",
