@@ -38,6 +38,6 @@
   ],
   "suggests": {
     "patchouli": "*",
-    "openui_mc": ">=0.0.13"
+    "openui_mc": ">=0.0.14"
   }
 }

@@ -76,8 +76,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: UpperMoon0/OpenUI-MC
-          # Build the same pinned OpenUI 0.0.13 release as PR CI.
-          ref: 1c44920fcc40e486ec5edf1cf82b98c1b633d5bd
+          # Build the same pinned OpenUI 0.0.14 drag fix as PR CI.
+          ref: 785ee27faaf3d3dc5e5d026fa0476825e57f055a
           path: OpenUI-MC
       - name: Verify OpenUI-MC version alignment
         shell: bash
@@ -132,8 +132,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: UpperMoon0/OpenUI-MC
-          # Build the same pinned OpenUI 0.0.13 release as PR CI.
-          ref: 1c44920fcc40e486ec5edf1cf82b98c1b633d5bd
+          # Build the same pinned OpenUI 0.0.14 drag fix as PR CI.
+          ref: 785ee27faaf3d3dc5e5d026fa0476825e57f055a
           path: OpenUI-MC
       - name: Verify OpenUI-MC version alignment
         shell: bash

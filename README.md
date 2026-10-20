@@ -2,7 +2,7 @@
 
 A Minecraft mod that adds configurable screen blocks capable of displaying images from local files or the web, supporting dynamic multi-block structures and synchronized screen networks.
 
-The client interface is powered by **OpenUI MC 0.0.13 or newer**, which is a required client-side dependency matching your Minecraft version and loader. Dedicated servers do not require OpenUI; Fabric checks the dependency during client startup.
+The client interface is powered by **OpenUI MC 0.0.14 or newer**, which is a required client-side dependency matching your Minecraft version and loader. Dedicated servers do not require OpenUI; Fabric checks the dependency during client startup.
 
 [![CurseForge](https://cf.way2muchnoise.eu/simply-screens.svg)](https://www.curseforge.com/minecraft/mc-mods/simply-screens)
 
@@ -37,7 +37,7 @@ Install the artifact matching **both** your Minecraft version and loader. The fo
 - **PacketWeave 0.1.1 or newer**, matching the same Minecraft version and loader, on the client **and** dedicated server.
 - **Architectury API**, matching the same Minecraft version and loader, on both sides.
 - **Fabric API** on Fabric.
-- **OpenUI MC 0.0.13 or newer** on clients.
+- **OpenUI MC 0.0.14 or newer** on clients.
 
 Download PacketWeave from its [release assets](https://github.com/UpperMoon0/PacketWeave/releases) or its approved [CurseForge files](https://www.curseforge.com/minecraft/mc-mods/packetweave/files). Do not install the development-only API/core jar as a substitute for the native loader jar. Missing PacketWeave or a version below 0.1.1 must be resolved before the loader can start Screens.
 
@@ -143,6 +143,6 @@ Slideshow controls stay visible across tabs: Previous/Next slide, Start/Pause/Re
 
 A removed image is removed from saved and running references. An image that cannot be decoded shows the existing error texture until its slide duration expires.
 
-Linked screens use one authoritative content timeline, even with all their chunks unloaded. A local override has its own timeline. World saves preserve offsets, queue, repeat/shuffle and announcements; server downtime does not advance them. Normal autosave checkpoints are every five seconds, with immediate persistence on commands and clean shutdown. Selecting a static gallery image discards that display/network's previous slideshow. Ownership transfer discards resumable timelines belonging to that access group. Other access changes preserve playback but immediately govern future control and image downloads.
+Linked screens use one authoritative content timeline, even with all their chunks unloaded. A local override has its own timeline. World saves preserve slide timers, temporary slides, loop settings and slide order; server downtime does not advance them. Normal autosave checkpoints are every five seconds, with immediate persistence on commands and clean shutdown. Selecting a static gallery image discards that display/network's previous slideshow. Ownership transfer discards resumable timelines belonging to that access group. Other access changes preserve playback but immediately govern future control and image downloads.
 
-Playlists are private to their creator (64 lists, 256 slides each). Playback/queue/announcement requires current screen control permission and image-library access; sharing a visible display never grants ownership of its media. Upcoming-image prefetch uses the same current tracking/view checks as display downloads and does not expose library names. Prefetch is capped at two images per viewer per two-second batch, each at most 8 MiB encoded. Client GPU cache is capped at 32 textures/128 MiB and a single decoded image at 16 megapixels.
+Playlists are private to their creator (64 lists, 256 slides each). Starting a slideshow or showing temporary images requires current screen control permission and image-library access; sharing a visible display never grants ownership of its media. Upcoming-image prefetch uses the same current tracking/view checks as display downloads and does not expose library names. Prefetch is capped at two images per viewer per two-second batch, each at most 8 MiB encoded. Client GPU cache is capped at 32 textures/128 MiB and a single decoded image at 16 megapixels.
