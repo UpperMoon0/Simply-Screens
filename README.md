@@ -137,7 +137,7 @@ visibility policies still apply. See [the settings audit](docs/settings.md) for 
 
 Open a screen and use a gallery image's **…** menu to add it to a saved playlist. In **Playlists**, choose or create a list, then select **Start** to display it. Drag slide rows to reorder them; each slide's menu changes its duration (1–86400 seconds) or removes it.
 
-Slideshow controls stay visible across tabs: Previous/Next slide, Start/Pause/Resume/Stop slideshow, Restart current slide, Loop (off/all slides/current slide), and Slide order (saved/random). The status shows the displayed image and elapsed slide time. Saved edits and deletion leave the current slideshow unchanged; select **Start** to display your edits.
+Slideshow controls stay visible across tabs: Previous/Next slide, Start/Pause/Resume/Stop slideshow, Restart current slide, Loop (off/all slides/current slide), and Slide order (saved/random). The header identifies the displayed image; the controls show slideshow status and elapsed slide time. Saved edits and deletion leave the current slideshow unchanged; select **Start** to display your edits.
 
 **Up next** lists temporary 10-second slides added with **Show next** or **Add temporary slide**. These appear before the next saved slide and do not change the saved playlist. **Show now** temporarily displays an image immediately, then returns to the interrupted slide, timer and paused state. During that image, **Return to slideshow** ends it early.
 

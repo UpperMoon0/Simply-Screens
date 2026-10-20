@@ -140,7 +140,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         if (view == null) return pt("loading");
         if ("STOPPED".equals(view.status())) return pt("idle");
         return pt("now_playing", pt("status." + view.status().toLowerCase(Locale.ROOT)),
-                slideName(view.currentImage()), view.offsetMillis() / 1000);
+                view.offsetMillis() / 1000);
     }
     private Component playbackModes() {
         var view = playlistView.get();
