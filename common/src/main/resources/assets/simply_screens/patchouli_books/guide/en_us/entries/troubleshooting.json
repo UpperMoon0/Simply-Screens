@@ -7,22 +7,42 @@
     {
       "type": "patchouli:text",
       "title": "Cannot Edit?",
-      "text": "Check who owns the display and its control policy. Trusted players need Trusted mode for control. Relinking and access management require the owner or an operator. Re-enter Settings to fetch current access rules."
+      "text": "Check who owns the display and its control policy.$(br2)Trusted players need Trusted mode for control. Relinking and access management require the owner or an operator."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Cannot Edit?",
+      "text": "Re-enter Settings to fetch current access rules."
     },
     {
       "type": "patchouli:text",
       "title": "Different Images?",
-      "text": "Check that displays use the same Screen ID. Turn off Local image override if a display should follow the shared image. A blank network remains blank until a permitted player selects an image."
+      "text": "Check that displays use the same Screen ID.$(br2)Turn off Local image override if a display should follow the shared image."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Different Images?",
+      "text": "A blank network remains blank until a permitted player selects an image."
     },
     {
       "type": "patchouli:text",
       "title": "Import Failed?",
-      "text": "Use PNG, JPG, or JPEG. Check server upload/download settings and storage limits. For URLs, use a public direct image link. Local and private-network URLs are blocked."
+      "text": "Use PNG, JPG, or JPEG.$(br2)Check server upload/download settings and storage limits. For URLs, use a public direct image link."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Import Failed?",
+      "text": "Local and private-network URLs are blocked."
     },
     {
       "type": "patchouli:text",
       "title": "Server Configuration",
-      "text": "Server owners can edit config/simply_screens.properties to control viewing distance, uploads, URL downloads, file-size limits, and storage quotas. Keep backups of worlds, image files, and registry data before upgrades."
+      "text": "Server owners can edit config/simply_screens.properties to control viewing distance, uploads, URL downloads, file-size limits, and storage quotas."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Server Configuration",
+      "text": "Keep backups of worlds, image files, and registry data before upgrades."
     }
   ]
 }

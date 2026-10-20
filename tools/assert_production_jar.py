@@ -126,6 +126,7 @@ def _forbidden(archive: zipfile.ZipFile, prefix: str = "") -> list[str]:
         if (Path(name).name == "simplyscreens.mixins.json"
                 or (Path(name).name == COLOR_MIXIN_CONFIG and not color_allowed)
                 or name.startswith("com/nstut/simplyscreens/testing/visual/")
+                or name.startswith("com/nstut/simplyscreens/testing/playlist/")
                 or (name.endswith(".class") and any("/" + package in "/" + name for package in PACKETWEAVE_PACKAGES))
                 or (Path(name).name.lower().endswith("refmap.json")
                     and any(mod in Path(name).name.lower() for mod in ("simply_screens", "simplyscreens"))

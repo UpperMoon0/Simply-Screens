@@ -133,9 +133,9 @@ class ImageLoadScreenAccessTest {
         screen.bindSettingsRefresh();
         screen.bindSettingsRefresh();
         try (var packets = mockStatic(PacketRegistries.class)) {
-            screen.smokeSelectTab(2); // Import does not request access.
+            screen.smokeSelectTab(4); // Import does not request access.
             packets.verifyNoInteractions();
-            screen.smokeSelectTab(1);
+            screen.smokeSelectTab(3);
             var sent = ArgumentCaptor.forClass(ScreenAccessC2SPacket.class);
             packets.verify(() -> PacketRegistries.sendToServer(sent.capture()));
             packets.verifyNoMoreInteractions();
@@ -144,7 +144,7 @@ class ImageLoadScreenAccessTest {
             assertEquals(7, sent.getValue().revision);
             screen.removed();
             screen.smokeSelectTab(0);
-            screen.smokeSelectTab(1);
+            screen.smokeSelectTab(3);
             packets.verifyNoMoreInteractions();
         }
     }

@@ -2,7 +2,7 @@
 
 A Minecraft mod that adds configurable screen blocks capable of displaying images from local files or the web, supporting dynamic multi-block structures and synchronized screen networks.
 
-The client interface is powered by **OpenUI MC 0.0.8 or newer**, which is a required client-side dependency matching your Minecraft version and loader. Dedicated servers do not require OpenUI; Fabric checks the dependency during client startup.
+The client interface is powered by **OpenUI MC 0.0.14 or newer**, which is a required client-side dependency matching your Minecraft version and loader. Dedicated servers do not require OpenUI; Fabric checks the dependency during client startup.
 
 [![CurseForge](https://cf.way2muchnoise.eu/simply-screens.svg)](https://www.curseforge.com/minecraft/mc-mods/simply-screens)
 
@@ -30,18 +30,18 @@ Minecraft 1.21.1 builds support optional **Sable 2.0.5 and 2.0.6** on Fabric and
   - Per-player upload concurrency and rate limits, bounded processing queues, and full image decode checks.
   - Atomic registry operations with automated `.bak` backups and crash recovery.
 
-## Installation and upgrade to 0.9.0
+## Installation and upgrade to 0.9.1
 
 Install the artifact matching **both** your Minecraft version and loader. The following mods are required:
 
 - **PacketWeave 0.1.1 or newer**, matching the same Minecraft version and loader, on the client **and** dedicated server.
 - **Architectury API**, matching the same Minecraft version and loader, on both sides.
 - **Fabric API** on Fabric.
-- **OpenUI MC 0.0.8 or newer** on clients.
+- **OpenUI MC 0.0.14 or newer** on clients.
 
 Download PacketWeave from its [release assets](https://github.com/UpperMoon0/PacketWeave/releases) or its approved [CurseForge files](https://www.curseforge.com/minecraft/mc-mods/packetweave/files). Do not install the development-only API/core jar as a substitute for the native loader jar. Missing PacketWeave or a version below 0.1.1 must be resolved before the loader can start Screens.
 
-When upgrading from 0.8.9, add PacketWeave to every client and server before launching. Keep the existing world, `simply_screens_images` directory, screen registry, and configuration. Version 0.9.0 automatically imports existing registry images/owners into a versioned `screen_networks.json`; existing media files and Screen IDs are preserved. Legacy unowned networks and blank-ID displays require an operator claim before editing. New player-placed displays belong to their placer. Added access packets require matching client/server Screens versions. Back up worlds before upgrading; see [ownership, migration, and recovery](docs/network-access.md) before changing permissions or restoring data.
+When upgrading from 0.8.9, add PacketWeave to every client and server before launching. Keep the existing world, `simply_screens_images` directory, screen registry, and configuration. Version 0.9.0 automatically imports existing registry images/owners into a versioned `screen_networks.json`; existing media files and Screen IDs are preserved. Legacy unowned networks and blank-ID displays require an operator claim before editing. New player-placed displays belong to their placer. Added access and playlist packets require matching client/server Screens versions. Version 0.9.1 stores personal playlists and active timelines in `screen_playlists.dat` with a validated backup; keep both with the world. Back up worlds before upgrading; see [ownership, migration, and recovery](docs/network-access.md) before changing permissions or restoring data.
 
 ## Shader compatibility in 0.8.11
 
@@ -132,3 +132,17 @@ Open a screen and choose **Settings > Your display settings** to change screen r
 (8-512 blocks). It applies immediately to all screens for you, saves on this device, and works
 without screen-management permissions. Existing mod-config values are imported once. Server
 visibility policies still apply. See [the settings audit](docs/settings.md) for all configuration options.
+
+## Named slide playlists (0.9.1)
+
+Open a screen and use a gallery image's **…** menu to add it to a saved playlist. In **Playlists**, choose or create a list, then select **Start** to display it. Drag slide rows to reorder them; each slide's menu changes its duration (1–86400 seconds) or removes it.
+
+Slideshow controls stay visible across tabs: Previous/Next slide, Start/Pause/Resume/Stop slideshow, Restart current slide, Loop (off/all slides/current slide), and Slide order (saved/random). The header identifies the displayed image and elapsed slide time. The toolbar is a single row of buttons; distinct 64x64 mode icons show loop off/all/current and saved/random order, with hover tooltips explaining each mode. Saved edits and deletion leave the current slideshow unchanged; select **Start** to display your edits.
+
+**Up next** lists temporary 10-second slides added with **Show next** or **Add temporary slide**. These appear before the next saved slide and do not change the saved playlist. **Show now** temporarily displays an image immediately, then returns to the interrupted slide, timer and paused state. During that image, **Return to slideshow** ends it early.
+
+A removed image is removed from saved and running references. An image that cannot be decoded shows the existing error texture until its slide duration expires.
+
+Linked screens use one authoritative content timeline, even with all their chunks unloaded. A local override has its own timeline. World saves preserve slide timers, temporary slides, loop settings and slide order; server downtime does not advance them. Normal autosave checkpoints are every five seconds, with immediate persistence on commands and clean shutdown. Selecting a static gallery image discards that display/network's previous slideshow. Ownership transfer discards resumable timelines belonging to that access group. Other access changes preserve playback but immediately govern future control and image downloads.
+
+Playlists are private to their creator (64 lists, 256 slides each). Starting a slideshow or showing temporary images requires current screen control permission and image-library access; sharing a visible display never grants ownership of its media. Upcoming-image prefetch uses the same current tracking/view checks as display downloads and does not expose library names. Prefetch is capped at two images per viewer per two-second batch, each at most 8 MiB encoded. Client GPU cache is capped at 32 textures/128 MiB and a single decoded image at 16 megapixels.

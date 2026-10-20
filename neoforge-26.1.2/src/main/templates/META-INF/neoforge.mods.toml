@@ -92,7 +92,7 @@ config="simplyscreens-color.mixins.json"
 [[dependencies.${mod_id}]]
     modId="openui_mc"
     type="required"
-    versionRange="[0.0.8,)"
+    versionRange="[0.0.14,)"
     ordering="AFTER"
     side="CLIENT"
 

@@ -42,7 +42,7 @@ class PatchouliResourcesTest(unittest.TestCase):
         content = SHARED / CONTENT
         categories = {p.stem for p in (content / 'categories').glob('*.json')}
         entries = list((content / 'entries').glob('*.json'))
-        self.assertEqual(3, len(categories)); self.assertEqual(10, len(entries))
+        self.assertEqual(3, len(categories)); self.assertEqual(11, len(entries))
         for path in entries:
             entry = json.loads(path.read_text())
             self.assertIn(entry['category'].split(':')[1], categories)

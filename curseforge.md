@@ -79,3 +79,6 @@ Server limits are authoritative. `disableDownload` and `maxDownloadSize` are not
 ### Optional guide
 
 Install Patchouli for your Minecraft version and loader on the server and clients for the Simply Screens Guide. Find it in the creative tab or craft a book with an amethyst shard. Patchouli is optional; all screen features work without it.
+
+## Slide playlists
+Create named image playlists with per-slide duration and ordering. Play, pause, repeat or shuffle on linked screens; queue one-off slides or announce an image temporarily. The server keeps linked displays synchronized and preserves the playback offset across restarts. The new playlist and queue tabs follow Simply Speakers’ browsing and transport flow.

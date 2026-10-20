@@ -1,0 +1,53 @@
+{
+  "name": "Slide Playlists",
+  "category": "simply_screens:displays",
+  "icon": "simply_screens:screen",
+  "sortnum": 5,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "title": "Build a playlist",
+      "text": "Choose or create a list in Playlists. Add images through the gallery image menu.$(br2)Drag rows to reorder. A slide’s menu changes its duration (1–86400 seconds) or removes it."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Start a slideshow",
+      "text": "Choose a saved playlist, then select Start to display its slides.$(br2)Linked screens share the slideshow. A display with Local image override uses its own slideshow."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Saved changes",
+      "text": "Choosing a playlist only changes the editor.$(br2)Edits and deletion leave the current slideshow unchanged. Select Start again to display your saved changes."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Slideshow controls",
+      "text": "The header shows the image and elapsed slide time.$(br2)Previous and Next change slides. Restart resets the timer. Pause holds the current image and timer; Resume continues from that point."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Loop and order",
+      "text": "The loop icon changes between Off, All slides and Current slide.$(br2)The order icon switches between Saved order and Random. Hover either icon to read its current mode."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Temporary slides",
+      "text": "Use Show next or Add temporary slide in a gallery image’s menu.$(br2)Up next lists these 10-second slides. Drag to reorder or clear them; the saved playlist stays unchanged."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Show an image now",
+      "text": "Show now interrupts the slideshow with an image for 10 seconds, then returns to the same slide and timer.$(br2)Use Return to slideshow to end the temporary image early."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Saved progress",
+      "text": "The slide timer, temporary slides and order survive chunk unload and restart. Server downtime consumes no slide time.$(br2)Changes save on commands, shutdown and every five seconds."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Image access",
+      "text": "Use images from your own library. Screen control and image-view permissions still apply.$(br2)Selecting a static gallery image ends that display’s current slideshow."
+    }
+  ]
+}

@@ -168,6 +168,26 @@ and transform tests do not establish a full All of Create Aeronautics 2.8 playte
 
 ## Optional Patchouli guide
 
-`tools/test_patchouli_resources.py` covers optional loader metadata, loader-gated recipes (including rejection of missing conditions), guide references, page text budgets, and the transparent 64x64 texture format. `tools/assert_production_jar.py` also verifies physical book discovery, version-specific book models, contents, and recipe identity in each production jar. Use `-PscreensPatchouli=true` for native development runs with Patchouli; omit it to verify Screens without the guide dependency. See [guide integration](docs/patchouli.md). Page length checks are conservative resource checks, not live font/layout validation.
+`tools/test_patchouli_resources.py` covers optional loader metadata, loader-gated recipes (including rejection of missing conditions), guide references, page text budgets, and the transparent 64x64 texture format. `tools/assert_production_jar.py` also verifies physical book discovery, version-specific book models, contents, and recipe identity in each production jar. Native development runs include Patchouli by default; use `-PscreensPatchouli=false` to verify Screens without the guide dependency. See [guide integration](docs/patchouli.md). Page length checks are conservative resource checks, not live font/layout validation.
 
 Personal display preferences have core persistence/migration coverage. Start a client with JVM flag `-Dsimplyscreens.personalSettingsTest=true` to run eight native UI cases in both themes and four sizes. The probe verifies tooltip visibility, real slider input, disk persistence and reopening without a world or management permissions, saves screenshots, prints `SIMPLYSCREENS_PERSONAL_SETTINGS_PASS`, then exits. Use a disposable game directory.
+
+## Playlist acceptance
+
+The shared `playlist/ScreenPlaylistServiceTest` suite exercises real persisted timeline data: named CRUD, immutable running snapshots, bounded queues, pause/resume/restart/repeat/shuffle, exact announcement restore, image purge, restart offsets, transaction rollback, malformed-store recovery and randomized reload sequences. Native `ScreenPlaylistRuntimeTest`, `ScreenPlaylistPacketTest` and `ImageLoadScreenPlaylistTest` cover current permissions and target/revision guards, private-image rejection, local overrides, static-selection restart behavior, packet limits, stale responses and repeated-click suppression in each source version.
+
+Run `testAllVersions` for the full native suites. Run the test-only `tools/playlist_test.py` harness for real linked-screen/client/restart evidence across all five targets. The harness creates disposable instrumented copies after checking production jars; its probes must never ship. A join smoke or unit pass alone does not establish the playlist acceptance criteria.
+
+`PlaybackTickClockTest` covers a paused integrated server and tick-counter rollover. Native editor regressions cover non-pausing screens, starting a selected saved list from an empty session, creation followed by adding the originating image, and slow read replies surviving periodic polling. Populated layout tests set the actual screen dimensions and check player/action bounds and at least two complete slide rows at five viewport sizes. Also test single-player directly: start a two-slide list, keep its editor open, pause the game, and resume; the first slide must neither blank immediately nor consume the paused time.
+
+Playlist gate commands:
+
+```sh
+python3 tools/playlist_test.py --target fabric-1.21.1
+python3 tools/playlist_test.py --target neoforge-26.1.2 --compile-only
+python3 tools/playlist_test.py --verify-receipts downloaded-playlist-evidence --head "$GITHUB_SHA"
+```
+
+The live-client workflow runs this gate on all five targets and requires fresh, clean, exact-head receipts. Each target records 23 server/client scenarios, six populated Gallery/Playlists/Queue screenshots at normal and narrow window sizes, and exact pre-shutdown/boot timeline comparisons for paused and running restarts. Compile-only results deliberately cannot satisfy the gate. Evidence and logs are under `build/screen-playlist-evidence/`; instrumented working copies stay under `build/screen-playlist-work/`.
+
+The playlist harness stops dedicated servers through the test driver's normal Minecraft `halt(false)` path, then requires a natural zero process exit and exact shutdown/boot cursor equality. This also works with NeoForge's ModDev launcher, which does not forward console stdin. Architectury Runtime 5.2.91 leaves two development-transformer fixed thread pools open after Minecraft finishes; a disposable, version-checked Java agent changes only those two known launcher pools to daemon workers. The gate requires exact patch receipts, rejects missing/changed classes, and never changes Minecraft/mod executors or accepts a killed server as restart evidence. The agent is outside production source sets and its package is forbidden in released jars. On any shutdown failure, JVM-specific thread and process diagnostics are retained.

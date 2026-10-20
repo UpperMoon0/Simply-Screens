@@ -21,14 +21,9 @@ public abstract class SimplyScreensUiScreen extends UiScreen {
     }
 
     protected ButtonWidget buildThemeToggle() {
-        ButtonWidget button = Ui.button(
-                        () -> Component.translatable(themeMode.get() == UiThemeMode.DARK
-                                ? "gui.simplyscreens.theme.light"
-                                : "gui.simplyscreens.theme.dark"),
-                        this::toggleTheme)
-                .ghost().small();
-        button.tooltip(Component.translatable("gui.simplyscreens.theme.tooltip"));
-        return button;
+        return new ScreenIconButton(() -> themeMode.get() == UiThemeMode.DARK ? ScreenIconButton.Icon.SUN : ScreenIconButton.Icon.MOON,
+                () -> Component.translatable(themeMode.get() == UiThemeMode.DARK
+                        ? "gui.simplyscreens.theme.light" : "gui.simplyscreens.theme.dark"), this::toggleTheme);
     }
 
     private void toggleTheme() {

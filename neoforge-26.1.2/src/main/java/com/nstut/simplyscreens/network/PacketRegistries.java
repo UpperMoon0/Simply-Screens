@@ -10,6 +10,7 @@ public class PacketRegistries {
         if (Platform.getEnvironment() == Env.SERVER) registerS2CPayloadTypes();
 
         NetworkManager.registerReceiver(NetworkManager.c2s(), ScreenAccessC2SPacket.TYPE, ScreenAccessC2SPacket.CODEC, ScreenAccessC2SPacket::handle);
+        NetworkManager.registerReceiver(NetworkManager.c2s(), ScreenPlaylistC2SPacket.TYPE, ScreenPlaylistC2SPacket.CODEC, ScreenPlaylistC2SPacket::handle);
 
         // Register client to server packets
         NetworkManager.registerReceiver(NetworkManager.c2s(),
@@ -55,6 +56,8 @@ public class PacketRegistries {
 
     static void registerS2CPayloadTypes() {
         NetworkManager.registerS2CPayloadType(ScreenAccessS2CPacket.TYPE, ScreenAccessS2CPacket.CODEC);
+        NetworkManager.registerS2CPayloadType(ScreenPlaylistS2CPacket.TYPE, ScreenPlaylistS2CPacket.CODEC);
+        NetworkManager.registerS2CPayloadType(ScreenPrefetchS2CPacket.TYPE, ScreenPrefetchS2CPacket.CODEC);
         NetworkManager.registerS2CPayloadType(UpdateScreenS2CPacket.TYPE, UpdateScreenS2CPacket.CODEC);
         NetworkManager.registerS2CPayloadType(UpdateImageListS2CPacket.TYPE, UpdateImageListS2CPacket.CODEC);
         NetworkManager.registerS2CPayloadType(ImageDownloadChunkS2CPacket.TYPE, ImageDownloadChunkS2CPacket.CODEC);
@@ -64,6 +67,8 @@ public class PacketRegistries {
     
     public static void registerS2CPackets() {
         NetworkManager.registerReceiver(NetworkManager.s2c(), ScreenAccessS2CPacket.TYPE, ScreenAccessS2CPacket.CODEC, ScreenAccessS2CPacket::handle);
+        NetworkManager.registerReceiver(NetworkManager.s2c(), ScreenPlaylistS2CPacket.TYPE, ScreenPlaylistS2CPacket.CODEC, ScreenPlaylistS2CPacket::handle);
+        NetworkManager.registerReceiver(NetworkManager.s2c(), ScreenPrefetchS2CPacket.TYPE, ScreenPrefetchS2CPacket.CODEC, ScreenPrefetchS2CPacket::handle);
         NetworkManager.registerReceiver(NetworkManager.s2c(),
             UpdateScreenS2CPacket.TYPE,
             UpdateScreenS2CPacket.CODEC,

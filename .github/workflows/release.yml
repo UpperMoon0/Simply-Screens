@@ -76,8 +76,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: UpperMoon0/OpenUI-MC
-          # OpenUI 0.0.8, shared with Economy and Simply Speakers CI.
-          ref: f3f1954621f32606e732dd47d1de0eb430cf1eba
+          # Build the same pinned OpenUI 0.0.14 drag fix as PR CI.
+          ref: cb4610a1598d476123b731f5eef4d8e569057ffa
           path: OpenUI-MC
       - name: Verify OpenUI-MC version alignment
         shell: bash
@@ -132,8 +132,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: UpperMoon0/OpenUI-MC
-          # OpenUI 0.0.8, shared with Economy and Simply Speakers CI.
-          ref: f3f1954621f32606e732dd47d1de0eb430cf1eba
+          # Build the same pinned OpenUI 0.0.14 drag fix as PR CI.
+          ref: cb4610a1598d476123b731f5eef4d8e569057ffa
           path: OpenUI-MC
       - name: Verify OpenUI-MC version alignment
         shell: bash

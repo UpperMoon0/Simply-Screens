@@ -7,12 +7,22 @@
     {
       "type": "patchouli:text",
       "title": "Select an Image",
-      "text": "Use Gallery to browse your available images. Search by name, then select an image to display it. The Displayed badge marks the current image. Gallery Refresh reloads the available image list."
+      "text": "Use Gallery to browse your available images.$(br2)Search by name, then select an image to display it. The Displayed badge marks the current image."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Select an Image",
+      "text": "Gallery Refresh reloads the available image list."
     },
     {
       "type": "patchouli:text",
       "title": "Remove an Image",
-      "text": "Remove asks for confirmation before deleting an image. Deletion affects displays using that image. Being allowed to control a screen does not let you delete or browse another player's private images."
+      "text": "Remove asks for confirmation before deleting an image.$(br2)Deletion affects displays using that image."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Remove an Image",
+      "text": "Being allowed to control a screen does not let you delete or browse another player's private images."
     }
   ]
 }

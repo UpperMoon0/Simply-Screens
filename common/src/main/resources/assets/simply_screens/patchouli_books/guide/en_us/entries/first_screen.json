@@ -7,7 +7,7 @@
     {
       "type": "patchouli:text",
       "title": "Craft a Screen",
-      "text": "Craft a Screen using four iron ingots, four glass blocks and one amethyst shard. Place adjacent screen blocks in a rectangle to make a larger display."
+      "text": "Craft a Screen using four iron ingots, four glass blocks and one amethyst shard.$(br2)Place adjacent screen blocks in a rectangle to make a larger display."
     },
     {
       "type": "patchouli:crafting",
@@ -16,7 +16,12 @@
     {
       "type": "patchouli:text",
       "title": "Open the Screen",
-      "text": "Right-click the display to open its interface. Gallery selects saved images, Import adds images, and Settings controls links, image proportions, and access. A newly placed player display belongs to its placer."
+      "text": "Right-click the display to open its interface.$(br2)Gallery shows saved images; its + button imports more. Playlists builds slideshows."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Open the Screen",
+      "text": "Settings controls links, proportions and access.$(br2)A newly placed player display belongs to its placer."
     }
   ]
 }

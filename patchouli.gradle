@@ -10,8 +10,8 @@ if (!project.name.endsWith('26.1.2')) {
         }
     }
 }
-// Opt in to native development runs; production metadata remains optional.
-if (providers.gradleProperty('screensPatchouli').map { it.toBoolean() }.getOrElse(false)) {
+// Development runtime toggle; enabled by the project defaults, optional in production metadata.
+if (providers.gradleProperty('screensPatchouli').map { it.toBoolean() }.getOrElse(true)) {
     repositories { maven { url = 'https://maven.blamejared.com'; content { includeGroup 'vazkii.patchouli' } } }
     def versions = [
         'fabric-1.20.1': 'Patchouli:1.20.1-85-FABRIC',
@@ -20,6 +20,8 @@ if (providers.gradleProperty('screensPatchouli').map { it.toBoolean() }.getOrEls
         'neoforge-1.21.1': 'Patchouli:1.21.1-93-NEOFORGE',
         'neoforge-26.1.2': 'patchouli-neoforge:26.1-94'
     ]
+    // The standalone 26.1.2 project has a different root name from the root-build subproject.
+    def target = project.name.endsWith('26.1.2') ? 'neoforge-26.1.2' : project.name
     dependencies.add(project.name.endsWith('26.1.2') ? 'localRuntime' : 'modLocalRuntime',
-            "vazkii.patchouli:${versions[project.name]}")
+            "vazkii.patchouli:${versions[target]}")
 }

@@ -43,7 +43,16 @@ public class ScreenBlockEntity extends BlockEntity {
         try { saveDisplayState(); }
         catch (RuntimeException failure) { localImageOverride = previous; throw failure; }
         if (!enabled && screenId != null && !screenId.isEmpty()) applyLinkedImageId(ScreenRegistry.getImageId(screenId));
-        else forceImageId(imageId);
+        else {
+            UUID restoredImage = imageId;
+            var playlists = com.nstut.simplyscreens.helpers.ScreenPlaylistRuntime.service();
+            if (enabled && playlists != null) {
+                var playback = playlists.snapshot(com.nstut.simplyscreens.ScreenNetworkService.display(displayId));
+                if (playlists.managesContent(com.nstut.simplyscreens.ScreenNetworkService.display(displayId)))
+                    restoredImage = playback.currentImage();
+            }
+            forceImageId(restoredImage);
+        }
     }
 
     private com.nstut.simplyscreens.ScreenNetworkService.DisplayState savedDisplayState() {

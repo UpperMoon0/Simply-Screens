@@ -7,22 +7,37 @@
     {
       "type": "patchouli:text",
       "title": "Image Proportions",
-      "text": "Maintain aspect ratio preserves the original image proportions instead of stretching it to fill the screen. This setting belongs to the physical display, so linked screens can choose different proportions."
+      "text": "Maintain aspect ratio preserves the original image proportions instead of stretching it to fill the screen."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Image Proportions",
+      "text": "This setting belongs to the physical display, so linked screens can choose different proportions."
     },
     {
       "type": "patchouli:text",
       "title": "Local Override",
-      "text": "Turn Local image override on to let one linked display use its own image. Selecting images here then affects only this display. Other displays with the same Screen ID keep following the shared image."
+      "text": "Turn Local image override on to let one linked display use its own image.$(br2)Selecting images here then affects only this display."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Local Override",
+      "text": "Other displays with the same Screen ID keep following the shared image."
     },
     {
       "type": "patchouli:text",
       "title": "Follow the Network",
-      "text": "Turn Local image override off to show the network's current image again. The override is useful for linked displays; it does not grant extra permissions or expose private library images."
+      "text": "Turn Local image override off to show the network's current image again.$(br2)The override is useful for linked displays; it does not grant extra permissions or expose private library images."
     },
     {
       "type": "patchouli:text",
       "title": "Your display",
-      "text": "Settings > Your display settings offers 8-512 block render distance. It applies to all screens for you, saves on this device, and works for read-only viewers. Server viewing permissions still apply."
+      "text": "Settings > Your display settings offers 8-512 block render distance.$(br2)It applies to all screens for you, saves on this device, and works for read-only viewers."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Your display",
+      "text": "Server viewing permissions still apply."
     }
   ]
 }

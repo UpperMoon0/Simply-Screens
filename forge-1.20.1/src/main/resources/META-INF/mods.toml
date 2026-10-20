@@ -39,7 +39,7 @@ side = "BOTH"
 [[dependencies.simply_screens]]
 modId = "openui_mc"
 mandatory = true
-versionRange = "[0.0.8,)"
+versionRange = "[0.0.14,)"
 ordering = "AFTER"
 side = "CLIENT"
 

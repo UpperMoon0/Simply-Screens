@@ -7,17 +7,27 @@
     {
       "type": "patchouli:text",
       "title": "Share a Screen ID",
-      "text": "In Settings, enter a Screen ID and apply it to link displays. Displays with the same ID follow the shared image, including across dimensions. Creating a network makes you its owner."
+      "text": "In Settings, enter a Screen ID and apply it to link displays.$(br2)Displays with the same ID follow the shared image, including across dimensions. Creating a network makes you its owner."
     },
     {
       "type": "patchouli:text",
       "title": "Joining a Network",
-      "text": "Linking requires management rights for both this display and the destination network. Matching IDs alone do not bypass another owner's access rules. Viewing and control policies belong to the linked network."
+      "text": "Linking requires management rights for both this display and the destination network.$(br2)Matching IDs alone do not bypass another owner's access rules."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Joining a Network",
+      "text": "Viewing and control policies belong to the linked network."
     },
     {
       "type": "patchouli:text",
       "title": "Detach a Display",
-      "text": "Clear the Screen ID and apply it to detach this display. It keeps its current image and ownership settings, but stops following the network. Screens with different ownership or access settings do not automatically merge."
+      "text": "Clear the Screen ID and apply it to detach this display.$(br2)It keeps its current image and ownership settings, but stops following the network."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Detach a Display",
+      "text": "Screens with different ownership or access settings do not automatically merge."
     }
   ]
 }

@@ -29,7 +29,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: UpperMoon0/OpenUI-MC
-          ref: f3f1954621f32606e732dd47d1de0eb430cf1eba
+          ref: cb4610a1598d476123b731f5eef4d8e569057ffa
           path: OpenUI-MC
       - uses: actions/setup-java@v4
         with:
