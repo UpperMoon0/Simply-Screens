@@ -159,7 +159,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         return Ui.column(Ui.row(
                 new com.nstut.simplyscreens.client.ui.ClippedTextButton(() -> Component.literal(selectedPlaylistName()), () -> choosePlaylist(null)).ghost().small().flex().tooltip(pt("edit_help")).key("playlist.selector"),
                 new com.nstut.simplyscreens.client.ui.ClippedTextButton(() -> pt("start"), () -> playlistAction("PLAY"))
-                        .enabledWhen(() -> canControlPlaylist() && !savedSlides.get().isEmpty()).primary().small().width(40).tooltip(pt("play")).key("playlist.start"),
+                        .enabledWhen(() -> canControlPlaylist() && !savedSlides.get().isEmpty()).primary().small().tooltip(pt("play")).key("playlist.start"),
                 new com.nstut.simplyscreens.client.ui.ScreenIconButton(com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.PLUS,
                         pt("add_images"), () -> tab.set(Tab.GALLERY)).enabledWhen(() -> canControlPlaylist() && selectedPlaylist != null),
                 new com.nstut.simplyscreens.client.ui.ScreenIconButton(com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.MORE,

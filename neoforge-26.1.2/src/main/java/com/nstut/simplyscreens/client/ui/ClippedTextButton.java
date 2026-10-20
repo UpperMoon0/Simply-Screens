@@ -16,6 +16,9 @@ public final class ClippedTextButton extends ButtonWidget {
     }
     public ClippedTextButton enabledWhen(Supplier<Boolean> condition) { enabledCondition=condition; return this; }
     @Override public Component getLabel() { return displayedLabel == null ? label.get() : displayedLabel; }
+    @Override public int preferredWidth(Font font) {
+        return Math.max(super.preferredWidth(font), font == null ? 60 : font.width(label.get()) + 16);
+    }
     static String fit(String text, Font font, int width) {
         if (font.width(text) <= width) return text;
         String suffix = "\u2026";

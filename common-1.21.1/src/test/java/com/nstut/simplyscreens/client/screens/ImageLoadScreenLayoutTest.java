@@ -72,6 +72,9 @@ class ImageLoadScreenLayoutTest {
                 assertTrue(component.getHeight()>0 && component.getY()>=0 && component.getY()+component.getHeight()<=size[1],key+" outside viewport");
                 assertTargetsInside(component,component.getX(),component.getX()+component.getWidth());
             }
+            var start=(com.nstut.openui.api.ButtonWidget)find(root,"playlist.start");
+            assertTrue(start.getWidth() >= stubFont().width(start.getLabel()) + 16,
+                    "Start must reserve its full label and truncation padding");
             UIComponent header=find(root,"screen.header"),elapsed=find(root,"playlist.elapsed");
             assertNotNull(elapsed,"Elapsed time must be shown with the displayed image");
             assertSame(elapsed,find(header,"playlist.elapsed"));
@@ -205,6 +208,34 @@ class ImageLoadScreenLayoutTest {
             assertNull(find(root,"playlist.clear_queue"),"An empty queue must not offer an unusable Clear action");
             assertNull(find(root,"playlist.following_slides"),"Image prefetch hints must not be shown as an exact next-slide list");
         }
+    }
+
+    @Test void settingsScrollbarCanBeDraggedOutsideThePanelAndReleased() {
+        ImageLoadScreen screen=new ImageLoadScreen(BlockPos.ZERO);screen.width=480;screen.height=270;
+        screen.smokeSelectTab(3);
+        UIComponent root=screen.buildUI();
+        var runtime=new com.nstut.openui.runtime.UiRuntime(stubFont(),new com.nstut.openui.runtime.NativeWidgetHost() {
+            public void add(net.minecraft.client.gui.components.AbstractWidget widget) {}
+            public void remove(net.minecraft.client.gui.components.AbstractWidget widget) {}
+        });
+        try {
+            runtime.setRoot(root);runtime.setViewport(0,0,480,270);runtime.flushFrameTasks();
+            root.layoutTree(stubFont(),0,0,480,270);
+            ScrollView scroll=findScroll(root);assertNotNull(scroll);
+            int x=scroll.getX()+scroll.getWidth()-1,y=scroll.getY();
+            assertTrue(runtime.mouseClicked(x,y+2,0));
+            assertTrue(runtime.mouseDragged(x+40,y+scroll.getHeight()+40,0,40,scroll.getHeight()+38));
+            runtime.flushFrameTasks();assertTrue(scroll.scrollOffset()>0);
+            assertTrue(runtime.mouseReleased(x+40,y+scroll.getHeight()+40,0));
+            double offset=scroll.scrollOffset();
+            runtime.mouseDragged(x+40,y-40,0,0,-100);runtime.flushFrameTasks();
+            assertEquals(offset,scroll.scrollOffset());
+        } finally {runtime.close();}
+    }
+    private static ScrollView findScroll(UIComponent node) {
+        if(node instanceof ScrollView scroll)return scroll;
+        for(UIComponent child:node.children()){var found=findScroll(child);if(found!=null)return found;}
+        return null;
     }
 
     private static UIComponent find(UIComponent node,String key) {
