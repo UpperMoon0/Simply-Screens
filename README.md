@@ -135,9 +135,13 @@ visibility policies still apply. See [the settings audit](docs/settings.md) for 
 
 ## Named slide playlists (0.10.0)
 
-Open a screen and use the gallery's **…** menu to add an image to a saved playlist, queue it next/last, or announce it for 10 seconds. The **Playlists** tab has a searchable selector, New, Play and an actions menu for Rename/Duplicate/Delete. Each slide's menu changes its duration (1–86400 seconds), order or membership. Selecting a playlist changes only the editor; press Play to replace the active slideshow with a snapshot of that list.
+Open a screen and use a gallery image's **…** menu to add it to a saved playlist. In **Playlists**, choose or create a list, then select **Start** to display it. Drag slide rows to reorder them; each slide's menu changes its duration (1–86400 seconds) or removes it.
 
-Transport stays visible while browsing: Previous, Play/Pause, Stop, Next, Restart current slide, Repeat (none/list/current), Shuffle and End announcement. **Queue** contains one-off slides before the next saved slide. An announcement temporarily takes over, then restores the precise interrupted position, including paused state. Saved edits/deletion leave the current snapshot intact; press Play to load edits. A removed image is removed from saved and running references. An image that cannot be decoded shows the existing error texture until its allotted duration expires.
+Slideshow controls stay visible across tabs: Previous/Next slide, Start/Pause/Resume/Stop slideshow, Restart current slide, Loop (off/all slides/current slide), and Slide order (saved/random). The status shows the displayed image and elapsed slide time. Saved edits and deletion leave the current slideshow unchanged; select **Start** to display your edits.
+
+**Up next** lists temporary 10-second slides added with **Show next** or **Add temporary slide**. These appear before the next saved slide and do not change the saved playlist. **Show now** temporarily displays an image immediately, then returns to the interrupted slide, timer and paused state. During that image, **Return to slideshow** ends it early.
+
+A removed image is removed from saved and running references. An image that cannot be decoded shows the existing error texture until its slide duration expires.
 
 Linked screens use one authoritative content timeline, even with all their chunks unloaded. A local override has its own timeline. World saves preserve offsets, queue, repeat/shuffle and announcements; server downtime does not advance them. Normal autosave checkpoints are every five seconds, with immediate persistence on commands and clean shutdown. Selecting a static gallery image discards that display/network's previous slideshow. Ownership transfer discards resumable timelines belonging to that access group. Other access changes preserve playback but immediately govern future control and image downloads.
 

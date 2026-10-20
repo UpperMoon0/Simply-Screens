@@ -7,17 +7,32 @@
     {
       "type": "patchouli:text",
       "title": "From Your Computer",
-      "text": "Open Import and choose the computer upload action. Select a PNG, JPG, or JPEG file. The image is stored on the server. Server settings can disable uploads or limit file size and storage."
+      "text": "Open Gallery, select +, then choose From computer.$(br2)Select a PNG, JPG, or JPEG file. The image is stored on the server."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "From Your Computer",
+      "text": "Server settings can disable uploads or limit file size and storage."
     },
     {
       "type": "patchouli:text",
       "title": "From a URL",
-      "text": "Use Import to enter an image URL and load it. Private and local network addresses are blocked. Use a direct public image link. The server can disable URL downloads or limit their size."
+      "text": "Open Gallery, select +, then choose From URL.$(br2)Enter a direct image URL and select Load. Private and local network addresses are blocked."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "From a URL",
+      "text": "Use a direct public image link.$(br2)The server can disable URL downloads or limit their size."
     },
     {
       "type": "patchouli:text",
       "title": "Import Permissions",
-      "text": "You need control access to change this display. Importing does not give other players access to your private image library. A public display can still let permitted viewers see its selected image."
+      "text": "You need control access to change this display.$(br2)Importing does not give other players access to your private image library."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Import Permissions",
+      "text": "A public display can still let permitted viewers see its selected image."
     }
   ]
 }

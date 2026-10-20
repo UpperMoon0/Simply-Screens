@@ -7,7 +7,12 @@
     {
       "type": "patchouli:text",
       "title": "Get the Guide",
-      "text": "Install Patchouli for your Minecraft version and loader on the server and clients. This guide appears in the Simply Screens creative tab. Craft another copy with a book and an amethyst shard."
+      "text": "Install Patchouli for your Minecraft version and loader on the server and clients.$(br2)This guide appears in the Simply Screens creative tab."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Get the Guide",
+      "text": "Craft another copy with a book and an amethyst shard."
     },
     {
       "type": "patchouli:crafting",
@@ -16,7 +21,12 @@
     {
       "type": "patchouli:text",
       "title": "Optional Guide",
-      "text": "Simply Screens works without Patchouli. Only this guide and its recipe are unavailable. Use Playlists to save and play slideshows, and Queue for one-off images. The player controls remain available in every tab."
+      "text": "Simply Screens works without Patchouli.$(br2)Only this guide and its recipe are unavailable. Use Playlists for slideshows and Up next for temporary images."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Optional Guide",
+      "text": "Slideshow controls remain available in every tab."
     }
   ]
 }

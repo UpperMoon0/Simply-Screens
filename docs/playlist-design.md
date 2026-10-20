@@ -4,13 +4,17 @@ Named slide playlists in v0.10.0 build on the v0.9.0 screen-network and access m
 
 ## Experience
 
-Follow Simply Speakers' current playlist flow: gallery item actions add slides or queue them; a searchable saved-playlist selector changes only the editor; explicit Play selects the playback source; compact transport remains visible across tabs. Named playlists support create, rename, duplicate, delete, per-slide duration and reorder. A separate queue distinguishes one-off requests from saved slides. Announcement interrupts temporarily and resumes the exact suspended position.
+Gallery actions add images to saved slide playlists or to temporary slides in Up next. A searchable selector changes only the editor; Start displays a saved slideshow. Centered slideshow controls remain visible across tabs. Named playlists support create, rename, duplicate, delete, per-slide duration and drag reordering.
+
+Up next distinguishes temporary images from saved slides. Show now displays an image for 10 seconds, then returns to the exact interrupted slide, timer and paused state. Return to slideshow ends that temporary image early.
+
+Use display terminology in the interface: Displaying, Start slideshow, Show next, Loop and Saved/Random slide order. Internal protocol action names retain their existing identifiers.
 
 ## State and security
 
 Use an independent server-owned timeline keyed by the authoritative content key, preserving Screen ID synchronization and local overrides. Active server ticks advance the timeline even when every linked chunk is unloaded; paused single-player time and server downtime do not consume a slide. The editor itself does not pause the world. Persist offsets and ordering. Saved edits do not rewrite a running snapshot. Playlist library mutations are scoped to the actor; playback requires current screen control permission and referenced images must be in the actor's authorized library. Wire messages and resource usage are bounded. Private image downloading continues to require current screen visibility and chunk tracking.
 
-The playlist toolbar's Play always loads the selected saved snapshot. The persistent player pauses/resumes active playback; when stopped it starts queued slides first, or the selected saved list if the queue is empty. Creating a playlist from an image's Add to playlist menu also adds that image after the creation acknowledgement. Compact layouts retain playback status and repeat/shuffle state. Playlist names are truncated within their controls, with the full name available on hover.
+The playlist toolbar's Start always loads the selected saved snapshot. The persistent slideshow controls pauses/resumes active playback; when stopped it starts queued slides first, or the selected saved list if the queue is empty. Creating a playlist from an image's Add to playlist menu also adds that image after the creation acknowledgement. Compact layouts retain playback status and loop and slide-order state. Playlist names are truncated within their controls, with the full name available on hover.
 
 ## Required verification gates
 

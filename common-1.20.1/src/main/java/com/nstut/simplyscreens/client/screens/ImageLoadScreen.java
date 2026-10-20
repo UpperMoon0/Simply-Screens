@@ -138,13 +138,14 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     private Component playbackLabel() {
         var view = playlistView.get();
         if (view == null) return pt("loading");
+        if ("STOPPED".equals(view.status())) return pt("idle");
         return pt("now_playing", pt("status." + view.status().toLowerCase(Locale.ROOT)),
                 slideName(view.currentImage()), view.offsetMillis() / 1000);
     }
     private Component playbackModes() {
         var view = playlistView.get();
         return pt("modes", pt("repeat." + (view == null ? "none" : view.repeat().toLowerCase(Locale.ROOT))),
-                Component.translatable(view != null && view.shuffle() ? "options.on" : "options.off"));
+                pt(view != null && view.shuffle() ? "order.random" : "order.saved"));
     }
     private UIComponent playlistHelp(String key) {
         return height < 300 ? Ui.column() : Ui.text(pt(key)).wrap();
@@ -284,20 +285,20 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                         new com.nstut.simplyscreens.client.ui.ScreenIconButton(
                                 () -> playlistPlaying()?
                                         com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.PAUSE:com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.PLAY,
-                                () -> pt(playlistPlaying()?"pause":"resume"),
+                                () -> pt(playlistPlaying()?"pause":playlistView.get()!=null && "PAUSED".equals(playlistView.get().status())?"resume":"play"),
                                 this::togglePlaylistPlayback).enabledWhen(() -> canControlPlaylist()
                                         && (playlistView.get().currentImage() != null || !savedSlides.get().isEmpty() || !queuedSlides.get().isEmpty())),
                         transportIcon(com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.STOP,"stop","STOP"),
                         transportIcon(com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.NEXT,"next","NEXT"),
                         transportIcon(com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.RESTART,"restart","RESTART"),
                         new com.nstut.simplyscreens.client.ui.ScreenIconButton(() -> com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.REPEAT,
-                                () -> Component.literal(pt("repeat").getString()+": "+(playlistView.get()==null?"NONE":playlistView.get().repeat())), () -> {var v=playlistView.get();if(v!=null)playlistAction("REPEAT",null,-1,-1,0,
+                                () -> pt("repeat_value", pt("repeat."+(playlistView.get()==null?"none":playlistView.get().repeat().toLowerCase(Locale.ROOT)))), () -> {var v=playlistView.get();if(v!=null)playlistAction("REPEAT",null,-1,-1,0,
                                         switch(v.repeat()){case "NONE"->"LIST";case "LIST"->"CURRENT";default->"NONE";});}).enabledWhen(this::canControlPlaylist),
                         new com.nstut.simplyscreens.client.ui.ScreenIconButton(() -> com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.SHUFFLE,
-                                () -> Component.literal(pt("shuffle").getString()+": "+(playlistView.get()!=null&&playlistView.get().shuffle())), () -> {var v=playlistView.get();if(v!=null)playlistAction("SHUFFLE",null,-1,-1,0,Boolean.toString(!v.shuffle()));}).enabledWhen(this::canControlPlaylist)
+                                () -> pt("order_value", pt(playlistView.get()!=null&&playlistView.get().shuffle()?"order.random":"order.saved")), () -> {var v=playlistView.get();if(v!=null)playlistAction("SHUFFLE",null,-1,-1,0,Boolean.toString(!v.shuffle()));}).enabledWhen(this::canControlPlaylist)
                 ).gap(4).align(Alignment.CENTER).justify(Justification.CENTER);
         if (announcement) controls.child(new com.nstut.simplyscreens.client.ui.ScreenIconButton(com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.MORE,
-                                pt("actions"), () -> playlistMenu().item(pt("cancel_announcement"),()->playlistAction("CANCEL_ANNOUNCEMENT")).show(uiRuntime().overlays())).enabledWhen(this::canControlPlaylist));
+                                pt("slideshow_actions"), () -> playlistMenu().item(pt("cancel_announcement"),()->playlistAction("CANCEL_ANNOUNCEMENT")).show(uiRuntime().overlays())).enabledWhen(this::canControlPlaylist));
         return controls.key("playlist.controls");
     }
     private UIComponent buildPlaylistTransport() {

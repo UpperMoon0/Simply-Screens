@@ -7,27 +7,47 @@
     {
       "type": "patchouli:text",
       "title": "Build a playlist",
-      "text": "Add images through the gallery … menu. Choose or create a list in Playlists. Drag rows to reorder saved slides or the queue. Each slide’s … menu changes duration (1–86400 seconds) or removes it."
+      "text": "Choose or create a list in Playlists. Add images through the gallery image menu.$(br2)Drag rows to reorder. A slide’s menu changes its duration (1–86400 seconds) or removes it."
     },
     {
       "type": "patchouli:text",
-      "title": "Choose then play",
-      "text": "Selecting a saved playlist only changes the editor. Press Play to load it into the shared Screen ID timeline, or this physical display’s local override. Later edits and saved-playlist deletion leave the running snapshot unchanged."
+      "title": "Start a slideshow",
+      "text": "Choose a saved playlist, then select Start to display its slides.$(br2)Linked screens share the slideshow. A display with Local image override uses its own slideshow."
     },
     {
       "type": "patchouli:text",
-      "title": "Transport and queue",
-      "text": "Previous/Next navigate; Restart resets the current slide. Pause/Resume retain the offset. Repeat cycles none/list/current. Shuffle uses one server order. Queue Next/Last adds 10-second slides without changing saved playlists."
+      "title": "Saved changes",
+      "text": "Choosing a playlist only changes the editor.$(br2)Edits and deletion leave the current slideshow unchanged. Select Start again to display your saved changes."
     },
     {
       "type": "patchouli:text",
-      "title": "Announcements",
-      "text": "Announce temporarily displays an image for 10 seconds, then restores the interrupted position and paused state. End it early from the transport … menu. Selecting a static gallery image discards that slideshow."
+      "title": "Slideshow controls",
+      "text": "Previous and Next change slides. Restart resets the current slide’s timer.$(br2)Pause holds the current image and timer. Resume continues from that point."
     },
     {
       "type": "patchouli:text",
-      "title": "Save and access",
-      "text": "Offsets, queue and shuffle survive chunk unload and restart; downtime consumes no time. Commands, shutdown and five-second checkpoints save progress. Use your own image library. Screen control and image-view rules still apply."
+      "title": "Loop and order",
+      "text": "Loop cycles between Off, All slides and Current slide.$(br2)Slide order is either Saved order or Random. Linked screens always show the same sequence."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Temporary slides",
+      "text": "Use Show next or Add temporary slide in a gallery image’s menu.$(br2)Up next lists these 10-second slides. Drag to reorder or clear them; the saved playlist stays unchanged."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Show an image now",
+      "text": "Show now interrupts the slideshow with an image for 10 seconds, then returns to the same slide and timer.$(br2)Use Return to slideshow to end the temporary image early."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Saved progress",
+      "text": "The slide timer, temporary slides and order survive chunk unload and restart. Server downtime consumes no slide time.$(br2)Changes save on commands, shutdown and every five seconds."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Image access",
+      "text": "Use images from your own library. Screen control and image-view permissions still apply.$(br2)Selecting a static gallery image ends that display’s current slideshow."
     }
   ]
 }
