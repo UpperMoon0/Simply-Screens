@@ -138,4 +138,48 @@ class ImageLoadScreenPlaylistTest {
         }
     }
 
+    @Test void redactedPrivatePlaybackRetainsPauseAndResumeCapabilities() throws Exception {
+        for (String status : List.of("PLAYING", "ANNOUNCEMENT", "PAUSED", "STOPPED")) {
+            var screen = new ImageLoadScreen(BlockPos.ZERO);
+            try (var packets = mockStatic(PacketRegistries.class)) {
+                action(screen, "GET"); long request = (long)field(screen, "pendingPlaylistRequest");
+                screen.updatePlaylist(BlockPos.ZERO, new PlaylistWire.View("network/private", 0, 0, 3, request,
+                        true, true, null, List.of(), List.of(), status, null, -1, 0, "NONE", false, List.of(), List.of()).json());
+                var builder = ImageLoadScreen.class.getDeclaredMethod("buildPlaylistControls", boolean.class);
+                builder.setAccessible(true);
+                var controls = (com.nstut.openui.api.UIComponent)builder.invoke(screen, false);
+                var toggle = controls.children().get(1);
+                var capability = toggle.getClass().getDeclaredField("enabledCondition"); capability.setAccessible(true);
+                assertEquals(!"STOPPED".equals(status), ((java.util.function.Supplier<?>)capability.get(toggle)).get(), status);
+                packets.reset();
+                screen.togglePlaylistPlayback();
+                if ("STOPPED".equals(status)) packets.verifyNoInteractions();
+                else {
+                    var capture = ArgumentCaptor.forClass(ScreenPlaylistC2SPacket.class);
+                    packets.verify(() -> PacketRegistries.sendToServer(capture.capture()));
+                    assertEquals("PAUSED".equals(status) ? "RESUME" : "PAUSE", PlaylistWire.Request.parse(capture.getValue().json).action());
+                }
+            }
+        }
+    }
+
+    @Test void capturedQueueActionCannotMutateAnotherContentKeyAtTheSameRevision() throws Exception {
+        var screen = new ImageLoadScreen(BlockPos.ZERO);
+        var slide = new PlaylistWire.Slide(UUID.randomUUID(), 10000);
+        try (var packets = mockStatic(PacketRegistries.class)) {
+            action(screen, "GET"); long first = (long)field(screen, "pendingPlaylistRequest");
+            screen.updatePlaylist(BlockPos.ZERO, new PlaylistWire.View("network/first", 0, 0, 7, first,
+                    true, true, null, List.of(), List.of(), "PLAYING", null, -1, 0, "NONE", false, List.of(slide), List.of()).json());
+            var signal = (com.nstut.openui.state.Signal<?>)field(screen, "queuedSlides");
+            Object captured = ((List<?>)signal.get()).get(0);
+            action(screen, "GET"); long next = (long)field(screen, "pendingPlaylistRequest");
+            screen.updatePlaylist(BlockPos.ZERO, new PlaylistWire.View("network/second", 0, 0, 7, next,
+                    true, true, null, List.of(), List.of(), "PLAYING", null, -1, 0, "NONE", false, List.of(slide), List.of()).json());
+            packets.reset();
+            var callback = ImageLoadScreen.class.getDeclaredMethod("playlistRowAction", captured.getClass(), boolean.class, String.class, int.class, long.class);
+            callback.setAccessible(true);
+            callback.invoke(screen, captured, true, "REMOVE_QUEUE", -1, 0L);
+            packets.verifyNoInteractions();
+        }
+    }
 }

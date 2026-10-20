@@ -23,7 +23,7 @@ public final class ScreenPlaylistService {
     public static final int MAX_STORE_BYTES = 64 * 1024 * 1024;
     public static final String FILE_NAME = "screen_playlists.dat";
     private static final int MAGIC = 0x5353504C;
-    private static final int VERSION = 1;
+    private static final int VERSION = 2;
     private final Map<UUID, PlaylistLibrarySnapshot> libraries = new HashMap<>();
     private final Map<String, Session> sessions = new HashMap<>();
     private Path file;
@@ -48,9 +48,11 @@ public final class ScreenPlaylistService {
         boolean announcement;
         Session suspended;
         long revision;
+        boolean ownsContent;
 
         Session copy() {
             Session result = new Session();
+            result.ownsContent = ownsContent;
             result.sourceOwner = sourceOwner; result.sourceId = sourceId;
             result.slides = slides; result.order = order; result.cursor = cursor;
             result.offset = offset; result.status = status; result.repeat = repeat;
@@ -71,6 +73,7 @@ public final class ScreenPlaylistService {
         void restore() {
             Session saved = suspended;
             long latestRevision = revision;
+            ownsContent = saved.ownsContent;
             sourceOwner = saved.sourceOwner; sourceId = saved.sourceId; slides = saved.slides;
             order = saved.order; cursor = saved.cursor; offset = saved.offset; status = saved.status;
             repeat = saved.repeat; shuffle = saved.shuffle; shuffleSeed = saved.shuffleSeed;
@@ -80,11 +83,12 @@ public final class ScreenPlaylistService {
         }
         void stop() {
             if (announcement) restore();
+            ownsContent = true;
             status = Status.STOPPED; offset = 0; cursor = -1; queuedSlide = null; queue.clear(); advanceCanonicalOnce = false;
         }
         /** Queue entries play once, then continue after the retained canonical cursor. */
         void advance(boolean explicit) {
-            offset = 0;
+            offset = 0; ownsContent = true;
             if (announcement) { restore(); return; }
             if (!queue.isEmpty()) {
                 queuedSlide = queue.remove(0); status = Status.PLAYING; return;
@@ -125,6 +129,19 @@ public final class ScreenPlaylistService {
         if (!healthy) return Map.of();
         Map<String, PlaybackSnapshot> result = new HashMap<>();
         sessions.forEach((key, session) -> result.put(key, capture(session)));
+        return Map.copyOf(result);
+    }
+
+    public synchronized boolean managesContent(String key) {
+        Session session = sessions.get(key);
+        return healthy && session != null && session.ownsContent;
+    }
+
+    /** Sessions that own display content, including a durable stopped/clear intent. */
+    public synchronized Map<String, PlaybackSnapshot> reconciliationSnapshots() {
+        if (!healthy) return Map.of();
+        Map<String, PlaybackSnapshot> result = new HashMap<>();
+        sessions.forEach((key, session) -> { if (session.ownsContent) result.put(key, capture(session)); });
         return Map.copyOf(result);
     }
 
@@ -204,6 +221,7 @@ public final class ScreenPlaylistService {
         if (playlist == null || playlist.slides().isEmpty()) return false;
         Session old = sessions.getOrDefault(key, new Session());
         Session next = new Session();
+        next.ownsContent = true;
         next.sourceOwner = libraryOwner; next.sourceId = playlistId; next.slides = playlist.slides();
         next.repeat = old.base().repeat;
         next.reorder(old.base().shuffle, new Random().nextLong());
@@ -281,6 +299,7 @@ public final class ScreenPlaylistService {
         Session old = sessions.getOrDefault(key, new Session());
         Session next = new Session();
         next.suspended = old.announcement ? old.suspended.copy() : old.copy();
+        next.ownsContent = true;
         next.announcement = true; next.queuedSlide = slide; next.status = Status.PLAYING;
         next.revision = increment(old.revision);
         commitSession(key, next); return true;
@@ -524,7 +543,9 @@ public final class ScreenPlaylistService {
         if (length < 20 || length > MAX_STORE_BYTES) throw new IOException("Invalid playlist store size");
         byte[] bytes = Files.readAllBytes(path);
         try (DataInputStream framed = new DataInputStream(new ByteArrayInputStream(bytes))) {
-            if (framed.readInt() != MAGIC || framed.readInt() != VERSION) throw new IOException("Unsupported playlist store");
+            if (framed.readInt() != MAGIC) throw new IOException("Unsupported playlist store");
+            int version = framed.readInt();
+            if (version != 1 && version != VERSION) throw new IOException("Unsupported playlist store");
             int payloadLength = framed.readInt(); long checksum = framed.readLong();
             if (payloadLength != bytes.length - 20) throw new IOException("Invalid playlist framing");
             byte[] payload = framed.readNBytes(payloadLength); CRC32 crc = new CRC32(); crc.update(payload);
@@ -541,7 +562,7 @@ public final class ScreenPlaylistService {
                 Map<String, Session> sessions = new HashMap<>();
                 for (int n = count(in, MAX_NETWORKS); n > 0; n--) {
                     String key = in.readUTF();
-                    if (!validKey(key) || sessions.put(key, readSession(in, 0)) != null) throw new IOException("Invalid playback key");
+                    if (!validKey(key) || sessions.put(key, readSession(in, 0, version)) != null) throw new IOException("Invalid playback key");
                 }
                 if (in.available() != 0) throw new IOException("Trailing playlist data");
                 return new Loaded(libraries, sessions);
@@ -549,6 +570,7 @@ public final class ScreenPlaylistService {
         } catch (IllegalArgumentException | NullPointerException invalid) { throw new IOException("Invalid playlist data", invalid); }
     }
     private static void writeSession(DataOutputStream out, Session state) throws IOException {
+        out.writeBoolean(state.ownsContent);
         writeNullableUuid(out, state.sourceOwner); writeNullableUuid(out, state.sourceId);
         writeSlides(out, state.slides); out.writeInt(state.order.size());
         for (int index : state.order) out.writeInt(index);
@@ -560,9 +582,10 @@ public final class ScreenPlaylistService {
         out.writeLong(state.revision); out.writeBoolean(state.announcement);
         if (state.announcement) writeSession(out, state.suspended);
     }
-    private static Session readSession(DataInputStream in, int depth) throws IOException {
+    private static Session readSession(DataInputStream in, int depth, int version) throws IOException {
         if (depth > 1) throw new IOException("Nested announcement");
         Session state = new Session();
+        state.ownsContent = version >= 2 && in.readBoolean();
         state.sourceOwner = readNullableUuid(in); state.sourceId = readNullableUuid(in);
         state.slides = readSlides(in, NamedPlaylist.MAX_SLIDES);
         List<Integer> order = new ArrayList<>();
@@ -573,7 +596,8 @@ public final class ScreenPlaylistService {
         state.queuedSlide = in.readBoolean() ? readSlide(in) : null;
         state.advanceCanonicalOnce = in.readBoolean();
         state.revision = in.readLong(); state.announcement = in.readBoolean();
-        if (state.announcement) state.suspended = readSession(in, depth + 1);
+        if (state.announcement) state.suspended = readSession(in, depth + 1, version);
+        if (version == 1) state.ownsContent = state.status != Status.STOPPED || !state.slides.isEmpty();
         validateSession(state, depth); return state;
     }
     private static void validateSession(Session state, int depth) {

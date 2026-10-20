@@ -307,7 +307,7 @@ class ScreenPlaylistServiceTest {
         malformed.add(framedPayload(0, 0, 123)); // trailing payload data
         byte[] brokenChecksum = framedPayload(0, 0); brokenChecksum[brokenChecksum.length - 1] = 1;
         malformed.add(brokenChecksum);
-        byte[] brokenVersion = framedPayload(0, 0); brokenVersion[7] = 2;
+        byte[] brokenVersion = framedPayload(0, 0); brokenVersion[7] = 3;
         malformed.add(brokenVersion);
         for (byte[] bytes : malformed) {
             Files.write(primary, bytes); Files.write(backup, bytes);
@@ -376,5 +376,33 @@ class ScreenPlaylistServiceTest {
         assertFalse(service.play("network/overflow", owner, id, 0));
         service.removeNetwork("network/n0"); assertTrue(service.play("network/overflow", owner, id, 0));
         assertEquals(PlaybackSnapshot.EMPTY, service.snapshot("network/n0"));
+    }
+    @Test void versionOneStoresMigrateWithoutLosingQueuedStaticOrStoppedIntent(@TempDir Path root) throws Exception {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (DataOutputStream out = new DataOutputStream(bytes)) {
+            out.writeInt(0); out.writeInt(2);
+            for (boolean stopped : new boolean[]{false, true}) {
+                out.writeUTF(stopped ? "network/stopped" : "network/queued");
+                out.writeBoolean(stopped);
+                if (stopped) { out.writeLong(owner.getMostSignificantBits()); out.writeLong(owner.getLeastSignificantBits()); }
+                out.writeBoolean(stopped);
+                if (stopped) { out.writeLong(a.getMostSignificantBits()); out.writeLong(a.getLeastSignificantBits()); }
+                out.writeInt(stopped ? 1 : 0);
+                if (stopped) { out.writeLong(b.getMostSignificantBits()); out.writeLong(b.getLeastSignificantBits()); out.writeLong(1000); }
+                out.writeInt(stopped ? 1 : 0); if (stopped) out.writeInt(0);
+                out.writeInt(-1); out.writeLong(0); out.writeByte(Status.STOPPED.ordinal());
+                out.writeByte(RepeatMode.NONE.ordinal()); out.writeBoolean(false); out.writeLong(0);
+                out.writeInt(stopped ? 0 : 1);
+                if (!stopped) { out.writeLong(b.getMostSignificantBits()); out.writeLong(b.getLeastSignificantBits()); out.writeLong(1000); }
+                out.writeBoolean(false); out.writeBoolean(false); out.writeLong(1); out.writeBoolean(false);
+            }
+        }
+        Files.write(root.resolve(ScreenPlaylistService.FILE_NAME), frame(bytes.toByteArray()));
+        service.init(root);
+        assertEquals(List.of(slide(b)), service.snapshot("network/queued").queue());
+        assertEquals(Set.of("network/stopped"), service.reconciliationSnapshots().keySet());
+        var reloaded = new ScreenPlaylistService(); reloaded.init(root);
+        assertEquals(service.snapshots(), reloaded.snapshots());
+        assertEquals(service.reconciliationSnapshots(), reloaded.reconciliationSnapshots());
     }
 }

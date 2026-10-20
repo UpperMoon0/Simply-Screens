@@ -30,7 +30,13 @@ public final class ScreenPlaylistRuntime {
         next.init(root);
         service = next; worldRoot = normalized; CLOCK.reset(); lastSave = 0; lastPrefetch = 0; REQUEST_BUDGET.clear();
         // Restored playback is authoritative before any chunk is loaded.
-        next.snapshots().forEach((key, state) -> { if (state.status() != PlaybackSnapshot.Status.STOPPED) apply(key, state); });
+        PENDING_CONTENT.addAll(next.reconciliationSnapshots().keySet());
+        for (String key : List.copyOf(PENDING_CONTENT)) {
+            try { apply(key, next.snapshot(key)); PENDING_CONTENT.remove(key); }
+            catch (RuntimeException failure) {
+                SimplyScreens.LOGGER.error("Restored slideshow content could not be reconciled; will retry", failure);
+            }
+        }
     }
     public static void shutdown() {
         try { if (service != null) service.save(); }

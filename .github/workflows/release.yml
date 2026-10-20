@@ -77,7 +77,7 @@ jobs:
         with:
           repository: UpperMoon0/OpenUI-MC
           # Build the same pinned OpenUI 0.0.14 drag fix as PR CI.
-          ref: 793f5ac6e9719fe7c6572c2c59fc77f98379b8aa
+          ref: b4a6ff2da9ee98ef19623d70bb09ebb7fd1c0a25
           path: OpenUI-MC
       - name: Verify OpenUI-MC version alignment
         shell: bash
@@ -133,7 +133,7 @@ jobs:
         with:
           repository: UpperMoon0/OpenUI-MC
           # Build the same pinned OpenUI 0.0.14 drag fix as PR CI.
-          ref: 793f5ac6e9719fe7c6572c2c59fc77f98379b8aa
+          ref: b4a6ff2da9ee98ef19623d70bb09ebb7fd1c0a25
           path: OpenUI-MC
       - name: Verify OpenUI-MC version alignment
         shell: bash

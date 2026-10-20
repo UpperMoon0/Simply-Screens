@@ -138,4 +138,56 @@ class ScreenPlaylistRuntimeTest {
         send("RESUME",id,null,-1,-1,0,"");assertEquals("ANNOUNCEMENT",latest.status());
     }
 
+    @Test void failedStopContentWriteIsReconciledAfterRestart() {
+        UUID id = playlist();
+        send("PLAY", id, null, -1, -1, 0, "");
+        assertEquals(image, ScreenRegistry.networks().snapshot(key).image());
+        try (var registry = mockStatic(ScreenRegistry.class, CALLS_REAL_METHODS)) {
+            registry.when(() -> ScreenRegistry.reconcileContent(key, null))
+                    .thenThrow(new IllegalStateException("Content store unavailable"));
+            ScreenRegistry.reconcileContent(key, image); // Undo the real call made while installing the static failure stub.
+            send("STOP", id, null, -1, -1, 0, "");
+            assertEquals(PlaybackSnapshot.Status.STOPPED, store().snapshot(key).status());
+            assertEquals(image, ScreenRegistry.networks().snapshot(key).image());
+            ScreenPlaylistRuntime.shutdown();
+        }
+        ScreenPlaylistRuntime.init(root);
+        assertNull(ScreenRegistry.networks().snapshot(key).image(), "A persisted STOP must clear stale content after restart");
+    }
+    @Test void reenablingLocalOverrideRestoresItsPausedTimelineImage() throws Exception {
+        UUID id = playlist(), displayId = UUID.randomUUID();
+        String localKey = ScreenNetworkService.display(displayId);
+        ScreenRegistry.networks().createOwned(localKey, actor, image);
+        ScreenRegistry.updateDisplay(displayId, "playlist-test", true, true);
+        ScreenRegistry.reconcileContent(key, foreign);
+        assertTrue(store().play(localKey, actor, id, 0));
+        assertTrue(store().command(localKey, "PAUSE", store().snapshot(localKey).revision()));
+        var display = mock(ScreenBlockEntity.class, CALLS_REAL_METHODS);
+        for (var entry : Map.<String,Object>of("displayId", displayId, "screenId", "playlist-test",
+                "localImageOverride", true, "imageId", image).entrySet()) {
+            var field = ScreenBlockEntity.class.getDeclaredField(entry.getKey());
+            field.setAccessible(true); field.set(display, entry.getValue());
+        }
+        doReturn(net.minecraft.world.level.block.Blocks.STONE.defaultBlockState()).when(display).getBlockState();
+        doNothing().when(display).setChanged();
+        doAnswer(call -> {
+            UUID selected = call.getArgument(0);
+            var field = ScreenBlockEntity.class.getDeclaredField("imageId"); field.setAccessible(true); field.set(display, selected);
+            ScreenRegistry.reconcileContent(localKey, selected);
+            return null;
+        }).when(display).forceImageId(any());
+        display.useLocalImage(false);
+        assertEquals(foreign, display.getImageId());
+        display.useLocalImage(true);
+        assertEquals(image, display.getImageId());
+        assertEquals(image, ScreenRegistry.networks().snapshot(localKey).image());
+        assertEquals(PlaybackSnapshot.Status.PAUSED, store().snapshot(localKey).status());
+        assertTrue(store().command(localKey, "STOP", store().snapshot(localKey).revision()));
+        display.useLocalImage(false); display.useLocalImage(true);
+        assertNull(display.getImageId(), "Reenabled stopped playback must retain its clear intent");
+        assertNull(ScreenRegistry.networks().snapshot(localKey).image());
+        ScreenPlaylistRuntime.shutdown(); ScreenPlaylistRuntime.init(root);
+        assertNull(ScreenRegistry.networks().snapshot(localKey).image());
+        assertEquals(PlaybackSnapshot.Status.STOPPED, store().snapshot(localKey).status());
+    }
 }

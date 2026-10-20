@@ -45,7 +45,7 @@ public class {name} {{
     return daemon;
   }}
 }}
-""")
+""", encoding="utf-8")
                 sources.append(path)
             main = stage / "src/Main.java"
             main.write_text("""public class Main {
@@ -58,10 +58,10 @@ public class {name} {{
     System.out.println("scoped launcher pools verified");
   }
 }
-""")
+""", encoding="utf-8")
             sources.append(main)
             classes = stage / "fixture-classes"; classes.mkdir()
-            subprocess.run([shutil.which("javac"), "--release", "17", "-d", str(classes),
+            subprocess.run([shutil.which("javac"), "--release", "17", "-encoding", "UTF-8", "-d", str(classes),
                             *map(str, sources)], check=True, capture_output=True, text=True)
             jar = stage / "fixture-runtime.jar"
             with zipfile.ZipFile(jar, "w") as archive:

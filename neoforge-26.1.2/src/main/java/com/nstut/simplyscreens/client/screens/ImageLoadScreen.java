@@ -53,7 +53,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     private static final java.util.concurrent.atomic.AtomicLong PLAYLIST_REQUEST_IDS = new java.util.concurrent.atomic.AtomicLong();
     private final Signal<com.nstut.simplyscreens.playlist.PlaylistWire.View> playlistView = Signals.of(null);
     private final Signal<List<com.nstut.simplyscreens.playlist.PlaylistWire.Summary>> savedPlaylists = Signals.of(List.of());
-    private record SlideRow(int index, com.nstut.simplyscreens.playlist.PlaylistWire.Slide slide, long revision, UUID playlist) { }
+    private record SlideRow(int index, com.nstut.simplyscreens.playlist.PlaylistWire.Slide slide, long revision, UUID playlist, String key) { }
     private final Signal<List<SlideRow>> savedSlides = Signals.of(List.of()), queuedSlides = Signals.of(List.of());
     private final Signal<Boolean> savedSlidesEmpty = Signals.of(true), queuedSlidesEmpty = Signals.of(true);
     private record SlideDrag(SlideRow row, boolean queue) { }
@@ -82,9 +82,9 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
         playlistMutationPending = false; pendingPlaylistRequest = 0;
         selectedPlaylist = view.selected(); playlistView.set(view); savedPlaylists.set(view.playlists());
         var rows = new ArrayList<SlideRow>();
-        for (int i=0;i<view.slides().size();i++) rows.add(new SlideRow(i,view.slides().get(i),view.libraryRevision(),view.selected()));
+        for (int i=0;i<view.slides().size();i++) rows.add(new SlideRow(i,view.slides().get(i),view.libraryRevision(),view.selected(),view.key()));
         savedSlides.set(List.copyOf(rows)); savedSlidesEmpty.set(rows.isEmpty()); rows.clear();
-        for (int i=0;i<view.queue().size();i++) rows.add(new SlideRow(i,view.queue().get(i),view.playbackRevision(),null));
+        for (int i=0;i<view.queue().size();i++) rows.add(new SlideRow(i,view.queue().get(i),view.playbackRevision(),null,view.key()));
         queuedSlides.set(List.copyOf(rows)); queuedSlidesEmpty.set(rows.isEmpty());
         if (!view.success()) { pendingCreateImage = null; showError(pt("rejected")); }
         else if ("CREATE".equals(completedAction) && pendingCreateImage != null) {
@@ -201,7 +201,10 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
     }
     private boolean rowCurrent(SlideRow row, boolean queue) {
         var view=playlistView.get();
-        return view!=null && (queue ? row.revision()==view.playbackRevision() :
+        return view!=null && java.util.Objects.equals(row.key(),view.key())
+                && row.index() >= 0 && row.index() < (queue ? view.queue().size() : view.slides().size())
+                && row.slide().equals((queue ? view.queue() : view.slides()).get(row.index()))
+                && (queue ? row.revision()==view.playbackRevision() :
                 row.revision()==view.libraryRevision() && java.util.Objects.equals(row.playlist(),selectedPlaylist));
     }
     private void playlistRowAction(SlideRow row, boolean queue, String action, int destination, long duration) {
@@ -297,7 +300,7 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                                         com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.PAUSE:com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.PLAY,
                                 () -> pt(playlistPlaying()?"pause":playlistView.get()!=null && "PAUSED".equals(playlistView.get().status())?"resume":"play"),
                                 this::togglePlaylistPlayback).enabledWhen(() -> canControlPlaylist()
-                                        && (playlistView.get().currentImage() != null || !savedSlides.get().isEmpty() || !queuedSlides.get().isEmpty())),
+                                        && (!"STOPPED".equals(playlistView.get().status()) || !savedSlides.get().isEmpty() || !queuedSlides.get().isEmpty())),
                         transportIcon(com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.STOP,"stop","STOP"),
                         transportIcon(com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.NEXT,"next","NEXT"),
                         transportIcon(com.nstut.simplyscreens.client.ui.ScreenIconButton.Icon.RESTART,"restart","RESTART"),
