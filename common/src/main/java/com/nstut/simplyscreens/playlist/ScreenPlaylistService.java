@@ -73,7 +73,8 @@ public final class ScreenPlaylistService {
         void restore() {
             Session saved = suspended;
             long latestRevision = revision;
-            ownsContent = saved.ownsContent;
+            // Restoring a displayed announcement also owns the resulting clear/content write.
+            ownsContent = true;
             sourceOwner = saved.sourceOwner; sourceId = saved.sourceId; slides = saved.slides;
             order = saved.order; cursor = saved.cursor; offset = saved.offset; status = saved.status;
             repeat = saved.repeat; shuffle = saved.shuffle; shuffleSeed = saved.shuffleSeed;
@@ -88,9 +89,10 @@ public final class ScreenPlaylistService {
         }
         /** Queue entries play once, then continue after the retained canonical cursor. */
         void advance(boolean explicit) {
-            offset = 0; ownsContent = true;
+            offset = 0;
             if (announcement) { restore(); return; }
             if (!queue.isEmpty()) {
+                ownsContent = true;
                 queuedSlide = queue.remove(0); status = Status.PLAYING; return;
             }
             queuedSlide = null;
@@ -101,6 +103,7 @@ public final class ScreenPlaylistService {
                 if (repeat == RepeatMode.LIST) next = 0;
                 else { status = Status.STOPPED; cursor = -1; return; }
             }
+            ownsContent = true;
             cursor = next; status = Status.PLAYING;
         }
         void reorder(boolean enabled, long seed) {

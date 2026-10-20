@@ -405,4 +405,20 @@ class ScreenPlaylistServiceTest {
         assertEquals(service.snapshots(), reloaded.snapshots());
         assertEquals(service.reconciliationSnapshots(), reloaded.reconciliationSnapshots());
     }
+    @Test void everyStaticAnnouncementRestorationPersistsItsClearIntent(@TempDir Path root) {
+        for (String action : List.of("CANCEL_ANNOUNCEMENT", "PREVIOUS", "NEXT", "expiry")) {
+            var current = new ScreenPlaylistService();
+            Path scenario = root.resolve(action);
+            current.init(scenario);
+            assertTrue(current.announce(key, slide(a), 0));
+            if (action.equals("expiry")) current.tick(1000);
+            else assertTrue(current.command(key, action, current.snapshot(key).revision()));
+            assertEquals(Status.STOPPED, current.snapshot(key).status());
+            assertTrue(current.managesContent(key), action);
+            current.save();
+            var reloaded = new ScreenPlaylistService(); reloaded.init(scenario);
+            assertTrue(reloaded.reconciliationSnapshots().containsKey(key), action);
+            assertNull(reloaded.reconciliationSnapshots().get(key).currentImage(), action);
+        }
+    }
 }

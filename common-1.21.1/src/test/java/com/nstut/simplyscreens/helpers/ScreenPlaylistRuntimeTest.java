@@ -190,4 +190,28 @@ class ScreenPlaylistRuntimeTest {
         assertNull(ScreenRegistry.networks().snapshot(localKey).image());
         assertEquals(PlaybackSnapshot.Status.STOPPED, store().snapshot(localKey).status());
     }
+    @Test void emptyNextCannotClaimAndClearStaticContentOnRestart() {
+        ScreenRegistry.reconcileContent(key, image);
+        send("NEXT", null, null, -1, -1, 0, "");
+        assertEquals(image, ScreenRegistry.networks().snapshot(key).image());
+        ScreenPlaylistRuntime.shutdown(); ScreenPlaylistRuntime.init(root);
+        assertEquals(image, ScreenRegistry.networks().snapshot(key).image(), "An empty NEXT must not create a delayed clear intent");
+    }
+
+    @Test void failedAnnouncementCancellationClearRecoversAfterRestart() {
+        ScreenRegistry.reconcileContent(key, foreign);
+        send("ANNOUNCE", null, image, -1, -1, 1000, "");
+        assertEquals(image, ScreenRegistry.networks().snapshot(key).image());
+        try (var registry = mockStatic(ScreenRegistry.class, CALLS_REAL_METHODS)) {
+            registry.when(() -> ScreenRegistry.reconcileContent(key, null))
+                    .thenThrow(new IllegalStateException("Content store unavailable"));
+            ScreenRegistry.reconcileContent(key, image);
+            send("CANCEL_ANNOUNCEMENT", null, null, -1, -1, 0, "");
+            assertEquals(PlaybackSnapshot.Status.STOPPED, store().snapshot(key).status());
+            assertEquals(image, ScreenRegistry.networks().snapshot(key).image());
+            ScreenPlaylistRuntime.shutdown();
+        }
+        ScreenPlaylistRuntime.init(root);
+        assertNull(ScreenRegistry.networks().snapshot(key).image(), "A displayed announcement must retain durable clear intent on restoration");
+    }
 }
