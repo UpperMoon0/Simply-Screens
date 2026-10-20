@@ -1,6 +1,6 @@
 # Named image playlists (issue #15)
 
-Named slide playlists in v0.10.0 build on the v0.9.0 screen-network and access model.
+Named slide playlists in v0.9.1 build on the v0.9.0 screen-network and access model.
 
 ## Experience
 

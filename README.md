@@ -30,7 +30,7 @@ Minecraft 1.21.1 builds support optional **Sable 2.0.5 and 2.0.6** on Fabric and
   - Per-player upload concurrency and rate limits, bounded processing queues, and full image decode checks.
   - Atomic registry operations with automated `.bak` backups and crash recovery.
 
-## Installation and upgrade to 0.10.0
+## Installation and upgrade to 0.9.1
 
 Install the artifact matching **both** your Minecraft version and loader. The following mods are required:
 
@@ -41,7 +41,7 @@ Install the artifact matching **both** your Minecraft version and loader. The fo
 
 Download PacketWeave from its [release assets](https://github.com/UpperMoon0/PacketWeave/releases) or its approved [CurseForge files](https://www.curseforge.com/minecraft/mc-mods/packetweave/files). Do not install the development-only API/core jar as a substitute for the native loader jar. Missing PacketWeave or a version below 0.1.1 must be resolved before the loader can start Screens.
 
-When upgrading from 0.8.9, add PacketWeave to every client and server before launching. Keep the existing world, `simply_screens_images` directory, screen registry, and configuration. Version 0.9.0 automatically imports existing registry images/owners into a versioned `screen_networks.json`; existing media files and Screen IDs are preserved. Legacy unowned networks and blank-ID displays require an operator claim before editing. New player-placed displays belong to their placer. Added access and playlist packets require matching client/server Screens versions. Version 0.10.0 stores personal playlists and active timelines in `screen_playlists.dat` with a validated backup; keep both with the world. Back up worlds before upgrading; see [ownership, migration, and recovery](docs/network-access.md) before changing permissions or restoring data.
+When upgrading from 0.8.9, add PacketWeave to every client and server before launching. Keep the existing world, `simply_screens_images` directory, screen registry, and configuration. Version 0.9.0 automatically imports existing registry images/owners into a versioned `screen_networks.json`; existing media files and Screen IDs are preserved. Legacy unowned networks and blank-ID displays require an operator claim before editing. New player-placed displays belong to their placer. Added access and playlist packets require matching client/server Screens versions. Version 0.9.1 stores personal playlists and active timelines in `screen_playlists.dat` with a validated backup; keep both with the world. Back up worlds before upgrading; see [ownership, migration, and recovery](docs/network-access.md) before changing permissions or restoring data.
 
 ## Shader compatibility in 0.8.11
 
@@ -133,7 +133,7 @@ Open a screen and choose **Settings > Your display settings** to change screen r
 without screen-management permissions. Existing mod-config values are imported once. Server
 visibility policies still apply. See [the settings audit](docs/settings.md) for all configuration options.
 
-## Named slide playlists (0.10.0)
+## Named slide playlists (0.9.1)
 
 Open a screen and use a gallery image's **…** menu to add it to a saved playlist. In **Playlists**, choose or create a list, then select **Start** to display it. Drag slide rows to reorder them; each slide's menu changes its duration (1–86400 seconds) or removes it.
 
