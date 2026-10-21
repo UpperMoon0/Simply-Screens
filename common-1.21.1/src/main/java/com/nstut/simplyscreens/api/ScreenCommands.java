@@ -71,8 +71,7 @@ public final class ScreenCommands {
 
     private static boolean admin(CommandSourceStack source) {
         if (source.getServer() == null) return false;
-        ServerPlayer player = source.getPlayer();
-        return player == null || source.hasPermission(2);
+        return source.hasPermission(2);
     }
 
     private static Actor acting(CommandSourceStack source) {

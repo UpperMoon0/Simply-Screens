@@ -71,8 +71,7 @@ public final class ScreenCommands {
 
     private static boolean admin(CommandSourceStack source) {
         if (source.getServer() == null) return false;
-        ServerPlayer player = source.getPlayer();
-        return player == null || source.getServer().getPlayerList().isOp(player.nameAndId());
+        return source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER);
     }
 
     private static Actor acting(CommandSourceStack source) {
