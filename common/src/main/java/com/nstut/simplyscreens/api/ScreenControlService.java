@@ -95,7 +95,7 @@ public final class ScreenControlService {
 
     public PlaybackSnapshot playback(String key, Actor actor) {
         return key != null && playlists != null && networks.allowed(key,
-                actor == null ? Actor.automation() : actor, Permission.VIEW)
+                actor == null ? Actor.automation() : actor, Permission.MANAGE)
                 ? playlists.snapshot(key) : PlaybackSnapshot.EMPTY;
     }
 }
