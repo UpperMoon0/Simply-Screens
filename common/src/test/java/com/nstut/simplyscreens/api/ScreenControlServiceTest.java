@@ -45,6 +45,7 @@ class ScreenControlServiceTest {
         assertFalse(api.transport(owningPlayer, key, "INVALID"));
         assertEquals(1, api.list(visitor).size());
         assertTrue(api.list(visitor).stream().noneMatch(s -> s.owner() != null));
+        assertEquals(com.nstut.simplyscreens.playlist.PlaybackSnapshot.EMPTY, api.playback(key, visitor));
     }
 
     @Test void anonymousAutomationOnlyOperatesExplicitlyPublicNetworksAndApprovedImages() {
@@ -59,7 +60,7 @@ class ScreenControlServiceTest {
         assertTrue(api.select(Actor.automation(), key, null, id -> false));
         assertNull(networks.snapshot(key).image());
         assertFalse(api.play(Actor.automation(), key, owner, playlist(), id -> true));
-        assertFalse(api.status("network/missing", owningPlayer) != null);
+        assertNull(api.status("network/missing", owningPlayer));
     }
 
     @Test void playlistSourceAndEverySlideMustBeAuthorized() {
