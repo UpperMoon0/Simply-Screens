@@ -43,6 +43,9 @@ def verify(path,target):
         elif loader=='forge' and version=='1.12.2':
             meta=jar.read('mcmod.info').decode()
             if 'simply_screens' not in meta or '${' in meta:raise ValueError('Wrong Forge 1.12 identity')
+            variants=json.loads(jar.read('assets/simply_screens/blockstates/screen.json')).get('variants',{})
+            expected={f'facing={facing},state={state}' for facing in ('north','south','west','east','up','down') for state in range(3)}
+            if set(variants)!=expected:raise ValueError('Missing native 1.12 exact-order blockstate variants')
         else:
             name='META-INF/neoforge.mods.toml' if loader=='neoforge' else 'META-INF/mods.toml'
             meta=jar.read(name).decode()

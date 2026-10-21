@@ -1,4 +1,4 @@
-import json, os, subprocess, sys
+import json, os, queue, subprocess, sys
 from pathlib import Path
 import tempfile
 import unittest
@@ -11,9 +11,30 @@ class Thread:
     def join(self,timeout=None):pass
     def is_alive(self):return False
 class Pump:
-    def __init__(self,marker):self.marker=marker;self.history=['fixture log\n'];self.thread=Thread()
-    def wait_for(self,markers,timeout):return self.marker
+    def __init__(self,marker,prefix=''):self.marker=marker;self.prefix=prefix;self.history=['fixture log\n'];self.thread=Thread()
+    def wait_for(self,markers,timeout,line_check=None):
+        if line_check is not None and self.marker is not None:line_check(self.prefix,self.marker)
+        return self.marker
 class RequestedLiveJoinTest(unittest.TestCase):
+    def test_observed_native_ineligibility_is_fatal_only_for_exact_loaded_client(self):
+        for target,title in [('fabric-1.16.5','net.minecraft.client.gui.screens.TitleScreen'),('forge-1.16.5','net.minecraft.client.gui.screen.MainMenuScreen')]:
+            line='[native] Native join probe waiting: screen='+title+', overlay=none, multiplayerAllowed=false'
+            with self.assertRaisesRegex(RuntimeError,'native Minecraft multiplayer eligibility is false'):
+                live.reject_native_ineligibility(target+'/client',line)
+            for role in ('server','other'):live.reject_native_ineligibility(target+'/'+role,line)
+            for other in (line.replace('overlay=none','overlay=LoadingOverlay'),line.replace('multiplayerAllowed=false','multiplayerAllowed=true'),line.replace(title,'ConnectScreen'),line+' trailing text',line.replace('Native join probe waiting','OTHER_MARKER')):
+                live.reject_native_ineligibility(target+'/client',other)
+            for other in ('fabric-26.2/client','neoforge-26.2/client','forge-1.12.2/client','fabric-1.20.1/client'):
+                live.reject_native_ineligibility(other,line)
+    def test_shared_pump_checks_failure_before_success_without_changing_default(self):
+        line=live.PASS_MARKER+' Native join probe waiting: screen=net.minecraft.client.gui.screens.TitleScreen, overlay=none, multiplayerAllowed=false'
+        pump=live.OutputPump.__new__(live.OutputPump)
+        pump.process=type('StillRunning',(),{'poll':lambda self:None})()
+        pump.prefix='fabric-1.16.5/client';pump.lines=queue.Queue();pump.lines.put(line)
+        with self.assertRaisesRegex(RuntimeError,'native Minecraft multiplayer eligibility is false'):
+            pump.wait_for((live.PASS_MARKER,),1,line_check=live.reject_native_ineligibility)
+        pump.lines.put(line)
+        self.assertEqual(line,pump.wait_for((live.PASS_MARKER,),1))
     @unittest.skipUnless(os.name=='posix','Owned display command uses a POSIX shell')
     def test_legacy_missing_display_prerequisites_fail_closed(self):
         module=Path('/fixture/forge-1.12.2')
@@ -86,14 +107,24 @@ class RequestedLiveJoinTest(unittest.TestCase):
                 path.write_text('malformed [toml')
                 with self.assertRaisesRegex(RuntimeError,'Cannot verify'):
                     live.verify_loader_warning_visibility(module)
-    def run_fixture(self,root,server_ready,client_pass,exit_code=0):
-        module=root/'fabric-26.2';libs=module/'build/libs';libs.mkdir(parents=True)
-        (libs/'simply_screens-fabric-26.2-0.10.0.jar').write_bytes(b'jar fixture')
+    def run_fixture(self,root,server_ready,client_pass,exit_code=0,target='fabric-26.2'):
+        module=root/target;libs=module/'build/libs';libs.mkdir(parents=True)
+        (libs/('simply_screens-'+target+'-0.10.1.jar')).write_bytes(b'jar fixture')
         def prepare(module):
             folder=module/'run/live-join/server';folder.mkdir(parents=True,exist_ok=True)
             (folder/'server.properties').write_text('online-mode=false\n')
-        with patch('builtins.print'),patch.object(live,'prepare_server',prepare),patch.object(live,'prepare_client'),patch.object(live,'popen',side_effect=[Process(),Process(exit_code)]),patch.object(live,'OutputPump',side_effect=[Pump(server_ready),Pump(client_pass)]),patch.object(live,'stop_tree'),patch.object(live.subprocess,'check_output',return_value='abc123\n'),patch.dict(live.os.environ,{'DISPLAY':':1'}):
-            live.run(root,'fabric-26.2',1)
+        with patch('builtins.print'),patch.object(live,'prepare_server',prepare),patch.object(live,'prepare_client'),patch.object(live,'popen',side_effect=[Process(),Process(exit_code)]),patch.object(live,'OutputPump',side_effect=[Pump(server_ready,target+'/server'),Pump(client_pass,target+'/client')]),patch.object(live,'stop_tree') as stop,patch.object(live.subprocess,'check_output',return_value='abc123\n'),patch.dict(live.os.environ,{'DISPLAY':':1'}):
+            try:live.run(root,target,1)
+            finally:self.assertEqual(1 if server_ready is None else 2,stop.call_count)
+    def test_native_policy_failure_preserves_cleanup_logs_and_never_writes_pass_receipt(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);target='fabric-1.16.5'
+            line='Native join probe waiting: screen=net.minecraft.client.gui.screens.TitleScreen, overlay=none, multiplayerAllowed=false'
+            with self.assertRaisesRegex(RuntimeError,'native Minecraft multiplayer eligibility is false'):
+                self.run_fixture(root,'Done (',line,target=target)
+            evidence=root/'build/requested-runtime'/target
+            self.assertFalse((evidence/'receipt.json').exists())
+            self.assertTrue((evidence/'server.log').exists());self.assertTrue((evidence/'client.log').exists())
     def test_missing_server_or_ui_success_never_writes_receipt(self):
         for ready,marker,code in [(None,'PASS',0),('Done (',None,0),('Done (','PASS',1)]:
             with tempfile.TemporaryDirectory() as tmp:

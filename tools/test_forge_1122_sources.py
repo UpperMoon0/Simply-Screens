@@ -1,12 +1,44 @@
 import importlib.util
+import json
 import pathlib
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 import forge_1122_sources as port
+import port_resources
 class Forge1122SourceTests(unittest.TestCase):
+ def test_resource_dispatch_uses_platform_neutral_relative_names(self):
+  original=pathlib.Path.relative_to
+  def windows_relative(path,*args,**kwargs):
+   return pathlib.PureWindowsPath(original(path,*args,**kwargs))
+  with tempfile.TemporaryDirectory() as directory:
+   output=pathlib.Path(directory)
+   with patch.object(pathlib.Path,'relative_to',windows_relative):
+    port_resources.generate('1.12.2','forge',output)
+   self.assertTrue((output/'assets/simply_screens/recipes/screen.json').is_file())
+   self.assertTrue((output/'assets/simply_screens/lang/en_us.lang').is_file())
+   variants=json.loads((output/'assets/simply_screens/blockstates/screen.json').read_text())['variants']
+   self.assertIn('facing=north,state=0',variants)
+   self.assertFalse((output/'data').exists())
+ def test_native_variants_keep_all_models_rotations_and_exact_legacy_keys(self):
+  canonical=json.loads((ROOT/'common/src/main/resources/assets/simply_screens/blockstates/screen.json').read_text())['variants']
+  with tempfile.TemporaryDirectory() as directory:
+   output=pathlib.Path(directory);port.generate_resources(output)
+   variants=json.loads((output/'assets/simply_screens/blockstates/screen.json').read_text())['variants']
+   expected={f'facing={facing},state={state}' for facing in ('north','south','west','east','up','down') for state in range(3)}
+   self.assertEqual(expected,set(variants))
+   for state in range(3):
+    for facing in ('north','south','west','east','up','down'):
+     self.assertEqual(canonical[f'state={state},facing={facing}'],variants[f'facing={facing},state={state}'])
+   port_resources.generate('1.16.5','fabric',output)
+   self.assertEqual(canonical,json.loads((output/'assets/simply_screens/blockstates/screen.json').read_text())['variants'])
+ def test_legacy_variant_normalization_rejects_collisions_and_invalid_properties(self):
+  for data in [{'a=1,b=2':{},'b=2,a=1':{}},{'a=1,a=2':{}},{'a=1,b=':{}},{'a=1=b':{}}]:
+   with self.assertRaises(ValueError):port_resources.legacy_variant_keys(data)
+  self.assertEqual({'normal':{},'inventory':{}},port_resources.legacy_variant_keys({'normal':{},'inventory':{}}))
  def test_complete_shared_service_surface(self):
   with tempfile.TemporaryDirectory() as directory:
    output=pathlib.Path(directory);port.generate(output)

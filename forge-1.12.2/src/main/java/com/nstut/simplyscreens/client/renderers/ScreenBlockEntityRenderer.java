@@ -18,6 +18,8 @@ import net.minecraft.util.math.BlockPos;
 import org.lwjgl.opengl.GL11;
 /** Per-tile quads retain coverage when an anchor chunk is unloaded. */
 public final class ScreenBlockEntityRenderer extends TileEntitySpecialRenderer<ScreenBlockEntity> {
+ // LWJGL 2 vector getters require 16 slots even for a four-component query.
+ static java.nio.FloatBuffer colorQueryBuffer() { return org.lwjgl.BufferUtils.createFloatBuffer(16); }
  @Override public boolean isGlobalRenderer(ScreenBlockEntity tile) { return true; }
  @Override public void render(ScreenBlockEntity tile,double x,double y,double z,float partial,int stage,float alpha) {
   BlockPos origin=tile.getAnchorPos();if(origin==null||tile.getWorld()==null)return;
@@ -36,7 +38,7 @@ public final class ScreenBlockEntityRenderer extends TileEntitySpecialRenderer<S
   float lightX=OpenGlHelper.lastBrightnessX,lightY=OpenGlHelper.lastBrightnessY;
   boolean lighting=GL11.glIsEnabled(GL11.GL_LIGHTING),culling=GL11.glIsEnabled(GL11.GL_CULL_FACE),blending=GL11.glIsEnabled(GL11.GL_BLEND);
   int src=GL11.glGetInteger(org.lwjgl.opengl.GL14.GL_BLEND_SRC_RGB),dst=GL11.glGetInteger(org.lwjgl.opengl.GL14.GL_BLEND_DST_RGB),srcAlpha=GL11.glGetInteger(org.lwjgl.opengl.GL14.GL_BLEND_SRC_ALPHA),dstAlpha=GL11.glGetInteger(org.lwjgl.opengl.GL14.GL_BLEND_DST_ALPHA);
-  java.nio.FloatBuffer color=org.lwjgl.BufferUtils.createFloatBuffer(4);GL11.glGetFloat(GL11.GL_CURRENT_COLOR,color);
+  java.nio.FloatBuffer color=colorQueryBuffer();GL11.glGetFloat(GL11.GL_CURRENT_COLOR,color);
   GlStateManager.pushMatrix();
   try {
    GlStateManager.translate(x-dx+.5,y-dy+.5,z-dz+.5);rotate(facing);GlStateManager.translate(-(data.getScreenWidth()-1)/2f,(data.getScreenHeight()-1)/2f,(facing==EnumFacing.NORTH||facing==EnumFacing.SOUTH)?-.501f:.501f);

@@ -50,7 +50,7 @@ class OutputPump:
                 self.history.append(line)
                 self.lines.put(line)
 
-    def wait_for(self, markers: tuple[str, ...], timeout: int) -> str | None:
+    def wait_for(self, markers: tuple[str, ...], timeout: int, line_check=None) -> str | None:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             if self.process.poll() is not None and self.lines.empty():
@@ -59,6 +59,8 @@ class OutputPump:
                 line = self.lines.get(timeout=min(1.0, deadline - time.monotonic()))
             except queue.Empty:
                 continue
+            if line_check is not None:
+                line_check(self.prefix, line)
             if any(marker in line for marker in markers):
                 return line
         return None

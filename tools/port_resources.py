@@ -3,13 +3,26 @@
 import argparse,json,shutil
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
+def legacy_variant_keys(variants):
+    """1.12 model lookup uses the exact sorted property string, not a selector."""
+    result={}
+    for key,value in variants.items():
+        if '=' not in key:normalized=key
+        else:
+            parts=key.split(',');pairs=[part.split('=') for part in parts]
+            if any(len(pair)!=2 or not all(pair) for pair in pairs) or len({pair[0] for pair in pairs})!=len(pairs):
+                raise ValueError('Malformed legacy blockstate variant: '+key)
+            normalized=','.join('='.join(pair) for pair in sorted(pairs))
+        if normalized in result:raise ValueError('Colliding legacy blockstate variant: '+normalized)
+        result[normalized]=value
+    return result
 def generate(version,loader,output):
     output.mkdir(parents=True,exist_ok=True)
     legacy=version=='1.12.2'
     for root in [ROOT/'common/src/main/resources',ROOT/f'{loader}-{version}/src/main/resources']:
         for source in root.rglob('*'):
             if not source.is_file() or source.suffix=='.bbmodel':continue
-            relative=source.relative_to(root);name=str(relative)
+            relative=source.relative_to(root);name=relative.as_posix()
             if legacy:
                 if name.startswith('data/') and '/recipe/' not in name:continue
                 name=name.replace('data/simply_screens/recipe/', 'assets/simply_screens/recipes/')
@@ -18,6 +31,8 @@ def generate(version,loader,output):
             target=output/name;target.parent.mkdir(parents=True,exist_ok=True)
             if source.suffix!='.json':shutil.copyfile(source,target);continue
             data=json.loads(source.read_text())
+            if legacy and '/blockstates/' in name and 'variants' in data:
+                data['variants']=legacy_variant_keys(data['variants'])
             if version=='1.16.5' and '/patchouli_books/' in name:
                 if name.endswith('/book.json'):
                     data['model']='simply_screens:item/guide_book'

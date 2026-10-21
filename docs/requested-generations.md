@@ -31,7 +31,7 @@ substitute a library jar from another Minecraft generation or loader.
 
 PacketWeave reference: UpperMoon0/PacketWeave PR #4, commit
 b9af8be1c8dae497a852342a0d323f811b80b54a. OpenUI source pin:
-UpperMoon0/OpenUI-MC commit ae7ac42daf6acf3018850778ffd4fa4ee4d4cb71.
+UpperMoon0/OpenUI-MC commit 672b5b2b7169bef30f5f10b34f296812abe31460.
 The machine-readable `tools/requested-dependencies.lock.json` is checked against
 both this document and the workflow so native source pins cannot silently drift.
 The requested-generations workflow builds both immutable source pins separately,

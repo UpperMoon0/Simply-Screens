@@ -5,6 +5,15 @@ from pathlib import Path
 from live_join_test import OutputPump, PASS_MARKER, SERVER_READY_MARKERS, prepare_server, prepare_client, popen, stop_tree
 TARGETS=('forge-1.12.2','fabric-1.16.5','forge-1.16.5','fabric-26.2','neoforge-26.2')
 
+def reject_native_ineligibility(prefix,line):
+    # Read-only native boundary, never an account/connection override or pass.
+    titles={'fabric-1.16.5/client':'net.minecraft.client.gui.screens.TitleScreen',
+            'forge-1.16.5/client':'net.minecraft.client.gui.screen.MainMenuScreen'}
+    title=titles.get(prefix)
+    if title and line.rstrip().endswith('Native join probe waiting: screen='+title+', overlay=none, multiplayerAllowed=false'):
+        raise RuntimeError(prefix+': native Minecraft multiplayer eligibility is false after loading; '
+                           'no join acceptance is claimed and no connection override is attempted')
+
 def command(module, task):
     return [str(module/('gradlew.bat' if os.name=='nt' else 'gradlew')),task,
             '--no-daemon','--console=plain','--max-workers=2','-Dorg.gradle.jvmargs=-Xmx1024m']
@@ -55,7 +64,7 @@ def run(root,target,timeout):
         if server_output.wait_for(SERVER_READY_MARKERS,timeout) is None:
             raise RuntimeError(target+': native dedicated server did not become ready')
         client=popen(client_command(module),module);client_output=OutputPump(client,target+'/client')
-        if client_output.wait_for((PASS_MARKER,),timeout) is None:
+        if client_output.wait_for((PASS_MARKER,),timeout,line_check=reject_native_ineligibility) is None:
             raise RuntimeError(target+': client did not complete a real join and UI smoke phase')
         try:code=client.wait(timeout=60)
         except subprocess.TimeoutExpired as failure:raise RuntimeError('Client passed but did not stop') from failure
