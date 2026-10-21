@@ -91,7 +91,7 @@ class RequestedGenerationsTest(unittest.TestCase):
         self.assertIn('runtimeOnly files(portPacketweaveJar)',source)
     def test_native_source_archives_and_jabel_jvm_arguments(self):
         modern=(ROOT/'gradle/requested-port.gradle').read_text()
-        self.assertIn('sourcesJar { duplicatesStrategy=DuplicatesStrategy.EXCLUDE }',modern)
+        self.assertRegex(modern,r'sourcesJar \{[^}]*duplicatesStrategy=DuplicatesStrategy.EXCLUDE')
         legacy=(ROOT/'gradle/legacy-port.gradle').read_text()
         self.assertEqual(2,legacy.count('singleFile}".toString()'))
     def test_legacy_asset_retry_never_retries_runtime_or_assertions(self):
@@ -100,6 +100,18 @@ class RequestedGenerationsTest(unittest.TestCase):
         self.assertIn(' downloadAssets ',retry)
         self.assertIn('SocketTimeoutException',retry)
         self.assertNotIn('runLiveJoinTest',retry)
+    def test_fabric_legacy_declared_refmap_is_actually_generated(self):
+        self.assertIn('useLegacyMixinAp = true',(ROOT/'fabric-1.16.5/build.gradle').read_text())
+    def test_forge_runs_inherit_after_native_userdev_configuration(self):
+        for target in ('forge-1.12.2','forge-1.16.5'):
+            build=(ROOT/target/'build.gradle').read_text()
+            self.assertIn('child minecraft.runs.server',build)
+            self.assertIn('child minecraft.runs.client',build)
+            self.assertNotIn('parent minecraft.runs.server',build)
+    def test_asset_prefetch_log_directory_exists(self):
+        workflow=(ROOT/'.github/workflows/requested-generations.yml').read_text()
+        retry=workflow.split('name: Prefetch official legacy assets',1)[1].split('      - name:',1)[0]
+        self.assertLess(retry.index('mkdir -p build'),retry.index('> build/legacy-assets.log'))
     def test_no_unofficial_112_fabric_target(self):
         self.assertFalse((ROOT/'fabric-1.12.2').exists())
 if __name__=='__main__':unittest.main()

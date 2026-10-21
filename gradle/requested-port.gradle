@@ -8,13 +8,25 @@ ext.packetweavePortVersion = '0.1.4'
 base { archivesName = "simply_screens-${project.name}" }
 repositories { mavenCentral(); maven { url='https://maven.architectury.dev/' } }
 java { toolchain.languageVersion = JavaLanguageVersion.of(25); withSourcesJar() }
+def generateModernSources=tasks.register('generateModernSources', Exec) {
+    ['../neoforge-26.1.2/src/main/java','../common-26.2/src/main/java'].each { inputs.dir it }
+    inputs.file '../tools/modern_screen_sources.py'
+    outputs.dir layout.buildDirectory.dir('generated/modernSources')
+    commandLine 'python3','../tools/modern_screen_sources.py','--output',layout.buildDirectory.dir('generated/modernSources').get().asFile
+}
+def generateModernTests=tasks.register('generateModernTests', Exec) {
+    ['../neoforge-26.1.2/src/test/java','../common-26.2/src/test/java'].each { inputs.dir it }
+    inputs.file '../tools/modern_screen_sources.py'
+    outputs.dir layout.buildDirectory.dir('generated/modernTests')
+    commandLine 'python3','../tools/modern_screen_sources.py','--tests','--output',layout.buildDirectory.dir('generated/modernTests').get().asFile
+}
 sourceSets {
     main {
-        java.srcDirs '../common/src/main/java', '../common-26.2/src/main/java'
-        resources.srcDirs '../common-26.2/src/main/resources', '../common/src/main/resources'
+        java.srcDirs '../common/src/main/java', generateModernSources
+        resources.srcDirs '../common-26.2/src/main/resources', '../neoforge-26.1.2/src/main/resources', '../common/src/main/resources'
     }
     packetweaveApi { java.srcDir providers.gradleProperty('packetweaveSource').getOrElse('../../PacketWeave/core/src/main/java') }
-    test { java.srcDirs '../common/src/test/java', '../common-26.2/src/test/java' }
+    test { java.srcDirs '../common/src/test/java', generateModernTests }
 }
 sourceSets.test.compileClasspath += sourceSets.main.compileClasspath
 sourceSets.test.runtimeClasspath += sourceSets.main.runtimeClasspath
@@ -48,4 +60,4 @@ test { useJUnitPlatform(); systemProperty 'net.bytebuddy.experimental','true'; t
 processResources { duplicatesStrategy=DuplicatesStrategy.EXCLUDE; exclude '**/*.bbmodel' }
 
 // Source archives retain target-specific overlays before common resource fallbacks.
-sourcesJar { duplicatesStrategy=DuplicatesStrategy.EXCLUDE }
+sourcesJar { dependsOn generateModernSources; duplicatesStrategy=DuplicatesStrategy.EXCLUDE }

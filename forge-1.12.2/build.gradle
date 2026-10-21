@@ -23,17 +23,19 @@ def nativeOpenui=[group:'com.nstut.portdeps',name:portOpenuiJar.name.replaceFirs
 def nativePacketweave=[group:'com.nstut.portdeps',name:portPacketweaveJar.name.replaceFirst(/\.jar$/,''),version:'0.1.4']
 minecraft {
     mappings channel:'stable',version:'39-1.12'
+// ForgeGradle merges parents in lexical order, before server has its userdev
+// parent. The late child merge copies the fully resolved native launch config.
     runs {
         client { workingDirectory project.file('run') }
         server { workingDirectory project.file('run');args 'nogui' }
         liveJoinTestClient {
-            parent minecraft.runs.client
+            child minecraft.runs.client
             workingDirectory project.file('run/live-join/client')
             property 'simplyscreens.liveJoinTest','true'
             args '--server','127.0.0.1','--port','25575'
         }
         liveJoinTestServer {
-            parent minecraft.runs.server
+            child minecraft.runs.server
             workingDirectory project.file('run/live-join/server')
         }
     }

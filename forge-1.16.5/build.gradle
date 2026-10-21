@@ -25,16 +25,18 @@ dependencies {
 jar { manifest { attributes 'MixinConfigs':'simplyscreens-color.mixins.json' } }
 jar { finalizedBy 'reobfJar' }
 mixin { add sourceSets.main, "simplyscreens.refmap.json"; config "simplyscreens-color.mixins.json" }
+// ForgeGradle merges parents in lexical order, before server has its userdev
+// parent. The late child merge copies the fully resolved native launch config.
 minecraft.runs {
     liveJoinTestClient {
-        parent minecraft.runs.client; workingDirectory project.file('run/live-join/client')
+        child minecraft.runs.client; workingDirectory project.file('run/live-join/client')
         property 'simplyscreens.liveJoinTest','true'
         jvmArgs '-Xmx1G'
         args '--username','ScreensProbe','--server','127.0.0.1','--port','25575'
         mods { simply_screens { source sourceSets.main } }
     }
     liveJoinTestServer {
-        parent minecraft.runs.server; workingDirectory project.file('run/live-join/server'); args '--nogui'; jvmArgs '-Xmx1G'
+        child minecraft.runs.server; workingDirectory project.file('run/live-join/server'); jvmArgs '-Xmx1G'
         mods { simply_screens { source sourceSets.main } }
     }
 }

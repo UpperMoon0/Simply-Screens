@@ -114,3 +114,27 @@ The workflow must establish remapping, loader discovery, real dedicated-server
 startup and client join/UI evidence separately. No production-jar live launch,
 rendered media pixel comparison, shader parity, GL/Vulkan parity, resource reload,
 transparency or occlusion result is claimed by this initial record.
+
+## Shared-code ownership and drift prevention
+
+The 26.2 runtime reuses the maintained 26.1.2 gameplay implementation through
+`tools/modern_screen_sources.py`. Protocol codecs, security, commands, public API,
+UI state, media/persistence logic and the block-entity renderer are not separately
+maintained copies. Only five native pipeline/mixin adapter files and one native
+render-state test remain under `common-26.2`. Common domain services continue to
+come directly from `common/`. The existing 26.1.2 release source is not changed.
+
+The generator performs only receiver-specific Minecraft GUI routing substitutions
+outside those native overlays. It also derives the 14 existing modern test classes
+with real registry bootstrap and reuses canonical modern resources. Regression
+checks require the full class set, exact canonical transformation, deterministic
+output, stale-output removal and native-only overlay boundaries. The first
+migration was additionally checked token-for-token against all 54 production
+sources and all 14 tests that had already passed the complete compile/test run.
+
+The single-source 26.2 refactor was revalidated after generation: all 95 Fabric
+and 94 NeoForge production sources compile, and all 248 shared/native Java 25
+regressions pass with zero skipped. At remote head `8076df49`, Fabric 26.2 also
+completed native packaging, jar checks, and an actual dedicated-server/client
+join with the OpenUI tab/resize smoke probe. That development-runtime receipt is
+not framebuffer, media, shader, or production-jar runtime acceptance.

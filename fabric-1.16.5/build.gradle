@@ -9,7 +9,7 @@ dependencies {
     modImplementation files(portOpenuiJar)
     modRuntimeOnly files(portPacketweaveJar)
 }
-loom { mixin { defaultRefmapName = "simplyscreens.refmap.json" } }
+loom { mixin { useLegacyMixinAp = true; defaultRefmapName = "simplyscreens.refmap.json" } }
 loom {
     runs {
         liveJoinTestClient {
