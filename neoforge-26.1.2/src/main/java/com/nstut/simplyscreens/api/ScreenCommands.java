@@ -55,7 +55,7 @@ public final class ScreenCommands {
                 .then(Commands.argument("page", IntegerArgumentType.integer(1, 10000))
                     .executes(ctx -> media(ctx, IntegerArgumentType.getInteger(ctx, "page")))))
             .then(Commands.literal("display")
-                .then(Commands.argument("dimension", StringArgumentType.word())
+                .then(Commands.argument("dimension", net.minecraft.commands.arguments.IdentifierArgument.id())
                     .suggests((ctx, builder) -> {
                         for (var level : ctx.getSource().getServer().getAllLevels())
                             builder.suggest(level.dimension().identifier().toString());
@@ -216,7 +216,7 @@ public final class ScreenCommands {
     }
 
     private static int display(CommandContext<CommandSourceStack> ctx) {
-        String dimension = StringArgumentType.getString(ctx, "dimension");
+        String dimension = net.minecraft.commands.arguments.IdentifierArgument.getId(ctx, "dimension").toString();
         BlockPos pos = new BlockPos(IntegerArgumentType.getInteger(ctx, "x"),
                 IntegerArgumentType.getInteger(ctx, "y"), IntegerArgumentType.getInteger(ctx, "z"));
         for (var level : ctx.getSource().getServer().getAllLevels()) {
