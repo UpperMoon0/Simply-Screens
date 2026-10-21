@@ -182,7 +182,14 @@ class RequestedGenerationsTest(unittest.TestCase):
         self.assertIn('JavaLanguageVersion.of(8)',build)
         self.assertIn('tasks.withType(net.fabricmc.loom.task.AbstractRunTask).configureEach { useXvfb.set(false) }',build)
         runner=(ROOT/'tools/requested_live_join.py').read_text()
-        self.assertIn("cmd=[xvfb,'-a',*cmd]",runner)
+        self.assertIn("prefix=[xvfb,'-a']",runner)
+        self.assertIn('return prefix+cmd',runner)
+    def test_native_build_runs_the_complete_requested_contract_suite(self):
+        workflow=(ROOT/'.github/workflows/requested-generations.yml').read_text()
+        step=workflow.split('name: Build complete Screens native target',1)[1].split('      - name:',1)[0]
+        self.assertIn("python3 -m unittest discover -s tools -p 'test_requested*.py' -v",step)
+        self.assertIn('-p test_modern_screen_sources.py',step)
+        self.assertIn('-p test_forge_1122_sources.py',step)
     def test_legacy_prejoin_diagnostics_do_not_dismiss_native_error_screens(self):
         source=(ROOT/'common-1.16.5/src/main/java/com/nstut/simplyscreens/client/testing/NativeClientAcceptance.java').read_text()
         self.assertIn('if (!LiveJoinTestProtocol.isEnabled()) return;',source)

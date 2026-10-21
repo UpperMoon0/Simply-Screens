@@ -74,11 +74,9 @@ jobs:
           version=$(sed -n 's/^[[:space:]]*mod_version[[:space:]]*=[[:space:]]*//p' gradle.properties | tr -d '\r')
           test -n "$version"
           python3 tools/verify_requested_jar.py "$TARGET/build/libs/simply_screens-$TARGET-$version.jar" --target "$TARGET"
-          python3 -m unittest discover -s tools -p test_requested_generations.py -v
+          python3 -m unittest discover -s tools -p 'test_requested*.py' -v
           python3 -m unittest discover -s tools -p test_modern_screen_sources.py -v
           python3 -m unittest discover -s tools -p test_forge_1122_sources.py -v
-          python3 -m unittest discover -s tools -p test_requested_live_join.py -v
-          python3 -m unittest discover -s tools -p test_requested_visual.py -v
       - name: Prefetch official legacy assets with bounded transport retries
         if: matrix.target == 'forge-1.12.2'
         working-directory: Simply-Screens
@@ -99,7 +97,7 @@ jobs:
       - name: Install headless native graphics runtime
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb libgl1-mesa-dri mesa-vulkan-drivers libvulkan1
+          sudo apt-get install -y xvfb x11-xserver-utils libgl1-mesa-dri mesa-vulkan-drivers libvulkan1
       - name: Real dedicated-server join and OpenUI smoke test
         working-directory: Simply-Screens
         env:

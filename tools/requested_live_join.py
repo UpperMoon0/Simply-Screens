@@ -9,6 +9,25 @@ def command(module, task):
     return [str(module/('gradlew.bat' if os.name=='nt' else 'gradlew')),task,
             '--no-daemon','--console=plain','--max-workers=2','-Dorg.gradle.jvmargs=-Xmx1024m']
 
+def client_command(module):
+    cmd=command(module,'runLiveJoinTestClient')
+    if os.name=='nt':return cmd
+    legacy=module.name=='forge-1.12.2'
+    # LWJGL 2 invokes the real xrandr executable. Supply and observe that
+    # prerequisite instead of bypassing XRandR or fabricating display modes.
+    if legacy and not shutil.which('xrandr'):
+        raise RuntimeError('LWJGL 2 requires the xrandr executable (Ubuntu package x11-xserver-utils)')
+    prefix=[]
+    if not os.environ.get('DISPLAY'):
+        xvfb=shutil.which('xvfb-run')
+        if not xvfb:raise RuntimeError('A display or xvfb-run is required for an actual client test')
+        prefix=[xvfb,'-a']
+    if legacy:
+        # Same owned display session, fail closed, with literal argv preserved.
+        # Shared process-group cleanup supervises the query and native client.
+        cmd=['sh','-c','set -eu; xrandr --query; exec "$@"','simplyscreens-1122-display',*cmd]
+    return prefix+cmd
+
 def verify_loader_warning_visibility(module):
     # Reused isolated runs may still contain the old diagnostic-only setting.
     # Never silently reuse it or modify a user's existing configuration.
@@ -35,12 +54,7 @@ def run(root,target,timeout):
     try:
         if server_output.wait_for(SERVER_READY_MARKERS,timeout) is None:
             raise RuntimeError(target+': native dedicated server did not become ready')
-        cmd=command(module,'runLiveJoinTestClient')
-        if os.name!='nt' and not os.environ.get('DISPLAY'):
-            xvfb=shutil.which('xvfb-run')
-            if not xvfb:raise RuntimeError('A display or xvfb-run is required for an actual client test')
-            cmd=[xvfb,'-a',*cmd]
-        client=popen(cmd,module);client_output=OutputPump(client,target+'/client')
+        client=popen(client_command(module),module);client_output=OutputPump(client,target+'/client')
         if client_output.wait_for((PASS_MARKER,),timeout) is None:
             raise RuntimeError(target+': client did not complete a real join and UI smoke phase')
         try:code=client.wait(timeout=60)

@@ -52,7 +52,9 @@ class SharedProcessCleanupTest(unittest.TestCase):
             process = live.popen([sys.executable, str(root / 'parent.py')], root)
             output = live.OutputPump(process, 'cleanup-' + mode)
             try:
-                deadline = time.monotonic() + 3
+                # This measures fixture boot, not cleanup latency. Shared CI
+                # hosts can deschedule the fresh Python interpreter briefly.
+                deadline = time.monotonic() + 15
                 while not (root / 'child.pid').is_file() and time.monotonic() < deadline:
                     time.sleep(.01)
                 self.assertTrue((root / 'child.pid').is_file(), 'Child never started')

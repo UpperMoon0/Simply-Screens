@@ -33,6 +33,7 @@ minecraft {
             child minecraft.runs.client
             workingDirectory project.file('run/live-join/client')
             property 'simplyscreens.liveJoinTest','true'
+            property 'org.lwjgl.util.Debug','true'
             args '--server','127.0.0.1','--port','25575'
         }
         liveJoinTestServer {

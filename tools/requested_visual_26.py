@@ -54,7 +54,10 @@ def adapt_driver(source, name):
         '__CAPTURE__': 'Screenshot.takeScreenshot(mc.gameRenderer.mainRenderTarget(), pixels -> save(pixels, frame, stem));',
         'mc.options.hideGui = true;': 'if (!mc.gui.hud.isHidden()) mc.gui.hud.toggle();',
         'mc.gameRenderer.getMainCamera()': 'mc.gameRenderer.mainCamera()',
-        'mc.levelRenderer.allChanged()': 'mc.levelRenderer.invalidateCompiledGeometry(mc.level, mc.options, mc.gameRenderer.mainCamera(), mc.getBlockColors())',
+        # Native reload-chunks resets extraction dirty state before invalidating
+        # render meshes. Calling only the render-side half can strand a visible
+        # UNCOMPILED section behind an already-clean extraction tracker.
+        'mc.levelRenderer.allChanged()': 'mc.levelExtractor.allChanged()',
         'mc.getOverlay()': 'mc.gui.overlay()',
         'mc.screen': 'mc.gui.screen()',
         'org.lwjgl.opengl.GL11.glGetString(org.lwjgl.opengl.GL11.GL_VENDOR)': 'com.mojang.blaze3d.systems.RenderSystem.getDevice().getDeviceInfo().vendorName()',

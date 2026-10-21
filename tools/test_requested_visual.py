@@ -32,6 +32,8 @@ class RequestedVisualTest(unittest.TestCase):
             self.assertEqual(2,client.count('waitingFor = sectionReadiness(mc, pos)'))
             self.assertIn('CompiledSectionMesh.UNCOMPILED',client)
             self.assertIn('section.getVisibility(net.minecraft.util.Util.getMillis())',client)
+            self.assertIn('mc.levelExtractor.allChanged()',client)
+            self.assertNotIn('mc.levelRenderer.invalidateCompiledGeometry',client)
             self.assertNotIn('section.compile',client)
             self.assertNotIn('section.setFadeDuration',client)
             self.assertIn('if (!mc.levelRenderer.hasRenderedAllSections())',client)
