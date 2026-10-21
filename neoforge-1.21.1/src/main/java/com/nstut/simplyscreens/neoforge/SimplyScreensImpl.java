@@ -24,6 +24,8 @@ public class SimplyScreensImpl {
         ItemRegistries.ITEMS.register();
 
         modEventBus.addListener(this::onCommonSetup);
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.RegisterCommandsEvent event) ->
+                com.nstut.simplyscreens.api.ScreenCommands.register(event.getDispatcher()));
         NeoForge.EVENT_BUS.addListener((ServerStartedEvent event) ->
                 SimplyScreens.initializeScreens(event.getServer().getWorldPath(LevelResource.ROOT)));
         NeoForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
