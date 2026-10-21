@@ -66,8 +66,15 @@ public final class ScreenPlaylistRuntime {
         }
     }
     private static void apply(String key, PlaybackSnapshot snapshot) {
-        if (ScreenRegistry.networks().snapshot(key) != null)
+        if (service.managesContent(key) && ScreenRegistry.networks().snapshot(key) != null)
             ScreenRegistry.reconcileContent(key, snapshot.currentImage());
+    }
+    /** Keep failed paused/stopped content writes queued for the next tick. */
+    public static void reconcile(String key) {
+        if (service == null) return;
+        PENDING_CONTENT.add(key);
+        apply(key, service.snapshot(key));
+        PENDING_CONTENT.remove(key);
     }
     public static void stop(String key) {
         if (service == null) return;

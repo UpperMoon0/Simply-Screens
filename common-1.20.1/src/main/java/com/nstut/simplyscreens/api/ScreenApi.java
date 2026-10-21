@@ -102,8 +102,7 @@ public final class ScreenApi {
     }
 
     private static void reconcile(String key) {
-        PlaybackSnapshot playback = ScreenPlaylistRuntime.service().snapshot(key);
-        ScreenRegistry.reconcileContent(key, playback.currentImage());
+        ScreenPlaylistRuntime.reconcile(key);
     }
 
     /** Only owned and legacy public images are returned, with bounded immutable metadata. */

@@ -1,0 +1,51 @@
+package com.nstut.simplyscreens;
+
+import com.nstut.simplyscreens.ScreenNetworkService.*;
+import com.nstut.simplyscreens.api.*;
+import com.nstut.simplyscreens.playlist.*;
+import org.junit.jupiter.api.Test;
+import java.util.*;
+import static org.junit.jupiter.api.Assertions.*;
+
+class ScreenControlAccessTest {
+    @Test void linkedOverrideFollowsTransferredNetworkAclForEveryApiOperation() {
+        var networks = new ScreenNetworkService();
+        var playlists = new ScreenPlaylistService();
+        var api = new ScreenControlService(networks, playlists);
+        UUID former = UUID.randomUUID(), owner = UUID.randomUUID(), friend = UUID.randomUUID();
+        UUID display = UUID.randomUUID(), image = UUID.randomUUID();
+        Actor oldActor = new Actor(former, false), current = new Actor(owner, false), trusted = new Actor(friend, false);
+        String key = ScreenNetworkService.network("linked"), physical = ScreenNetworkService.display(display);
+        assertTrue(networks.createOwned(key, former, null));
+        assertTrue(networks.createOwned(physical, former, image));
+        networks.updateDisplay(display, "linked", true, true);
+        assertTrue(networks.access(key, oldActor, 0, "VIEW", "OWNER_ONLY"));
+        assertTrue(networks.access(key, oldActor, 1, "TRANSFER", owner.toString()));
+        UUID list = playlists.create(owner, "Private", 0);
+        assertTrue(playlists.replaceSlides(owner, list, List.of(new PlaylistSlide(image, 1000)), 1));
+        assertNull(api.status(physical, oldActor));
+        assertTrue(api.list(oldActor).isEmpty());
+        assertFalse(api.select(oldActor, physical, null, id -> true));
+        assertFalse(api.play(oldActor, physical, former, list, id -> true));
+        assertFalse(api.transport(oldActor, physical, "STOP"));
+        assertEquals(PlaybackSnapshot.EMPTY, api.playback(physical, oldActor));
+        assertEquals(owner, api.status(physical, current).owner());
+        assertTrue(api.select(current, physical, image, id -> true));
+        assertTrue(api.play(current, physical, owner, list, id -> true));
+        assertTrue(api.transport(current, physical, "PAUSE"));
+        assertEquals(PlaybackSnapshot.Status.PAUSED, api.playback(physical, current).status());
+        assertTrue(networks.access(key, current, 2, "TRUST", friend.toString()));
+        assertTrue(networks.access(key, current, 3, "VIEW", "TRUSTED"));
+        assertTrue(networks.access(key, current, 4, "CONTROL", "TRUSTED"));
+        assertTrue(api.status(physical, trusted).canControl());
+        assertEquals(image, api.status(physical, trusted).image());
+        assertTrue(api.transport(trusted, physical, "RESUME"));
+        assertTrue(api.select(trusted, physical, image, id -> true));
+        assertTrue(networks.access(key, current, 5, "VIEW", "OWNER_ONLY"));
+        assertTrue(networks.access(key, current, 6, "CONTROL", "PUBLIC"));
+        assertNull(api.status(physical, null).image());
+        assertTrue(api.select(null, physical, null, id -> true));
+        assertNull(networks.snapshot(physical).image());
+        assertNull(networks.snapshot(key).image());
+    }
+}

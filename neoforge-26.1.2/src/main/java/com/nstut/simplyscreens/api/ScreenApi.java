@@ -102,8 +102,7 @@ public final class ScreenApi {
     }
 
     private static void reconcile(String key) {
-        PlaybackSnapshot playback = ScreenPlaylistRuntime.service().snapshot(key);
-        ScreenRegistry.reconcileContent(key, playback.currentImage());
+        ScreenPlaylistRuntime.reconcile(key);
     }
 
     /** Only owned and legacy public images are returned, with bounded immutable metadata. */
@@ -126,7 +125,7 @@ public final class ScreenApi {
                                       String dimension, BlockPos pos) {
         if (!ready(server) || !validCaller(server, player) || dimension == null || pos == null) return null;
         for (ServerLevel level : server.getAllLevels()) {
-            if (!level.dimension().location().toString().equals(dimension)) continue;
+            if (!level.dimension().identifier().toString().equals(dimension)) continue;
             var chunk = level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4);
             if (chunk == null || !(chunk.getBlockEntity(pos) instanceof ScreenBlockEntity display)) return null;
             String key = display.contentKey();

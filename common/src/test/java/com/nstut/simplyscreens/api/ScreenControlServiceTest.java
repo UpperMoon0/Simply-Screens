@@ -12,6 +12,40 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ScreenControlServiceTest {
+    @Test void staticSelectionDoesNotCommitWhenCancellationCannotPersist(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path root) throws Exception {
+        networks.init(root, java.util.Map.of(), java.util.Map.of());
+        assertTrue(networks.createOwned(key, owner, image));
+        playlists.init(root);
+        UUID saved = playlist();
+        assertTrue(api.play(owningPlayer, key, owner, saved, id -> true));
+        var before = playlists.snapshot(key);
+        java.nio.file.Files.createDirectory(root.resolve(ScreenPlaylistService.FILE_NAME + ".bak.tmp"));
+        assertThrows(IllegalStateException.class, () -> api.select(owningPlayer, key, nextImage, id -> true));
+        assertEquals(image, networks.snapshot(key).image());
+        assertEquals(before, playlists.snapshot(key));
+        var reloaded = new ScreenNetworkService(); reloaded.init(root, java.util.Map.of(), java.util.Map.of());
+        assertEquals(image, reloaded.snapshot(key).image());
+    }
+
+    @Test void failedStaticWriteRestoresPersistedPlayback(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path root) throws Exception {
+        networks.init(root, java.util.Map.of(), java.util.Map.of());
+        assertTrue(networks.createOwned(key, owner, image));
+        playlists.init(root);
+        assertTrue(api.play(owningPlayer, key, owner, playlist(), id -> true));
+        var before = playlists.snapshot(key);
+        java.nio.file.Files.createDirectory(root.resolve("screen_networks.json.tmp"));
+        ScreenEvents.resetPending();
+        assertThrows(IllegalStateException.class, () -> api.select(owningPlayer, key, nextImage, id -> true));
+        assertEquals(image, networks.snapshot(key).image());
+        assertEquals(before, playlists.snapshot(key));
+        var reloaded = new ScreenPlaylistService(); reloaded.init(root);
+        assertEquals(before, reloaded.snapshot(key));
+        List<ScreenEvents.Change> events = new ArrayList<>();
+        try (var listener = ScreenEvents.listen(events::add)) { ScreenEvents.flush(error -> fail(error)); }
+        assertTrue(events.isEmpty());
+    }
     private final UUID owner = UUID.randomUUID(), stranger = UUID.randomUUID();
     private final UUID image = UUID.randomUUID(), nextImage = UUID.randomUUID();
     private final String key = ScreenNetworkService.network("billboard");

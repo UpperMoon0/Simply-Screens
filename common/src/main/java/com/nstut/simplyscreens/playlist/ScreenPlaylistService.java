@@ -410,12 +410,28 @@ public final class ScreenPlaylistService {
 
     /** Deleting a saved playlist intentionally does not alter any running playback snapshot. */
     public synchronized void removeNetwork(String key) {
+        removeNetworkIf(key, () -> true);
+    }
+
+    /** Persist cancellation before static selection; restore the session if selection fails. */
+    public synchronized boolean removeNetworkIf(String key, java.util.function.BooleanSupplier selection) {
         if (!healthy) throw new IllegalStateException("Screen playlist store is unavailable");
         Session old = sessions.remove(key);
-        if (old == null) return;
+        if (old == null) return selection.getAsBoolean();
         boolean wasDirty = dirty; dirty = true;
         try { save(); } catch (RuntimeException failure) { sessions.put(key, old); dirty = wasDirty; throw failure; }
+        boolean selected;
+        try { selected = selection.getAsBoolean(); }
+        catch (RuntimeException failure) {
+            sessions.put(key, old); dirty = true;
+            try { save(); } catch (RuntimeException rollback) { failure.addSuppressed(rollback); healthy = false; }
+            throw failure;
+        }
+        if (!selected) {
+            sessions.put(key, old); dirty = true; save(); return false;
+        }
         ScreenEvents.playbackChanged(key, capture(old), PlaybackSnapshot.EMPTY, false);
+        return true;
     }
 
     /** Removes a deleted image from all libraries, queues, suspended announcements and active snapshots. */

@@ -55,10 +55,10 @@ public final class ScreenCommands {
                 .then(Commands.argument("page", IntegerArgumentType.integer(1, 10000))
                     .executes(ctx -> media(ctx, IntegerArgumentType.getInteger(ctx, "page")))))
             .then(Commands.literal("display")
-                .then(Commands.argument("dimension", StringArgumentType.string())
+                .then(Commands.argument("dimension", StringArgumentType.word())
                     .suggests((ctx, builder) -> {
                         for (var level : ctx.getSource().getServer().getAllLevels())
-                            builder.suggest(level.dimension().location().toString());
+                            builder.suggest(level.dimension().identifier().toString());
                         return builder.buildFuture();
                     })
                     .then(Commands.argument("x", IntegerArgumentType.integer(-30000000, 30000000))
@@ -83,7 +83,7 @@ public final class ScreenCommands {
     private static RequiredArgumentBuilder<CommandSourceStack, String> networkArg() {
         return Commands.argument("network", StringArgumentType.string()).suggests((ctx, builder) -> {
             for (String key : ScreenRegistry.networks().keys())
-                builder.suggest(key.startsWith("network/") ? key.substring("network/".length()) : key);
+                builder.suggest(StringArgumentType.escapeIfRequired(key.startsWith("network/") ? key.substring("network/".length()) : key));
             return builder.buildFuture();
         });
     }
@@ -188,7 +188,7 @@ public final class ScreenCommands {
 
     private static void refreshPlayback(String key) {
         var service = ScreenPlaylistRuntime.service();
-        if (service != null) ScreenRegistry.reconcileContent(key, service.snapshot(key).currentImage());
+        if (service != null) ScreenPlaylistRuntime.reconcile(key);
     }
 
     private static int reconcile(CommandContext<CommandSourceStack> ctx) {
@@ -221,7 +221,7 @@ public final class ScreenCommands {
         BlockPos pos = new BlockPos(IntegerArgumentType.getInteger(ctx, "x"),
                 IntegerArgumentType.getInteger(ctx, "y"), IntegerArgumentType.getInteger(ctx, "z"));
         for (var level : ctx.getSource().getServer().getAllLevels()) {
-            if (!level.dimension().location().toString().equals(dimension)) continue;
+            if (!level.dimension().identifier().toString().equals(dimension)) continue;
             var chunk = level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4);
             if (chunk == null) break;
             if (chunk.getBlockEntity(pos) instanceof ScreenBlockEntity screen) {

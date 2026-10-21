@@ -38,13 +38,14 @@ public final class ScreenControlService {
         Actor effective = actor == null ? Actor.automation() : actor;
         var state = networks.snapshot(key);
         if (state == null) return null;
-        boolean view = networks.allowed(key, effective, Permission.VIEW);
-        boolean control = networks.allowed(key, effective, Permission.CONTROL);
-        boolean manage = networks.allowed(key, effective, Permission.MANAGE);
+        boolean view = networks.allowed(networks.accessKey(key), effective, Permission.VIEW);
+        boolean control = networks.allowed(networks.accessKey(key), effective, Permission.CONTROL);
+        boolean manage = networks.allowed(networks.accessKey(key), effective, Permission.MANAGE);
         if (!view && !control && !manage) return null;
         var playback = playlists == null ? PlaybackSnapshot.EMPTY : playlists.snapshot(key);
-        return new Status(key, manage ? state.owner() : null, view ? state.image() : null,
-                state.view(), state.control(), state.revision(),
+        var access = networks.snapshot(networks.accessKey(key));
+        return new Status(key, manage ? access.owner() : null, view ? state.image() : null,
+                access.view(), access.control(), state.revision(),
                 view ? playback.status() : PlaybackSnapshot.Status.STOPPED,
                 view ? playback.slideIndex() : -1, view ? playback.offsetMillis() : 0,
                 playback.revision(), control);
@@ -64,19 +65,19 @@ public final class ScreenControlService {
     public boolean select(Actor actor, String key, UUID image, Predicate<UUID> mayReadImage) {
         Actor effective = actor == null ? Actor.automation() : actor;
         var state = key == null ? null : networks.snapshot(key);
-        if (state == null || !networks.allowed(key, effective, Permission.CONTROL)
+        if (state == null || !networks.allowed(networks.accessKey(key), effective, Permission.CONTROL)
                 || image != null && (mayReadImage == null || !mayReadImage.test(image))) return false;
-        if (!networks.select(key, effective, image, state.revision())) return false;
-        if (playlists != null) playlists.removeNetwork(key);
-        return true;
+        java.util.function.BooleanSupplier select = () -> networks.selectContent(
+                key, networks.accessKey(key), effective, image, state.revision());
+        return playlists == null ? select.getAsBoolean() : playlists.removeNetworkIf(key, select);
     }
 
     /** The caller must own the saved playlist, unless it is a real server operator. */
     public boolean play(Actor actor, String key, UUID owner, UUID playlistId,
                         Predicate<UUID> mayReadImage) {
         Actor effective = actor == null ? Actor.automation() : actor;
-        if (playlists == null || key == null || owner == null || playlistId == null
-                || !networks.allowed(key, effective, Permission.CONTROL)
+        if (playlists == null || key == null || networks.snapshot(key) == null || owner == null || playlistId == null
+                || !networks.allowed(networks.accessKey(key), effective, Permission.CONTROL)
                 || (!effective.operator() && !owner.equals(effective.id()))) return false;
         NamedPlaylist saved = playlists.library(owner).find(playlistId);
         if (saved == null || saved.slides().isEmpty() || mayReadImage == null
@@ -87,14 +88,14 @@ public final class ScreenControlService {
     /** Operates on the persisted network session, including unloaded and cross-dimensional displays. */
     public boolean transport(Actor actor, String key, String action) {
         Actor effective = actor == null ? Actor.automation() : actor;
-        if (playlists == null || key == null || action == null
+        if (playlists == null || key == null || networks.snapshot(key) == null || action == null
                 || !List.of("PAUSE", "RESUME", "STOP", "NEXT", "PREVIOUS", "RESTART").contains(action)
-                || !networks.allowed(key, effective, Permission.CONTROL)) return false;
+                || !networks.allowed(networks.accessKey(key), effective, Permission.CONTROL)) return false;
         return playlists.command(key, action, playlists.snapshot(key).revision());
     }
 
     public PlaybackSnapshot playback(String key, Actor actor) {
-        return key != null && playlists != null && networks.allowed(key,
+        return key != null && playlists != null && networks.allowed(networks.accessKey(key),
                 actor == null ? Actor.automation() : actor, Permission.MANAGE)
                 ? playlists.snapshot(key) : PlaybackSnapshot.EMPTY;
     }
