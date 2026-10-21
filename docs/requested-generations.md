@@ -159,14 +159,13 @@ transformer supplies a build-local cache identity; it changes no game access
 flags, ships no game classes, and does not delete global caches. The helper has
 passed offline Gradle 5.6.4 / Java 8 configuration and fail-closed negative
 fixtures. A missing or failed pin never selects the known-bad legacy fallback;
-corrected native
-packaging and launch still require CI validation.
+corrected native packaging and launch subsequently passed on Forge 1.12.2 at
+`bb44c3726adaea17b729b5baa635057f923dad11`.
 
-The isolated native probe configuration disables only optional loader warning
-screens on Forge 1.16 and NeoForge 26.2. Warnings remain in logs and real loader
-errors still fail acceptance. This is not a clean-no-warning claim. Native
-Fabric 26.2 development join and OpenUI smoke passed at 50b7d54; no calibrated
-framebuffer, media-reload or production-jar launch result is implied.
+The native probes do not suppress loader warnings or dismiss native error screens.
+Reused isolated directories with an old `showLoadWarnings=false` configuration
+fail before launch. Actual logs remain part of each acceptance record; a joined
+client is not a warning-free-loading claim.
 
 For a calibrated 26.2 visual run, build the pinned native dependency artifacts,
 then use `python3 tools/requested_visual.py --target fabric-26.2` (or
@@ -176,8 +175,11 @@ instrumentation is generated only into a disposable source snapshot. `--probe`
 and `--compile-only` are diagnostic modes and cannot produce a verifiable passing
 full-gate receipt. Use `--verify-receipt <result.json> --head <commit>` to reject
 stale, dirty, incomplete or diagnostic-only evidence. The adapted drivers have
-compiled against native Java 25 APIs; actual new-target framebuffer execution
-remains pending. The 1.12 native UI/screenshot adapter is separate and does not
+compiled against native Java 25 APIs. Actual Fabric 26.2 fixed-renderer
+samples passed on Mesa OpenGL, but the initial plain control did not reproduce
+z-fighting, so the full gate correctly failed as inconclusive. The native plain
+control has been restored from the hash-locked historical per-tile renderer; its
+new full-gate run remains pending. The 1.12 native UI/screenshot adapter is separate and does not
 yet establish the calibrated media-rendering gate.
 
 The requested-generations CI additionally runs the full calibrated framebuffer
@@ -188,3 +190,34 @@ A configured CI step is not a completed result: until that run succeeds, the
 new-target framebuffer, reload, transparency and occlusion acceptance remain
 unproven. This representative lane does not establish another backend, shaders
 or a production-jar launch.
+
+## Native acceptance checkpoint and separate legacy media probe
+
+At `bb44c3726adaea17b729b5baa635057f923dad11`, Forge 1.12.2 completed native
+packaging/resource checks, dedicated-server startup, actual client join and
+OpenUI tab/resize smoke with wrapper exit zero. The evidence is in
+[run 39622599645](https://github.com/UpperMoon0/Simply-Screens/actions/runs/39622599645).
+This run did not yet enable the newer legacy media probe. Ignored ASM module-info
+scan errors, the existing FML test-exit rerouting warning, and unavailable headless
+OpenAL/narrator libraries remain visible in logs; this is not warning-free loading.
+
+The shared opt-in legacy media probe is authoritative under `common-legacy-game`.
+Both legacy generators adapt it rather than maintaining separate tests. It uses
+existing production image-upload/download packets, verifies stored ownership and
+PNG identity, checks decoded native pixels and registered texture, observes
+submission by the actual screen renderer, and requires identity-scoped cleanup.
+It does not claim framebuffer pixel correctness, reload, alpha/occlusion, shader
+compatibility, or production-jar runtime qualification. The additional source
+has compiled on all three legacy loaders, with 11 Java 8 neutral tests passing;
+its actual media runtime receipt is still required.
+
+The real 1.16 clients reported native multiplayer eligibility false. The dedicated
+lane fails closed, records the observed refusal only after clean teardown, and
+never changes account/service state or forces a connection. A separately
+permitted `requested_integrated_acceptance.py` lane requires that exact target/head
+refusal receipt. It clicks only enabled, visible ordinary vanilla Singleplayer
+and Create World controls, then exercises OpenUI and the shared native media
+probe in the actual integrated server. It requires wrapper exit zero and complete
+matching server/client media evidence. Its receipt explicitly remains neither a
+dedicated-server join nor a multi-client test; the original dedicated CI step
+remains failed. A configured integrated lane is not a completed gameplay result.

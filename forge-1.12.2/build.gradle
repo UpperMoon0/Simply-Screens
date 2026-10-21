@@ -35,10 +35,12 @@ minecraft {
             child minecraft.runs.client
             workingDirectory project.file('run/live-join/client')
             property 'simplyscreens.liveJoinTest','true'
+            property 'simplyscreens.mediaSmokeTest','true'
             property 'org.lwjgl.util.Debug','true'
             args '--server','127.0.0.1','--port','25575'
         }
         liveJoinTestServer {
+            property 'simplyscreens.mediaSmokeTest','true'
             // Let the real JavaExec child exit without FG3 killing its Gradle daemon.
             forceExit false
             child minecraft.runs.server
@@ -62,7 +64,7 @@ sourceSets.each {
     it.output.resourcesDir=directory;it.java.outputDir=directory
 }
 task generateLegacySources(type:Exec) {
-    inputs.dir '../common/src/main/java';inputs.dir '../common-1.20.1/src/main/java';inputs.dir '../common-legacy/src/main/java'
+    inputs.dir '../common/src/main/java';inputs.dir '../common-1.20.1/src/main/java';inputs.dir '../common-legacy/src/main/java';inputs.dir '../common-legacy-game/src/main/java'
     inputs.files '../tools/legacy_screen_sources.py','../tools/java8_records.py','../tools/forge_1122_sources.py'
     outputs.dir "$buildDir/generated/screens"
     commandLine 'python3','../tools/forge_1122_sources.py','--output',"$buildDir/generated/screens"
@@ -148,4 +150,10 @@ task prepareLiveJoinTestDirectories {
 }
 afterEvaluate {
     ['runLiveJoinTestClient','runLiveJoinTestServer'].each { name -> tasks.findByName(name)?.dependsOn prepareLiveJoinTestDirectories }
+}
+
+// Only the isolated probe server consumes the harness's literal stop command.
+// JavaExec otherwise supplies an empty stream, forcing teardown by signal.
+tasks.withType(JavaExec).configureEach {
+    if(name == 'runLiveJoinTestServer') standardInput=System.in
 }

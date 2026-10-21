@@ -53,7 +53,33 @@ def image_texture_lifecycle(text):
         }""" + text[end:]
     return text
 
+def legacy_media_hooks(text, name):
+    """Opt-in observation/fixture wiring shared by both native source generators."""
+    test = 'com.nstut.simplyscreens.testing.'
+    client = 'com.nstut.simplyscreens.client.testing.LegacyMediaClientProbe'
+    def once(old, new):
+        nonlocal text
+        if text.count(old) != 1: raise ValueError('Legacy media hook drift: ' + name + ': ' + old)
+        text = text.replace(old, new)
+    if name == 'SimplyScreens.java':
+        once('        ServerTickScheduler.init();', '        ServerTickScheduler.init();\n        ' + test + 'LegacyMediaServerProbe.initialize();')
+    if name == 'PacketRegistries.java':
+        once('    public static void registerS2CPackets() {', '    public static void registerS2CPackets() {\n        ' + client + '.initialize();')
+        once('    private static ResourceLocation packetId(Object packet) {', '    private static ResourceLocation packetId(Object packet) {\n        if (packet instanceof ' + test + 'LegacyMediaProbePacket) return ((' + test + 'LegacyMediaProbePacket) packet).channel();')
+        once('    private static void write(Object packet, FriendlyByteBuf buf) {', '    private static void write(Object packet, FriendlyByteBuf buf) {\n        if (packet instanceof ' + test + 'LegacyMediaProbePacket) { ((' + test + 'LegacyMediaProbePacket) packet).write(buf); return; }')
+    if name == 'ServerImageManager.java':
+        once('                    PacketRegistries.sendToPlayer(player, new UpdateImageListS2CPacket(images));',
+             '                    if (' + test + 'LegacyMediaProbeProtocol.ENABLED) ' + test + 'LegacyMediaServerProbe.uploadStored(player, state.level, blockPos, imageId, state.originalName);\n                    PacketRegistries.sendToPlayer(player, new UpdateImageListS2CPacket(images));')
+    if name == 'ClientImageManager.java':
+        once('        if (download != null) saveImageToCache(imageId, download.extension(), download.bytes());',
+             '        if (download != null) {\n            if (' + test + 'LegacyMediaProbeProtocol.ENABLED) ' + client + '.downloaded(imageId, download.extension(), download.bytes());\n            saveImageToCache(imageId, download.extension(), download.bytes());\n        }')
+    if name == 'ScreenBlockEntityRenderer.java':
+        once('        renderTextureQuad(texture, tile, poseStack, bufferSource, packedOverlay);',
+             '        renderTextureQuad(texture, tile, poseStack, bufferSource, packedOverlay);\n        if (' + test + 'LegacyMediaProbeProtocol.ENABLED) ' + client + '.geometrySubmitted(blockEntity, imageId, texture, tile);')
+    return text
+
 def convert(text,name):
+    text = legacy_media_hooks(text, name)
     if name == 'ClientImageManager.java': text = image_texture_lifecycle(text)
     text=java8(text).replace('dev.architectury.', 'me.shedaniel.architectury.')
     text=text.replace('org.slf4j.LoggerFactory', 'org.apache.logging.log4j.LogManager').replace('org.slf4j.Logger', 'org.apache.logging.log4j.Logger').replace('LoggerFactory.getLogger(', 'LogManager.getLogger(')
@@ -76,15 +102,19 @@ def convert(text,name):
     if 'import com.mojang.math.Vector3f;' in text: text=re.sub(r'(?<![\w.])Axis\.', 'Vector3f.', text)
     if name=='BlockRegistries.java':
         text=text.replace('import net.fabricmc.api.EnvType;', 'import me.shedaniel.architectury.utils.Env;').replace('Platform.getEnv()', 'Platform.getEnvironment()').replace('EnvType.CLIENT', 'Env.CLIENT')
-    if name=='PacketRegistries.java':
+    if name in ('PacketRegistries.java', 'LegacyMediaServerProbe.java', 'LegacyMediaClientProbe.java'):
         text=text.replace('NetworkManager.registerReceiver(', 'com.nstut.simplyscreens.compat.DirectionalReceivers.register(')
-    if name=='ScreenPacketSecurity.java':
+    if name in ('ScreenPacketSecurity.java', 'LegacyMediaServerProbe.java'):
         text=text.replace('player.mayInteract(level, pos)', '(player.mayBuild() && !player.isSpectator() && level.mayInteract(player, pos))')
     if name=='ScreenCommands.java':
         text=text.replace('ServerPlayer player = source.getPlayer();', 'ServerPlayer player = source.getEntity() instanceof ServerPlayer ? (ServerPlayer)source.getEntity() : null;')
     if name=='ClientImageManager.java':
         text=text.replace('graphics.blit(location, 0, 0, 0, 0, imageWidth, imageHeight, imageWidth, imageHeight)', 'graphics.blit(location, 0, 0, imageWidth, imageHeight, 0, 0, imageWidth, imageHeight, imageWidth, imageHeight)')
         text=text.replace('inputStream.readAllBytes()', COMPAT+'.readAllBounded(inputStream, com.nstut.simplyscreens.Config.MAX_UPLOAD_SIZE_LIMIT)')
+    if name=='LegacyMediaClientProbe.java':
+        text=text.replace('client.player.getYRot()', 'client.player.yRot').replace('client.player.getXRot()', 'client.player.xRot')
+        text=re.sub(r'client.player.setYRot\((.*)\);', r'client.player.yRot = \1;', text)
+        text=re.sub(r'client.player.setXRot\((.*)\);', r'client.player.xRot = \1;', text)
     if name=='PersonalSettingsProbe.java':
         text=text.replace('client.options.guiScale().set(size==2?1:2);', 'client.options.guiScale = size==2?1:2;')
     if name=='DownloadImageFromUrlC2SPacket.java':
@@ -125,7 +155,7 @@ def convert(text,name):
 
 def generate(output):
     generated=set()
-    for folder in ['common/src/main/java','common-1.20.1/src/main/java','common-legacy/src/main/java','common-1.16.5/src/main/java']:
+    for folder in ['common/src/main/java','common-1.20.1/src/main/java','common-legacy-game/src/main/java','common-legacy/src/main/java','common-1.16.5/src/main/java']:
         root=ROOT/folder
         for path in root.rglob('*.java'):
             rel=path.relative_to(root);target=output/rel

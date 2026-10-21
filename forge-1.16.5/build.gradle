@@ -31,13 +31,33 @@ minecraft.runs {
     liveJoinTestClient {
         child minecraft.runs.client; workingDirectory project.file('run/live-join/client')
         property 'simplyscreens.liveJoinTest','true'
+            property 'simplyscreens.mediaSmokeTest','true'
         jvmArgs '-Xmx1G'
         args '--username','ScreensProbe','--server','127.0.0.1','--port','25575'
         mods { simply_screens { source sourceSets.main } }
     }
     liveJoinTestServer {
+        property 'simplyscreens.mediaSmokeTest','true'
         child minecraft.runs.server; workingDirectory project.file('run/live-join/server'); jvmArgs '-Xmx1G'
         mods { simply_screens { source sourceSets.main } }
     }
 }
 tasks.withType(JavaExec).configureEach { javaLauncher=javaToolchains.launcherFor { languageVersion=JavaLanguageVersion.of(8) } }
+
+minecraft.runs {
+    integratedAcceptance {
+        child minecraft.runs.client
+        workingDirectory project.file(providers.gradleProperty('integratedRunDir').getOrElse('run/integrated-acceptance/manual'))
+        property 'simplyscreens.integratedAcceptance','true'
+        property 'simplyscreens.mediaSmokeTest','true'
+        jvmArgs '-Xmx1G'
+        args '--username','ScreensProbe'
+        mods { simply_screens { source sourceSets.main } }
+    }
+}
+
+// Only the isolated probe server consumes the harness's literal stop command.
+// JavaExec otherwise supplies an empty stream, forcing teardown by signal.
+tasks.withType(JavaExec).configureEach {
+    if(name == 'runLiveJoinTestServer') standardInput=System.in
+}

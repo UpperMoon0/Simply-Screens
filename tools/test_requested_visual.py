@@ -54,6 +54,8 @@ class RequestedVisualTest(unittest.TestCase):
             # hook may differ from the immutable historical control.
             without_hook=renderer.read_text().splitlines(keepends=True)
             without_hook=''.join(line for line in without_hook if 'VisualClient.submittedTile(' not in line)
+            self.assertEqual(1,without_hook.count(adapter.PLAIN_LIFECYCLE_ADAPTER+'\n'))
+            without_hook=without_hook.replace(adapter.PLAIN_LIFECYCLE_ADAPTER+'\n','',1)
             self.assertEqual(adapter.modern_screen_sources.convert(baseline),without_hook)
             self.assertEqual((stage/visual_test.NF26_CONTROL/state.name).read_text(),state.read_text())
             self.assertIn('RenderTypes.text(state.texture)',renderer.read_text())

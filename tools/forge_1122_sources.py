@@ -49,6 +49,7 @@ TYPES={
 }
 SKIP={'ScreenBlock.java','ClientScreenBlock.java','BlockRegistries.java','BlockEntityRegistries.java','CreativeTabRegistries.java','ItemRegistries.java','ScreenBlockEntityRenderer.java','ScreenColorRenderTypes.java','ScreenColorRestore.java','GameRendererMixin.java','ScreenCommands.java','ScreenLoadReconciler.java'}
 def convert(text,name):
+ text=legacy.legacy_media_hooks(text,name)
  if name=='ClientImageManager.java':text=legacy.image_texture_lifecycle(text)
  text=legacy.java8(text)
  text=text.replace('org.slf4j.LoggerFactory','org.apache.logging.log4j.LogManager').replace('org.slf4j.Logger','org.apache.logging.log4j.Logger').replace('LoggerFactory.getLogger(', 'LogManager.getLogger(')
@@ -157,6 +158,17 @@ def convert(text,name):
    text=text[:start]+'''        {
             String filePath = com.nstut.simplyscreens.compat.NativeFileDialog.chooseImage();
 '''+text[b:]
+ if name in ('LegacyMediaServerProbe.java', 'LegacyMediaClientProbe.java'):
+  text=text.replace('player.blockPosition()', 'player.getPosition()').replace('client.player.blockPosition()', 'client.player.getPosition()')
+  text=text.replace('.isEmptyBlock(', '.isAirBlock(').replace('.defaultBlockState()', '.getDefaultState()').replace('.setValue(', '.withProperty(')
+  text=text.replace('active.level.removeBlock(active.pos, false)', 'active.level.setBlockToAir(active.pos)').replace('level.removeBlock(pos, false)', 'level.setBlockToAir(pos)')
+  text=text.replace('client.player.getYRot()', 'client.player.rotationYaw').replace('client.player.getXRot()', 'client.player.rotationPitch')
+  text=text.replace('client.player.getX()', 'client.player.posX').replace('client.player.getZ()', 'client.player.posZ').replace('client.player.getEyeY()', '(client.player.posY + client.player.getEyeHeight())')
+  text=re.sub(r'client.player.setYRot\((.*)\);', r'client.player.rotationYaw = \1;', text)
+  text=re.sub(r'client.player.setXRot\((.*)\);', r'client.player.rotationPitch = \1;', text)
+  text=text.replace('pixels.getPixelRGBA(x, y)', 'LegacyMediaProbeProtocol.argbToAbgr(pixels.buffered().getRGB(x, y))').replace('texture.getId()', 'texture.getGlTextureId()')
+  if name=='LegacyMediaClientProbe.java':
+   text=text.replace('if (evidence.passed()) {', 'if (evidence.passed()) {\n            NativePlacedModelProbe.verifyAndCapture(client, screen, session);')
  if name=='UiSmokeTest.java':
   text=text.replace('client.player.blockPosition()', 'client.player.getPosition()')
   text=text.replace('client.currentScreen.resize(client, client.getWindow().getGuiScaledWidth(),', 'client.currentScreen.onResize(client, new net.minecraft.client.gui.ScaledResolution(client).getScaledWidth(),')
@@ -191,7 +203,7 @@ def convert(text,name):
 
 def generate(output):
  generated=set()
- for folder in ['common/src/main/java','common-1.20.1/src/main/java','common-legacy/src/main/java']:
+ for folder in ['common/src/main/java','common-1.20.1/src/main/java','common-legacy-game/src/main/java','common-legacy/src/main/java']:
   root=ROOT/folder
   for source in root.rglob('*.java'):
    if source.name in SKIP:continue

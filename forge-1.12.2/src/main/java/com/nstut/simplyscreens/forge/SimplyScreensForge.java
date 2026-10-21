@@ -32,6 +32,7 @@ public final class SimplyScreensForge {
  @SubscribeEvent public void items(RegistryEvent.Register<Item> event) { event.getRegistry().register(com.nstut.simplyscreens.items.ItemRegistries.SCREEN); }
  @Mod.EventHandler public void starting(FMLServerAboutToStartEvent event) { server=event.getServer();com.nstut.simplyscreens.compat.LifecycleEvent.SERVER_BEFORE_START.fire(server); }
  @Mod.EventHandler public void started(FMLServerStartingEvent event) { SimplyScreens.initializeScreens(com.nstut.simplyscreens.compat.NativeWorld.root(event.getServer()));event.registerServerCommand(new com.nstut.simplyscreens.api.ScreenCommands()); }
+ @Mod.EventHandler public void stopping(FMLServerStoppingEvent event) { if(server!=null)com.nstut.simplyscreens.compat.LifecycleEvent.SERVER_STOPPING.fire(server); }
  @Mod.EventHandler public void stopped(FMLServerStoppedEvent event) { if(server!=null)com.nstut.simplyscreens.compat.LifecycleEvent.SERVER_STOPPED.fire(server);server=null; }
  @SubscribeEvent public void tick(TickEvent.ServerTickEvent event) { if(event.phase==TickEvent.Phase.END && server!=null)com.nstut.simplyscreens.compat.TickEvent.SERVER_POST.fire(server); }
  @SubscribeEvent public void logout(PlayerEvent.PlayerLoggedOutEvent event) { com.nstut.simplyscreens.helpers.ServerImageManager.cancelUploads(event.player.getUniqueID()); }

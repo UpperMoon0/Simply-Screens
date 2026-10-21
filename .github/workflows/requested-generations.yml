@@ -77,6 +77,7 @@ jobs:
           python3 -m unittest discover -s tools -p 'test_requested*.py' -v
           python3 -m unittest discover -s tools -p test_modern_screen_sources.py -v
           python3 -m unittest discover -s tools -p test_forge_1122_sources.py -v
+          python3 -m unittest discover -s tools -p test_legacy_media_probe.py -v
       - name: Prefetch official legacy assets with bounded transport retries
         if: matrix.target == 'forge-1.12.2'
         working-directory: Simply-Screens
@@ -99,11 +100,26 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb x11-xserver-utils libgl1-mesa-dri mesa-vulkan-drivers libvulkan1
       - name: Real dedicated-server join and OpenUI smoke test
+        id: native_join
         working-directory: Simply-Screens
         env:
           TARGET: ${{ matrix.target }}
           LIBGL_ALWAYS_SOFTWARE: 'true'
         run: python3 tools/requested_live_join.py --target "$TARGET" --timeout 420
+      - name: Check the separately permitted native Singleplayer boundary
+        id: integrated_boundary
+        if: always() && steps.native_join.outcome == 'failure' && (matrix.target == 'fabric-1.16.5' || matrix.target == 'forge-1.16.5')
+        working-directory: Simply-Screens
+        env:
+          TARGET: ${{ matrix.target }}
+        run: python3 tools/requested_integrated_acceptance.py --target "$TARGET" --check-boundary --github-output "$GITHUB_OUTPUT"
+      - name: Separate ordinary Singleplayer UI and native media acceptance
+        if: always() && steps.integrated_boundary.outputs.accepted == 'true'
+        working-directory: Simply-Screens
+        env:
+          TARGET: ${{ matrix.target }}
+          LIBGL_ALWAYS_SOFTWARE: 'true'
+        run: python3 tools/requested_integrated_acceptance.py --target "$TARGET" --timeout 900
       - name: Calibrated native framebuffer acceptance and negative controls
         if: matrix.target == 'fabric-26.2'
         working-directory: Simply-Screens
@@ -128,5 +144,9 @@ jobs:
             Simply-Screens/${{ matrix.target }}/run/live-join/**/logs/**
             Simply-Screens/${{ matrix.target }}/run/live-join/**/crash-reports/**
             Simply-Screens/build/requested-runtime/${{ matrix.target }}/**
+            Simply-Screens/${{ matrix.target }}/run/integrated-acceptance/**/receipt.json
+            Simply-Screens/${{ matrix.target }}/run/integrated-acceptance/**/integrated.log
+            Simply-Screens/${{ matrix.target }}/run/integrated-acceptance/**/logs/**
+            Simply-Screens/${{ matrix.target }}/run/integrated-acceptance/**/crash-reports/**
             Simply-Screens/build/requested-visual-evidence/${{ matrix.target }}/**
           if-no-files-found: warn

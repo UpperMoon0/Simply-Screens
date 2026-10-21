@@ -192,12 +192,22 @@ class RequestedGenerationsTest(unittest.TestCase):
         self.assertIn('-p test_forge_1122_sources.py',step)
     def test_legacy_prejoin_diagnostics_do_not_dismiss_native_error_screens(self):
         source=(ROOT/'common-1.16.5/src/main/java/com/nstut/simplyscreens/client/testing/NativeClientAcceptance.java').read_text()
-        self.assertIn('if (!LiveJoinTestProtocol.isEnabled()) return;',source)
+        self.assertIn('if (!LiveJoinTestProtocol.isEnabled() && !integrated) return;',source)
         self.assertIn('Native join probe waiting: {}',source)
         self.assertIn('client.screen.getClass().getName()',source)
         self.assertIn('client.allowsMultiplayer()',source)
         self.assertNotIn('setScreen(',source)
         self.assertNotIn('ConnectScreen',source)
+    def test_only_isolated_native_server_tasks_forward_harness_input(self):
+        for target in ('forge-1.12.2','fabric-1.16.5','forge-1.16.5','fabric-26.2','neoforge-26.2'):
+            source=(ROOT/target/'build.gradle').read_text()
+            self.assertEqual(1,source.count('standardInput=System.in'))
+            self.assertIn("if(name == 'runLiveJoinTestServer') standardInput=System.in",source)
+            self.assertIn('tasks.withType(JavaExec).configureEach',source)
+    def test_shutdown_watchdog_is_failure_not_a_success_exit(self):
+        source=(ROOT/'common/src/main/java/com/nstut/simplyscreens/testing/LiveJoinTestProtocol.java').read_text()
+        self.assertIn('System.exit(1)',source);self.assertNotIn('System.exit(0)',source)
+        self.assertIn('SIMPLYSCREENS_LIVE_JOIN_TEST_FAIL clean shutdown watchdog expired',source)
     def test_no_unofficial_112_fabric_target(self):
         self.assertFalse((ROOT/'fabric-1.12.2').exists())
 if __name__=='__main__':unittest.main()

@@ -31,3 +31,9 @@ neoForge.runs {
     }
     liveJoinTestServer { server(); gameDirectory=project.file('run/live-join/server'); jvmArgument '-Xmx1G'; programArgument '--nogui' }
 }
+
+// Only the isolated probe server consumes the harness's literal stop command.
+// JavaExec otherwise supplies an empty stream, forcing teardown by signal.
+tasks.withType(JavaExec).configureEach {
+    if(name == 'runLiveJoinTestServer') standardInput=System.in
+}

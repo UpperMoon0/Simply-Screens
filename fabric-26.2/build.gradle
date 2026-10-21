@@ -19,3 +19,9 @@ loom {
         liveJoinTestServer { server(); runDir 'run/live-join/server'; vmArgs '-Xmx1G'; programArg 'nogui' }
     }
 }
+
+// Only the isolated probe server consumes the harness's literal stop command.
+// JavaExec otherwise supplies an empty stream, forcing teardown by signal.
+tasks.withType(JavaExec).configureEach {
+    if(name == 'runLiveJoinTestServer') standardInput=System.in
+}

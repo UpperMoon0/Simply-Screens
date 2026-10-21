@@ -15,10 +15,11 @@ loom {
         liveJoinTestClient {
             client(); runDir 'run/live-join/client'
             property 'simplyscreens.liveJoinTest','true'
+            property 'simplyscreens.mediaSmokeTest','true'
             vmArgs '-Xmx1G'
             programArgs '--username','ScreensProbe','--server','127.0.0.1','--port','25575'
         }
-        liveJoinTestServer { server(); runDir 'run/live-join/server'; vmArgs '-Xmx1G'; programArg 'nogui' }
+        liveJoinTestServer { property 'simplyscreens.mediaSmokeTest','true'; server(); runDir 'run/live-join/server'; vmArgs '-Xmx1G'; programArg 'nogui' }
     }
 }
 tasks.withType(JavaExec).configureEach { javaLauncher=javaToolchains.launcherFor { languageVersion=JavaLanguageVersion.of(8) } }
@@ -26,3 +27,19 @@ tasks.withType(JavaExec).configureEach { javaLauncher=javaToolchains.launcherFor
 // JavaExec's bare classpath on Java 8 (only Java 9+ argfiles carry it across).
 // Keep the real Java 8 launcher and let JavaExec preserve the full classpath.
 tasks.withType(net.fabricmc.loom.task.AbstractRunTask).configureEach { useXvfb.set(false) }
+
+loom.runs {
+    integratedAcceptance {
+        client(); runDir providers.gradleProperty('integratedRunDir').getOrElse('run/integrated-acceptance/manual')
+        property 'simplyscreens.integratedAcceptance','true'
+        property 'simplyscreens.mediaSmokeTest','true'
+        vmArgs '-Xmx1G'
+        programArgs '--username','ScreensProbe'
+    }
+}
+
+// Only the isolated probe server consumes the harness's literal stop command.
+// JavaExec otherwise supplies an empty stream, forcing teardown by signal.
+tasks.withType(JavaExec).configureEach {
+    if(name == 'runLiveJoinTestServer') standardInput=System.in
+}

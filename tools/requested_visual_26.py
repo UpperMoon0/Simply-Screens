@@ -7,6 +7,14 @@ from visual_cases import SAMPLES
 import modern_screen_sources
 
 MODULE = 'common-26.2'
+# Loader ABI only. This historical per-tile control has no frame claims or
+# level-keyed cache; its sole persistent map throttles diagnostic log output.
+PLAIN_LIFECYCLE_ADAPTER = """
+    public static void beginRenderFrame() { }
+    public static void clearLevel(Object levelIdentity) { }
+    public static void clearCaches() { LAST_DRAW_LOG_NANOS.clear(); }
+"""
+
 
 def adapt_driver(source, name):
     if name == 'VisualClient':
@@ -125,6 +133,7 @@ def set_variant(stage, originals, variant):
             target = stage / MODULE / PACKAGE / 'client/renderers' / name
             target.write_text(modern_screen_sources.convert(source))
         renderer = stage / MODULE / PACKAGE / 'client/renderers/ScreenBlockEntityRenderer.java'
+        replace_once(renderer, '    private static final Map<BlockPos, Long> LAST_DRAW_LOG_NANOS', PLAIN_LIFECYCLE_ADAPTER + '\n    private static final Map<BlockPos, Long> LAST_DRAW_LOG_NANOS')
         replace_once(renderer, 'debugDraw(state);',
                      'debugDraw(state);\n        com.nstut.simplyscreens.testing.visual.VisualClient.submittedTile(state.facing, state.width, state.height, state.blockPos.getX() + state.anchorOffsetX, state.blockPos.getY() + state.anchorOffsetY, state.blockPos.getZ() + state.anchorOffsetZ, state.blockPos.getX(), state.blockPos.getY(), state.blockPos.getZ());')
         return

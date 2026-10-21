@@ -16,9 +16,16 @@ Verified locally on 2026-10-21:
   Java 8 bytecode, gameplay-class completeness and external-dependency ownership
   checks. It is not the reobfuscated distribution artifact.
 
-Not established by these checks: a complete ForgeGradle packaging run, actual
-client/server discovery and join, screenshots, image-rendering correctness or
-shader compatibility. Native `runLiveJoinTestServer` / `runLiveJoinTestClient`
+The initial direct checks above did not establish ForgeGradle packaging or
+actual client/server discovery and join. These subsequently passed at
+`bb44c3726adaea17b729b5baa635057f923dad11` in
+[run 39622599645](https://github.com/UpperMoon0/Simply-Screens/actions/runs/39622599645):
+real dedicated join, OpenUI tab/resize smoke, and native wrapper exit zero.
+Native model-parser tests and the production jar gate additionally verify all
+18 variant selectors resolve to packaged models after the native block/ prefix.
+Ignored legacy ASM scan warnings and unavailable headless audio/narrator remain
+in the logs, so this is not warning-free loading. Screenshots, image-rendering
+correctness and shader compatibility remain separate and unproven. Native `runLiveJoinTestServer` / `runLiveJoinTestClient`
 and the maintained UI/personal-settings probes are available for the separate
 acceptance workflow. Build products, downloaded tools and Minecraft binaries
 are deliberately excluded from source control.

@@ -48,6 +48,7 @@ public final class ScreenBlockEntityRenderer extends TileEntitySpecialRenderer<S
    b.pos(quad.maxX(),quad.maxY(),0).tex(quad.minU(),quad.minV()).color(255,255,255,255).endVertex();
    b.pos(quad.maxX(),quad.minY(),0).tex(quad.minU(),quad.maxV()).color(255,255,255,255).endVertex();
    b.pos(quad.minX(),quad.minY(),0).tex(quad.maxU(),quad.maxV()).color(255,255,255,255).endVertex();Tessellator.getInstance().draw();
+   if(com.nstut.simplyscreens.testing.LegacyMediaProbeProtocol.ENABLED)com.nstut.simplyscreens.client.testing.LegacyMediaClientProbe.geometrySubmitted(tile,id,location,quad);
   } finally { OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit,lightX,lightY);if(lighting)GlStateManager.enableLighting();else GlStateManager.disableLighting();if(culling)GlStateManager.enableCull();else GlStateManager.disableCull();if(blending)GlStateManager.enableBlend();else GlStateManager.disableBlend();GlStateManager.tryBlendFuncSeparate(src,dst,srcAlpha,dstAlpha);GlStateManager.color(color.get(0),color.get(1),color.get(2),color.get(3));GlStateManager.popMatrix(); }
  }
  private static EnumFacing widthDirection(EnumFacing facing) { switch(facing) { case SOUTH:return EnumFacing.EAST;case WEST:return EnumFacing.SOUTH;case EAST:return EnumFacing.NORTH;default:return EnumFacing.WEST; } }
