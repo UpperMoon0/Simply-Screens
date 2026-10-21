@@ -29,6 +29,8 @@ public class SimplyScreensImpl {
         ItemRegistries.ITEMS.register();
 
         modEventBus.addListener(this::onCommonSetup);
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.RegisterCommandsEvent event) ->
+                com.nstut.simplyscreens.api.ScreenCommands.register(event.getDispatcher()));
         MinecraftForge.EVENT_BUS.addListener((ServerStartedEvent event) ->
                 SimplyScreens.initializeScreens(event.getServer().getWorldPath(LevelResource.ROOT)));
         MinecraftForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedInEvent event) -> {
