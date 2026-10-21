@@ -36,6 +36,7 @@ public final class ServerTickScheduler {
 
         LifecycleEvent.SERVER_BEFORE_START.register(server -> {
             TASKS.clear();
+            com.nstut.simplyscreens.api.ScreenEvents.resetPending();
             activeServer = server;
         });
 
@@ -44,6 +45,7 @@ public final class ServerTickScheduler {
                 try { com.nstut.simplyscreens.helpers.ScreenPlaylistRuntime.shutdown(); }
                 catch (RuntimeException failure) { SimplyScreens.LOGGER.error("Could not save slideshow state on shutdown", failure); }
                 TASKS.clear();
+                com.nstut.simplyscreens.api.ScreenEvents.resetPending();
                 activeServer = null;
             }
         });
@@ -61,20 +63,20 @@ public final class ServerTickScheduler {
         activeServer = server;
         com.nstut.simplyscreens.helpers.ScreenPlaylistRuntime.tick(server);
 
-        if (TASKS.isEmpty()) {
-            return;
-        }
+        if (!TASKS.isEmpty()) {
+            Runnable[] batch = TASKS.toArray(Runnable[]::new);
+            TASKS.removeAll(Arrays.asList(batch));
 
-        Runnable[] batch = TASKS.toArray(Runnable[]::new);
-        TASKS.removeAll(Arrays.asList(batch));
-
-        for (Runnable task : batch) {
-            try {
-                task.run();
-            } catch (Throwable t) {
-                SimplyScreens.LOGGER.error("Error executing deferred server task", t);
+            for (Runnable task : batch) {
+                try {
+                    task.run();
+                } catch (Throwable t) {
+                    SimplyScreens.LOGGER.error("Error executing deferred server task", t);
+                }
             }
         }
+        com.nstut.simplyscreens.api.ScreenEvents.flush(
+                failure -> SimplyScreens.LOGGER.error("Screen event subscriber failed", failure));
     }
 
     public static void clear() {

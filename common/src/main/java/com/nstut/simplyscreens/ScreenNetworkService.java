@@ -2,6 +2,7 @@ package com.nstut.simplyscreens;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.nstut.simplyscreens.api.ScreenEvents;
 import java.nio.file.*;
 import java.io.IOException;
 import java.util.*;
@@ -51,6 +52,17 @@ public final class ScreenNetworkService {
     }
     public static String display(UUID id) { return "display/" + Objects.requireNonNull(id); }
     public synchronized State snapshot(String key) { return healthy ? states.get(key) : null; }
+    /** Linked physical content always inherits the live network ACL, including local overrides. */
+    public synchronized String accessKey(String key) {
+        if (!healthy || key == null) return null;
+        if (key.startsWith("display/")) {
+            try {
+                DisplayState link = displays.get(UUID.fromString(key.substring(8)));
+                if (link != null && !link.screenId().isEmpty()) return network(link.screenId());
+            } catch (IllegalArgumentException invalid) { return null; }
+        }
+        return key;
+    }
     public synchronized Set<String> keys() { return healthy ? Set.copyOf(states.keySet()) : Set.of(); }
     public synchronized DisplayState displayState(UUID id) { return healthy ? displays.get(id) : null; }
     public synchronized UUID displayAt(String anchor) { return healthy ? anchors.get(anchor) : null; }
@@ -118,9 +130,14 @@ public final class ScreenNetworkService {
         return true;
     }
     public synchronized boolean select(String key, Actor actor, UUID image, long expectedRevision) {
+        return selectContent(key, key, actor, image, expectedRevision);
+    }
+    /** Select content with its independently resolved access policy. */
+    public synchronized boolean selectContent(String key, String accessKey, Actor actor, UUID image, long expectedRevision) {
         if (!healthy) return false;
         State s = states.get(key);
-        if (s == null || s.revision() != expectedRevision || !allowed(key, actor, Permission.CONTROL)) return false;
+        if (s == null || s.revision() != expectedRevision || !Objects.equals(accessKey(key), accessKey)
+                || !allowed(accessKey, actor, Permission.CONTROL)) return false;
         if (!Objects.equals(image, s.image())) commit(key, s.revise(s.owner(), s.trusted(), s.view(), s.control(), image));
         return true;
     }
@@ -191,6 +208,8 @@ public final class ScreenNetworkService {
             if (previous == null) states.remove(key); else states.put(key, previous);
             throw failure;
         }
+        if (previous != null && !Objects.equals(previous.image(), state.image()))
+            ScreenEvents.imageChanged(key, state.image(), state.revision());
     }
     public synchronized void init(Path root, Map<String, UUID> images, Map<String, UUID> owners) {
         Path next = root.resolve("screen_networks.json").toAbsolutePath().normalize();

@@ -17,6 +17,8 @@ Minecraft 1.21.1 builds support optional **Sable 2.0.5 and 2.0.6** on Fabric and
 - **Synchronized Screen Networks:** Group screens using a **Screen ID** to display identical media in real-time across your server.
 - **Aspect Ratio Control:** Choose between full stretching or aspect-ratio preservation.
 - **Ownership and Access:** Own standalone displays and networks, trust players, transfer ownership, and configure separate viewing/content-control policies in Settings. Management and relinking stay with owners and operators.
+- **Server-Side Screen API (0.10.0):** Actor-aware Java API for network discovery, image selection and slideshow transport, plus logical image/playback events. See [integration documentation](docs/screen-api.md).
+- **Operator Commands (0.10.0):** Use `/screens` or `/simplyscreens` for networks, images, playback controls, multi-dimension loaded-display inspection, and troubleshooting.
 - **Local Image Overrides:** Let an individual linked display show different content while keeping its aspect ratio and the rest of the network independent.
 - **In-Game Media Management:**
   - Upload PNG, JPG, and JPEG images directly from your computer via an in-game file dialog.
@@ -30,7 +32,7 @@ Minecraft 1.21.1 builds support optional **Sable 2.0.5 and 2.0.6** on Fabric and
   - Per-player upload concurrency and rate limits, bounded processing queues, and full image decode checks.
   - Atomic registry operations with automated `.bak` backups and crash recovery.
 
-## Installation and upgrade to 0.9.1
+## Installation and upgrade to 0.10.0
 
 Install the artifact matching **both** your Minecraft version and loader. The following mods are required:
 
@@ -41,7 +43,7 @@ Install the artifact matching **both** your Minecraft version and loader. The fo
 
 Download PacketWeave from its [release assets](https://github.com/UpperMoon0/PacketWeave/releases) or its approved [CurseForge files](https://www.curseforge.com/minecraft/mc-mods/packetweave/files). Do not install the development-only API/core jar as a substitute for the native loader jar. Missing PacketWeave or a version below 0.1.1 must be resolved before the loader can start Screens.
 
-When upgrading from 0.8.9, add PacketWeave to every client and server before launching. Keep the existing world, `simply_screens_images` directory, screen registry, and configuration. Version 0.9.0 automatically imports existing registry images/owners into a versioned `screen_networks.json`; existing media files and Screen IDs are preserved. Legacy unowned networks and blank-ID displays require an operator claim before editing. New player-placed displays belong to their placer. Added access and playlist packets require matching client/server Screens versions. Version 0.9.1 stores personal playlists and active timelines in `screen_playlists.dat` with a validated backup; keep both with the world. Back up worlds before upgrading; see [ownership, migration, and recovery](docs/network-access.md) before changing permissions or restoring data.
+When upgrading from 0.8.9, add PacketWeave to every client and server before launching. Keep the existing world, `simply_screens_images` directory, screen registry, and configuration. Version 0.9.0 automatically imports existing registry images/owners into a versioned `screen_networks.json`; existing media files and Screen IDs are preserved. Legacy unowned networks and blank-ID displays require an operator claim before editing. New player-placed displays belong to their placer. Added access and playlist packets require matching client/server Screens versions. Version 0.9.1 stores personal playlists and active timelines in `screen_playlists.dat` with a validated backup; keep both with the world. 0.10.0 adds a server-side API and commands without changing saved data; no additional runtime mod is required. Back up worlds before upgrading; see [ownership, migration, and recovery](docs/network-access.md) before changing permissions or restoring data.
 
 ## Shader compatibility in 0.8.11
 
