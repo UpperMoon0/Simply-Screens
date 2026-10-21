@@ -83,14 +83,14 @@ public final class ScreenCommands {
     private static RequiredArgumentBuilder<CommandSourceStack, String> networkArg() {
         return Commands.argument("network", StringArgumentType.string()).suggests((ctx, builder) -> {
             for (String key : ScreenRegistry.networks().keys())
-                if (key.startsWith("network/")) builder.suggest(key.substring("network/".length()));
+                builder.suggest(key.startsWith("network/") ? key.substring("network/".length()) : key);
             return builder.buildFuture();
         });
     }
 
     private static String network(CommandContext<CommandSourceStack> ctx) {
         try {
-            String key = ScreenNetworkService.network(StringArgumentType.getString(ctx, "network"));
+            String key = ScreenTarget.parse(StringArgumentType.getString(ctx, "network"));
             if (ScreenRegistry.networks().snapshot(key) != null) return key;
         } catch (RuntimeException invalid) { /* Empty or invalid identifier. */ }
         ctx.getSource().sendFailure(Component.literal("Unknown Screen ID. Use /screens list."));
