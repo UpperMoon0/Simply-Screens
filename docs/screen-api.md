@@ -92,8 +92,8 @@ server-authoritative services, and do not force-load chunks:
 | `/screens display <dimension> <x> <y> <z>` | Inspect a **loaded** screen tile and anchor metadata |
 | `/screens reconcile <screenId>` | Refresh loaded display state from persisted selection |
 
-`/simplyscreens` is an equivalent alias. Network IDs support tab completion
-and quoted identifiers; use `/screens list` to find the right ID.
+`/simplyscreens` is an equivalent alias. Network IDs and typed standalone `display/<uuid>` targets support tab completion
+and quoted identifiers; use `/screens list` to find the right target.
 Example: `/screens display minecraft:the_nether 10 70 -42`.
 
 All successful modifications are logged with the initiating source.
