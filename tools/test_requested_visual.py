@@ -64,7 +64,7 @@ class RequestedVisualTest(unittest.TestCase):
             self.assertNotIn('ScreenRenderTypes.textPolygonOffset',renderer.read_text())
             self.assertIn('state.tileMinX',renderer.read_text())
             adapter.set_variant(stage,originals,'see-through')
-            self.assertIn('CompareOp.ALWAYS, false, 0.0F, 0.0F',target.read_text())
+            self.assertIn('CompareOp.ALWAYS_PASS, false, 0.0F, 0.0F',target.read_text())
             self.assertEqual(originals[renderer.relative_to(stage)],renderer.read_text())
             self.assertEqual(originals[state.relative_to(stage)],state.read_text())
             adapter.set_variant(stage,originals,'fixed')

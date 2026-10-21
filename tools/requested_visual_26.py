@@ -144,5 +144,5 @@ def set_variant(stage, originals, variant):
     old = 'new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, true,\n                    DEPTH_BIAS_FACTOR, DEPTH_BIAS_UNITS)'
     if text.count(old) != 1:
         raise RuntimeError('26.2 visual depth-state mutation anchor changed')
-    replacement = 'new DepthStencilState(CompareOp.ALWAYS, false, 0.0F, 0.0F)'
+    replacement = 'new DepthStencilState(CompareOp.ALWAYS_PASS, false, 0.0F, 0.0F)'
     path.write_text(text.replace(old, replacement))
