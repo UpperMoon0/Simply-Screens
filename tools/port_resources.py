@@ -3,6 +3,21 @@
 import argparse,json,shutil
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
+def legacy_variant_model(value):
+    """1.12 Variant.Deserializer supplies the block/ model directory itself."""
+    if isinstance(value,list):
+        if not value:raise ValueError('Empty legacy blockstate model array')
+        return [legacy_variant_model(item) for item in value]
+    if not isinstance(value,dict):raise ValueError('Malformed legacy blockstate model')
+    result=dict(value)
+    if 'model' in result:
+        model=result['model']
+        if not isinstance(model,str):raise ValueError('Malformed legacy blockstate model name')
+        namespace,separator,path=model.partition(':')
+        if not separator:namespace,path='',namespace
+        if path.startswith('block/'):path=path[len('block/'):]
+        result['model']=(namespace+':' if separator else '')+path
+    return result
 def legacy_variant_keys(variants):
     """1.12 model lookup uses the exact sorted property string, not a selector."""
     result={}
@@ -14,7 +29,7 @@ def legacy_variant_keys(variants):
                 raise ValueError('Malformed legacy blockstate variant: '+key)
             normalized=','.join('='.join(pair) for pair in sorted(pairs))
         if normalized in result:raise ValueError('Colliding legacy blockstate variant: '+normalized)
-        result[normalized]=value
+        result[normalized]=legacy_variant_model(value)
     return result
 def generate(version,loader,output):
     output.mkdir(parents=True,exist_ok=True)

@@ -1,7 +1,8 @@
 """Test-only 26.2 adaptation of the calibrated common framebuffer drivers."""
 from pathlib import Path
 import re
-from visual_test import PACKAGE, replace_once
+from visual_test import (PACKAGE, replace_once, NF26_CONTROL, NF26_WORLD_MODELS,
+                         verify_nf26_control, restore_nf26_control_models)
 from visual_cases import SAMPLES
 import modern_screen_sources
 
@@ -76,7 +77,7 @@ def instrument(stage):
     package = stage / MODULE / PACKAGE
     # Test-only copies are derived into this disposable overlay, not maintained
     # as production duplicates. The normal generator will include these hooks.
-    for relative in ('ServerTickScheduler.java', 'client/testing/UiSmokeTest.java', 'client/renderers/ScreenBlockEntityRenderer.java'):
+    for relative in ('ServerTickScheduler.java', 'client/testing/UiSmokeTest.java', 'client/renderers/ScreenBlockEntityRenderer.java', 'client/renderers/ScreenBlockEntityRenderState.java'):
         canonical = stage / 'neoforge-26.1.2' / PACKAGE / relative
         target = package / relative
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -104,20 +105,35 @@ def instrument(stage):
                  'debugDraw(state);\n        com.nstut.simplyscreens.testing.visual.VisualClient.submittedScreen(state.facing, state.width, state.height, state.blockPos.getX() + state.anchorOffsetX, state.blockPos.getY() + state.anchorOffsetY, state.blockPos.getZ() + state.anchorOffsetZ, state.blockPos.getX(), state.blockPos.getY(), state.blockPos.getZ());')
 
 def mutable_paths():
-    return [Path(MODULE) / PACKAGE / 'client/renderers/ScreenRenderTypes.java']
+    return [Path(MODULE) / PACKAGE / 'client/renderers' / name for name in (
+        'ScreenRenderTypes.java', 'ScreenBlockEntityRenderer.java', 'ScreenBlockEntityRenderState.java'
+    )] + list(NF26_WORLD_MODELS)
 
 def set_variant(stage, originals, variant):
     for path, text in originals.items():
         (stage / path).write_text(text)
     if variant == 'fixed':
         return
+    if variant == 'plain':
+        # Reuse the same hash-locked pre-fix per-tile baseline as 26.1.2.
+        # Merely zeroing bias on the fixed whole-screen topology is not the
+        # calibrated historical regression and can legitimately remain clean.
+        verify_nf26_control(stage)
+        restore_nf26_control_models(stage)
+        for name in ('ScreenBlockEntityRenderer.java', 'ScreenBlockEntityRenderState.java'):
+            source = (stage / NF26_CONTROL / name).read_text()
+            target = stage / MODULE / PACKAGE / 'client/renderers' / name
+            target.write_text(modern_screen_sources.convert(source))
+        renderer = stage / MODULE / PACKAGE / 'client/renderers/ScreenBlockEntityRenderer.java'
+        replace_once(renderer, 'debugDraw(state);',
+                     'debugDraw(state);\n        com.nstut.simplyscreens.testing.visual.VisualClient.submittedTile(state.facing, state.width, state.height, state.blockPos.getX() + state.anchorOffsetX, state.blockPos.getY() + state.anchorOffsetY, state.blockPos.getZ() + state.anchorOffsetZ, state.blockPos.getX(), state.blockPos.getY(), state.blockPos.getZ());')
+        return
+    if variant != 'see-through':
+        raise ValueError('Unknown visual variant: ' + variant)
     path = stage / mutable_paths()[0]
     text = path.read_text()
     old = 'new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, true,\n                    DEPTH_BIAS_FACTOR, DEPTH_BIAS_UNITS)'
     if text.count(old) != 1:
         raise RuntimeError('26.2 visual depth-state mutation anchor changed')
-    replacement = ('new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, true, 0.0F, 0.0F)'
-                   if variant == 'plain' else 'new DepthStencilState(CompareOp.ALWAYS, false, 0.0F, 0.0F)')
-    if variant not in ('plain', 'see-through'):
-        raise ValueError('Unknown visual variant: ' + variant)
+    replacement = 'new DepthStencilState(CompareOp.ALWAYS, false, 0.0F, 0.0F)'
     path.write_text(text.replace(old, replacement))

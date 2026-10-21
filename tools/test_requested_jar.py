@@ -8,7 +8,7 @@ import verify_requested_jar as contract
 
 
 class LegacyJarVariantContractTest(unittest.TestCase):
-    def verify_variants(self,variants):
+    def verify_variants(self,variants,models=True):
         with tempfile.TemporaryDirectory() as directory:
             path=Path(directory)/'contract-fixture.jar'
             with zipfile.ZipFile(path,'w') as jar:
@@ -17,14 +17,26 @@ class LegacyJarVariantContractTest(unittest.TestCase):
                 jar.writestr('mcmod.info','[{"modid":"simply_screens","version":"fixture"}]')
                 jar.writestr('assets/simply_screens/textures/block/screen_front.png',b'fixture')
                 jar.writestr('assets/simply_screens/blockstates/screen.json',json.dumps({'variants':variants}))
+                if models:jar.writestr('assets/simply_screens/models/block/screen.json','{}')
             return contract.verify(path,'forge-1.12.2')
 
     def variants(self):
-        return {f'facing={facing},state={state}':{'model':'simply_screens:block/screen'}
+        return {f'facing={facing},state={state}':{'model':'simply_screens:screen'}
                 for facing in ('north','south','west','east','up','down') for state in range(3)}
 
     def test_all_exact_order_native_variants_satisfy_artifact_contract(self):
         self.assertEqual(len(contract.REQUIRED_CLASSES),self.verify_variants(self.variants()))
+
+    def test_native_model_prefix_and_packaged_resource_are_required(self):
+        wrong={key:dict(value,model='simply_screens:block/screen') for key,value in self.variants().items()}
+        with self.assertRaisesRegex(ValueError,'prefixed model resource'):self.verify_variants(wrong)
+        with self.assertRaisesRegex(ValueError,'prefixed model resource'):self.verify_variants(self.variants(),models=False)
+        weighted={key:[dict(value,weight=1),dict(value,weight=2)] for key,value in self.variants().items()}
+        self.verify_variants(weighted)
+
+    def test_empty_native_model_array_is_rejected(self):
+        empty={key:[] for key in self.variants()}
+        with self.assertRaisesRegex(ValueError,'Empty native 1.12 model array'):self.verify_variants(empty)
 
     def test_previous_selector_order_is_rejected_in_artifact(self):
         old={','.join(reversed(key.split(','))):value for key,value in self.variants().items()}

@@ -32,9 +32,21 @@ class Forge1122SourceTests(unittest.TestCase):
    self.assertEqual(expected,set(variants))
    for state in range(3):
     for facing in ('north','south','west','east','up','down'):
-     self.assertEqual(canonical[f'state={state},facing={facing}'],variants[f'facing={facing},state={state}'])
+     expected_model=dict(canonical[f'state={state},facing={facing}'])
+     expected_model['model']=expected_model['model'].replace(':block/',':',1)
+     self.assertEqual(expected_model,variants[f'facing={facing},state={state}'])
    port_resources.generate('1.16.5','fabric',output)
    self.assertEqual(canonical,json.loads((output/'assets/simply_screens/blockstates/screen.json').read_text())['variants'])
+ def test_legacy_weighted_model_arrays_keep_rotations_weights_and_input(self):
+  original=[{'model':'simply_screens:block/screen','x':90,'y':180,'weight':3,'uvlock':True},{'model':'block/stone','weight':2}]
+  converted=port_resources.legacy_variant_model(original)
+  self.assertEqual([dict(original[0],model='simply_screens:screen'),dict(original[1],model='stone')],converted)
+  self.assertEqual('simply_screens:block/screen',original[0]['model'])
+  self.assertEqual({'model':'other:already_native'},port_resources.legacy_variant_model({'model':'other:already_native'}))
+  with self.assertRaises(ValueError):port_resources.legacy_variant_model({'model':42})
+ def test_legacy_empty_model_arrays_are_rejected(self):
+  with self.assertRaisesRegex(ValueError,'Empty legacy blockstate model array'):port_resources.legacy_variant_model([])
+  with self.assertRaisesRegex(ValueError,'Empty legacy blockstate model array'):port_resources.legacy_variant_keys({'facing=north,state=0':[]})
  def test_legacy_variant_normalization_rejects_collisions_and_invalid_properties(self):
   for data in [{'a=1,b=2':{},'b=2,a=1':{}},{'a=1,a=2':{}},{'a=1,b=':{}},{'a=1=b':{}}]:
    with self.assertRaises(ValueError):port_resources.legacy_variant_keys(data)
@@ -88,6 +100,12 @@ class Forge1122SourceTests(unittest.TestCase):
    self.assertNotIn('org.lwjgl.glfw',result);self.assertNotIn('client.getWindow()',result)
   proxy=(ROOT/'forge-1.12.2/src/main/java/com/nstut/simplyscreens/forge/ClientProxy.java').read_text()
   for check in ['client.player==null || client.world==null','UiSmokeTest.tick(client)','LiveJoinTestProtocol.markCompleted()','client::shutdown']:self.assertIn(check,proxy)
+ def test_isolated_native_runs_do_not_terminate_the_gradle_daemon(self):
+  build=(ROOT/'forge-1.12.2/build.gradle').read_text()
+  for name in ('liveJoinTestClient','liveJoinTestServer'):
+   block=build.split(name+' {',1)[1].split('\n        }',1)[0]
+   self.assertIn('forceExit false',block)
+  self.assertEqual(2,build.count('forceExit false'))
  def test_native_production_dependencies_use_real_forge_remapping(self):
   build=(ROOT/'forge-1.12.2/build.gradle').read_text()
   self.assertIn('flatDir',build);self.assertIn('fg.deobf(nativeOpenui)',build);self.assertIn('fg.deobf(nativePacketweave)',build)

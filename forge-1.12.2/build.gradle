@@ -30,6 +30,8 @@ minecraft {
         client { workingDirectory project.file('run') }
         server { workingDirectory project.file('run');args 'nogui' }
         liveJoinTestClient {
+            // Let the real JavaExec child exit without FG3 killing its Gradle daemon.
+            forceExit false
             child minecraft.runs.client
             workingDirectory project.file('run/live-join/client')
             property 'simplyscreens.liveJoinTest','true'
@@ -37,6 +39,8 @@ minecraft {
             args '--server','127.0.0.1','--port','25575'
         }
         liveJoinTestServer {
+            // Let the real JavaExec child exit without FG3 killing its Gradle daemon.
+            forceExit false
             child minecraft.runs.server
             workingDirectory project.file('run/live-join/server')
         }

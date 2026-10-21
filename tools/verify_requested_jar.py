@@ -46,6 +46,15 @@ def verify(path,target):
             variants=json.loads(jar.read('assets/simply_screens/blockstates/screen.json')).get('variants',{})
             expected={f'facing={facing},state={state}' for facing in ('north','south','west','east','up','down') for state in range(3)}
             if set(variants)!=expected:raise ValueError('Missing native 1.12 exact-order blockstate variants')
+            for value in variants.values():
+                if isinstance(value,list) and not value:raise ValueError('Empty native 1.12 model array')
+                for model in value if isinstance(value,list) else [value]:
+                    name=model.get('model','')
+                    namespace,separator,relative=name.partition(':')
+                    if not separator:namespace,relative='minecraft',namespace
+                    resource=f'assets/{namespace}/models/block/{relative}.json'
+                    if not relative or resource not in names:
+                        raise ValueError('Unresolved native 1.12 prefixed model resource: '+resource)
         else:
             name='META-INF/neoforge.mods.toml' if loader=='neoforge' else 'META-INF/mods.toml'
             meta=jar.read(name).decode()
