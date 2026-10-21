@@ -14,20 +14,20 @@ runs:
       uses: actions/cache@v4
       with:
         path: ~/.m2/repository/com/nstut/
-        key: openui-v2-${{ runner.os }}-${{ runner.arch }}-jdk21-cb4610a1598d476123b731f5eef4d8e569057ffa
+        key: openui-v3-${{ runner.os }}-${{ runner.arch }}-jdk21-cb4610a1598d476123b731f5eef4d8e569057ffa-${{ hashFiles('tools/build_openui.py', '.github/actions/openui/action.yml') }}
     - name: Checkout pinned OpenUI source
       if: steps.openui.outputs.cache-hit != 'true'
       uses: actions/checkout@v4
       with:
         repository: UpperMoon0/OpenUI-MC
         ref: cb4610a1598d476123b731f5eef4d8e569057ffa
-        path: OpenUI-MC
+        path: build/ci-dependencies/OpenUI-MC
     - name: Publish missing OpenUI artifacts
       if: steps.openui.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        chmod +x OpenUI-MC/gradlew
-        python3 tools/build_openui.py
+        chmod +x build/ci-dependencies/OpenUI-MC/gradlew
+        python3 tools/build_openui.py --project build/ci-dependencies/OpenUI-MC
     - name: Verify complete OpenUI cache
       shell: bash
       run: python3 tools/build_openui.py --verify-only
