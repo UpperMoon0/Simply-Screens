@@ -49,6 +49,7 @@ TYPES={
 }
 SKIP={'ScreenBlock.java','ClientScreenBlock.java','BlockRegistries.java','BlockEntityRegistries.java','CreativeTabRegistries.java','ItemRegistries.java','ScreenBlockEntityRenderer.java','ScreenColorRenderTypes.java','ScreenColorRestore.java','GameRendererMixin.java','ScreenCommands.java','ScreenLoadReconciler.java'}
 def convert(text,name):
+ if name=='ClientImageManager.java':text=legacy.image_texture_lifecycle(text)
  text=legacy.java8(text)
  text=text.replace('org.slf4j.LoggerFactory','org.apache.logging.log4j.LogManager').replace('org.slf4j.Logger','org.apache.logging.log4j.Logger').replace('LoggerFactory.getLogger(', 'LogManager.getLogger(')
  text=text.replace('JsonParser.parseString(', 'new com.google.gson.JsonParser().parse(')

@@ -46,6 +46,8 @@ class RequestedGenerationsTest(unittest.TestCase):
                 self.assertEqual(recipe['result']['item'],'simply_screens:screen')
                 self.assertEqual(recipe['key']['A']['item'],'minecraft:quartz')
                 self.assertNotIn('category',recipe)
+                if version=='1.16.5':
+                    self.assertEqual(6,json.loads((output/'pack.mcmeta').read_text())['pack']['pack_format'])
                 lang='en_us.lang' if version=='1.12.2' else 'en_us.json'
                 self.assertTrue((output/'assets/simply_screens/lang'/lang).is_file())
     def test_26_rendering_uses_backend_neutral_api(self):
@@ -112,6 +114,67 @@ class RequestedGenerationsTest(unittest.TestCase):
         workflow=(ROOT/'.github/workflows/requested-generations.yml').read_text()
         retry=workflow.split('name: Prefetch official legacy assets',1)[1].split('      - name:',1)[0]
         self.assertLess(retry.index('mkdir -p build'),retry.index('> build/legacy-assets.log'))
+    def test_legacy_texture_cleanup_uses_owned_removal_and_single_error_registration(self):
+        import forge_1122_sources
+        source=(ROOT/'common-1.20.1/src/main/java/com/nstut/simplyscreens/helpers/ClientImageManager.java').read_text()
+        for convert in (legacy_screen_sources.convert,forge_1122_sources.convert):
+            generated=convert(source,'ClientImageManager.java')
+            self.assertIn('texture == errorTexture && texture != null',generated)
+            self.assertIn('return errorTextureLocation;',generated)
+            self.assertIn('errorTexture = null;',generated)
+            self.assertIn('LegacyTextureLifecycle.release(',generated)
+            self.assertNotIn('getTextureManager().release(',generated)
+            self.assertNotIn('getTextureManager().deleteTexture(',generated)
+            self.assertNotIn('getDynamicTextureLocation(',generated)
+        for loader in ('fabric','forge'):
+            config=json.loads((ROOT/(loader+'-1.16.5/src/main/resources/simplyscreens-color.mixins.json')).read_text())
+            self.assertIn('TextureManagerAccessor',config['client'])
+    def test_forge_112_uses_official_noninjecting_merge_and_separate_cache(self):
+        source=(ROOT/'gradle/forge-1122-merge.gradle').read_text()
+        self.assertIn("net.minecraft:joined:1.12.2-20200226.224830",source)
+        self.assertIn("artifact.group != 'net.minecraft'",source)
+        self.assertIn("artifact.name != 'joined'",source)
+        self.assertIn("artifact.version != '1.12.2'",source)
+        self.assertIn("repositories.addFirst(repository)",source)
+        self.assertIn("minecraft.accessTransformer",source)
+        self.assertIn("implements ArtifactProvider<ArtifactIdentifier>",source)
+        self.assertNotIn("extends BaseRepo",source)
+        self.assertIn("merged == null || !merged.isFile()",source)
+        marker=(ROOT/'gradle/forge-1122-merge-cache.cfg').read_text()
+        self.assertTrue(all(not line.strip() or line.lstrip().startswith('#') for line in marker.splitlines()))
+        self.assertIn("apply from:'../gradle/forge-1122-merge.gradle'",(ROOT/'forge-1.12.2/build.gradle').read_text())
+    def test_block_orientable_parents_have_all_native_texture_slots(self):
+        for directory in ('common/src/main/resources','neoforge-26.1.2/src/main/resources'):
+            for path in (ROOT/directory/'assets/simply_screens/models/block').glob('*.json'):
+                model=json.loads(path.read_text())
+                if model.get('parent') == 'minecraft:block/orientable':
+                    self.assertTrue({'front','side','top','bottom'} <= model['textures'].keys(),path)
+    def test_fabric_116_uses_the_native_aggregate_api_mod_id(self):
+        metadata=json.loads((ROOT/'fabric-1.16.5/src/main/resources/fabric.mod.json').read_text())
+        self.assertIn('fabric',metadata['depends'])
+        self.assertNotIn('fabric-api',metadata['depends'])
+    def test_native_dependency_pins_match_machine_lock_and_documentation(self):
+        import re
+        lock=json.loads((ROOT/'tools/requested-dependencies.lock.json').read_text())
+        self.assertEqual(1,lock['schema'])
+        self.assertEqual({'packetweave','openui'},set(lock['dependencies']))
+        workflow=(ROOT/'.github/workflows/requested-generations.yml').read_text()
+        docs=(ROOT/'docs/requested-generations.md').read_text()
+        for dependency in lock['dependencies'].values():
+            self.assertRegex(dependency['commit'],r'^[a-f0-9]{40}$')
+            expression=r'repository: '+re.escape(dependency['repository'])+r'\n\s+ref: ([a-f0-9]{40})'
+            self.assertEqual([dependency['commit']],re.findall(expression,workflow))
+            self.assertIn(dependency['commit'],docs)
+    def test_representative_visual_ci_requires_full_receipt_and_preserves_evidence(self):
+        workflow=(ROOT/'.github/workflows/requested-generations.yml').read_text()
+        step=workflow.split('name: Calibrated native framebuffer acceptance',1)[1].split('      - name:',1)[0]
+        self.assertIn("matrix.target == 'fabric-26.2'",step)
+        self.assertIn('tools/requested_visual.py --target fabric-26.2',step)
+        self.assertNotIn('--probe',step)
+        self.assertNotIn('--compile-only',step)
+        self.assertIn('--verify-receipt',step)
+        self.assertIn('--head "$EXPECTED_HEAD"',step)
+        self.assertIn('Simply-Screens/build/requested-visual-evidence/${{ matrix.target }}/**',workflow)
     def test_no_unofficial_112_fabric_target(self):
         self.assertFalse((ROOT/'fabric-1.12.2').exists())
 if __name__=='__main__':unittest.main()

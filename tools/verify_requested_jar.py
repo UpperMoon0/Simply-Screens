@@ -25,6 +25,8 @@ def verify(path,target):
                 if data[:4]!=b'\xca\xfe\xba\xbe' or struct.unpack('>H',data[6:8])[0]!=expected_major:
                     raise ValueError('Wrong Java bytecode level: '+name)
         if version=='1.16.5':
+            if 'pack.mcmeta' not in names or json.loads(jar.read('pack.mcmeta')).get('pack',{}).get('pack_format') != 6:
+                raise ValueError('Missing or incompatible native 1.16 resource-pack metadata')
             config=json.loads(jar.read('simplyscreens-color.mixins.json'))
             refmap=config.get('refmap')
             if not refmap or refmap not in names:raise ValueError('Missing native legacy mixin refmap')

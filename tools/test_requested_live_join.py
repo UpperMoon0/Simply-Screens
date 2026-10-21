@@ -18,6 +18,14 @@ class RequestedLiveJoinTest(unittest.TestCase):
         command=live.command(Path('/project/fabric-26.2'),'runLiveJoinTestServer')
         self.assertEqual('/project/fabric-26.2/gradlew',command[0]);self.assertIn('--max-workers=2',command)
         self.assertNotIn(':fabric-26.2:runLiveJoinTestServer',command)
+    def test_neoforge_skips_only_optional_warning_ui_in_isolated_probe_config(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            module=Path(tmp)/'neoforge-26.2';live.configure_native_client(module)
+            self.assertEqual('showLoadWarnings=false\n',(module/'run/live-join/client/config/neoforge-client.toml').read_text())
+            forge=Path(tmp)/'forge-1.16.5';live.configure_native_client(forge)
+            self.assertEqual('[client]\nshowLoadWarnings=false\n',(forge/'run/live-join/client/config/forge-client.toml').read_text())
+            other=Path(tmp)/'fabric-26.2';live.configure_native_client(other)
+            self.assertFalse(other.exists())
     def run_fixture(self,root,server_ready,client_pass,exit_code=0):
         module=root/'fabric-26.2';libs=module/'build/libs';libs.mkdir(parents=True)
         (libs/'simply_screens-fabric-26.2-0.10.0.jar').write_bytes(b'jar fixture')

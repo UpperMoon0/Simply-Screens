@@ -9,11 +9,21 @@ def command(module, task):
     return [str(module/('gradlew.bat' if os.name=='nt' else 'gradlew')),task,
             '--no-daemon','--console=plain','--max-workers=2','-Dorg.gradle.jvmargs=-Xmx1024m']
 
+def configure_native_client(module):
+    if module.name in ('neoforge-26.2','forge-1.16.5'):
+        # NeoForge logs nonfatal warnings before this optional UI. Fatal loading
+        # errors still take their separate failure path and cannot yield PASS.
+        name='neoforge-client.toml' if module.name == 'neoforge-26.2' else 'forge-client.toml'
+        config=module/'run/live-join/client/config'/name
+        config.parent.mkdir(parents=True,exist_ok=True)
+        prefix='[client]\n' if module.name == 'forge-1.16.5' else ''
+        config.write_text(prefix+'showLoadWarnings=false\n')
+
 def run(root,target,timeout):
     module=root/target;evidence=root/'build/requested-runtime'/target;evidence.mkdir(parents=True,exist_ok=True)
     receipt=evidence/'receipt.json'
     if receipt.exists():receipt.unlink()
-    prepare_server(module);prepare_client(module)
+    prepare_server(module);prepare_client(module);configure_native_client(module)
     properties=module/'run/live-join/server/server.properties'
     properties.write_text(properties.read_text()+'server-ip=127.0.0.1\nmax-players=2\n')
     server=popen(command(module,'runLiveJoinTestServer'),module)

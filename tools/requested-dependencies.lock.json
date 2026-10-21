@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "dependencies": {
+    "packetweave": {
+      "repository": "UpperMoon0/PacketWeave",
+      "commit": "b9af8be1c8dae497a852342a0d323f811b80b54a",
+      "version": "0.1.4"
+    },
+    "openui": {
+      "repository": "UpperMoon0/OpenUI-MC",
+      "commit": "ae7ac42daf6acf3018850778ffd4fa4ee4d4cb71",
+      "version": "0.0.15"
+    }
+  }
+}

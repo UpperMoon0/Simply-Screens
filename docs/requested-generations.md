@@ -30,8 +30,10 @@ those flags, they use matching sibling target build/libs artifacts. Do not
 substitute a library jar from another Minecraft generation or loader.
 
 PacketWeave reference: UpperMoon0/PacketWeave PR #4, commit
-f5ef9b8c3a4ab3ba3af82af54769a09f370c1a85. OpenUI source pin:
-UpperMoon0/OpenUI-MC commit 5feba85ab1363a7a3e71f4fbf2c1347911cf326d.
+b9af8be1c8dae497a852342a0d323f811b80b54a. OpenUI source pin:
+UpperMoon0/OpenUI-MC commit ae7ac42daf6acf3018850778ffd4fa4ee4d4cb71.
+The machine-readable `tools/requested-dependencies.lock.json` is checked against
+both this document and the workflow so native source pins cannot silently drift.
 The requested-generations workflow builds both immutable source pins separately,
 then each native Screens target; it never publishes a release or deploys a server.
 
@@ -138,3 +140,51 @@ regressions pass with zero skipped. At remote head `8076df49`, Fabric 26.2 also
 completed native packaging, jar checks, and an actual dedicated-server/client
 join with the OpenUI tab/resize smoke probe. That development-runtime receipt is
 not framebuffer, media, shader, or production-jar runtime acceptance.
+
+## Review corrections and native launch diagnostics
+
+The legacy texture-ownership correction is shared by both source generators.
+Owned registrations are removed by identity before one native close; failed media
+share a single dedicated error texture. Stable locations do not grow the native
+texture manager's prefix counter. A subsequent full native compilation passed
+with 168 Java 8 tests for 1.16 and 184 Java 8 tests for Forge 1.12. These ownership
+tests use real native manager registrations with mocked GPU textures, not a live
+GL context or a resource-reload rendering acceptance result.
+
+ForgeGradle 3's notch-obfuscated path otherwise chooses the old plain 1.12.2 MCP
+merge config, which injects an incompatible three-value Side enum. The narrow
+build repository adapter selects Forge userdev's official timestamped
+1.12.2-20200226.224830 merge instead (`--inject false`). A comment-only access
+transformer supplies a build-local cache identity; it changes no game access
+flags, ships no game classes, and does not delete global caches. The helper has
+passed offline Gradle 5.6.4 / Java 8 configuration and fail-closed negative
+fixtures. A missing or failed pin never selects the known-bad legacy fallback;
+corrected native
+packaging and launch still require CI validation.
+
+The isolated native probe configuration disables only optional loader warning
+screens on Forge 1.16 and NeoForge 26.2. Warnings remain in logs and real loader
+errors still fail acceptance. This is not a clean-no-warning claim. Native
+Fabric 26.2 development join and OpenUI smoke passed at 50b7d54; no calibrated
+framebuffer, media-reload or production-jar launch result is implied.
+
+For a calibrated 26.2 visual run, build the pinned native dependency artifacts,
+then use `python3 tools/requested_visual.py --target fabric-26.2` (or
+`neoforge-26.2`). It reuses the existing common case manifest, pixel oracle,
+frame-stability checks and fixed/plain/see-through negative controls. Native
+instrumentation is generated only into a disposable source snapshot. `--probe`
+and `--compile-only` are diagnostic modes and cannot produce a verifiable passing
+full-gate receipt. Use `--verify-receipt <result.json> --head <commit>` to reject
+stale, dirty, incomplete or diagnostic-only evidence. The adapted drivers have
+compiled against native Java 25 APIs; actual new-target framebuffer execution
+remains pending. The 1.12 native UI/screenshot adapter is separate and does not
+yet establish the calibrated media-rendering gate.
+
+The requested-generations CI additionally runs the full calibrated framebuffer
+oracle on representative Fabric 26.2 after its native join/UI smoke passes.
+It requires the fixed renderer plus plain and see-through negative controls,
+then verifies a clean exact-head receipt and preserves screenshots/measurements.
+A configured CI step is not a completed result: until that run succeeds, the
+new-target framebuffer, reload, transparency and occlusion acceptance remain
+unproven. This representative lane does not establish another backend, shaders
+or a production-jar launch.

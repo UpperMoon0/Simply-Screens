@@ -25,12 +25,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: UpperMoon0/PacketWeave
-          ref: f5ef9b8c3a4ab3ba3af82af54769a09f370c1a85
+          ref: b9af8be1c8dae497a852342a0d323f811b80b54a
           path: PacketWeave
       - uses: actions/checkout@v4
         with:
           repository: UpperMoon0/OpenUI-MC
-          ref: 5feba85ab1363a7a3e71f4fbf2c1347911cf326d
+          ref: ae7ac42daf6acf3018850778ffd4fa4ee4d4cb71
           path: OpenUI-MC
       - uses: actions/setup-java@v4
         with:
@@ -78,6 +78,7 @@ jobs:
           python3 -m unittest discover -s tools -p test_modern_screen_sources.py -v
           python3 -m unittest discover -s tools -p test_forge_1122_sources.py -v
           python3 -m unittest discover -s tools -p test_requested_live_join.py -v
+          python3 -m unittest discover -s tools -p test_requested_visual.py -v
       - name: Prefetch official legacy assets with bounded transport retries
         if: matrix.target == 'forge-1.12.2'
         working-directory: Simply-Screens
@@ -104,6 +105,18 @@ jobs:
           TARGET: ${{ matrix.target }}
           LIBGL_ALWAYS_SOFTWARE: 'true'
         run: python3 tools/requested_live_join.py --target "$TARGET" --timeout 420
+      - name: Calibrated native framebuffer acceptance and negative controls
+        if: matrix.target == 'fabric-26.2'
+        working-directory: Simply-Screens
+        env:
+          LIBGL_ALWAYS_SOFTWARE: 'true'
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python3 -m pip install -r tools/visual/requirements.txt
+          python3 tools/requested_visual.py --target fabric-26.2
+          mapfile -t receipts < <(find build/requested-visual-evidence/fabric-26.2 -name result.json -type f)
+          test "${#receipts[@]}" = 1
+          python3 tools/requested_visual.py --verify-receipt "${receipts[0]}" --head "$EXPECTED_HEAD"
       - name: Preserve exact-head build and runtime evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -116,4 +129,5 @@ jobs:
             Simply-Screens/${{ matrix.target }}/run/live-join/**/logs/**
             Simply-Screens/${{ matrix.target }}/run/live-join/**/crash-reports/**
             Simply-Screens/build/requested-runtime/${{ matrix.target }}/**
+            Simply-Screens/build/requested-visual-evidence/${{ matrix.target }}/**
           if-no-files-found: warn

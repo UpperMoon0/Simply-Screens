@@ -36,6 +36,7 @@
   "net.minecraft.client.renderer.RenderType.CompositeState": "net.minecraft.client.renderer.RenderType.State",
   "net.minecraft.client.renderer.blockentity.BlockEntityRenderDispatcher": "net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher",
   "net.minecraft.client.renderer.blockentity.BlockEntityRenderer": "net.minecraft.client.renderer.tileentity.TileEntityRenderer",
+  "net.minecraft.client.renderer.texture.AbstractTexture": "net.minecraft.client.renderer.texture.Texture",
   "net.minecraft.client.renderer.texture.DynamicTexture": "net.minecraft.client.renderer.texture.DynamicTexture",
   "net.minecraft.client.resources.sounds.Sound": "net.minecraft.client.audio.Sound",
   "net.minecraft.client.sounds.SoundEngine": "net.minecraft.client.audio.SoundEngine",

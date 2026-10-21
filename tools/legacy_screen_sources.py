@@ -31,7 +31,30 @@ def remove_method(text,marker):
     body=text.index('{',start);end=end_pair(text,body,'{','}')
     return text[:line]+text[end+1:]
 
+def image_texture_lifecycle(text):
+    """One ownership policy, with thin native texture-manager adapters per generation."""
+    helper = 'com.nstut.simplyscreens.client.compat.LegacyTextureLifecycle'
+    manager = 'Minecraft.getInstance().getTextureManager()'
+    text = text.replace(manager + '.release(location)', helper + '.release(' + manager + ', location, texture)')
+    for name in ('imageId', 'errorId'):
+        text = text.replace(manager + '.register(' + name + '.toString(), ', helper + '.register(' + manager + ', ' + name + '.toString(), ')
+    marker = '        if (texture != null) {\n            ResourceLocation location ='
+    if text.count(marker) != 1:
+        raise ValueError('Shared image texture registration drift')
+    text = text.replace(marker, '        if (texture == errorTexture && texture != null) return errorTextureLocation;\n' + marker)
+    start = text.index('        for (Map.Entry<UUID, ResourceLocation> entry : TEXTURE_LOCATIONS.entrySet()) {')
+    end = text.index('        IN_MEMORY_CACHE.clear();', start) + len('        IN_MEMORY_CACHE.clear();')
+    text = text[:start] + """        for (UUID id : new java.util.HashSet<>(IN_MEMORY_CACHE.keySet())) evictTexture(id);
+        TEXTURE_LOCATIONS.clear();
+        if (errorTexture != null) {
+            """ + helper + '.release(' + manager + """, errorTextureLocation, errorTexture);
+            errorTexture = null;
+            errorTextureLocation = null;
+        }""" + text[end:]
+    return text
+
 def convert(text,name):
+    if name == 'ClientImageManager.java': text = image_texture_lifecycle(text)
     text=java8(text).replace('dev.architectury.', 'me.shedaniel.architectury.')
     text=text.replace('org.slf4j.LoggerFactory', 'org.apache.logging.log4j.LogManager').replace('org.slf4j.Logger', 'org.apache.logging.log4j.Logger').replace('LoggerFactory.getLogger(', 'LogManager.getLogger(')
     text=text.replace('me.shedaniel.architectury.registry.registries.','me.shedaniel.architectury.registry.')
