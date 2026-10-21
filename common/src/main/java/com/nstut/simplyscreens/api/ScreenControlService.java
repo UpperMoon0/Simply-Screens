@@ -32,9 +32,18 @@ public final class ScreenControlService {
         this.playlists = playlists;
     }
 
+    private boolean activeTarget(String key) {
+        if (key == null || networks.snapshot(key) == null) return false;
+        if (!key.startsWith("display/")) return true;
+        try {
+            var display = networks.displayState(UUID.fromString(key.substring(8)));
+            return display == null || display.screenId().isEmpty() || display.override();
+        } catch (IllegalArgumentException invalid) { return false; }
+    }
+
     /** Missing or inaccessible networks are indistinguishable. VIEW controls content visibility. */
     public Status status(String key, Actor actor) {
-        if (key == null) return null;
+        if (!activeTarget(key)) return null;
         Actor effective = actor == null ? Actor.automation() : actor;
         var state = networks.snapshot(key);
         if (state == null) return null;
@@ -64,7 +73,7 @@ public final class ScreenControlService {
     /** Refuses inaccessible assets even when the network itself permits control. */
     public boolean select(Actor actor, String key, UUID image, Predicate<UUID> mayReadImage) {
         Actor effective = actor == null ? Actor.automation() : actor;
-        var state = key == null ? null : networks.snapshot(key);
+        var state = activeTarget(key) ? networks.snapshot(key) : null;
         if (state == null || !networks.allowed(networks.accessKey(key), effective, Permission.CONTROL)
                 || image != null && (mayReadImage == null || !mayReadImage.test(image))) return false;
         java.util.function.BooleanSupplier select = () -> networks.selectContent(
@@ -76,7 +85,7 @@ public final class ScreenControlService {
     public boolean play(Actor actor, String key, UUID owner, UUID playlistId,
                         Predicate<UUID> mayReadImage) {
         Actor effective = actor == null ? Actor.automation() : actor;
-        if (playlists == null || key == null || networks.snapshot(key) == null || owner == null || playlistId == null
+        if (playlists == null || !activeTarget(key) || owner == null || playlistId == null
                 || !networks.allowed(networks.accessKey(key), effective, Permission.CONTROL)
                 || (!effective.operator() && !owner.equals(effective.id()))) return false;
         NamedPlaylist saved = playlists.library(owner).find(playlistId);
@@ -88,14 +97,14 @@ public final class ScreenControlService {
     /** Operates on the persisted network session, including unloaded and cross-dimensional displays. */
     public boolean transport(Actor actor, String key, String action) {
         Actor effective = actor == null ? Actor.automation() : actor;
-        if (playlists == null || key == null || networks.snapshot(key) == null || action == null
+        if (playlists == null || !activeTarget(key) || action == null
                 || !List.of("PAUSE", "RESUME", "STOP", "NEXT", "PREVIOUS", "RESTART").contains(action)
                 || !networks.allowed(networks.accessKey(key), effective, Permission.CONTROL)) return false;
         return playlists.command(key, action, playlists.snapshot(key).revision());
     }
 
     public PlaybackSnapshot playback(String key, Actor actor) {
-        return key != null && playlists != null && networks.allowed(networks.accessKey(key),
+        return activeTarget(key) && playlists != null && networks.allowed(networks.accessKey(key),
                 actor == null ? Actor.automation() : actor, Permission.MANAGE)
                 ? playlists.snapshot(key) : PlaybackSnapshot.EMPTY;
     }

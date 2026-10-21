@@ -14,6 +14,10 @@ The public API accepts an actual `MinecraftServer`, an optional **online**
 false, null or an empty immutable list on a missing/off-thread/unloaded target.
 Use your platform's server scheduler to marshal calls from other threads.
 The API never force-loads chunks or scans the world.
+Linked displays use the network's live access policy, including after ownership
+transfers. A `display/<uuid>` content key is active only for an unlinked display
+or an enabled local override; disabled overrides are omitted from discovery and
+reject reads and mutations. Use the linked network key for their current content.
 
 ~~~java
 String key = ScreenApi.networkKey("station");

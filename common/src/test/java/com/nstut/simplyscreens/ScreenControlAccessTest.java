@@ -8,6 +8,29 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ScreenControlAccessTest {
+    @Test void inactiveLinkedDisplayCannotExposeOrMutateItsDormantPrivateContent() {
+        var networks = new ScreenNetworkService();
+        var playlists = new ScreenPlaylistService();
+        var api = new ScreenControlService(networks, playlists);
+        UUID owner = UUID.randomUUID(), display = UUID.randomUUID(), privateImage = UUID.randomUUID();
+        String key = ScreenNetworkService.network("public"), dormant = ScreenNetworkService.display(display);
+        var actor = new Actor(owner, false);
+        assertTrue(networks.createOwned(key, owner, null));
+        assertTrue(networks.createOwned(dormant, owner, privateImage));
+        UUID saved = playlists.create(owner, "Dormant", 0);
+        assertTrue(playlists.replaceSlides(owner, saved, List.of(new PlaylistSlide(privateImage,1000)),1));
+        assertTrue(playlists.play(dormant, owner, saved,0));
+        networks.updateDisplay(display, "public", false, true);
+        assertTrue(networks.access(key, actor, 0, "CONTROL", "PUBLIC"));
+        assertNull(api.status(dormant, null), "This physical display currently uses network content, not its private override");
+        assertTrue(api.list(null).stream().noneMatch(s -> s.key().equals(dormant)));
+        assertFalse(api.select(null, dormant, null, id -> true));
+        assertFalse(api.play(actor, dormant, owner, saved, id -> true));
+        assertFalse(api.transport(actor, dormant, "STOP"));
+        assertEquals(PlaybackSnapshot.EMPTY, api.playback(dormant, actor));
+        assertEquals(privateImage, networks.snapshot(dormant).image());
+        assertNotNull(api.status(key, null));
+    }
     @Test void linkedOverrideFollowsTransferredNetworkAclForEveryApiOperation() {
         var networks = new ScreenNetworkService();
         var playlists = new ScreenPlaylistService();
