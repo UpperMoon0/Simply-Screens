@@ -5,8 +5,37 @@ import unittest
 import legacy_screen_sources
 import port_resources
 import forge_1165_sources
+import legacy_screen_tests
 ROOT=Path(__file__).resolve().parents[1]
 class RequestedGenerationsTest(unittest.TestCase):
+    def test_native_116_sync_is_loader_scoped_and_retains_tag_identity(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fabric=Path(tmp)/'fabric';forge=Path(tmp)/'forge'
+            legacy_screen_sources.generate(fabric);forge_1165_sources.generate(forge)
+            name='com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity.java'
+            ft=(fabric/name).read_text();gt=(forge/name).read_text()
+            self.assertIn('extends com.nstut.simplyscreens.compat.FabricBlockEntity',ft)
+            self.assertNotIn('getUpdatePacket()',ft)
+            self.assertIn('return save(new CompoundTag());',ft)
+            self.assertIn('return save(new CompoundNBT());',gt)
+            self.assertNotIn('FabricBlockEntity',gt)
+            helper=(forge/'com/nstut/simplyscreens/compat/LegacyBlockEntity.java').read_text()
+            self.assertIn('onDataPacket(net.minecraft.network.NetworkManager network',helper)
+            self.assertIn('packet.getType() == 0 && getBlockPos().equals(packet.getPos())',helper)
+            self.assertIn('!level.isClientSide',helper)
+            self.assertIn('tag.getString("id")',helper)
+            self.assertNotIn('onDataPacket(', (fabric/'com/nstut/simplyscreens/compat/LegacyBlockEntity.java').read_text())
+
+    def test_native_sync_tests_follow_target_mappings_and_remove_stale_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output=Path(tmp);name='com/nstut/simplyscreens/compat/LegacyBlockEntitySyncTest.java'
+            legacy_screen_tests.generate(output,native116=True,forge=True)
+            self.assertIn('net.minecraft.network.play.server.SUpdateTileEntityPacket',(output/name).read_text())
+            legacy_screen_tests.generate(output,native116=True)
+            self.assertIn('net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket',(output/name).read_text())
+            legacy_screen_tests.generate(output)
+            self.assertFalse((output/name).exists())
+
     def test_legacy_generator_preserves_full_runtime(self):
         with tempfile.TemporaryDirectory() as tmp:
             output=Path(tmp);legacy_screen_sources.generate(output)

@@ -65,20 +65,32 @@ def run(root,target,compile_only=False,probe=False):
         originals={path:(stage/path).read_text() for path in adapter.mutable_paths()}
         packetweave_source=(root.parent/'PacketWeave/core/src/main/java').resolve()
         native_command=lambda snapshot,name,task:command(snapshot,name,task,dependencies,packetweave_source)
+        calibration_failure=None
         for variant in variants(target):
             adapter.set_variant(stage,originals,variant)
             if compile_only:
                 subprocess.run(native_command(stage,target,'classes'),cwd=stage,check=True)
                 receipt['variants'][variant]='compiled'
                 continue
-            visual.run_variant(stage,target,variant,evidence/variant,dependencies['packetweave'],probe,
-                native_commands=native_command,dependency_setup=lambda *_:None,
-                runtime_setup=lambda _:native.verify_loader_warning_visibility(stage/target))
+            outcome='diagnostic' if probe else 'pass'
+            try:
+                visual.run_variant(stage,target,variant,evidence/variant,dependencies['packetweave'],probe,
+                    native_commands=native_command,dependency_setup=lambda *_:None,
+                    runtime_setup=lambda _:native.verify_loader_warning_visibility(stage/target))
+            except ValueError as error:
+                # Only this completed historical-control verdict may continue to
+                # the independent occlusion control. Startup, cleanup, incomplete
+                # manifests, other pixel failures and all diagnostics still abort.
+                if probe or variant!='plain' or str(error)!='INCONCLUSIVE: plain renderer did not reproduce z-fighting':
+                    raise
+                calibration_failure=error
+                outcome='inconclusive'
             graphics=json.loads((evidence/variant/'graphics.json').read_text())
             if 'graphics' in receipt and receipt['graphics']!=graphics:
                 raise RuntimeError('Negative controls used a different graphics backend')
             receipt['graphics']=graphics
-            receipt['variants'][variant]='diagnostic' if probe else 'pass'
+            receipt['variants'][variant]=outcome
+        if calibration_failure is not None:raise calibration_failure
         receipt['status']='compile-only' if compile_only else 'probe-only' if probe else 'pass'
     except BaseException as error:
         receipt['status']='fail';receipt['error']=str(error)

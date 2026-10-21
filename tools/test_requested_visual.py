@@ -1,4 +1,6 @@
 import copy
+import json
+from unittest.mock import patch
 import shutil
 from pathlib import Path
 import tempfile
@@ -75,6 +77,41 @@ class RequestedVisualTest(unittest.TestCase):
             fixture=stage/visual_test.NF26_CONTROL/'ScreenBlockEntityRenderer.java'
             fixture.write_text(fixture.read_text()+'\n// changed\n')
             with self.assertRaises(RuntimeError):adapter.set_variant(stage,originals,'plain')
+
+    def run_control_fixture(self,failure,probe=False):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);dependency=root/'fixture.jar';dependency.write_bytes(b'jar fixture')
+            called=[]
+            def run_variant(stage,target,variant,directory,*args,**kwargs):
+                called.append(variant);directory.mkdir(parents=True)
+                (directory/'graphics.json').write_text(json.dumps({key:'same backend' for key in ('graphicsVendor','graphicsRenderer','graphicsVersion')}))
+                if variant=='plain':raise failure
+            with patch.object(runner,'dependency_paths',return_value={'packetweave':dependency,'openui':dependency}), \
+                 patch.object(runner.subprocess,'check_output',side_effect=['head\n','']), \
+                 patch.object(runner.visual.live,'native_version',return_value='0.1.4'), \
+                 patch.object(runner.visual,'snapshot',return_value='a'*64), \
+                 patch.object(runner,'prepare_snapshot'),patch.object(adapter,'mutable_paths',return_value=[]), \
+                 patch.object(adapter,'set_variant'),patch.object(runner.visual,'run_variant',side_effect=run_variant),patch('builtins.print'):
+                with self.assertRaises(type(failure)):runner.run(root,'fabric-26.2',probe=probe)
+            receipts=list(root.glob('build/requested-visual-evidence/fabric-26.2/*/result.json'))
+            self.assertEqual(1,len(receipts));receipt=json.loads(receipts[0].read_text())
+            self.assertEqual('fail',receipt['status'])
+            with self.assertRaises(ValueError):runner.verify_receipt(receipt,'head')
+            return called,receipt
+
+    def test_inconclusive_plain_still_collects_occlusion_but_never_passes(self):
+        called,receipt=self.run_control_fixture(ValueError('INCONCLUSIVE: plain renderer did not reproduce z-fighting'))
+        self.assertEqual(['fixed','plain','see-through'],called)
+        self.assertEqual({'fixed':'pass','plain':'inconclusive','see-through':'pass'},receipt['variants'])
+
+    def test_native_setup_other_oracle_and_probe_failures_do_not_continue(self):
+        for failure,probe in [(RuntimeError('server failed during startup'),False),
+                              (ValueError('incomplete manifest'),False),
+                              (ValueError('INCONCLUSIVE: plain renderer did not reproduce z-fighting'),True)]:
+            with self.subTest(failure=str(failure),probe=probe):
+                called,receipt=self.run_control_fixture(failure,probe)
+                self.assertEqual(['fixed','plain'],called)
+                self.assertNotIn('see-through',receipt['variants'])
 
     def test_receipt_requires_clean_full_fixed_and_negative_control_evidence(self):
         valid=dict(head='head',dirty=False,target='fabric-26.2',status='pass',

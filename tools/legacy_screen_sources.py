@@ -138,6 +138,9 @@ def convert(text,name):
 ''')
         text=text.replace('public void setLevel(net.minecraft.world.level.Level level)', 'public void setLevelAndPosition(net.minecraft.world.level.Level level, BlockPos pos)').replace('super.setLevel(level);', 'super.setLevelAndPosition(level, pos);')
         text=text.replace('ClientboundBlockEntityDataPacket.create(this)', 'new ClientboundBlockEntityDataPacket(getBlockPos(), 0, getUpdateTag())')
+        old_tag='        CompoundTag tag = new CompoundTag();\n        writePersistentData(tag);\n        return tag;'
+        if text.count(old_tag)!=1:raise ValueError('Native screen update tag drift')
+        text=text.replace(old_tag,'        return save(new CompoundTag());')
     if name=='BlockEntityRegistries.java':
         text=text.replace('BlockEntityType.Builder.of(ScreenBlockEntity::new','BlockEntityType.Builder.of(ScreenBlockEntity::new')
     if name=='ScreenBlockEntityRenderer.java':
@@ -153,7 +156,7 @@ def convert(text,name):
         text=text.replace('Lorg/joml/Matrix4f;', 'Lcom/mojang/math/Matrix4f;')
     return text
 
-def generate(output):
+def generate(output, fabric=True):
     generated=set()
     for folder in ['common/src/main/java','common-1.20.1/src/main/java','common-legacy-game/src/main/java','common-legacy/src/main/java','common-1.16.5/src/main/java']:
         root=ROOT/folder
@@ -161,6 +164,9 @@ def generate(output):
             rel=path.relative_to(root);target=output/rel
             text=path.read_text()
             if folder not in ['common-legacy/src/main/java','common-1.16.5/src/main/java']:text=convert(text,path.name)
+            if fabric and path.name=='ScreenBlockEntity.java':
+                text=text.replace('extends com.nstut.simplyscreens.compat.LegacyBlockEntity','extends com.nstut.simplyscreens.compat.FabricBlockEntity')
+                text=remove_method(text,'public ClientboundBlockEntityDataPacket getUpdatePacket(')
             target.parent.mkdir(parents=True,exist_ok=True);target.write_text(text);generated.add(target)
     for path in output.rglob('*.java'):
         if path not in generated:path.unlink()

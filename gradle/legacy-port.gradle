@@ -60,10 +60,10 @@ tasks.register('verifyPortDependencies') {
 compileJava { dependsOn 'verifyPortDependencies' }
 
 def generateLegacyTests=tasks.register('generateLegacyTests',Exec) {
-    ['../common/src/test/java','../common-legacy/src/test/java'].each { inputs.dir it }
-    inputs.files '../tools/legacy_screen_tests.py','../tools/legacy_screen_sources.py','../tools/java8_records.py'
+    ['../common/src/test/java','../common-legacy/src/test/java','../common-1.16.5/src/test/java'].each { inputs.dir it }
+    inputs.files '../tools/legacy_screen_tests.py','../tools/legacy_screen_sources.py','../tools/forge_1165_sources.py','../tools/forge_1165_types.json','../tools/java8_records.py'
     outputs.dir layout.buildDirectory.dir('generated/tests')
-    commandLine 'python3','../tools/legacy_screen_tests.py','--output',layout.buildDirectory.dir('generated/tests').get().asFile
+    commandLine(['python3','../tools/legacy_screen_tests.py','--output',layout.buildDirectory.dir('generated/tests').get().asFile,'--native-116'] + (project.name.startsWith('forge') ? ['--forge'] : []))
 }
 sourceSets.test.java.srcDir generateLegacyTests
 dependencies {
