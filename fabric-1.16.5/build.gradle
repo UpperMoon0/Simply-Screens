@@ -22,3 +22,7 @@ loom {
     }
 }
 tasks.withType(JavaExec).configureEach { javaLauncher=javaToolchains.launcherFor { languageVersion=JavaLanguageVersion.of(8) } }
+// The native runner already owns Xvfb. Loom 1.17's internal Xvfb command omits
+// JavaExec's bare classpath on Java 8 (only Java 9+ argfiles carry it across).
+// Keep the real Java 8 launcher and let JavaExec preserve the full classpath.
+tasks.withType(net.fabricmc.loom.task.AbstractRunTask).configureEach { useXvfb.set(false) }

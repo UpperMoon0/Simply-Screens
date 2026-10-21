@@ -31,6 +31,9 @@ def verify(path,target):
             refmap=config.get('refmap')
             if not refmap or refmap not in names:raise ValueError('Missing native legacy mixin refmap')
         if 'assets/simply_screens/textures/block/screen_front.png' not in names:raise ValueError('Missing screen texture')
+        if version=='26.2':
+            from check_patchouli_jar import validate_recipe
+            validate_recipe(json.loads(jar.read('data/simply_screens/recipe/guide_book.json')),target)
         if loader=='fabric':
             meta=json.loads(jar.read('fabric.mod.json'))
             if meta['id']!='simply_screens' or meta['depends']['minecraft']!=version:raise ValueError('Wrong Fabric identity/version')

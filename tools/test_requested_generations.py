@@ -139,6 +139,8 @@ class RequestedGenerationsTest(unittest.TestCase):
         self.assertIn("minecraft.accessTransformer",source)
         self.assertIn("implements ArtifactProvider<ArtifactIdentifier>",source)
         self.assertNotIn("extends BaseRepo",source)
+        self.assertIn("tasks.named('check').configure",source)
+        self.assertNotIn("tasks.matching",source)
         self.assertIn("merged == null || !merged.isFile()",source)
         marker=(ROOT/'gradle/forge-1122-merge-cache.cfg').read_text()
         self.assertTrue(all(not line.strip() or line.lstrip().startswith('#') for line in marker.splitlines()))
@@ -175,6 +177,19 @@ class RequestedGenerationsTest(unittest.TestCase):
         self.assertIn('--verify-receipt',step)
         self.assertIn('--head "$EXPECTED_HEAD"',step)
         self.assertIn('Simply-Screens/build/requested-visual-evidence/${{ matrix.target }}/**',workflow)
+    def test_fabric_116_external_display_keeps_java8_native_classpath(self):
+        build=(ROOT/'fabric-1.16.5/build.gradle').read_text()
+        self.assertIn('JavaLanguageVersion.of(8)',build)
+        self.assertIn('tasks.withType(net.fabricmc.loom.task.AbstractRunTask).configureEach { useXvfb.set(false) }',build)
+        runner=(ROOT/'tools/requested_live_join.py').read_text()
+        self.assertIn("cmd=[xvfb,'-a',*cmd]",runner)
+    def test_legacy_prejoin_diagnostics_do_not_dismiss_native_error_screens(self):
+        source=(ROOT/'common-1.16.5/src/main/java/com/nstut/simplyscreens/client/testing/NativeClientAcceptance.java').read_text()
+        self.assertIn('if (!LiveJoinTestProtocol.isEnabled()) return;',source)
+        self.assertIn('Native join probe waiting: {}',source)
+        self.assertIn('client.screen.getClass().getName()',source)
+        self.assertNotIn('setScreen(',source)
+        self.assertNotIn('ConnectScreen',source)
     def test_no_unofficial_112_fabric_target(self):
         self.assertFalse((ROOT/'fabric-1.12.2').exists())
 if __name__=='__main__':unittest.main()

@@ -73,7 +73,7 @@ def run(root,target,compile_only=False,probe=False):
                 continue
             visual.run_variant(stage,target,variant,evidence/variant,dependencies['packetweave'],probe,
                 native_commands=native_command,dependency_setup=lambda *_:None,
-                runtime_setup=lambda _:native.configure_native_client(stage/target))
+                runtime_setup=lambda _:native.verify_loader_warning_visibility(stage/target))
             graphics=json.loads((evidence/variant/'graphics.json').read_text())
             if 'graphics' in receipt and receipt['graphics']!=graphics:
                 raise RuntimeError('Negative controls used a different graphics backend')

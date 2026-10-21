@@ -20,10 +20,18 @@ def generateModernTests=tasks.register('generateModernTests', Exec) {
     outputs.dir layout.buildDirectory.dir('generated/modernTests')
     commandLine 'python3','../tools/modern_screen_sources.py','--tests','--output',layout.buildDirectory.dir('generated/modernTests').get().asFile
 }
+def generateModernResources=tasks.register('generateModernResources', Exec) {
+    ['../neoforge-26.1.2/src/main/resources','../common-26.2/src/main/resources'].each { inputs.dir it }
+    inputs.file '../tools/modern_screen_resources.py'
+    inputs.property 'loader', project.name.split('-')[0]
+    outputs.dir layout.buildDirectory.dir('generated/modernResources')
+    commandLine 'python3','../tools/modern_screen_resources.py','--loader',project.name.split('-')[0],
+            '--output',layout.buildDirectory.dir('generated/modernResources').get().asFile
+}
 sourceSets {
     main {
         java.srcDirs '../common/src/main/java', generateModernSources
-        resources.srcDirs '../common-26.2/src/main/resources', '../neoforge-26.1.2/src/main/resources', '../common/src/main/resources'
+        resources.srcDirs generateModernResources, '../common/src/main/resources'
     }
     packetweaveApi { java.srcDir providers.gradleProperty('packetweaveSource').getOrElse('../../PacketWeave/core/src/main/java') }
     test { java.srcDirs '../common/src/test/java', generateModernTests }
@@ -60,4 +68,4 @@ test { useJUnitPlatform(); systemProperty 'net.bytebuddy.experimental','true'; t
 processResources { duplicatesStrategy=DuplicatesStrategy.EXCLUDE; exclude '**/*.bbmodel' }
 
 // Source archives retain target-specific overlays before common resource fallbacks.
-sourcesJar { dependsOn generateModernSources; duplicatesStrategy=DuplicatesStrategy.EXCLUDE }
+sourcesJar { dependsOn generateModernSources, generateModernResources; duplicatesStrategy=DuplicatesStrategy.EXCLUDE }

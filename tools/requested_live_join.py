@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Native standalone development launch; distinct from jar/unit and visual acceptance."""
-import argparse, hashlib, json, os, shutil, subprocess, sys
+import argparse, hashlib, json, os, shutil, subprocess, sys, tomllib
 from pathlib import Path
 from live_join_test import OutputPump, PASS_MARKER, SERVER_READY_MARKERS, prepare_server, prepare_client, popen, stop_tree
 TARGETS=('forge-1.12.2','fabric-1.16.5','forge-1.16.5','fabric-26.2','neoforge-26.2')
@@ -9,21 +9,25 @@ def command(module, task):
     return [str(module/('gradlew.bat' if os.name=='nt' else 'gradlew')),task,
             '--no-daemon','--console=plain','--max-workers=2','-Dorg.gradle.jvmargs=-Xmx1024m']
 
-def configure_native_client(module):
-    if module.name in ('neoforge-26.2','forge-1.16.5'):
-        # NeoForge logs nonfatal warnings before this optional UI. Fatal loading
-        # errors still take their separate failure path and cannot yield PASS.
-        name='neoforge-client.toml' if module.name == 'neoforge-26.2' else 'forge-client.toml'
-        config=module/'run/live-join/client/config'/name
-        config.parent.mkdir(parents=True,exist_ok=True)
-        prefix='[client]\n' if module.name == 'forge-1.16.5' else ''
-        config.write_text(prefix+'showLoadWarnings=false\n')
+def verify_loader_warning_visibility(module):
+    # Reused isolated runs may still contain the old diagnostic-only setting.
+    # Never silently reuse it or modify a user's existing configuration.
+    names={'neoforge-26.2':'neoforge-client.toml','forge-1.16.5':'forge-client.toml'}
+    if module.name not in names:return
+    path=module/'run/live-join/client/config'/names[module.name]
+    if not path.is_file():return
+    try:data=tomllib.loads(path.read_text())
+    except (OSError,tomllib.TOMLDecodeError) as error:
+        raise RuntimeError('Cannot verify native loader warning configuration: '+str(path)) from error
+    settings=data.get('client',{}) if module.name=='forge-1.16.5' else data
+    if settings.get('showLoadWarnings') is False:
+        raise RuntimeError('Loader warnings are suppressed in the existing isolated run configuration: '+str(path))
 
 def run(root,target,timeout):
     module=root/target;evidence=root/'build/requested-runtime'/target;evidence.mkdir(parents=True,exist_ok=True)
     receipt=evidence/'receipt.json'
     if receipt.exists():receipt.unlink()
-    prepare_server(module);prepare_client(module);configure_native_client(module)
+    prepare_server(module);prepare_client(module);verify_loader_warning_visibility(module)
     properties=module/'run/live-join/server/server.properties'
     properties.write_text(properties.read_text()+'server-ip=127.0.0.1\nmax-players=2\n')
     server=popen(command(module,'runLiveJoinTestServer'),module)

@@ -3,8 +3,46 @@ from pathlib import Path
 import tempfile
 import unittest
 import modern_screen_sources as generator
+import modern_screen_resources as resources
+import json
 
 class ModernSourceReuseTest(unittest.TestCase):
+    def test_native_resources_preserve_canonical_content_and_optional_recipe_gate(self):
+        from check_patchouli_jar import validate_recipe
+        canonical = generator.ROOT / 'neoforge-26.1.2/src/main/resources'
+        overlay = generator.ROOT / 'common-26.2/src/main/resources'
+        selected = {p.relative_to(root): p for root in (canonical, overlay) for p in root.rglob('*') if p.is_file()}
+        guide = Path('data/simply_screens/recipe/guide_book.json')
+        for loader in ('fabric', 'neoforge'):
+            with self.subTest(loader=loader), tempfile.TemporaryDirectory() as tmp:
+                output = Path(tmp)
+                resources.generate(loader, output)
+                recipe = json.loads((output / guide).read_text())
+                validate_recipe(recipe, loader + '-26.2')
+                self.assertEqual(set(selected), {p.relative_to(output) for p in output.rglob('*') if p.is_file()})
+                for relative, source in selected.items():
+                    if loader == 'fabric' and relative == guide:
+                        expected = json.loads(source.read_text())
+                        expected.pop('neoforge:conditions')
+                        actual = dict(recipe)
+                        actual.pop('fabric:load_conditions')
+                        self.assertEqual(expected, actual)
+                    else:
+                        self.assertEqual(source.read_bytes(), (output / relative).read_bytes())
+                before = {p.relative_to(output): p.read_bytes() for p in output.rglob('*') if p.is_file()}
+                (output / 'stale.json').write_text('{}')
+                resources.generate(loader, output)
+                self.assertEqual(before, {p.relative_to(output): p.read_bytes() for p in output.rglob('*') if p.is_file()})
+
+    def test_unrecognized_or_ambiguous_native_condition_fails_closed(self):
+        for condition in ([], [{'type': 'neoforge:unknown', 'modid': 'patchouli'}],
+                          [{'type': 'neoforge:mod_loaded', 'modid': 'patchouli', 'extra': True}]):
+            with self.assertRaises(ValueError):
+                resources.fabric_conditions({'neoforge:conditions': condition})
+        with self.assertRaises(ValueError):
+            resources.fabric_conditions({'neoforge:conditions': [{'type': 'neoforge:mod_loaded', 'modid': 'patchouli'}],
+                                         'fabric:load_conditions': []})
+
     def test_complete_modern_runtime_is_single_sourced_and_native_only_overlays_are_small(self):
         _, canonical = generator.canonical_paths()
         overlay = generator.ROOT / 'common-26.2/src/main/java'

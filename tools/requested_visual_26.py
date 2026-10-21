@@ -8,6 +8,19 @@ import modern_screen_sources
 MODULE = 'common-26.2'
 
 def adapt_driver(source, name):
+    if name == 'VisualClient':
+        # Diagnostics only: keep queue, compiled/visibility and stable-frame gates
+        # unchanged, but identify the exact gate/cell instead of a generic timeout.
+        for old, new, expected in (
+            ('if (!__TERRAIN_IDLE__) return false;',
+             'if (!__TERRAIN_IDLE__) { waitingFor = "native terrain worker queue"; return false; }', 1),
+            ('if (!__SECTION_COMPILED__) return false;',
+             'if (!__SECTION_COMPILED__) { waitingFor = "native compiled/visible section at " + pos; return false; }', 2),
+            ('                waitingFor = "terrain rebuild";\n', '', 1),
+        ):
+            if source.count(old) != expected:
+                raise ValueError('Native visual readiness diagnostic anchor drift: ' + old)
+            source = source.replace(old, new)
     replacements = {
         '__BASE_SAMPLES__': str(SAMPLES),
         'Blocks.RED_CONCRETE': 'Blocks.CONCRETE.red()',
