@@ -1,5 +1,7 @@
 package com.nstut.simplyscreens.playlist;
 
+import com.nstut.simplyscreens.api.ScreenEvents;
+
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -328,11 +330,13 @@ public final class ScreenPlaylistService {
     private void commitSession(String key, Session next) {
         validateSession(next, 0);
         Session old = sessions.put(key, next);
+        PlaybackSnapshot before = old == null ? PlaybackSnapshot.EMPTY : capture(old);
         boolean wasDirty = dirty; dirty = true;
         try { save(); } catch (RuntimeException failure) {
             if (old == null) sessions.remove(key); else sessions.put(key, old);
             dirty = wasDirty; throw failure;
         }
+        ScreenEvents.playbackChanged(key, before, capture(next), false);
     }
 
     /**
@@ -346,11 +350,14 @@ public final class ScreenPlaylistService {
         for (Map.Entry<String, Session> entry : sessions.entrySet()) {
             Session session = entry.getValue();
             if (session.status != Status.PLAYING) continue;
+            PlaybackSnapshot before = capture(session);
             boolean transition = advanceTime(session, elapsedMillis);
             dirty = true;
             if (transition) {
                 session.revision = increment(session.revision);
-                changed.put(entry.getKey(), capture(session));
+                PlaybackSnapshot after = capture(session);
+                changed.put(entry.getKey(), after);
+                ScreenEvents.playbackChanged(entry.getKey(), before, after, true);
             }
         }
         return Map.copyOf(changed);
@@ -408,6 +415,7 @@ public final class ScreenPlaylistService {
         if (old == null) return;
         boolean wasDirty = dirty; dirty = true;
         try { save(); } catch (RuntimeException failure) { sessions.put(key, old); dirty = wasDirty; throw failure; }
+        ScreenEvents.playbackChanged(key, capture(old), PlaybackSnapshot.EMPTY, false);
     }
 
     /** Removes a deleted image from all libraries, queues, suspended announcements and active snapshots. */
@@ -436,6 +444,11 @@ public final class ScreenPlaylistService {
         try { save(); } catch (RuntimeException failure) {
             libraries.clear(); libraries.putAll(oldLibraries); sessions.clear(); sessions.putAll(oldSessions);
             dirty = wasDirty; throw failure;
+        }
+        for (var entry : sessions.entrySet()) {
+            Session previous = oldSessions.get(entry.getKey());
+            if (previous != null)
+                ScreenEvents.playbackChanged(entry.getKey(), capture(previous), capture(entry.getValue()), false);
         }
         return true;
     }
