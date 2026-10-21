@@ -14,7 +14,8 @@ public final class NativeClientAcceptance {
         if (!LiveJoinTestProtocol.isEnabled()) return;
         if (client.player == null || client.level == null) {
             String state = "screen=" + (client.screen == null ? "none" : client.screen.getClass().getName())
-                    + ", overlay=" + (client.getOverlay() == null ? "none" : client.getOverlay().getClass().getName());
+                    + ", overlay=" + (client.getOverlay() == null ? "none" : client.getOverlay().getClass().getName())
+                    + ", multiplayerAllowed=" + client.allowsMultiplayer();
             if (!state.equals(lastWaitingState)) {
                 lastWaitingState = state;
                 SimplyScreens.LOGGER.info("Native join probe waiting: {}", state);

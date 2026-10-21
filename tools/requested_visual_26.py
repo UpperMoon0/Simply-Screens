@@ -15,12 +15,32 @@ def adapt_driver(source, name):
             ('if (!__TERRAIN_IDLE__) return false;',
              'if (!__TERRAIN_IDLE__) { waitingFor = "native terrain worker queue"; return false; }', 1),
             ('if (!__SECTION_COMPILED__) return false;',
-             'if (!__SECTION_COMPILED__) { waitingFor = "native compiled/visible section at " + pos; return false; }', 2),
+             'if (!__SECTION_COMPILED__) { waitingFor = sectionReadiness(mc, pos); return false; }', 2),
             ('                waitingFor = "terrain rebuild";\n', '', 1),
         ):
             if source.count(old) != expected:
                 raise ValueError('Native visual readiness diagnostic anchor drift: ' + old)
             source = source.replace(old, new)
+        marker = '    private static boolean terrainReady(Minecraft mc) {'
+        if source.count(marker) != 1:
+            raise ValueError('Native visual terrain method anchor drift')
+        # Read-only diagnostics distinguish absent/uncompiled meshes from upload
+        # fade without replacing or weakening the native readiness predicate.
+        source = source.replace(marker, '''    private static String sectionReadiness(Minecraft mc, BlockPos pos) {
+        String detail = "native compiled/visible section at " + pos;
+        var area = mc.levelRenderer.viewArea();
+        if (area == null) return detail + "; view area absent";
+        var section = area.getRenderSectionAt(pos);
+        if (section == null) return detail + "; render section absent";
+        var mesh = section.sectionMesh.get();
+        return detail + "; origin=" + section.getRenderOrigin()
+                + "; mesh=" + (mesh == net.minecraft.client.renderer.chunk.CompiledSectionMesh.UNCOMPILED
+                    ? "UNCOMPILED" : mesh.getClass().getSimpleName())
+                + "; fade=" + section.getVisibility(net.minecraft.util.Util.getMillis())
+                + "; listedVisible=" + mc.levelRenderer.visibleSections().contains(section);
+    }
+
+''' + marker, 1)
     replacements = {
         '__BASE_SAMPLES__': str(SAMPLES),
         'Blocks.RED_CONCRETE': 'Blocks.CONCRETE.red()',

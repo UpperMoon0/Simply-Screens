@@ -84,6 +84,7 @@ jobs:
         working-directory: Simply-Screens
         run: |
           mkdir -p build
+          python3 tools/prefetch_legacy_asset_aliases.py --asset-root "${GRADLE_USER_HOME:-$HOME/.gradle}/caches/forge_gradle/assets"
           for attempt in 1 2 3; do
             if forge-1.12.2/gradlew -p forge-1.12.2 downloadAssets --no-daemon --max-workers=2 > build/legacy-assets.log 2>&1; then
               cat build/legacy-assets.log

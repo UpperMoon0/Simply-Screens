@@ -188,6 +188,7 @@ class RequestedGenerationsTest(unittest.TestCase):
         self.assertIn('if (!LiveJoinTestProtocol.isEnabled()) return;',source)
         self.assertIn('Native join probe waiting: {}',source)
         self.assertIn('client.screen.getClass().getName()',source)
+        self.assertIn('client.allowsMultiplayer()',source)
         self.assertNotIn('setScreen(',source)
         self.assertNotIn('ConnectScreen',source)
     def test_no_unofficial_112_fabric_target(self):

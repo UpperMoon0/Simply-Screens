@@ -439,10 +439,10 @@ public final class VisualClient {
         if (!__TERRAIN_IDLE__) return false;
         // In the anchor-unloaded regression, frameMatchesCurrentFixture() already
         // proves that a retained child from a renderable section submitted the logical
-        // screen. Requiring every retained child section to be "visible" is invalid:
-        // NF26's isSectionCompiledAndVisible() includes a frustum/visibility threshold,
-        // so off-screen retained child sections can never satisfy it. The empty global
-        // rebuild queue plus the observed child submission is the correct readiness gate.
+        // screen. This scenario intentionally gates on the observed child rather
+        // than every retained section. In 26.2 isSectionCompiledAndVisible() checks
+        // mesh availability and upload fade, not a frustum test. Keep the empty
+        // global rebuild queue plus the observed child submission as this gate.
         if (anchorUnloadedScenario()) return true;
         BlockPos anchor = sceneAnchor();
         Direction facing = Direction.valueOf(scene.get("facing").getAsString());
