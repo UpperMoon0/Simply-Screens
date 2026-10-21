@@ -53,6 +53,11 @@ public final class ScreenEvents {
         enqueue(new Change(Type.IMAGE_CHANGED, key, image, -1, revision));
     }
 
+    /** Explicit play replaces the running snapshot even when its source identity is unchanged. */
+    public static void playbackStarted(String key, PlaybackSnapshot playback) {
+        enqueue(new Change(Type.SLIDESHOW_STARTED, key, playback.currentImage(), playback.slideIndex(), playback.revision()));
+    }
+
     /** Compare logical sessions, never individual blocks linked to a network. */
     public static void playbackChanged(String key, PlaybackSnapshot before,
                                        PlaybackSnapshot after, boolean automaticAdvance) {

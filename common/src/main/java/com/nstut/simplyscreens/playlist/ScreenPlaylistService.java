@@ -231,7 +231,7 @@ public final class ScreenPlaylistService {
         next.repeat = old.base().repeat;
         next.reorder(old.base().shuffle, new Random().nextLong());
         next.cursor = 0; next.status = Status.PLAYING; next.revision = increment(old.revision);
-        commitSession(key, next);
+        commitSession(key, next, true);
         return true;
     }
     public synchronized boolean command(String key, String action, long expectedRevision) {
@@ -328,6 +328,9 @@ public final class ScreenPlaylistService {
         return (current == null ? expectedRevision == 0 && sessions.size() < MAX_NETWORKS : current.revision == expectedRevision);
     }
     private void commitSession(String key, Session next) {
+        commitSession(key, next, false);
+    }
+    private void commitSession(String key, Session next, boolean explicitPlay) {
         validateSession(next, 0);
         Session old = sessions.put(key, next);
         PlaybackSnapshot before = old == null ? PlaybackSnapshot.EMPTY : capture(old);
@@ -336,7 +339,8 @@ public final class ScreenPlaylistService {
             if (old == null) sessions.remove(key); else sessions.put(key, old);
             dirty = wasDirty; throw failure;
         }
-        ScreenEvents.playbackChanged(key, before, capture(next), false);
+        if (explicitPlay) ScreenEvents.playbackStarted(key, capture(next));
+        else ScreenEvents.playbackChanged(key, before, capture(next), false);
     }
 
     /**

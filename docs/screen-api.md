@@ -74,6 +74,10 @@ outside persistence locks. A failing subscriber cannot break later subscribers.
 Changes to one logical network emit once regardless of the number of linked
 blocks. The change record contains only current displayed-image metadata,
 logical slide index and revision; no private unused gallery information.
+Every successful `play` creates a fresh running snapshot and emits exactly one
+`SLIDESHOW_STARTED`, including replacement with the same saved playlist. It does
+not also emit a resume or slide-advance event. Transport `RESTART` rewinds the
+current slide; it emits a lifecycle event only if playback starts from STOPPED.
 
 Server integrations should unregister listeners when no longer needed.
 Pending changes from the previous world are dropped on server shutdown/start.

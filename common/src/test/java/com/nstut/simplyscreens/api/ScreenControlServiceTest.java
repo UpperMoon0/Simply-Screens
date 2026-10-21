@@ -12,6 +12,39 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ScreenControlServiceTest {
+    @Test void replayingSameSourceEmitsExactlyOneStartInsteadOfResumeOrAdvance(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path root) throws Exception {
+        playlists.init(root);
+        UUID saved = playlist();
+        List<ScreenEvents.Change> events = new ArrayList<>();
+        try (var listener = ScreenEvents.listen(events::add)) {
+            assertTrue(api.play(owningPlayer, key, owner, saved, id -> true));
+            ScreenEvents.flush(error -> fail(error)); events.clear();
+            for (String position : List.of("same-slide", "different-slide", "paused")) {
+                if (position.equals("same-slide")) playlists.tick(500);
+                if (position.equals("different-slide")) assertTrue(api.transport(owningPlayer, key, "NEXT"));
+                if (position.equals("paused")) {
+                    assertTrue(api.transport(owningPlayer, key, "NEXT"));
+                    assertTrue(api.transport(owningPlayer, key, "PAUSE"));
+                }
+                ScreenEvents.flush(error -> fail(error)); events.clear();
+                assertTrue(api.play(owningPlayer, key, owner, saved, id -> true));
+                assertTrue(events.isEmpty(), "Callbacks wait until flush");
+                ScreenEvents.flush(error -> fail(error));
+                assertEquals(List.of(ScreenEvents.Type.SLIDESHOW_STARTED), events.stream().map(ScreenEvents.Change::type).toList(), position);
+                assertEquals(0, playlists.snapshot(key).offsetMillis());
+                assertEquals(0, events.get(0).slideIndex());
+                assertEquals(playlists.snapshot(key).revision(), events.get(0).revision());
+                events.clear();
+            }
+            var before = playlists.snapshot(key);
+            java.nio.file.Files.createDirectory(root.resolve(ScreenPlaylistService.FILE_NAME + ".bak.tmp"));
+            assertThrows(IllegalStateException.class, () -> api.play(owningPlayer, key, owner, saved, id -> true));
+            assertEquals(before, playlists.snapshot(key));
+            ScreenEvents.flush(error -> fail(error));
+            assertTrue(events.isEmpty(), "Failed replacements emit no start event");
+        }
+    }
     @Test void staticSelectionDoesNotCommitWhenCancellationCannotPersist(
             @org.junit.jupiter.api.io.TempDir java.nio.file.Path root) throws Exception {
         networks.init(root, java.util.Map.of(), java.util.Map.of());
