@@ -1,0 +1,1 @@
+[{"modid":"simply_screens","name":"Simply Screens","description":"Configurable image screens, networks, ownership, playlists and server API.","version":"${version}","mcversion":"1.12.2","url":"https://github.com/UpperMoon0/Simply-Screens","authorList":["nstut"],"dependencies":["packetweave"]}]

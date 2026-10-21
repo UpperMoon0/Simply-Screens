@@ -1,0 +1,102 @@
+name: Requested native generations
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: requested-generations-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [forge-1.12.2, fabric-1.16.5, forge-1.16.5, fabric-26.2, neoforge-26.2]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          submodules: recursive
+          path: Simply-Screens
+      - uses: actions/checkout@v4
+        with:
+          repository: UpperMoon0/PacketWeave
+          ref: f5ef9b8c3a4ab3ba3af82af54769a09f370c1a85
+          path: PacketWeave
+      - uses: actions/checkout@v4
+        with:
+          repository: UpperMoon0/OpenUI-MC
+          ref: 5feba85ab1363a7a3e71f4fbf2c1347911cf326d
+          path: OpenUI-MC
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            8
+            17
+            21
+            25
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Select the native Gradle runner
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          case "$TARGET" in
+            forge-1.12.2) home="$JAVA_HOME_8_X64" ;;
+            forge-1.16.5) home="$JAVA_HOME_21_X64" ;;
+            *) home="$JAVA_HOME_25_X64" ;;
+          esac
+          echo "JAVA_HOME=$home" >> "$GITHUB_ENV"
+          echo "$home/bin" >> "$GITHUB_PATH"
+          echo "JAVA17_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+      - name: Build pinned native dependency mods without release publishing
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          chmod +x PacketWeave/targets/$TARGET/gradlew OpenUI-MC/$TARGET/gradlew
+          PacketWeave/targets/$TARGET/gradlew -p PacketWeave/targets/$TARGET build --no-daemon --max-workers=2 --stacktrace
+          OpenUI-MC/$TARGET/gradlew -p OpenUI-MC/$TARGET build publishToMavenLocal --no-daemon --max-workers=2 --stacktrace
+      - name: Build complete Screens native target and test its runtime contracts
+        working-directory: Simply-Screens
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          chmod +x "$TARGET/gradlew"
+          "$TARGET/gradlew" -p "$TARGET" build --no-daemon --max-workers=2 --stacktrace
+          version=$(sed -n 's/^[[:space:]]*mod_version[[:space:]]*=[[:space:]]*//p' gradle.properties | tr -d '\r')
+          test -n "$version"
+          python3 tools/verify_requested_jar.py "$TARGET/build/libs/simply_screens-$TARGET-$version.jar" --target "$TARGET"
+          python3 -m unittest discover -s tools -p test_requested_generations.py -v
+          python3 -m unittest discover -s tools -p test_forge_1122_sources.py -v
+          python3 -m unittest discover -s tools -p test_requested_live_join.py -v
+      - name: Install headless native graphics runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1-mesa-dri mesa-vulkan-drivers libvulkan1
+      - name: Real dedicated-server join and OpenUI smoke test
+        working-directory: Simply-Screens
+        env:
+          TARGET: ${{ matrix.target }}
+          LIBGL_ALWAYS_SOFTWARE: 'true'
+        run: python3 tools/requested_live_join.py --target "$TARGET" --timeout 420
+      - name: Preserve exact-head build and runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: requested-${{ matrix.target }}
+          path: |
+            Simply-Screens/${{ matrix.target }}/build/reports/tests/**
+            Simply-Screens/${{ matrix.target }}/build/test-results/**
+            Simply-Screens/${{ matrix.target }}/build/libs/*.jar
+            Simply-Screens/${{ matrix.target }}/run/live-join/**/logs/**
+            Simply-Screens/${{ matrix.target }}/run/live-join/**/crash-reports/**
+            Simply-Screens/build/requested-runtime/${{ matrix.target }}/**
+          if-no-files-found: warn

@@ -1,0 +1,33 @@
+plugins { id 'java-library'; id 'net.neoforged.moddev' version '2.0.148' }
+apply from: '../gradle/requested-port.gradle'
+neoForge {
+    version = '26.2.0.93'
+    runs { client { client() }; server { server(); programArgument '--nogui' } }
+    mods { simply_screens { sourceSet(sourceSets.main) } }
+    unitTest { enable(); testedMod=mods.simply_screens }
+}
+dependencies {
+    implementation('dev.architectury:architectury-neoforge:21.1.12') { exclude group:'net.neoforged', module:'neoforge' }
+    implementation files(portOpenuiJar)
+    runtimeOnly files(portPacketweaveJar)
+}
+def generateModMetadata=tasks.register('generateModMetadata', ProcessResources) {
+    def values=[mod_id:'simply_screens', mod_name:'Simply Screens', mod_license:'MIT', mod_authors:'NsTut',
+        mod_description:'Configurable synchronized multiblock screens with secure media transfer.',
+        mod_version:project.version, neo_version:'26.2.0.93', minecraft_version:'26.2', minecraft_version_range:'[26.2]',
+        architectury_version:'21.1.12', packetweave_version:packetweavePortVersion]
+    inputs.properties values
+    expand values
+    from 'src/main/templates'
+    into layout.buildDirectory.dir('generated/modMetadata')
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+neoForge.runs {
+    liveJoinTestClient {
+        client(); gameDirectory=project.file('run/live-join/client')
+        systemProperty 'simplyscreens.liveJoinTest','true'; jvmArgument '-Xmx1G'
+        programArguments.addAll '--username','ScreensProbe','--quickPlayMultiplayer','127.0.0.1:25575'
+    }
+    liveJoinTestServer { server(); gameDirectory=project.file('run/live-join/server'); jvmArgument '-Xmx1G'; programArgument '--nogui' }
+}

@@ -1,0 +1,24 @@
+plugins { id 'net.fabricmc.fabric-loom-remap' version '1.17.9' }
+apply from:'../gradle/legacy-port.gradle'
+dependencies {
+    minecraft 'com.mojang:minecraft:1.16.5'
+    mappings loom.officialMojangMappings()
+    modImplementation 'net.fabricmc:fabric-loader:0.19.5'
+    modImplementation 'net.fabricmc.fabric-api:fabric-api:0.42.0+1.16'
+    modImplementation 'me.shedaniel:architectury-fabric:1.32.68'
+    modImplementation files(portOpenuiJar)
+    modRuntimeOnly files(portPacketweaveJar)
+}
+loom { mixin { defaultRefmapName = "simplyscreens.refmap.json" } }
+loom {
+    runs {
+        liveJoinTestClient {
+            client(); runDir 'run/live-join/client'
+            property 'simplyscreens.liveJoinTest','true'
+            vmArgs '-Xmx1G'
+            programArgs '--username','ScreensProbe','--server','127.0.0.1','--port','25575'
+        }
+        liveJoinTestServer { server(); runDir 'run/live-join/server'; vmArgs '-Xmx1G'; programArg 'nogui' }
+    }
+}
+tasks.withType(JavaExec).configureEach { javaLauncher=javaToolchains.launcherFor { languageVersion=JavaLanguageVersion.of(8) } }
