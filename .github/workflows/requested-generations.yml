@@ -77,6 +77,21 @@ jobs:
           python3 -m unittest discover -s tools -p test_requested_generations.py -v
           python3 -m unittest discover -s tools -p test_forge_1122_sources.py -v
           python3 -m unittest discover -s tools -p test_requested_live_join.py -v
+      - name: Prefetch official legacy assets with bounded transport retries
+        if: matrix.target == 'forge-1.12.2'
+        working-directory: Simply-Screens
+        run: |
+          for attempt in 1 2 3; do
+            if forge-1.12.2/gradlew -p forge-1.12.2 downloadAssets --no-daemon --max-workers=2 > build/legacy-assets.log 2>&1; then
+              cat build/legacy-assets.log
+              break
+            fi
+            cat build/legacy-assets.log
+            if [ "$attempt" = 3 ] || ! grep -Eq 'SocketTimeoutException|Read timed out|Connection reset|HTTP response code: (429|5[0-9][0-9])' build/legacy-assets.log; then
+              exit 1
+            fi
+            sleep 5
+          done
       - name: Install headless native graphics runtime
         run: |
           sudo apt-get update

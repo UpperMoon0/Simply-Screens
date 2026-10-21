@@ -46,3 +46,6 @@ compilePacketweaveApiJava { options.release=8 }
 compileJava { dependsOn 'verifyPortDependencies' }
 test { useJUnitPlatform(); systemProperty 'net.bytebuddy.experimental','true'; testLogging.exceptionFormat='full' }
 processResources { duplicatesStrategy=DuplicatesStrategy.EXCLUDE; exclude '**/*.bbmodel' }
+
+// Source archives retain target-specific overlays before common resource fallbacks.
+sourcesJar { duplicatesStrategy=DuplicatesStrategy.EXCLUDE }

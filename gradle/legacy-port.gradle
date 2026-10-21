@@ -48,7 +48,7 @@ tasks.withType(JavaCompile).configureEach {
 compileJava {
     dependsOn generateLegacySources
     options.fork=true
-    doFirst { options.forkOptions.jvmArgs += "-javaagent:${configurations.jabelAgent.singleFile}" }
+    doFirst { options.forkOptions.jvmArgs += "-javaagent:${configurations.jabelAgent.singleFile}".toString() }
 }
 compilePacketweaveApiJava { sourceCompatibility=JavaVersion.VERSION_1_8 }
 sourcesJar { dependsOn generateLegacySources }
@@ -74,5 +74,5 @@ dependencies {
 compileTestJava {
     dependsOn generateLegacyTests
     options.fork=true
-    doFirst { options.forkOptions.jvmArgs += "-javaagent:${configurations.jabelAgent.singleFile}" }
+    doFirst { options.forkOptions.jvmArgs += "-javaagent:${configurations.jabelAgent.singleFile}".toString() }
 }
