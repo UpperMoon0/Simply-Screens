@@ -108,7 +108,7 @@ public final class ScreenCommands {
             return 0;
         }
         String report = action + " " + key;
-        SimplyScreens.LOGGER.info("Screen admin operation by {}: {}", ctx.getSource().getTextName(), report);
+        SimplyScreens.LOGGER.info("Screen admin operation by {}: {}", ctx.getSource().getDisplayName().getString(), report);
         return success(ctx, report);
     }
 
