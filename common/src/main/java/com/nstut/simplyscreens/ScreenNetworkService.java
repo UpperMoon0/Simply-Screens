@@ -2,6 +2,7 @@ package com.nstut.simplyscreens;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.nstut.simplyscreens.api.ScreenEvents;
 import java.nio.file.*;
 import java.io.IOException;
 import java.util.*;
@@ -191,6 +192,8 @@ public final class ScreenNetworkService {
             if (previous == null) states.remove(key); else states.put(key, previous);
             throw failure;
         }
+        if (previous != null && !Objects.equals(previous.image(), state.image()))
+            ScreenEvents.imageChanged(key, state.image(), state.revision());
     }
     public synchronized void init(Path root, Map<String, UUID> images, Map<String, UUID> owners) {
         Path next = root.resolve("screen_networks.json").toAbsolutePath().normalize();
