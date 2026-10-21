@@ -54,12 +54,13 @@ public final class ScreenApi {
         return new ScreenControlService(ScreenRegistry.networks(), ScreenPlaylistRuntime.service());
     }
 
-    static boolean canUseImage(MinecraftServer server, Actor caller, UUID id) {
-        if (id == null) return true;
-        ImageMetadata image = ServerImageManager.getImageMetadata(server, id);
-        if (image == null) return false;
-        return caller != null && (caller.operator() || image.getOwnerUUID() == null
+    private static boolean canReadMetadata(Actor caller, ImageMetadata image) {
+        return image != null && caller != null && (caller.operator() || image.getOwnerUUID() == null
                 || caller.id() != null && image.getOwnerUUID().equals(caller.id().toString()));
+    }
+
+    static boolean canUseImage(MinecraftServer server, Actor caller, UUID id) {
+        return id == null || canReadMetadata(caller, ServerImageManager.getImageMetadata(server, id));
     }
 
     public static List<ScreenControlService.Status> listNetworks(MinecraftServer server, ServerPlayer player) {
@@ -113,7 +114,7 @@ public final class ScreenApi {
         for (ImageMetadata media : ServerImageManager.getImageList(server)) {
             UUID id;
             try { id = UUID.fromString(media.getId()); } catch (RuntimeException invalid) { continue; }
-            if (canUseImage(server, caller, id))
+            if (canReadMetadata(caller, media))
                 allowed.add(new ImageInfo(id, media.getName()));
         }
         allowed.sort(Comparator.comparing(ImageInfo::displayName).thenComparing(ImageInfo::id));
