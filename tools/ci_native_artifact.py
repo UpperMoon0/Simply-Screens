@@ -51,12 +51,30 @@ def verify_native_metadata(jar,target,root=ROOT):
     if parse(actual)!=parse(expected): raise ValueError('wrong native target/loader/dependency metadata')
 
 
+def verify_compiler(report,target,jar):
+    expected=17 if target.endswith('1.20.1') else 21 if target.endswith('1.21.1') else 25
+    compiler=report.get('compiler',{})
+    if (report.get('schema')!=1 or report.get('task')!=':compileJava'
+            or report.get('execution')!='executed' or report.get('release')!=expected
+            or compiler.get('language_version')!=expected
+            or any(not isinstance(compiler.get(k),str) or not compiler[k]
+                   for k in ('java_runtime_version','jvm_version','vendor'))):
+        raise ValueError('missing or wrong resolved PacketWeave compiler/release provenance')
+    with zipfile.ZipFile(jar) as archive:
+        classes=[n for n in archive.namelist() if n.startswith('com/nstut/packetweave/') and n.endswith('.class')]
+        if not classes: raise ValueError('native prerequisite has no compiled classes')
+        for name in classes:
+            data=archive.read(name)
+            if len(data)<8 or data[:4]!=bytes.fromhex('cafebabe') or int.from_bytes(data[6:8],'big')!=expected+44:
+                raise ValueError('native prerequisite class bytecode does not match target Java release')
+
+
 def validate(receipt, expected, target, packet_toolchain, build_toolchain, package):
     if receipt.get('schema')!=1 or receipt.get('status')!='pass' or receipt.get('target')!=target:
         raise ValueError('failed or wrong-target native prerequisite')
     if receipt.get('identity')!=expected:
         raise ValueError('stale native prerequisite source or dependency')
-    if receipt.get('packet_toolchain')!=packet_toolchain or receipt.get('build_toolchain')!=build_toolchain:
+    if receipt.get('packet_launcher')!=packet_toolchain or receipt.get('build_launcher')!=build_toolchain:
         raise ValueError('native prerequisite toolchain mismatch')
     name=receipt.get('jar','')
     if Path(name).name!=name or not name.startswith(f'packetweave-{target}-') or not name.endswith('.jar'):
@@ -66,10 +84,11 @@ def validate(receipt, expected, target, packet_toolchain, build_toolchain, packa
         raise ValueError('missing or corrupted native prerequisite')
     # The existing native manifest checks still run again during installation.
     verify_native_metadata(path,target)
+    verify_compiler(receipt.get('packet_compiler',{}),target,path)
     return path
 
 
-def create(root,target,package,packet_toolchain):
+def create(root,target,package,packet_toolchain,compiler_file=None):
     package.mkdir(parents=True,exist_ok=True)
     receipt_path=package/'prerequisite.json'
     receipt_path.unlink(missing_ok=True)
@@ -78,8 +97,10 @@ def create(root,target,package,packet_toolchain):
     if identity(root)!=before: raise ValueError('sources changed during production verification')
     jar=live.packetweave_jar(root,target)
     verify_native_metadata(jar,target,root)
-    receipt=dict(schema=1,status='pass',target=target,identity=before,packet_toolchain=packet_toolchain,
-                 build_toolchain=toolchain(),jar=jar.name,sha256=hashlib.sha256(jar.read_bytes()).hexdigest())
+    compiler=json.loads((compiler_file or root/'build/packet-compiler.json').read_text())
+    verify_compiler(compiler,target,jar)
+    receipt=dict(schema=1,status='pass',target=target,identity=before,packet_launcher=packet_toolchain,
+                 packet_compiler=compiler,build_launcher=toolchain(),jar=jar.name,sha256=hashlib.sha256(jar.read_bytes()).hexdigest())
     shutil.copy2(jar,package/jar.name)
     visual.atomic_json(receipt_path,receipt)
 
@@ -100,7 +121,10 @@ def main():
     p.add_argument('--package',type=Path)
     p.add_argument('--toolchain-file',type=Path,required=True)
     a=p.parse_args()
-    if a.mode=='toolchain': visual.atomic_json(a.toolchain_file,toolchain());return
+    if a.mode=='toolchain':
+        a.toolchain_file.parent.mkdir(parents=True,exist_ok=True)
+        visual.atomic_json(a.toolchain_file,toolchain())
+        return
     if not a.target or not a.package:p.error('--target and --package required')
     packet=json.loads(a.toolchain_file.read_text())
     with visual.checkout_lock(ROOT):

@@ -1,0 +1,28 @@
+// Only the standalone PacketWeave root compileJava task produces the shared jar.
+// A fresh execution, not an opaque restored class cache, binds this report to it.
+import groovy.json.JsonOutput
+import org.gradle.api.tasks.compile.JavaCompile
+
+gradle.projectsEvaluated {
+    def project = gradle.rootProject
+    def report = project.findProperty('ciPacketCompilerReport')
+    if (!report) throw new GradleException('ciPacketCompilerReport is required')
+    project.tasks.named('compileJava', JavaCompile).configure { task ->
+        task.outputs.upToDateWhen { false }
+        task.outputs.cacheIf { false }
+        task.doLast {
+            if (task.options.forkOptions.executable || task.options.forkOptions.javaHome) {
+                throw new GradleException('Compiler executable override cannot be certified')
+            }
+            def compiler = task.javaCompiler.get().metadata
+            def result = [schema: 1, task: task.path, execution: 'executed',
+                release: task.options.release.get(),
+                compiler: [language_version: compiler.languageVersion.asInt(),
+                    java_runtime_version: compiler.javaRuntimeVersion,
+                    jvm_version: compiler.jvmVersion, vendor: compiler.vendor.toString()]]
+            def output = new File(report.toString())
+            output.parentFile.mkdirs()
+            output.text = JsonOutput.prettyPrint(JsonOutput.toJson(result)) + '\n'
+        }
+    }
+}

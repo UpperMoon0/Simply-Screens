@@ -31,7 +31,11 @@ scenario manifests, artifact hashes and inconsistent graphics or actual client
 Java vendor/version/architecture. Production verification and standalone
 PacketWeave builds occur once per target, not twice. Every consumer verifies the
 same workflow's exact-head/target artifact, byte digest, source snapshot, pinned
-PacketWeave source and actual build/compiler identities. A failed production
+PacketWeave source, actual launchers, and the resolved Gradle compiler/release
+that produced its native classes (also checked against class-file versions). The
+standalone root compileJava task executes freshly once per target to bind that
+compiler report; consumers do not recompile it. Production verification records
+its launcher, not a claim about every production compiler. A failed production
 build cannot produce a successful prerequisite receipt.
 
 ## Scheduling and resources

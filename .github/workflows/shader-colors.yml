@@ -75,7 +75,9 @@ jobs:
         working-directory: vendor/PacketWeave/targets/${{ matrix.target }}
         run: |
           chmod +x gradlew
-          ./gradlew build --no-daemon --console=plain --max-workers=4
+          ./gradlew build --no-daemon --console=plain --max-workers=4 \
+            --init-script "$GITHUB_WORKSPACE/tools/ci_packet_compiler.init.gradle" \
+            -PciPacketCompilerReport="$GITHUB_WORKSPACE/build/packet-compiler.json"
       - uses: ./.github/actions/openui
       - name: Provide Minecraft 1.20.1 runtime JDK
         if: matrix.target == 'fabric-1.20.1'
