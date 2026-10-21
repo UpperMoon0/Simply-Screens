@@ -25,6 +25,8 @@ public final class SimplyScreensImpl {
         BlockEntityRegistries.BLOCK_ENTITIES.register(modBus);
         ItemRegistries.ITEMS.register(modBus);
         modBus.addListener(this::commonSetup);
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.RegisterCommandsEvent event) ->
+                com.nstut.simplyscreens.api.ScreenCommands.register(event.getDispatcher()));
         NeoForge.EVENT_BUS.register(this);
     }
 
