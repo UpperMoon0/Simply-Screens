@@ -10,6 +10,7 @@ import com.nstut.simplyscreens.network.PacketRegistries;
 import com.nstut.simplyscreens.network.ServerConfigSyncS2CPacket;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.world.level.storage.LevelResource;
 
@@ -24,6 +25,8 @@ public class SimplyScreensImpl implements ModInitializer {
         ItemRegistries.ITEMS.register();
 
         SimplyScreens.initCommon();
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
+                com.nstut.simplyscreens.api.ScreenCommands.register(dispatcher));
         ServerLifecycleEvents.SERVER_STARTED.register(server ->
                 SimplyScreens.initializeScreens(server.getWorldPath(LevelResource.ROOT)));
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
