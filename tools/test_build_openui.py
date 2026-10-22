@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 import subprocess
+import re
 from unittest.mock import patch
 from pathlib import Path
 
@@ -8,6 +9,38 @@ import build_openui
 
 
 class BuildOpenUiTest(unittest.TestCase):
+    def test_cold_dependency_checkout_preserves_source_cleanliness(self):
+        root = Path(__file__).resolve().parents[1]
+        action = (root / ".github/actions/openui/action.yml").read_text()
+        checkout = action.split("- name: Checkout pinned OpenUI source", 1)[1].split("- name:", 1)[0]
+        relative = re.search(r"^\s+path: (\S+)\s*$", checkout, re.MULTILINE).group(1)
+        self.assertEqual("build/ci-dependencies/OpenUI-MC", relative)
+        self.assertIn(f"chmod +x {relative}/gradlew", action)
+        self.assertIn(f"python3 tools/build_openui.py --project {relative}", action)
+        # Exercise the same git status query used by the playlist receipt, not
+        # just a textual ignore-pattern assertion. Keep real source edits visible.
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            (project / ".gitignore").write_bytes((root / ".gitignore").read_bytes())
+            (project / "source.java").write_text("original\n")
+            def git(*args):
+                return subprocess.check_output(["git", *args], cwd=project, text=True).strip()
+            git("init", "--quiet")
+            git("add", ".gitignore", "source.java")
+            git("-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "--quiet", "-m", "fixture")
+            dependency = project / relative
+            dependency.mkdir(parents=True)
+            subprocess.run(["git", "init", "--quiet", str(dependency)], check=True)
+            (dependency / "gradlew").write_text("cold dependency wrapper\n")
+            self.assertEqual("", git("status", "--porcelain"))
+            # The old unignored path reproduces the exact cold-runner failure.
+            old = project / "OpenUI-MC"
+            old.mkdir()
+            (old / "gradlew").write_text("old cold dependency wrapper\n")
+            self.assertIn("?? OpenUI-MC/", git("status", "--porcelain"))
+            (project / "source.java").write_text("modified\n")
+            self.assertIn("M source.java", git("status", "--porcelain"))
+
     def test_property_value_accepts_spaced_gradle_property(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "gradle.properties"
