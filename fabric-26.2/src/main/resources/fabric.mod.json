@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "id": "simply_screens",
+  "version": "${version}",
+  "name": "Simply Screens",
+  "description": "Adds configurable screen blocks that display images from local files or the web. Build dynamic multi-block displays up to 64x64, link screens into synchronized networks with a shared Screen ID, and manage media in-game with secure upload and download support.",
+  "authors": [
+    "nstut"
+  ],
+  "contact": {
+    "homepage": "https://www.curseforge.com/minecraft/mc-mods/simply-screens",
+    "sources": "https://github.com/UpperMoon0/Simply-Screens"
+  },
+  "license": "MIT",
+  "icon": "assets/simply_screens/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.nstut.simplyscreens.fabric.SimplyScreensImpl"
+    ],
+    "client": [
+      "com.nstut.simplyscreens.fabric.client.ClientSetup"
+    ],
+    "preLaunch": [
+      "com.nstut.simplyscreens.fabric.OpenUiDependencyCheck"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "26.2",
+    "java": ">=25",
+    "architectury": ">=21.1.12",
+    "fabric-api": "*",
+    "packetweave": ">=0.1.4"
+  },
+  "suggests": {
+    "patchouli": "*",
+    "openui_mc": ">=0.0.15"
+  },
+  "mixins": [
+    "simplyscreens-color.mixins.json"
+  ]
+}

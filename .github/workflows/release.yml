@@ -63,6 +63,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python3 tools/release_dependencies.py verify-release
+      - run: python3 tools/release_dependencies.py verify-requested-releases
 
   verify:
     needs: [version-change, dependency-release]
@@ -176,6 +177,99 @@ jobs:
             !${{ matrix.project }}/build/libs/*-dev-shadow.jar
           if-no-files-found: error
 
+  requested-build:
+    name: Build requested release ${{ matrix.target }}
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [forge-1.12.2, fabric-1.16.5, forge-1.16.5, fabric-26.2, neoforge-26.2]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          submodules: recursive
+          path: Simply-Screens
+      - uses: actions/checkout@v4
+        with:
+          repository: UpperMoon0/PacketWeave
+          ref: b9af8be1c8dae497a852342a0d323f811b80b54a
+          path: PacketWeave
+      - uses: actions/checkout@v4
+        with:
+          repository: UpperMoon0/OpenUI-MC
+          ref: 672b5b2b7169bef30f5f10b34f296812abe31460
+          path: OpenUI-MC
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            8
+            17
+            21
+            25
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Select the native Gradle runner
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          case "$TARGET" in
+            forge-1.12.2) home="$JAVA_HOME_8_X64" ;;
+            forge-1.16.5) home="$JAVA_HOME_21_X64" ;;
+            *) home="$JAVA_HOME_25_X64" ;;
+          esac
+          echo "JAVA_HOME=$home" >> "$GITHUB_ENV"
+          echo "$home/bin" >> "$GITHUB_PATH"
+          echo "JAVA17_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+      - name: Build pinned native dependency mods
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          chmod +x PacketWeave/targets/$TARGET/gradlew OpenUI-MC/$TARGET/gradlew
+          PacketWeave/targets/$TARGET/gradlew -p PacketWeave/targets/$TARGET build --no-daemon --max-workers=2 --stacktrace
+          OpenUI-MC/$TARGET/gradlew -p OpenUI-MC/$TARGET build publishToMavenLocal --no-daemon --max-workers=2 --stacktrace
+      - name: Build and verify the native release jar
+        working-directory: Simply-Screens
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          chmod +x "$TARGET/gradlew"
+          "$TARGET/gradlew" -p "$TARGET" build --no-daemon --max-workers=2 --stacktrace
+          version=$(sed -n 's/^[[:space:]]*mod_version[[:space:]]*=[[:space:]]*//p' gradle.properties | tr -d '\r' | xargs)
+          python3 tools/verify_requested_jar.py "$TARGET/build/libs/simply_screens-$TARGET-$version.jar" --target "$TARGET"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: simply-screens-${{ matrix.target }}
+          path: |
+            Simply-Screens/${{ matrix.target }}/build/libs/simply_screens-${{ matrix.target }}-*.jar
+            !Simply-Screens/${{ matrix.target }}/build/libs/*-sources.jar
+            !Simply-Screens/${{ matrix.target }}/build/libs/*-dev-shadow.jar
+          if-no-files-found: error
+
+  release-bundle:
+    name: Verify complete ten-target release bundle
+    needs: [build, requested-build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: simply-screens-*
+          path: artifacts
+      - name: Validate exact native artifact inventory
+        run: python3 tools/release_bundle.py artifacts --output release-bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-release-bundle
+          path: release-bundle/*
+          if-no-files-found: error
+
   live-client:
     name: Live client join gate
     needs: version-change
@@ -184,13 +278,18 @@ jobs:
 
   publish-curseforge:
     name: Publish ${{ matrix.platform }} ${{ matrix.version }} to CurseForge
-    needs: [build, live-client]
+    needs: [release-bundle, live-client]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
+          - { version: '1.12.2', platform: forge, loader: Forge, java_tag: 'Java 8' }
+          - { version: '1.16.5', platform: fabric, loader: Fabric, java_tag: 'Java 8' }
+          - { version: '1.16.5', platform: forge, loader: Forge, java_tag: 'Java 8' }
+          - { version: '26.2', platform: fabric, loader: Fabric, java_tag: 'Java 25' }
+          - { version: '26.2', platform: neoforge, loader: NeoForge, java_tag: 'Java 25' }
           - { version: '1.20.1', platform: fabric, loader: Fabric, java_tag: 'Java 17' }
           - { version: '1.20.1', platform: forge, loader: Forge, java_tag: 'Java 17' }
           - { version: '1.21.1', platform: fabric, loader: Fabric, java_tag: 'Java 21' }
@@ -231,7 +330,7 @@ jobs:
           [[ -f "$changelog_path" ]] || { echo "Missing release changelog: $changelog_path" >&2; exit 1; }
           # The Upload API resolves projectID + slug as an exact project match.
           # /api/game/dependencies is not a catalog of mod project identities.
-          relations="$(python3 tools/release_dependencies.py relations --loader "$PLATFORM")"
+          relations="$(python3 tools/release_dependencies.py relations --loader "$PLATFORM" --minecraft "$MINECRAFT_VERSION")"
           tags="$(jq -cn --arg mc "$MINECRAFT_VERSION" --arg loader "$LOADER_NAME" --arg java "$JAVA_VERSION_NAME" '[$mc,$loader,$java,"Client","Server"]')"
           available="$(curl --fail-with-body --silent --show-error \
             --retry 4 \
@@ -277,7 +376,7 @@ jobs:
           if-no-files-found: ignore
 
   release:
-    needs: [build, publish-curseforge, live-client]
+    needs: [release-bundle, publish-curseforge, live-client]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions: { contents: write }
@@ -292,7 +391,9 @@ jobs:
           value="$(sed -n 's/^mod_version[[:space:]]*=[[:space:]]*//p' gradle.properties | head -n 1 | tr -d '\r' | xargs)"
           echo "value=$value" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4
-        with: { path: artifacts }
+        with:
+          name: verified-release-bundle
+          path: release-bundle
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.value }}
@@ -300,6 +401,10 @@ jobs:
           body_path: changelog/${{ steps.version.outputs.value }}.md
           draft: false
           prerelease: false
-          files: artifacts/**/*.jar
+          files: |
+            release-bundle/*.jar
+            release-bundle/manifest.json
+            release-bundle/SHA256SUMS
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

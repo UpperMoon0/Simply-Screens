@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "package": "com.nstut.simplyscreens.client.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "client": [
+    "GameRendererMixin",
+    "TextureManagerAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "refmap": "simplyscreens.refmap.json",
+  "minVersion": "0.8"
+}

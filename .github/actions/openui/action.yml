@@ -21,6 +21,7 @@ runs:
       with:
         repository: UpperMoon0/OpenUI-MC
         ref: cb4610a1598d476123b731f5eef4d8e569057ffa
+        # Keep cold-cache dependency sources outside the tracked source receipt.
         path: build/ci-dependencies/OpenUI-MC
     - name: Publish missing OpenUI artifacts
       if: steps.openui.outputs.cache-hit != 'true'

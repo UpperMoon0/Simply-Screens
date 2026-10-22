@@ -1,0 +1,242 @@
+import json
+from pathlib import Path
+import tempfile
+import unittest
+import legacy_screen_sources
+import port_resources
+import forge_1165_sources
+import legacy_screen_tests
+ROOT=Path(__file__).resolve().parents[1]
+class RequestedGenerationsTest(unittest.TestCase):
+    def test_native_116_sync_is_loader_scoped_and_retains_tag_identity(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fabric=Path(tmp)/'fabric';forge=Path(tmp)/'forge'
+            legacy_screen_sources.generate(fabric);forge_1165_sources.generate(forge)
+            name='com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity.java'
+            ft=(fabric/name).read_text();gt=(forge/name).read_text()
+            self.assertIn('extends com.nstut.simplyscreens.compat.FabricBlockEntity',ft)
+            self.assertNotIn('getUpdatePacket()',ft)
+            self.assertIn('return save(new CompoundTag());',ft)
+            self.assertIn('return save(new CompoundNBT());',gt)
+            self.assertNotIn('FabricBlockEntity',gt)
+            helper=(forge/'com/nstut/simplyscreens/compat/LegacyBlockEntity.java').read_text()
+            self.assertIn('onDataPacket(net.minecraft.network.NetworkManager network',helper)
+            self.assertIn('packet.getType() == 0 && getBlockPos().equals(packet.getPos())',helper)
+            self.assertIn('!level.isClientSide',helper)
+            self.assertIn('tag.getString("id")',helper)
+            self.assertNotIn('onDataPacket(', (fabric/'com/nstut/simplyscreens/compat/LegacyBlockEntity.java').read_text())
+
+    def test_native_sync_tests_follow_target_mappings_and_remove_stale_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output=Path(tmp);name='com/nstut/simplyscreens/compat/LegacyBlockEntitySyncTest.java'
+            legacy_screen_tests.generate(output,native116=True,forge=True)
+            self.assertIn('net.minecraft.network.play.server.SUpdateTileEntityPacket',(output/name).read_text())
+            legacy_screen_tests.generate(output,native116=True)
+            self.assertIn('net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket',(output/name).read_text())
+            legacy_screen_tests.generate(output)
+            self.assertFalse((output/name).exists())
+
+    def test_legacy_generator_preserves_full_runtime(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output=Path(tmp);legacy_screen_sources.generate(output)
+            expected={p.relative_to(ROOT/folder) for folder in ['common/src/main/java','common-1.20.1/src/main/java'] for p in (ROOT/folder).rglob('*.java')}
+            actual={p.relative_to(output) for p in output.rglob('*.java')}
+            self.assertTrue(expected<=actual,expected-actual)
+            for name in ['api/ScreenApi.java','api/ScreenCommands.java','helpers/ScreenPacketSecurity.java','helpers/ServerImageManager.java','client/screens/ImageLoadScreen.java','network/PacketRegistries.java']:
+                self.assertIn(Path('com/nstut/simplyscreens')/name,actual)
+            url=(output/'com/nstut/simplyscreens/network/DownloadImageFromUrlC2SPacket.java').read_text()
+            self.assertNotIn('java.net.http',url)
+            self.assertIn('ScreenPacketSecurity.canModify',url)
+            self.assertIn('PublicImageHttp.get(url)',url)
+            self.assertIn('MAX_URL_DOWNLOAD_SIZE',url)
+    def test_legacy_axis_and_attachment_hooks_are_not_silently_changed(self):
+        ordinary='class A { enum Axis { HEIGHT } Axis value=Axis.HEIGHT; }'
+        self.assertIn('Axis.HEIGHT',legacy_screen_sources.convert(ordinary,'A.java'))
+        entity=(ROOT/'common-1.20.1/src/main/java/com/nstut/simplyscreens/blocks/entities/ScreenBlockEntity.java').read_text()
+        generated=legacy_screen_sources.convert(entity,'ScreenBlockEntity.java')
+        self.assertIn('setLevelAndPosition(net.minecraft.world.level.Level level, BlockPos pos)',generated)
+        self.assertIn('super.setLevelAndPosition(level, pos)',generated)
+        self.assertIn('ScreenLoadReconciler.enqueue',generated)
+        self.assertIn('Direction.Axis.Z',generated)
+    def test_forge_translates_nested_renderer_classes_and_jvm_descriptors(self):
+        sample='import net.minecraft.client.renderer.RenderStateShard; class Layer extends RenderStateShard { LayeringStateShard bias; }'
+        self.assertIn('LayerState bias',forge_1165_sources.convert(sample))
+        descriptor='Lnet/minecraft/client/renderer/LevelRenderer;renderLevel(Lcom/mojang/blaze3d/vertex/PoseStack;FJZLnet/minecraft/client/Camera;Lnet/minecraft/client/renderer/GameRenderer;Lnet/minecraft/client/renderer/LightTexture;Lcom/mojang/math/Matrix4f;)V'
+        transformed=forge_1165_sources.convert(descriptor)
+        self.assertIn('WorldRenderer;renderLevel(Lcom/mojang/blaze3d/matrix/MatrixStack;',transformed)
+        self.assertIn('Lnet/minecraft/client/renderer/ActiveRenderInfo;',transformed)
+        self.assertNotIn('com/mojang/math/Matrix4f',transformed)
+    def test_native_recipes_and_language(self):
+        for version,loader in [('1.16.5','fabric'),('1.16.5','forge'),('1.12.2','forge')]:
+            with self.subTest(version=version,loader=loader), tempfile.TemporaryDirectory() as tmp:
+                output=Path(tmp);port_resources.generate(version,loader,output)
+                root='assets' if version=='1.12.2' else 'data'
+                recipe=json.loads((output/f'{root}/simply_screens/recipes/screen.json').read_text())
+                self.assertEqual(recipe['result']['item'],'simply_screens:screen')
+                self.assertEqual(recipe['key']['A']['item'],'minecraft:quartz')
+                self.assertNotIn('category',recipe)
+                if version=='1.16.5':
+                    self.assertEqual(6,json.loads((output/'pack.mcmeta').read_text())['pack']['pack_format'])
+                lang='en_us.lang' if version=='1.12.2' else 'en_us.json'
+                self.assertTrue((output/'assets/simply_screens/lang'/lang).is_file())
+    def test_26_rendering_uses_backend_neutral_api(self):
+        root=ROOT/'common-26.2/src/main/java/com/nstut/simplyscreens/client/renderers'
+        source='\n'.join(p.read_text() for p in root.glob('*.java'))
+        self.assertNotIn('org.lwjgl.opengl',source)
+        self.assertIn('withBindGroupLayout',source)
+        self.assertIn('transientMemory().uploadGpu',source)
+        self.assertIn('encoder.submit()',source)
+        self.assertNotIn('CompareOp.LESS_THAN_OR_EQUAL',source)
+        self.assertIn('CompareOp.GREATER_THAN_OR_EQUAL',source)
+    def test_legacy_direction_is_checked_before_packet_decode(self):
+        source=(ROOT/'common-1.20.1/src/main/java/com/nstut/simplyscreens/network/PacketRegistries.java').read_text()
+        generated=legacy_screen_sources.convert(source,'PacketRegistries.java')
+        self.assertEqual(18,generated.count('DirectionalReceivers.register('))
+        guard=(ROOT/'common-1.16.5/src/main/java/com/nstut/simplyscreens/compat/DirectionalReceivers.java').read_text()
+        self.assertIn('context.getEnvironment() == expected',guard)
+        self.assertLess(guard.index('context.getEnvironment() == expected'),guard.index('receiver.receive(buffer, context)'))
+    def test_legacy_optional_guide_uses_native_serializer(self):
+        for loader in ('fabric','forge'):
+            with tempfile.TemporaryDirectory() as tmp:
+                output=Path(tmp);port_resources.generate('1.16.5',loader,output)
+                recipe=json.loads((output/'data/simply_screens/recipes/guide_book.json').read_text())
+                self.assertEqual('simply_screens:guide_book',recipe['type'])
+                book=json.loads((output/'data/simply_screens/patchouli_books/guide/book.json').read_text())
+                self.assertEqual('simply_screens:item/guide_book',book['model'])
+                self.assertNotIn('amethyst shard',(output/'assets/simply_screens/patchouli_books/guide/en_us/entries/guide.json').read_text())
+    def test_forge_local_native_jars_use_actual_dependency_remapping(self):
+        source=(ROOT/'forge-1.16.5/build.gradle').read_text()
+        self.assertNotIn('fg.deobf(files(',source)
+        self.assertIn('flatDir',source)
+        self.assertIn('includeModule',source)
+        self.assertIn('fg.deobf("com.nstut.portdeps:',source)
+    def test_ci_version_parser_accepts_repository_properties(self):
+        workflow=(ROOT/'.github/workflows/requested-generations.yml').read_text()
+        self.assertIn("mod_version[[:space:]]*=[[:space:]]*",workflow)
+        self.assertIn('test -n "$version"',workflow)
+    def test_gradle_inputs_use_supported_directory_api(self):
+        self.assertNotIn('inputs.dirs', (ROOT/'gradle/legacy-port.gradle').read_text())
+    def test_neoforge_runtime_configuration_is_explicit(self):
+        source=(ROOT/'neoforge-26.2/build.gradle').read_text()
+        self.assertNotIn('localRuntime ',source)
+        self.assertIn('runtimeOnly files(portPacketweaveJar)',source)
+    def test_native_source_archives_and_jabel_jvm_arguments(self):
+        modern=(ROOT/'gradle/requested-port.gradle').read_text()
+        self.assertRegex(modern,r'sourcesJar \{[^}]*duplicatesStrategy=DuplicatesStrategy.EXCLUDE')
+        legacy=(ROOT/'gradle/legacy-port.gradle').read_text()
+        self.assertEqual(2,legacy.count('singleFile}".toString()'))
+    def test_legacy_asset_retry_never_retries_runtime_or_assertions(self):
+        workflow=(ROOT/'.github/workflows/requested-generations.yml').read_text()
+        retry=workflow.split('name: Prefetch official legacy assets',1)[1].split('      - name:',1)[0]
+        self.assertIn(' downloadAssets ',retry)
+        self.assertIn('SocketTimeoutException',retry)
+        self.assertNotIn('runLiveJoinTest',retry)
+    def test_fabric_legacy_declared_refmap_is_actually_generated(self):
+        self.assertIn('useLegacyMixinAp = true',(ROOT/'fabric-1.16.5/build.gradle').read_text())
+    def test_forge_runs_inherit_after_native_userdev_configuration(self):
+        for target in ('forge-1.12.2','forge-1.16.5'):
+            build=(ROOT/target/'build.gradle').read_text()
+            self.assertIn('child minecraft.runs.server',build)
+            self.assertIn('child minecraft.runs.client',build)
+            self.assertNotIn('parent minecraft.runs.server',build)
+    def test_asset_prefetch_log_directory_exists(self):
+        workflow=(ROOT/'.github/workflows/requested-generations.yml').read_text()
+        retry=workflow.split('name: Prefetch official legacy assets',1)[1].split('      - name:',1)[0]
+        self.assertLess(retry.index('mkdir -p build'),retry.index('> build/legacy-assets.log'))
+    def test_legacy_texture_cleanup_uses_owned_removal_and_single_error_registration(self):
+        import forge_1122_sources
+        source=(ROOT/'common-1.20.1/src/main/java/com/nstut/simplyscreens/helpers/ClientImageManager.java').read_text()
+        for convert in (legacy_screen_sources.convert,forge_1122_sources.convert):
+            generated=convert(source,'ClientImageManager.java')
+            self.assertIn('texture == errorTexture && texture != null',generated)
+            self.assertIn('return errorTextureLocation;',generated)
+            self.assertIn('errorTexture = null;',generated)
+            self.assertIn('LegacyTextureLifecycle.release(',generated)
+            self.assertNotIn('getTextureManager().release(',generated)
+            self.assertNotIn('getTextureManager().deleteTexture(',generated)
+            self.assertNotIn('getDynamicTextureLocation(',generated)
+        for loader in ('fabric','forge'):
+            config=json.loads((ROOT/(loader+'-1.16.5/src/main/resources/simplyscreens-color.mixins.json')).read_text())
+            self.assertIn('TextureManagerAccessor',config['client'])
+    def test_forge_112_uses_official_noninjecting_merge_and_separate_cache(self):
+        source=(ROOT/'gradle/forge-1122-merge.gradle').read_text()
+        self.assertIn("net.minecraft:joined:1.12.2-20200226.224830",source)
+        self.assertIn("artifact.group != 'net.minecraft'",source)
+        self.assertIn("artifact.name != 'joined'",source)
+        self.assertIn("artifact.version != '1.12.2'",source)
+        self.assertIn("repositories.addFirst(repository)",source)
+        self.assertIn("minecraft.accessTransformer",source)
+        self.assertIn("implements ArtifactProvider<ArtifactIdentifier>",source)
+        self.assertNotIn("extends BaseRepo",source)
+        self.assertIn("tasks.named('check').configure",source)
+        self.assertNotIn("tasks.matching",source)
+        self.assertIn("merged == null || !merged.isFile()",source)
+        marker=(ROOT/'gradle/forge-1122-merge-cache.cfg').read_text()
+        self.assertTrue(all(not line.strip() or line.lstrip().startswith('#') for line in marker.splitlines()))
+        self.assertIn("apply from:'../gradle/forge-1122-merge.gradle'",(ROOT/'forge-1.12.2/build.gradle').read_text())
+    def test_block_orientable_parents_have_all_native_texture_slots(self):
+        for directory in ('common/src/main/resources','neoforge-26.1.2/src/main/resources'):
+            for path in (ROOT/directory/'assets/simply_screens/models/block').glob('*.json'):
+                model=json.loads(path.read_text())
+                if model.get('parent') == 'minecraft:block/orientable':
+                    self.assertTrue({'front','side','top','bottom'} <= model['textures'].keys(),path)
+    def test_fabric_116_uses_the_native_aggregate_api_mod_id(self):
+        metadata=json.loads((ROOT/'fabric-1.16.5/src/main/resources/fabric.mod.json').read_text())
+        self.assertIn('fabric',metadata['depends'])
+        self.assertNotIn('fabric-api',metadata['depends'])
+    def test_native_dependency_pins_match_machine_lock_and_documentation(self):
+        import re
+        lock=json.loads((ROOT/'tools/requested-dependencies.lock.json').read_text())
+        self.assertEqual(1,lock['schema'])
+        self.assertEqual({'packetweave','openui'},set(lock['dependencies']))
+        workflow=(ROOT/'.github/workflows/requested-generations.yml').read_text()
+        docs=(ROOT/'docs/requested-generations.md').read_text()
+        for dependency in lock['dependencies'].values():
+            self.assertRegex(dependency['commit'],r'^[a-f0-9]{40}$')
+            expression=r'repository: '+re.escape(dependency['repository'])+r'\n\s+ref: ([a-f0-9]{40})'
+            self.assertEqual([dependency['commit']],re.findall(expression,workflow))
+            self.assertIn(dependency['commit'],docs)
+    def test_representative_visual_ci_requires_full_receipt_and_preserves_evidence(self):
+        workflow=(ROOT/'.github/workflows/requested-generations.yml').read_text()
+        step=workflow.split('name: Calibrated native framebuffer acceptance',1)[1].split('      - name:',1)[0]
+        self.assertIn("matrix.target == 'fabric-26.2'",step)
+        self.assertIn('tools/requested_visual.py --target fabric-26.2',step)
+        self.assertNotIn('--probe',step)
+        self.assertNotIn('--compile-only',step)
+        self.assertIn('--verify-receipt',step)
+        self.assertIn('--head "$EXPECTED_HEAD"',step)
+        self.assertIn('Simply-Screens/build/requested-visual-evidence/${{ matrix.target }}/**',workflow)
+    def test_fabric_116_external_display_keeps_java8_native_classpath(self):
+        build=(ROOT/'fabric-1.16.5/build.gradle').read_text()
+        self.assertIn('JavaLanguageVersion.of(8)',build)
+        self.assertIn('tasks.withType(net.fabricmc.loom.task.AbstractRunTask).configureEach { useXvfb.set(false) }',build)
+        runner=(ROOT/'tools/requested_live_join.py').read_text()
+        self.assertIn("prefix=[xvfb,'-a']",runner)
+        self.assertIn('return prefix+cmd',runner)
+    def test_native_build_runs_the_complete_requested_contract_suite(self):
+        workflow=(ROOT/'.github/workflows/requested-generations.yml').read_text()
+        step=workflow.split('name: Build complete Screens native target',1)[1].split('      - name:',1)[0]
+        self.assertIn("python3 -m unittest discover -s tools -p 'test_requested*.py' -v",step)
+        self.assertIn('-p test_modern_screen_sources.py',step)
+        self.assertIn('-p test_forge_1122_sources.py',step)
+    def test_legacy_prejoin_diagnostics_do_not_dismiss_native_error_screens(self):
+        source=(ROOT/'common-1.16.5/src/main/java/com/nstut/simplyscreens/client/testing/NativeClientAcceptance.java').read_text()
+        self.assertIn('if (!LiveJoinTestProtocol.isEnabled() && !integrated) return;',source)
+        self.assertIn('Native join probe waiting: {}',source)
+        self.assertIn('client.screen.getClass().getName()',source)
+        self.assertIn('client.allowsMultiplayer()',source)
+        self.assertNotIn('setScreen(',source)
+        self.assertNotIn('ConnectScreen',source)
+    def test_only_isolated_native_server_tasks_forward_harness_input(self):
+        for target in ('forge-1.12.2','fabric-1.16.5','forge-1.16.5','fabric-26.2','neoforge-26.2'):
+            source=(ROOT/target/'build.gradle').read_text()
+            self.assertEqual(1,source.count('standardInput=System.in'))
+            self.assertIn("if(name == 'runLiveJoinTestServer') standardInput=System.in",source)
+            self.assertIn('tasks.withType(JavaExec).configureEach',source)
+    def test_shutdown_watchdog_is_failure_not_a_success_exit(self):
+        source=(ROOT/'common/src/main/java/com/nstut/simplyscreens/testing/LiveJoinTestProtocol.java').read_text()
+        self.assertIn('System.exit(1)',source);self.assertNotIn('System.exit(0)',source)
+        self.assertIn('SIMPLYSCREENS_LIVE_JOIN_TEST_FAIL clean shutdown watchdog expired',source)
+    def test_no_unofficial_112_fabric_target(self):
+        self.assertFalse((ROOT/'fabric-1.12.2').exists())
+if __name__=='__main__':unittest.main()

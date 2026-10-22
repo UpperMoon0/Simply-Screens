@@ -423,7 +423,8 @@ def remove_runtime_when_quiet(runtime, timeout=20.0, quiet_period=0.75):
 
 def run_variant(stage, target, variant, directory, standalone, probe=False, *,
                 scenario_list=None, fixture_writer=None, pixel_measure=None,
-                runtime_setup=None, client_args=(), validate_outcome=True):
+                runtime_setup=None, client_args=(), validate_outcome=True,
+                native_commands=None, dependency_setup=None, server_setup=None):
     from PIL import Image
     from visual_pixels import measure
     directory.mkdir(parents=True)
@@ -445,15 +446,22 @@ def run_variant(stage, target, variant, directory, standalone, probe=False, *,
     remove_runtime_when_quiet(runtime)
     live.prepare_server(stage / target)
     live.prepare_client(stage / target)
-    live.install_packetweave(stage / target, target, standalone)
+    if dependency_setup is None:
+        live.install_packetweave(stage / target, target, standalone)
+    else:
+        dependency_setup(stage / target, target, standalone)
     with (runtime / "server/server.properties").open("a") as file:
         file.write("server-ip=127.0.0.1\nlevel-type=minecraft:flat\nlevel-seed=1\nview-distance=16\nsimulation-distance=2\ngamemode=spectator\n")
     with (runtime / "client/options.txt").open("a") as file:
         file.write("renderDistance:16\nfov:0.0\nbobView:false\nmaxFps:60\nfullscreen:false\n")
+    if server_setup is not None: server_setup(runtime / "server")
     if runtime_setup is not None: runtime_setup(runtime / "client")
     env = os.environ | {"SS_VISUAL_DIR": str(directory.resolve())}
     server_cmd = live.command(stage, f":{target}:runLiveJoinTestServer")
     client_cmd = [*live.command(stage, f":{target}:runLiveJoinTestClient"), *client_args]
+    if native_commands is not None:
+        server_cmd = native_commands(stage, target, 'runLiveJoinTestServer')
+        client_cmd = [*native_commands(stage, target, 'runLiveJoinTestClient'), *client_args]
     if os.name != "nt" and not os.environ.get("DISPLAY"):
         client_cmd = ["xvfb-run", "-a", "-s", "-screen 0 1920x1080x24", *client_cmd]
     results = {}

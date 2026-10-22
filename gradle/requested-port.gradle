@@ -1,0 +1,71 @@
+// Isolated native generation builds do not configure the existing Loom targets.
+def shared = new Properties()
+file('../gradle.properties').withInputStream { shared.load(it) }
+group = shared.getProperty('maven_group')
+version = shared.getProperty('mod_version')
+ext.openuiPortVersion = '0.0.15'
+ext.packetweavePortVersion = '0.1.4'
+base { archivesName = "simply_screens-${project.name}" }
+repositories { mavenCentral(); maven { url='https://maven.architectury.dev/' } }
+java { toolchain.languageVersion = JavaLanguageVersion.of(25); withSourcesJar() }
+def generateModernSources=tasks.register('generateModernSources', Exec) {
+    ['../neoforge-26.1.2/src/main/java','../common-26.2/src/main/java'].each { inputs.dir it }
+    inputs.file '../tools/modern_screen_sources.py'
+    outputs.dir layout.buildDirectory.dir('generated/modernSources')
+    commandLine 'python3','../tools/modern_screen_sources.py','--output',layout.buildDirectory.dir('generated/modernSources').get().asFile
+}
+def generateModernTests=tasks.register('generateModernTests', Exec) {
+    ['../neoforge-26.1.2/src/test/java','../common-26.2/src/test/java'].each { inputs.dir it }
+    inputs.file '../tools/modern_screen_sources.py'
+    outputs.dir layout.buildDirectory.dir('generated/modernTests')
+    commandLine 'python3','../tools/modern_screen_sources.py','--tests','--output',layout.buildDirectory.dir('generated/modernTests').get().asFile
+}
+def generateModernResources=tasks.register('generateModernResources', Exec) {
+    ['../neoforge-26.1.2/src/main/resources','../common-26.2/src/main/resources'].each { inputs.dir it }
+    inputs.file '../tools/modern_screen_resources.py'
+    inputs.property 'loader', project.name.split('-')[0]
+    outputs.dir layout.buildDirectory.dir('generated/modernResources')
+    commandLine 'python3','../tools/modern_screen_resources.py','--loader',project.name.split('-')[0],
+            '--output',layout.buildDirectory.dir('generated/modernResources').get().asFile
+}
+sourceSets {
+    main {
+        java.srcDirs '../common/src/main/java', generateModernSources
+        resources.srcDirs generateModernResources, '../common/src/main/resources'
+    }
+    packetweaveApi { java.srcDir providers.gradleProperty('packetweaveSource').getOrElse('../../PacketWeave/core/src/main/java') }
+    test { java.srcDirs '../common/src/test/java', generateModernTests }
+}
+sourceSets.test.compileClasspath += sourceSets.main.compileClasspath
+sourceSets.test.runtimeClasspath += sourceSets.main.runtimeClasspath
+ext.portOpenuiJar = file(providers.gradleProperty('openuiJar').getOrElse("../../OpenUI-MC/${project.name}/build/libs/openui-mc-${project.name}-${openuiPortVersion}.jar"))
+ext.portPacketweaveJar = file(providers.gradleProperty('packetweaveJar').getOrElse("../../PacketWeave/targets/${project.name}/build/libs/packetweave-${project.name}-${packetweavePortVersion}.jar"))
+tasks.register('verifyPortDependencies') {
+    inputs.files portOpenuiJar, portPacketweaveJar
+    doLast {
+        [portOpenuiJar, portPacketweaveJar].each {
+            if (!it.isFile()) throw new GradleException("Missing native dependency ${it}. Build the pinned source dependency first or pass -PopenuiJar/-PpacketweaveJar. See docs/requested-generations.md.")
+        }
+    }
+}
+dependencies {
+    compileOnly sourceSets.packetweaveApi.output
+    testCompileOnly sourceSets.packetweaveApi.output
+    testRuntimeOnly files(portPacketweaveJar)
+    compileOnly 'org.projectlombok:lombok:1.18.42'
+    annotationProcessor 'org.projectlombok:lombok:1.18.42'
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.mockito:mockito-core:5.20.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.20.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testRuntimeOnly 'org.slf4j:slf4j-simple:2.0.16'
+}
+tasks.withType(JavaCompile).configureEach { options.release=25; options.encoding='UTF-8' }
+compilePacketweaveApiJava { options.release=8 }
+compileJava { dependsOn 'verifyPortDependencies' }
+test { useJUnitPlatform(); systemProperty 'net.bytebuddy.experimental','true'; testLogging.exceptionFormat='full' }
+processResources { duplicatesStrategy=DuplicatesStrategy.EXCLUDE; exclude '**/*.bbmodel' }
+
+// Source archives retain target-specific overlays before common resource fallbacks.
+sourcesJar { dependsOn generateModernSources, generateModernResources; duplicatesStrategy=DuplicatesStrategy.EXCLUDE }

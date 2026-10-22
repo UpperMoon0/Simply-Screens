@@ -41,19 +41,23 @@ public final class LiveJoinTestProtocol {
         return REPORTED.compareAndSet(false, true);
     }
 
-    /** Prefer Minecraft's clean shutdown, with a test-only fallback for loader hangs. */
+    /** Require Minecraft's clean shutdown; a loader hang is a failed test. */
     public static void stopClient(Runnable cleanStop) {
-        Thread fallback = new Thread(() -> {
-            try {
-                Thread.sleep(15_000L);
-                System.exit(0);
-            } catch (InterruptedException interrupted) {
-                Thread.currentThread().interrupt();
-            }
-        }, "simplyscreens-live-test-exit");
+        Thread fallback = new Thread(() -> waitForShutdown(15_000L, LiveJoinTestProtocol::failShutdown),
+                "simplyscreens-live-test-exit");
         fallback.setDaemon(true);
         fallback.start();
         cleanStop.run();
+    }
+
+    static void waitForShutdown(long timeoutMillis, Runnable failure) {
+        try { Thread.sleep(timeoutMillis); failure.run(); }
+        catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); }
+    }
+
+    static void failShutdown() {
+        System.err.println("SIMPLYSCREENS_LIVE_JOIN_TEST_FAIL clean shutdown watchdog expired");
+        System.exit(1);
     }
 
     public static void reset() {

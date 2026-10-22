@@ -83,3 +83,18 @@ download or fail. OpenUI build caches are keyed by immutable source, helper and
 action contents, OS, architecture and declared JDK21. Native production outputs
 are **not** reused across workflow runs. No timings are estimated as measured
 results; actual exact-head CI results belong in the PR validation record.
+
+## Integration with requested-generation ports
+
+The optimization is integrated with main `7d9d3e1a640aefeb9a8e9c081d9ed2ea375d8dec`.
+The ten-target release workflow, requested-generation workflow and production
+version 0.10.1 remain unchanged from that main. The optimization continues to
+apply to the original five-target native acceptance matrix; it does not replace
+the separate port qualification or claim new native runtime coverage. Legacy
+1.16.5 retains Java 8. Existing dedicated-client eligibility limitations remain
+explicit in the port documentation.
+Historical 26.2 render calibration remains a separate qualification limit;
+this integration does not weaken its gates or convert inconclusive evidence to a pass.
+
+Exact-head CI after integration must pass before this PR is ready. An artifact
+quota failure is an infrastructure blocker, not a passing qualification result.

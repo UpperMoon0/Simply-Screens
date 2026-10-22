@@ -1,0 +1,159 @@
+buildscript {
+    repositories { maven { url='https://maven.minecraftforge.net/' }; mavenCentral() }
+    dependencies { classpath 'net.minecraftforge.gradle:ForgeGradle:3.0.197' }
+}
+apply plugin:'net.minecraftforge.gradle'
+apply plugin:'java-library'
+apply plugin:'maven-publish'
+apply from:'../gradle/forge-1122-merge.gradle'
+if(JavaVersion.current()!=JavaVersion.VERSION_1_8)throw new GradleException('Run ForgeGradle3 / Gradle5.6.4 with Java8; set JAVA17_HOME for the backport compiler.')
+def rootProperties=new Properties()
+file('../gradle.properties').withInputStream { rootProperties.load(it) }
+group=rootProperties.getProperty('maven_group');version=rootProperties.getProperty('mod_version')
+archivesBaseName='simply_screens-forge-1.12.2'
+def portOpenuiJar=file(findProperty('openuiJar') ?: '../../OpenUI-MC/forge-1.12.2/build/libs/openui-mc-forge-1.12.2-0.0.15.jar')
+def portPacketweaveJar=file(findProperty('packetweaveJar') ?: '../../PacketWeave/targets/forge-1.12.2/build/libs/packetweave-forge-1.12.2-0.1.4.jar')
+sourceCompatibility=targetCompatibility='1.8'
+repositories {
+    mavenLocal();mavenCentral()
+    flatDir { dirs portOpenuiJar.parentFile,portPacketweaveJar.parentFile }
+}
+// FG3 only remaps ExternalModuleDependency, never a FileCollection. flatDir's
+// name.jar fallback resolves these exact immutable dependency artifacts.
+def nativeOpenui=[group:'com.nstut.portdeps',name:portOpenuiJar.name.replaceFirst(/\.jar$/,''),version:'0.0.15']
+def nativePacketweave=[group:'com.nstut.portdeps',name:portPacketweaveJar.name.replaceFirst(/\.jar$/,''),version:'0.1.4']
+minecraft {
+    mappings channel:'stable',version:'39-1.12'
+// ForgeGradle merges parents in lexical order, before server has its userdev
+// parent. The late child merge copies the fully resolved native launch config.
+    runs {
+        client { workingDirectory project.file('run') }
+        server { workingDirectory project.file('run');args 'nogui' }
+        liveJoinTestClient {
+            // Let the real JavaExec child exit without FG3 killing its Gradle daemon.
+            forceExit false
+            child minecraft.runs.client
+            workingDirectory project.file('run/live-join/client')
+            property 'simplyscreens.liveJoinTest','true'
+            property 'simplyscreens.mediaSmokeTest','true'
+            property 'org.lwjgl.util.Debug','true'
+            args '--server','127.0.0.1','--port','25575'
+        }
+        liveJoinTestServer {
+            property 'simplyscreens.mediaSmokeTest','true'
+            // Let the real JavaExec child exit without FG3 killing its Gradle daemon.
+            forceExit false
+            child minecraft.runs.server
+            workingDirectory project.file('run/live-join/server')
+        }
+    }
+}
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.12.2-14.23.5.2864'
+    annotationProcessor 'com.github.bsideup.jabel:jabel-javac-plugin:0.4.2'
+    compileOnly 'org.projectlombok:lombok:1.18.42'
+    annotationProcessor 'org.projectlombok:lombok:1.18.42'
+    compileOnly 'org.jetbrains:annotations:26.0.2'
+    implementation fg.deobf(nativePacketweave)
+    compileOnly fg.deobf(nativeOpenui)
+    runtimeOnly fg.deobf(nativeOpenui)
+    testImplementation 'junit:junit:4.13.2'
+}
+sourceSets.each {
+    def directory=file("$buildDir/sourceSets/$it.name")
+    it.output.resourcesDir=directory;it.java.outputDir=directory
+}
+task generateLegacySources(type:Exec) {
+    inputs.dir '../common/src/main/java';inputs.dir '../common-1.20.1/src/main/java';inputs.dir '../common-legacy/src/main/java';inputs.dir '../common-legacy-game/src/main/java'
+    inputs.files '../tools/legacy_screen_sources.py','../tools/java8_records.py','../tools/forge_1122_sources.py'
+    outputs.dir "$buildDir/generated/screens"
+    commandLine 'python3','../tools/forge_1122_sources.py','--output',"$buildDir/generated/screens"
+}
+sourceSets.main.java.srcDir "$buildDir/generated/screens"
+// Gradle5 runs onJava8, but Jabel needs javac17. Use an explicit fork instead
+// of Gradle5's obsolete compiler-version probing. --release8 checks JDK APIs.
+task compileLegacyJava(type:Exec) {
+    dependsOn generateLegacySources
+    inputs.files sourceSets.main.java,sourceSets.main.compileClasspath,configurations.annotationProcessor,file('tools/CompileLegacy.java')
+    outputs.dir sourceSets.main.java.outputDir
+    doFirst {
+        def home=findProperty('java17Home') ?: System.getenv('JAVA17_HOME') ?: System.getenv('JAVA_HOME_17_X64')
+        if(!home)throw new GradleException('Set JAVA17_HOME or -Pjava17Home to a Java17 JDK for the Jabel backport compiler.')
+        def compiler=new File(home,"bin/java${org.gradle.internal.os.OperatingSystem.current().isWindows()?'.exe':''}")
+        def sources=file("$buildDir/legacy-sources.args")
+        sources.parentFile.mkdirs();sources.text=sourceSets.main.java.files.collect { '"'+it.absolutePath.replace('\\','/')+'"' }.sort().join('\n')
+        sourceSets.main.java.outputDir.mkdirs()
+        def agent=configurations.annotationProcessor.files.find { it.name.startsWith('byte-buddy-agent-') }
+        commandLine compiler,'-Xmx1G','-XX:ActiveProcessorCount=2','-javaagent:'+agent.absolutePath,file('tools/CompileLegacy.java'),sources.absolutePath,
+                '--release','8','-encoding','UTF-8','-processorpath',configurations.annotationProcessor.asPath,
+                '-classpath',sourceSets.main.compileClasspath.asPath,'-d',sourceSets.main.java.outputDir
+    }
+}
+compileJava { enabled=false;dependsOn compileLegacyJava }
+task generateLegacyResources(type:Exec) {
+    ['../common/src/main/resources','src/main/resources'].each { inputs.dir it };inputs.files '../tools/port_resources.py','../tools/forge_1122_sources.py';outputs.dir "$buildDir/generated/resources"
+    commandLine 'python3','../tools/forge_1122_sources.py','--resources','--output',"$buildDir/generated/resources"
+}
+processResources { dependsOn generateLegacyResources;from("$buildDir/generated/resources");duplicatesStrategy=DuplicatesStrategy.EXCLUDE;inputs.property 'version',project.version;filesMatching('mcmod.info') { expand version:project.version } }
+
+jar { finalizedBy 'reobfJar' }
+task sourcesJar(type:Jar) { dependsOn generateLegacySources;classifier='sources';from sourceSets.main.allSource }
+artifacts { archives sourcesJar }
+publishing { publications { mavenJava(MavenPublication) { artifactId=archivesBaseName;artifact jar;artifact sourcesJar } } }
+
+task verifyPortDependencies {
+    doLast { [portOpenuiJar,portPacketweaveJar].each { if(!it.isFile())throw new GradleException("Missing pinned native dependency: ${it}. Build the requested OpenUI/PacketWeave source pins, or pass -PopenuiJar and -PpacketweaveJar.") } }
+}
+compileLegacyJava { dependsOn verifyPortDependencies }
+
+task generateLegacyTests(type:Exec) {
+    ['../common/src/test/java','../common-legacy/src/test/java'].each { inputs.dir it }
+    inputs.files '../tools/legacy_screen_tests.py','../tools/forge_1122_sources.py'
+    outputs.dir "$buildDir/generated/tests"
+    commandLine 'python3','../tools/forge_1122_sources.py','--tests','--output',"$buildDir/generated/tests"
+}
+sourceSets.test.java.srcDir "$buildDir/generated/tests"
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.vintage:junit-vintage-engine:5.11.4'
+    testImplementation 'org.mockito:mockito-core:4.11.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:4.11.0'
+}
+task compileLegacyTestJava(type:Exec) {
+    dependsOn compileLegacyJava,generateLegacyTests
+    inputs.files sourceSets.test.java,sourceSets.test.compileClasspath
+    outputs.dir sourceSets.test.java.outputDir
+    doFirst {
+        def home=findProperty('java17Home') ?: System.getenv('JAVA17_HOME') ?: System.getenv('JAVA_HOME_17_X64')
+        def compiler=new File(home,"bin/java${org.gradle.internal.os.OperatingSystem.current().isWindows()?'.exe':''}")
+        def sources=file("$buildDir/legacy-test-sources.args")
+        sources.parentFile.mkdirs();sources.text=sourceSets.test.java.files.collect { '"'+it.absolutePath.replace('\\','/')+'"' }.sort().join('\n')
+        sourceSets.test.java.outputDir.mkdirs()
+        def agent=configurations.annotationProcessor.files.find { it.name.startsWith('byte-buddy-agent-') }
+        commandLine compiler,'-Xmx1G','-XX:ActiveProcessorCount=2','-javaagent:'+agent.absolutePath,file('tools/CompileLegacy.java'),sources.absolutePath,
+                '--release','8','-encoding','UTF-8','-processorpath',configurations.annotationProcessor.asPath,
+                '-classpath',sourceSets.test.compileClasspath.asPath,'-d',sourceSets.test.java.outputDir
+    }
+}
+compileTestJava { enabled=false;dependsOn compileLegacyTestJava }
+test { useJUnitPlatform();maxParallelForks=1;maxHeapSize='768m';jvmArgs '-XX:ActiveProcessorCount=2' }
+
+// The shared native runner prepares isolated test directories; ForgeGradle
+// discovers the pinned standalone dependency mods on its remapped classpath. Never reuse a personal game directory.
+task prepareLiveJoinTestDirectories {
+    doLast {
+        file('run/live-join/client').mkdirs()
+        def server=file('run/live-join/server');server.mkdirs()
+        if(!file('run/live-join/server/server.properties').exists())file('run/live-join/server/server.properties').text='server-ip=127.0.0.1\nserver-port=25575\nonline-mode=false\nlevel-name=live-join-world\nspawn-protection=0\n'
+        if(!file('run/live-join/client/options.txt').exists())file('run/live-join/client/options.txt').text='narrator:0\npauseOnLostFocus:false\n'
+    }
+}
+afterEvaluate {
+    ['runLiveJoinTestClient','runLiveJoinTestServer'].each { name -> tasks.findByName(name)?.dependsOn prepareLiveJoinTestDirectories }
+}
+
+// Only the isolated probe server consumes the harness's literal stop command.
+// JavaExec otherwise supplies an empty stream, forcing teardown by signal.
+tasks.withType(JavaExec).configureEach {
+    if(name == 'runLiveJoinTestServer') standardInput=System.in
+}
