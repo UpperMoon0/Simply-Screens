@@ -137,12 +137,17 @@ def set_variant(stage, originals, variant):
         replace_once(renderer, 'debugDraw(state);',
                      'debugDraw(state);\n        com.nstut.simplyscreens.testing.visual.VisualClient.submittedTile(state.facing, state.width, state.height, state.blockPos.getX() + state.anchorOffsetX, state.blockPos.getY() + state.anchorOffsetY, state.blockPos.getZ() + state.anchorOffsetZ, state.blockPos.getX(), state.blockPos.getY(), state.blockPos.getZ());')
         return
-    if variant != 'see-through':
+    if variant not in ('see-through', 'wrong-depth'):
         raise ValueError('Unknown visual variant: ' + variant)
     path = stage / mutable_paths()[0]
     text = path.read_text()
     old = 'new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, true,\n                    DEPTH_BIAS_FACTOR, DEPTH_BIAS_UNITS)'
     if text.count(old) != 1:
         raise RuntimeError('26.2 visual depth-state mutation anchor changed')
-    replacement = 'new DepthStencilState(CompareOp.ALWAYS_PASS, false, 0.0F, 0.0F)'
+    # Native 26.2 reversed-Z rejects a legacy forward-Z comparison. Keep
+    # geometry, shaders, blending, writeDepth and bias unchanged in this control.
+    replacement = ('new DepthStencilState(CompareOp.LESS_THAN_OR_EQUAL, true,\n'
+                   '                    DEPTH_BIAS_FACTOR, DEPTH_BIAS_UNITS)'
+                   if variant == 'wrong-depth' else
+                   'new DepthStencilState(CompareOp.ALWAYS_PASS, false, 0.0F, 0.0F)')
     path.write_text(text.replace(old, replacement))
