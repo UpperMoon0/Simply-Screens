@@ -22,12 +22,19 @@ def required_version(root: Path = ROOT) -> str:
     return matches[0]
 
 
-def curseforge_relations(loader: str) -> dict:
+REQUESTED_TARGETS = ("forge-1.12.2", "fabric-1.16.5", "forge-1.16.5", "fabric-26.2", "neoforge-26.2")
+
+
+def curseforge_relations(loader: str, minecraft: str | None = None) -> dict:
     if loader not in {"fabric", "forge", "neoforge"}:
         raise ValueError(f"Unsupported loader: {loader}")
     projects = [{"slug": "architectury-api", "type": "requiredDependency"},
                 {"slug": "openui-mc", "type": "requiredDependency"},
                 {"slug": PACKETWEAVE_SLUG, "projectID": PACKETWEAVE_PROJECT_ID, "type": "requiredDependency"}]
+    if minecraft is not None and f"{loader}-{minecraft}" not in TARGETS + REQUESTED_TARGETS:
+        raise ValueError(f"Unsupported release target: {loader}-{minecraft}")
+    if (loader, minecraft) == ("forge", "1.12.2"):
+        projects = [item for item in projects if item["slug"] != "architectury-api"]
     projects.append({"slug": "patchouli", "type": "optionalDependency"})
     if loader == "fabric":
         projects.append({"slug": "fabric-api", "type": "requiredDependency"})
@@ -54,10 +61,10 @@ def verify_curseforge_metadata(metadata: dict) -> None:
         raise ValueError("CurseForge metadata must require PacketWeave's exact project ID and slug; publication is blocked")
 
 
-def verify_release(release: dict, version: str) -> None:
+def verify_release(release: dict, version: str, targets=TARGETS, artifact="packetweave") -> None:
     if release.get("tag_name") != f"v{version}" or release.get("draft") is not False or release.get("prerelease") is not False:
         raise ValueError(f"PacketWeave v{version} must be a published stable release before Screens publication")
-    expected = {f"packetweave-{target}-{version}.jar" for target in TARGETS}
+    expected = {f"{artifact}-{target}-{version}.jar" for target in targets}
     uploaded = {asset.get("name") for asset in release.get("assets", [])
                 if asset.get("state") == "uploaded" and isinstance(asset.get("size"), int) and asset["size"] > 0}
     missing = expected - uploaded
@@ -74,19 +81,36 @@ def check_published_release(version: str) -> None:
     print(f"PacketWeave v{version}: all five required native release artifacts are published")
 
 
+def check_requested_releases() -> None:
+    lock = json.loads((ROOT / "tools/requested-dependencies.lock.json").read_text())["dependencies"]
+    for key, artifact in (("packetweave", "packetweave"), ("openui", "openui-mc")):
+        repository = lock[key]["repository"].removeprefix("UpperMoon0/")
+        version = lock[key]["version"]
+        request = urllib.request.Request(
+            f"https://api.github.com/repos/UpperMoon0/{repository}/releases/tags/v{version}",
+            headers={"Accept": "application/vnd.github+json", "User-Agent": "Simply-Screens-release"})
+        with urllib.request.urlopen(request, timeout=30) as response:
+            verify_release(json.load(response), version, REQUESTED_TARGETS, artifact)
+        print(f"{repository} v{version}: all five requested native dependency artifacts are published")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     relations = commands.add_parser("relations")
     relations.add_argument("--loader", required=True)
+    relations.add_argument("--minecraft")
     commands.add_parser("verify-release")
+    commands.add_parser("verify-requested-releases")
     commands.add_parser("verify-curseforge-metadata")
     args = parser.parse_args()
     if args.command == "relations":
-        print(json.dumps(curseforge_relations(args.loader), separators=(",", ":")))
+        print(json.dumps(curseforge_relations(args.loader, args.minecraft), separators=(",", ":")))
     elif args.command == "verify-curseforge-metadata":
         verify_curseforge_metadata(json.load(sys.stdin))
         print("CurseForge upload metadata requires exact PacketWeave project 1735096")
+    elif args.command == "verify-requested-releases":
+        check_requested_releases()
     else:
         check_published_release(required_version())
 

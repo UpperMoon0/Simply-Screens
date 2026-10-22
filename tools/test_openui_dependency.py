@@ -103,6 +103,13 @@ class OpenUiDependencyTest(unittest.TestCase):
         for workflow in ('release.yml', 'cold-openui.yml'):
             text = (ROOT / '.github/workflows' / workflow).read_text(encoding='utf-8')
             self.assertTrue(re.findall(r'repository: UpperMoon0/OpenUI-MC', text))
+            if workflow == 'release.yml':
+                requested = re.search(r'^  requested-build:\n(.*?)(?=^  [\w-]+:)', text, re.M | re.S)
+                self.assertIsNotNone(requested)
+                lock = json.loads((ROOT / 'tools/requested-dependencies.lock.json').read_text())['dependencies']
+                self.assertEqual({item['commit'] for item in lock.values()},
+                                 set(re.findall(r'^\s+ref: ([a-f0-9]{40})$', requested.group(1), re.M)))
+                text = text[:requested.start()] + text[requested.end():]
             self.assertEqual({pin}, set(re.findall(r'^\s+ref: ([a-f0-9]{40})$', text, re.M)))
 
     def test_fabric_server_and_client_contract(self):

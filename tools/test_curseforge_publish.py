@@ -60,8 +60,11 @@ class CurseForgePublishTests(unittest.TestCase):
             submitted = root / "submitted.json"
             return result, requests, receipts, json.loads(submitted.read_text()) if submitted.exists() else None
 
-    def test_all_five_targets_upload_exact_required_relation_and_save_receipt(self):
-        for platform, version, loader, java in (("fabric", "1.20.1", "Fabric", "Java 17"),
+    def test_all_ten_targets_upload_native_relations_and_save_receipt(self):
+        for platform, version, loader, java in (("forge", "1.12.2", "Forge", "Java 8"),
+                ("fabric", "1.16.5", "Fabric", "Java 8"), ("forge", "1.16.5", "Forge", "Java 8"),
+                ("fabric", "26.2", "Fabric", "Java 25"), ("neoforge", "26.2", "NeoForge", "Java 25"),
+                ("fabric", "1.20.1", "Fabric", "Java 17"),
                 ("forge", "1.20.1", "Forge", "Java 17"), ("fabric", "1.21.1", "Fabric", "Java 21"),
                 ("neoforge", "1.21.1", "NeoForge", "Java 21"), ("neoforge", "26.1.2", "NeoForge", "Java 25")):
             with self.subTest(platform=platform, version=version):
@@ -71,6 +74,10 @@ class CurseForgePublishTests(unittest.TestCase):
                 self.assertEqual(2, len(requests))
                 expected = {"slug": "packetweave", "projectID": 1735096, "type": "requiredDependency"}
                 self.assertIn(expected, metadata["relations"]["projects"])
+                slugs = {item["slug"] for item in metadata["relations"]["projects"]}
+                self.assertEqual((platform, version) != ("forge", "1.12.2"), "architectury-api" in slugs)
+                self.assertEqual(platform == "fabric", "fabric-api" in slugs)
+                self.assertIn("openui-mc", slugs)
                 packetweave = next(p for p in metadata["relations"]["projects"] if p["slug"] == "packetweave")
                 self.assertIs(type(packetweave["projectID"]), int)
                 self.assertEqual(1, len(receipts))

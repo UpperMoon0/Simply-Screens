@@ -16,9 +16,9 @@ unofficial Legacy Fabric dependency. 26.2 uses Fabric and NeoForge, not Forge.
 
 ## Dependencies are separate mods
 
-The ports require native PacketWeave 0.1.4 and OpenUI MC 0.0.15. These are
-source-built dependencies while their port PRs are unmerged, not assumed public
-releases. PacketWeave's API is compile-only and must never be shaded into Screens.
+The ports require native PacketWeave 0.1.4 and OpenUI MC 0.0.15. Their native stable releases are now published. The release workflow verifies
+all five requested artifacts in each dependency release before building these
+exact source pins; the existing target dependency floors remain unchanged. PacketWeave's API is compile-only and must never be shaded into Screens.
 Fabric checks OpenUI before client entrypoints load. Forge 1.12.2 also declares
 OpenUI as a loader dependency on servers, where its entrypoint is inert.
 Dedicated servers do not initialize UI, image textures or renderers.
@@ -221,3 +221,17 @@ probe in the actual integrated server. It requires wrapper exit zero and complet
 matching server/client media evidence. Its receipt explicitly remains neither a
 dedicated-server join nor a multi-client test; the original dedicated CI step
 remains failed. A configured integrated lane is not a completed gameplay result.
+
+## Release delivery
+
+The release workflow builds all ten native targets, including the five requested
+standalone generations, with their own pinned dependency artifacts and Java
+contracts. It rejects missing, duplicate, corrupt or unexpected production JARs
+before either publisher runs. GitHub receives only the verified ten-JAR bundle,
+its manifest and SHA-256 checksums; CurseForge retains the same project and uses
+loader-specific relations (Forge 1.12.2 does not require Architectury).
+
+Publication does not convert incomplete runtime evidence into a pass: the
+1.16.5 dedicated-client eligibility restriction and Fabric 26.2 historical plain
+renderer calibration remain recorded in the requested-generation workflow.
+No account eligibility override or acceptance-gate weakening is introduced.
