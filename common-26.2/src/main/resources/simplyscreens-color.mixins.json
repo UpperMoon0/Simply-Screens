@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.nstut.simplyscreens.client.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "GameRendererMixin",
+    "RenderTypeAccessor",
+    "RenderPipelinesAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

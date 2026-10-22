@@ -10,7 +10,13 @@ import unittest
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-LOADER_VERSION = '0.17.2'
+LOADER_VERSION = '0.19.5'
+REQUESTED_PORTS = {'fabric-1.16.5', 'forge-1.16.5', 'fabric-26.2', 'neoforge-26.2'}
+
+def required_minimum(path, existing_minimum):
+    # Existing release lanes retain their established minimum. The new native
+    # generations require the source-built dependency port, not an older jar.
+    return '0.0.15' if path.relative_to(ROOT).parts[0] in REQUESTED_PORTS else existing_minimum
 
 HARNESS = r'''
 package PACKAGE;
@@ -82,14 +88,14 @@ class OpenUiDependencyTest(unittest.TestCase):
     def test_minimum_is_consistent_across_loaders_docs_and_ci_pins(self):
         minimum = properties()['openui_version']
         for path in ROOT.glob('fabric-*/src/main/resources/fabric.mod.json'):
-            self.assertEqual('>=' + minimum, json.loads(path.read_text(encoding='utf-8'))['suggests']['openui_mc'], str(path))
+            self.assertEqual('>=' + required_minimum(path, minimum), json.loads(path.read_text(encoding='utf-8'))['suggests']['openui_mc'], str(path))
         paths = list(ROOT.glob('forge-*/src/main/resources/META-INF/mods.toml'))
         paths += list(ROOT.glob('neoforge-*/src/main/resources/META-INF/neoforge.mods.toml'))
         paths += list(ROOT.glob('neoforge-*/src/main/templates/META-INF/neoforge.mods.toml'))
         for path in paths:
             blocks = re.split(r'\[\[dependencies\.[^\]]+\]\]', path.read_text(encoding='utf-8'))[1:]
             block, = [b for b in blocks if re.search(r'modId\s*=\s*"openui_mc"', b)]
-            self.assertRegex(block, r'versionRange\s*=\s*"' + re.escape('[' + minimum + ',)') + '"', str(path))
+            self.assertRegex(block, r'versionRange\s*=\s*"' + re.escape('[' + required_minimum(path, minimum) + ',)') + '"', str(path))
         self.assertIn('OpenUI MC ' + minimum + ' or newer', (ROOT / 'README.md').read_text(encoding='utf-8'))
         action = (ROOT / '.github/actions/openui/action.yml').read_text(encoding='utf-8')
         pin, = re.findall(r'^        ref: ([a-f0-9]{40})$', action, re.M)
@@ -97,6 +103,13 @@ class OpenUiDependencyTest(unittest.TestCase):
         for workflow in ('release.yml', 'cold-openui.yml'):
             text = (ROOT / '.github/workflows' / workflow).read_text(encoding='utf-8')
             self.assertTrue(re.findall(r'repository: UpperMoon0/OpenUI-MC', text))
+            if workflow == 'release.yml':
+                requested = re.search(r'^  requested-build:\n(.*?)(?=^  [\w-]+:)', text, re.M | re.S)
+                self.assertIsNotNone(requested)
+                lock = json.loads((ROOT / 'tools/requested-dependencies.lock.json').read_text())['dependencies']
+                self.assertEqual({item['commit'] for item in lock.values()},
+                                 set(re.findall(r'^\s+ref: ([a-f0-9]{40})$', requested.group(1), re.M)))
+                text = text[:requested.start()] + text[requested.end():]
             self.assertEqual({pin}, set(re.findall(r'^\s+ref: ([a-f0-9]{40})$', text, re.M)))
 
     def test_fabric_server_and_client_contract(self):
@@ -114,7 +127,7 @@ class OpenUiDependencyTest(unittest.TestCase):
             javac = str(Path(java_home) / 'bin/javac') if java_home else shutil.which('javac')
             java = str(Path(java_home) / 'bin/java') if java_home else shutil.which('java')
             self.assertTrue(javac and java, 'A JDK is required')
-            for target in ('fabric-1.20.1', 'fabric-1.21.1'):
+            for target in ('fabric-1.16.5', 'fabric-1.20.1', 'fabric-1.21.1', 'fabric-26.2'):
                 with self.subTest(target=target):
                     data = json.loads((ROOT / target / 'src/main/resources/fabric.mod.json').read_text())
                     self.assertEqual(data.get('environment', '*'), '*')

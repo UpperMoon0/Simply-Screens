@@ -1,0 +1,63 @@
+plugins { id 'java-library'; id 'net.minecraftforge.gradle' version '6.0.54'; id 'org.spongepowered.mixin' version '0.7.38' }
+apply from:'../gradle/legacy-port.gradle'
+// ForgeGradle only remaps ExternalModuleDependency, never files(...) dependencies.
+// FlatDir's exact name.jar fallback preserves explicit local native-jar overrides.
+def localOpenuiArtifact=portOpenuiJar.name.substring(0,portOpenuiJar.name.length()-4)
+def localPacketweaveArtifact=portPacketweaveJar.name.substring(0,portPacketweaveJar.name.length()-4)
+repositories {
+    flatDir { dirs portOpenuiJar.parentFile; content { includeModule 'com.nstut.portdeps',localOpenuiArtifact } }
+    flatDir { dirs portPacketweaveJar.parentFile; content { includeModule 'com.nstut.portdeps',localPacketweaveArtifact } }
+}
+minecraft {
+    mappings channel:'official',version:'1.16.5'
+    runs {
+        client { workingDirectory project.file('run'); mods { simply_screens { source sourceSets.main } } }
+        server { workingDirectory project.file('run'); args '--nogui'; mods { simply_screens { source sourceSets.main } } }
+    }
+}
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.16.5-36.2.42'
+    implementation fg.deobf('me.shedaniel:architectury-forge:1.32.68')
+    implementation fg.deobf("com.nstut.portdeps:${localOpenuiArtifact}:${openuiPortVersion}")
+    runtimeOnly fg.deobf("com.nstut.portdeps:${localPacketweaveArtifact}:${packetweavePortVersion}")
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+}
+jar { manifest { attributes 'MixinConfigs':'simplyscreens-color.mixins.json' } }
+jar { finalizedBy 'reobfJar' }
+mixin { add sourceSets.main, "simplyscreens.refmap.json"; config "simplyscreens-color.mixins.json" }
+// ForgeGradle merges parents in lexical order, before server has its userdev
+// parent. The late child merge copies the fully resolved native launch config.
+minecraft.runs {
+    liveJoinTestClient {
+        child minecraft.runs.client; workingDirectory project.file('run/live-join/client')
+        property 'simplyscreens.liveJoinTest','true'
+            property 'simplyscreens.mediaSmokeTest','true'
+        jvmArgs '-Xmx1G'
+        args '--username','ScreensProbe','--server','127.0.0.1','--port','25575'
+        mods { simply_screens { source sourceSets.main } }
+    }
+    liveJoinTestServer {
+        property 'simplyscreens.mediaSmokeTest','true'
+        child minecraft.runs.server; workingDirectory project.file('run/live-join/server'); jvmArgs '-Xmx1G'
+        mods { simply_screens { source sourceSets.main } }
+    }
+}
+tasks.withType(JavaExec).configureEach { javaLauncher=javaToolchains.launcherFor { languageVersion=JavaLanguageVersion.of(8) } }
+
+minecraft.runs {
+    integratedAcceptance {
+        child minecraft.runs.client
+        workingDirectory project.file(providers.gradleProperty('integratedRunDir').getOrElse('run/integrated-acceptance/manual'))
+        property 'simplyscreens.integratedAcceptance','true'
+        property 'simplyscreens.mediaSmokeTest','true'
+        jvmArgs '-Xmx1G'
+        args '--username','ScreensProbe'
+        mods { simply_screens { source sourceSets.main } }
+    }
+}
+
+// Only the isolated probe server consumes the harness's literal stop command.
+// JavaExec otherwise supplies an empty stream, forcing teardown by signal.
+tasks.withType(JavaExec).configureEach {
+    if(name == 'runLiveJoinTestServer') standardInput=System.in
+}
