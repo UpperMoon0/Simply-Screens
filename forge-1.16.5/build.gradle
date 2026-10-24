@@ -61,3 +61,4 @@ minecraft.runs {
 tasks.withType(JavaExec).configureEach {
     if(name == 'runLiveJoinTestServer') standardInput=System.in
 }
+apply from:'../gradle/native-service-fixture.gradle'

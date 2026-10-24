@@ -90,8 +90,12 @@ def command(module, task):
     return [str(module/('gradlew.bat' if os.name=='nt' else 'gradlew')),task,
             '--no-daemon','--console=plain','--max-workers=2','-Dorg.gradle.jvmargs=-Xmx1024m']
 
-def client_command(module):
+def client_command(module,fixture_url=None):
     cmd=command(module,'runLiveJoinTestClient')
+    if fixture_url is not None:
+        if module.name not in ('fabric-1.16.5','forge-1.16.5'):
+            raise ValueError('Service fixture is restricted to the two 1.16.5 CI clients')
+        cmd.append('-PnativeServiceFixture='+fixture_url)
     if os.name=='nt':return cmd
     legacy=module.name=='forge-1.12.2'
     # LWJGL 2 invokes the real xrandr executable. Supply and observe that
@@ -137,8 +141,8 @@ def run(root,target,timeout):
             'result':'blocked-native-multiplayer','nativeMultiplayerAllowed':False,'dedicatedQualified':False},indent=2)+'\n')
         raise
 
-def run_native(root,target,timeout,head):
-    module=root/target;evidence=root/'build/requested-runtime'/target;evidence.mkdir(parents=True,exist_ok=True)
+def run_native(root,target,timeout,head,fixture_url=None,evidence_dir=None):
+    module=root/target;evidence=evidence_dir or root/'build/requested-runtime'/target;evidence.mkdir(parents=True,exist_ok=True)
     receipt=evidence/'receipt.json'
     if receipt.exists():receipt.unlink()
     prepare_server(module);prepare_client(module);verify_loader_warning_visibility(module)
@@ -149,7 +153,7 @@ def run_native(root,target,timeout,head):
     try:
         if server_output.wait_for(SERVER_READY_MARKERS,timeout) is None:
             raise RuntimeError(target+': native dedicated server did not become ready')
-        client=popen(client_command(module),module);client_output=OutputPump(client,target+'/client')
+        client=popen(client_command(module,fixture_url),module);client_output=OutputPump(client,target+'/client')
         if client_output.wait_for((PASS_MARKER,),timeout,line_check=reject_native_ineligibility) is None:
             raise RuntimeError(target+': client did not complete a real join and UI smoke phase')
         try:code=client.wait(timeout=60)
@@ -175,8 +179,47 @@ def run_native(root,target,timeout,head):
     receipt.write_text(json.dumps(data,indent=2)+'\n')
     print(target+': real native join and OpenUI smoke PASS; framebuffer/media acceptance remains separate')
 
+def run_with_service_fixture(root,target,timeout):
+    from native_service_fixture import TARGETS as FIXTURE_TARGETS, service_fixture
+    if target not in FIXTURE_TARGETS:
+        raise ValueError('Service fixture is restricted to the two 1.16.5 CI clients')
+    head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()
+    evidence=root/'build/requested-runtime'/target
+    evidence.mkdir(parents=True,exist_ok=True)
+    receipt=evidence/'receipt.json'
+    for path in (receipt,evidence/'native-refusal.json'):
+        if path.exists():path.unlink()
+    denial=evidence/'service-denied'
+    try:
+        with service_fixture(False) as (url,requests):
+            try:run_native(root,target,timeout,head,url,denial)
+            except NativeEligibilityUnavailable:pass
+            else:raise RuntimeError('Native client did not reject the denied service fixture')
+            if '/privileges' not in requests:
+                raise RuntimeError('Denial control did not consume the service fixture')
+            logs=''.join((denial/(side+'.log')).read_text() for side in ('client','server'))
+            if any(marker in logs for marker in (PASS_MARKER,'ScreensProbe joined the game',
+                    'SIMPLYSCREENS_LEGACY_MEDIA_SERVER_PASS','SIMPLYSCREENS_LEGACY_MEDIA_CLIENT_PASS')):
+                raise RuntimeError('Denied service fixture unexpectedly entered gameplay')
+        print(target+': native service denial control PASS; no dedicated join')
+        with service_fixture(True) as (url,requests):
+            run_native(root,target,timeout,head,url)
+            if '/privileges' not in requests:
+                raise RuntimeError('Join did not consume the allowed service fixture')
+        data=json.loads(receipt.read_text())
+        data['authentication']={'mode':'loopback-service-fixture','realAccountQualified':False,
+                                'nativeDenialControlPassed':True,'nativeAllowedJoinPassed':True}
+        data['notEstablished'].append('real-account authentication and service eligibility')
+        receipt.write_text(json.dumps(data,indent=2)+'\n')
+    except BaseException:
+        if receipt.exists():receipt.unlink()
+        raise
+
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--target',choices=TARGETS,required=True);parser.add_argument('--timeout',type=int,default=420)
+    parser.add_argument('--service-fixture',action='store_true',help='1.16.5 only: test native denial and join with a loopback service fixture; no real-account qualification')
     args=parser.parse_args()
-    try:run(Path(__file__).resolve().parents[1],args.target,args.timeout)
+    try:
+        runner=run_with_service_fixture if args.service_fixture else run
+        runner(Path(__file__).resolve().parents[1],args.target,args.timeout)
     except (RuntimeError,subprocess.CalledProcessError) as error:print(str(error),file=sys.stderr);sys.exit(1)

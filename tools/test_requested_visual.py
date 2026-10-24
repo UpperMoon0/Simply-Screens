@@ -63,6 +63,10 @@ class RequestedVisualTest(unittest.TestCase):
             self.assertIn('RenderTypes.text(state.texture)',renderer.read_text())
             self.assertNotIn('ScreenRenderTypes.textPolygonOffset',renderer.read_text())
             self.assertIn('state.tileMinX',renderer.read_text())
+            adapter.set_variant(stage,originals,'wrong-depth')
+            self.assertIn('CompareOp.LESS_THAN_OR_EQUAL, true',target.read_text())
+            self.assertIn('DEPTH_BIAS_FACTOR, DEPTH_BIAS_UNITS',target.read_text())
+            self.assertEqual(originals[renderer.relative_to(stage)],renderer.read_text())
             adapter.set_variant(stage,originals,'see-through')
             self.assertIn('CompareOp.ALWAYS_PASS, false, 0.0F, 0.0F',target.read_text())
             self.assertEqual(originals[renderer.relative_to(stage)],renderer.read_text())
@@ -78,13 +82,15 @@ class RequestedVisualTest(unittest.TestCase):
             fixture.write_text(fixture.read_text()+'\n// changed\n')
             with self.assertRaises(RuntimeError):adapter.set_variant(stage,originals,'plain')
 
-    def run_control_fixture(self,failure,probe=False):
+    def run_control_fixture(self,failure,probe=False,accepted=False):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);dependency=root/'fixture.jar';dependency.write_bytes(b'jar fixture')
             called=[]
             def run_variant(stage,target,variant,directory,*args,**kwargs):
                 called.append(variant);directory.mkdir(parents=True)
                 (directory/'graphics.json').write_text(json.dumps({key:'same backend' for key in ('graphicsVendor','graphicsRenderer','graphicsVersion')}))
+                if variant=='wrong-depth':
+                    (directory/'measurements.json').write_text(json.dumps(self.wrong_depth_results()))
                 if variant=='plain':raise failure
             with patch.object(runner,'dependency_paths',return_value={'packetweave':dependency,'openui':dependency}), \
                  patch.object(runner.subprocess,'check_output',side_effect=['head\n','']), \
@@ -92,17 +98,45 @@ class RequestedVisualTest(unittest.TestCase):
                  patch.object(runner.visual,'snapshot',return_value='a'*64), \
                  patch.object(runner,'prepare_snapshot'),patch.object(adapter,'mutable_paths',return_value=[]), \
                  patch.object(adapter,'set_variant'),patch.object(runner.visual,'run_variant',side_effect=run_variant),patch('builtins.print'):
-                with self.assertRaises(type(failure)):runner.run(root,'fabric-26.2',probe=probe)
+                if accepted: runner.run(root,'fabric-26.2',probe=probe)
+                else:
+                    with self.assertRaises(type(failure)):runner.run(root,'fabric-26.2',probe=probe)
             receipts=list(root.glob('build/requested-visual-evidence/fabric-26.2/*/result.json'))
             self.assertEqual(1,len(receipts));receipt=json.loads(receipts[0].read_text())
-            self.assertEqual('fail',receipt['status'])
-            with self.assertRaises(ValueError):runner.verify_receipt(receipt,'head')
+            self.assertEqual('pass' if accepted else 'fail',receipt['status'])
+            if not accepted:
+                with self.assertRaises(ValueError):runner.verify_receipt(receipt,'head')
             return called,receipt
 
-    def test_inconclusive_plain_still_collects_occlusion_but_never_passes(self):
-        called,receipt=self.run_control_fixture(ValueError('INCONCLUSIVE: plain renderer did not reproduce z-fighting'))
-        self.assertEqual(['fixed','plain','see-through'],called)
-        self.assertEqual({'fixed':'pass','plain':'inconclusive','see-through':'pass'},receipt['variants'])
+    def test_historical_inconclusive_remains_explicit_with_native_controls(self):
+        called,receipt=self.run_control_fixture(ValueError('INCONCLUSIVE: plain renderer did not reproduce z-fighting'),accepted=True)
+        self.assertEqual(['fixed','plain','see-through','wrong-depth'],called)
+        self.assertEqual({'fixed':'pass','plain':'inconclusive','see-through':'pass','wrong-depth':'pass'},receipt['variants'])
+        self.assertEqual('inconclusive',receipt['historical_control']['status'])
+        self.assertEqual(runner.QUALIFICATION,receipt['qualification'])
+        runner.verify_receipt(receipt,'head')
+
+    @staticmethod
+    def wrong_depth_results():
+        return {case['id']:dict(status='pixel-failure',frames=[dict(status='pixel-failure')
+                for _ in range(runner.sample_count(case))]) for case in runner.wrong_depth_cases()}
+
+    def test_wrong_depth_requires_all_six_directions_and_every_sample(self):
+        results=self.wrong_depth_results()
+        self.assertEqual(6,len(results))
+        self.assertEqual(24,sum(len(r['frames']) for r in results.values()))
+        self.assertTrue(all(case in runner.cases('fixed') for case in runner.wrong_depth_cases()))
+        runner.validate_wrong_depth(results)
+        key=next(iter(results))
+        for mutation in ('missing','extra','pass','incomplete','one-pass','infrastructure'):
+            broken=copy.deepcopy(results)
+            if mutation=='missing':broken.pop(key)
+            elif mutation=='extra':broken['unexpected']=broken[key]
+            elif mutation=='pass':broken[key]['status']='pass'
+            elif mutation=='incomplete':broken[key]['frames'].pop()
+            elif mutation=='one-pass':broken[key]['frames'][0]['status']='pass'
+            else:broken[key]['frames'][0]['status']='error'
+            with self.subTest(mutation=mutation),self.assertRaises(ValueError):runner.validate_wrong_depth(broken)
 
     def test_native_setup_other_oracle_and_probe_failures_do_not_continue(self):
         for failure,probe in [(RuntimeError('server failed during startup'),False),
@@ -114,13 +148,16 @@ class RequestedVisualTest(unittest.TestCase):
                 self.assertNotIn('see-through',receipt['variants'])
 
     def test_receipt_requires_clean_full_fixed_and_negative_control_evidence(self):
-        valid=dict(head='head',dirty=False,target='fabric-26.2',status='pass',
-            source_sha256='a'*64,variants={'fixed':'pass','plain':'pass','see-through':'pass'},
+        valid=dict(schema=2,qualification=runner.QUALIFICATION,head='head',dirty=False,target='fabric-26.2',status='pass',
+            source_sha256='a'*64,variants={'fixed':'pass','plain':'inconclusive','see-through':'pass','wrong-depth':'pass'},
+            historical_control={'variant':'plain','status':'inconclusive'},
+            wrong_depth_cases=[case['id'] for case in runner.wrong_depth_cases()],
             dependencies={name:{'sha256':'b'*64} for name in ('packetweave','openui')},
             graphics={key:'recorded' for key in ('graphicsVendor','graphicsRenderer','graphicsVersion')})
         runner.verify_receipt(valid,'head')
         for key,value in [('head','old'),('dirty',True),('status','probe-only'),('status','compile-only'),
-                          ('variants',{'fixed':'pass'}),('source_sha256',''),('dependencies',{}),('graphics',{})]:
+                          ('variants',{'fixed':'pass'}),('schema',1),('qualification','old'),
+                          ('historical_control',{'variant':'plain','status':'pass'}),('wrong_depth_cases',[]),('source_sha256',''),('dependencies',{}),('graphics',{})]:
             altered=copy.deepcopy(valid);altered[key]=value
             with self.subTest(key=key,value=value),self.assertRaises(ValueError):runner.verify_receipt(altered,'head')
 if __name__=='__main__':unittest.main()

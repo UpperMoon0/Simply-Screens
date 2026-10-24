@@ -16,9 +16,32 @@ import uuid
 import requested_live_join as native
 import requested_visual_26 as adapter
 import visual_test as visual
-from visual_cases import variants
+from visual_cases import variants, cases, FACES, sample_count
 
 TARGETS=('fabric-26.2','neoforge-26.2')
+QUALIFICATION='native-reversed-z-v1'
+
+def wrong_depth_cases():
+    # Identical unobstructed near scenes already required by the fixed run.
+    # All six orientations must reject the wrong native depth comparison.
+    return [case for case in cases('fixed') if case['size']==8
+            and case['distance']==8 and case['angle']==0
+            and not case.get('reload') and not case['occluded']]
+
+def validate_wrong_depth(results):
+    selected=wrong_depth_cases()
+    if {case['facing'] for case in selected} != set(FACES) or len(selected)!=len(FACES):
+        raise ValueError('Native wrong-depth control manifest drift')
+    if set(results)!={case['id'] for case in selected}:
+        raise ValueError('Missing or extra native wrong-depth scenarios')
+    for case in selected:
+        result=results[case['id']]
+        frames=result.get('frames',[])
+        if (result.get('status')!='pixel-failure' or len(frames)!=sample_count(case)
+                or any(frame.get('status')!='pixel-failure' for frame in frames)):
+            raise ValueError('Native wrong-depth comparison was not rejected in every sample')
+
+
 
 def dependency_paths(root,target):
     paths={
@@ -50,9 +73,9 @@ def run(root,target,compile_only=False,probe=False):
     evidence=root/'build/requested-visual-evidence'/target/run_id
     stage=root/'build/requested-visual-work'/target/run_id
     evidence.mkdir(parents=True)
-    receipt=dict(head=head,dirty=dirty,target=target,run_id=run_id,status='running',variants={},
+    receipt=dict(schema=2,qualification=QUALIFICATION,head=head,dirty=dirty,target=target,run_id=run_id,status='running',variants={},
                  scope='native development framebuffer oracle with calibrated negative controls',
-                 notEstablished=['production-jar launch','other graphics backends','shader compatibility'])
+                 notEstablished=['production-jar launch','other graphics backends','shader compatibility','historical forward-Z z-fighting reproduction'])
     started=time.monotonic()
     try:
         dependencies=dependency_paths(root,target)
@@ -65,8 +88,7 @@ def run(root,target,compile_only=False,probe=False):
         originals={path:(stage/path).read_text() for path in adapter.mutable_paths()}
         packetweave_source=(root.parent/'PacketWeave/core/src/main/java').resolve()
         native_command=lambda snapshot,name,task:command(snapshot,name,task,dependencies,packetweave_source)
-        calibration_failure=None
-        for variant in variants(target):
+        for variant in (*variants(target),'wrong-depth'):
             adapter.set_variant(stage,originals,variant)
             if compile_only:
                 subprocess.run(native_command(stage,target,'classes'),cwd=stage,check=True)
@@ -74,23 +96,29 @@ def run(root,target,compile_only=False,probe=False):
                 continue
             outcome='diagnostic' if probe else 'pass'
             try:
+                control = variant=='wrong-depth'
                 visual.run_variant(stage,target,variant,evidence/variant,dependencies['packetweave'],probe,
+                    scenario_list=wrong_depth_cases() if control else None, validate_outcome=not control,
                     native_commands=native_command,dependency_setup=lambda *_:None,
                     runtime_setup=lambda _:native.verify_loader_warning_visibility(stage/target))
+                if control and not probe:
+                    validate_wrong_depth(json.loads((evidence/variant/'measurements.json').read_text()))
+                    receipt['wrong_depth_cases']=[case['id'] for case in wrong_depth_cases()]
             except ValueError as error:
                 # Only this completed historical-control verdict may continue to
-                # the independent occlusion control. Startup, cleanup, incomplete
+                # the independent native depth/occlusion controls. The historical
+                # result stays explicit, never relabeled as reproduced. Startup, cleanup, incomplete
                 # manifests, other pixel failures and all diagnostics still abort.
                 if probe or variant!='plain' or str(error)!='INCONCLUSIVE: plain renderer did not reproduce z-fighting':
                     raise
-                calibration_failure=error
                 outcome='inconclusive'
             graphics=json.loads((evidence/variant/'graphics.json').read_text())
             if 'graphics' in receipt and receipt['graphics']!=graphics:
                 raise RuntimeError('Negative controls used a different graphics backend')
             receipt['graphics']=graphics
             receipt['variants'][variant]=outcome
-        if calibration_failure is not None:raise calibration_failure
+        receipt['historical_control']={'variant':'plain','status':receipt['variants'].get('plain'),
+            'scope':'historical forward-Z renderer reproduction, not native reversed-Z qualification'}
         receipt['status']='compile-only' if compile_only else 'probe-only' if probe else 'pass'
     except BaseException as error:
         receipt['status']='fail';receipt['error']=str(error)
@@ -106,8 +134,18 @@ def verify_receipt(receipt,head):
         raise ValueError('Stale, dirty, failed or diagnostic-only native visual receipt')
     if receipt.get('target') not in TARGETS:
         raise ValueError('Wrong native visual target')
-    if receipt.get('variants')!={variant:'pass' for variant in variants(receipt['target'])}:
-        raise ValueError('Missing calibrated negative controls')
+    if receipt.get('schema')!=2 or receipt.get('qualification')!=QUALIFICATION:
+        raise ValueError('Missing native reversed-Z qualification policy')
+    outcomes=receipt.get('variants',{})
+    if (set(outcomes)!={*variants(receipt['target']),'wrong-depth'}
+            or any(outcomes.get(name)!='pass' for name in ('fixed','see-through','wrong-depth'))
+            or outcomes.get('plain') not in ('pass','inconclusive')):
+        raise ValueError('Missing native negative controls or historical result')
+    historical=receipt.get('historical_control',{})
+    if historical.get('variant')!='plain' or historical.get('status')!=outcomes['plain']:
+        raise ValueError('Historical calibration must remain explicit')
+    if receipt.get('wrong_depth_cases')!=[case['id'] for case in wrong_depth_cases()]:
+        raise ValueError('Missing native wrong-depth case coverage')
     if not re.fullmatch(r'[a-f0-9]{64}',receipt.get('source_sha256','')):
         raise ValueError('Missing exact source snapshot digest')
     dependencies=receipt.get('dependencies',{})

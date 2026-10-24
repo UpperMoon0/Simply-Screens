@@ -22,6 +22,17 @@ VARIANTS = ('shader-off', 'original', 'fixed', 'original-static', 'fixed-static'
 PAIRED_VARIANTS = frozenset(VARIANTS[3:])
 PAIR_REFERENCE = 'fixed-static'
 ON_REPEATS = ('fixed-static','fixed-repeat','fixed-repeat-2')
+# Keep all comparison/repeat controls on one runner; only independent suites split.
+SHARDS = {'temporal': VARIANTS[:3], 'paired': VARIANTS[3:]}
+
+def selected_variants(shard=None):
+    return VARIANTS if shard is None else SHARDS[shard]
+
+def coverage_manifest():
+    return {v: {'options': pack_options(v),
+                'scenarios': [dict(s, samples=sample_count(s)) for s in variant_scenarios(v)]}
+            for v in VARIANTS}
+
 MIN_GLOW = .15
 EFFECT_NOISE_MULTIPLIER = 3.
 INTERACTION_NOISE_MULTIPLIER = 6.
@@ -124,6 +135,11 @@ def instrument(stage):
             '                loadedMods.addProperty(id.getAsString(), modLookup.apply(id.getAsString()));\n'
             '            frame.add("loadedShaderMods", loadedMods);\n'
             '            frame.addProperty("sample", index);')
+        text=text.replace('            frame.addProperty("sample", index);',
+            '            frame.addProperty("sample", index);\n'
+            '            frame.addProperty("runtimeJavaVersion", System.getProperty("java.runtime.version"));\n'
+            '            frame.addProperty("runtimeJavaVendor", System.getProperty("java.vendor"));\n'
+            '            frame.addProperty("runtimeArchitecture", System.getProperty("os.arch"));')
         text=text.replace('        if (anchorUnloadedScenario()) return anchorUnloadSceneSynchronized(mc, image);',
             '        for (JsonElement element : scene.getAsJsonArray("backgrounds")) {\n'
             '            JsonArray cell = element.getAsJsonArray();\n'
@@ -197,6 +213,7 @@ def validate_variant(variant, measurements, directory):
     if set(measurements)!=expected: raise ValueError('missing shader scenes')
     failures=[]
     expected_mods=set(json.loads((directory/'expected-mods.json').read_text()))
+    runtime=json.loads((directory/'graphics.json').read_text())
     for scene in variant_scenarios(variant):
         if variant in PAIRED_VARIANTS: validate_settling(directory,scene['id'])
         result=measurements[scene['id']]
@@ -207,6 +224,9 @@ def validate_variant(variant, measurements, directory):
                 raise ValueError('missing shader setup diagnostics')
             if set(frame.get('loadedShaderMods',{}))!=expected_mods or not all(frame['loadedShaderMods'].values()):
                 raise ValueError('missing actually loaded renderer/Extra/shader mods')
+            for key in ('runtimeJavaVersion','runtimeJavaVendor','runtimeArchitecture'):
+                if not frame.get(key) or frame[key]!=runtime.get(key):
+                    raise ValueError('missing or inconsistent actual client runtime identity')
             if frame.get('shaderPackActive') is not (variant!='shader-off'):
                 raise ValueError('wrong shader state; a disabled/failed shader is not visual evidence')
         if result['status']!='pass' and not scene.get('alpha'): failures.append(scene['id'])
@@ -352,7 +372,7 @@ def suppress_world_image(source, module):
     if sum(line.startswith(prefix) for line in lines) != 4: raise ValueError('world-image quad control changed')
     return '\n'.join(line for line in lines if not line.startswith(prefix))+'\n'
 
-def run(target):
+def run(target, shard=None):
     import shader_pixels
     head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
     dirty=bool(subprocess.check_output(['git','status','--porcelain'],cwd=ROOT,text=True).strip())
@@ -360,7 +380,11 @@ def run(target):
     evidence=ROOT/'build/shader-evidence'/target/run_id
     stage=ROOT/'build/shader-work'/target/run_id
     evidence.mkdir(parents=True)
-    receipt=dict(schema=1,target=target,head=head,dirty=dirty,run_id=run_id,status='running',variants={})
+    variants=selected_variants(shard)
+    receipt=dict(schema=2,target=target,shard=shard,head=head,dirty=dirty,run_id=run_id,status='running',variants={},
+                 coverage={v:coverage_manifest()[v] for v in variants}, variant_seconds={},
+                 cache={'shader_downloads':os.environ.get('SHADER_DOWNLOAD_CACHE_HIT','unknown')},
+                 resources={'logical_cpus':os.cpu_count(), 'runner_image':os.environ.get('ImageVersion','unknown')})
     started=time.monotonic()
     try:
         cache=(ROOT/'build/shader-dependencies').resolve()
@@ -368,7 +392,7 @@ def run(target):
         receipt['stack']=load_lock()['stacks'][target]
         receipt['shaderpack']=load_lock()['shaderpack']
         verify_pack_options(pack)
-        receipt['pack_options']={v:pack_options(v) for v in VARIANTS}
+        receipt['pack_options']={v:pack_options(v) for v in variants}
         standalone=live.packetweave_jar(ROOT,target)
         receipt['source_sha256']=visual.snapshot(ROOT,stage)
         visual.scope_gradle(stage,target)
@@ -379,7 +403,8 @@ def run(target):
         renderer_original=renderer.read_text()
         original=hook.read_text()
         ids=sorted({id for jar in jars for id in native_mod_ids(jar,target.split('-',1)[0])})
-        for variant in VARIANTS:
+        for variant in variants:
+            variant_started=time.monotonic()
             print(f"=== {target}: shader variant {variant} ===", flush=True)
             renderer.write_text(suppress_world_image(renderer_original,module) if variant in ('glow-source-off','source-and-bloom-off') else renderer_original)
             hook.write_text(original.replace('ScreenColorRestore.finishWorld();','ScreenColorRestore.beginFrame();') if variant.startswith('original') else original)
@@ -397,16 +422,22 @@ def run(target):
                 runtime_setup=configure,client_args=(f'-PscreensShaderStack={cache}',),validate_outcome=False)
             if variant in PAIRED_VARIANTS:
                 for scene in variant_scenarios(variant): validate_settling(evidence/variant,scene['id'],recompute=True)
-            validate_variant(variant,results,evidence/variant)
             graphics=json.loads((evidence/variant/'graphics.json').read_text())
+            first=variant_scenarios(variant)[0]['id']
+            frame=json.loads((evidence/variant/f'{first}-00.json').read_text())
+            graphics.update({k:frame.get(k) for k in ('runtimeJavaVersion','runtimeJavaVendor','runtimeArchitecture')})
+            visual.atomic_json(evidence/variant/'graphics.json',graphics)
+            validate_variant(variant,results,evidence/variant)
             if 'graphics' in receipt and receipt['graphics']!=graphics: raise ValueError('graphics backend changed between shader controls')
             receipt['graphics']=graphics
             receipt['variants'][variant]='pass'
-        receipt['repeat_stability']=compare_stability(evidence)
-        receipt['alpha_delta_p95']=compare_alpha(evidence)
-        receipt['glow_evidence']=compare_glow(evidence,receipt['repeat_stability']['uncertainty'])
+            receipt['variant_seconds'][variant]=time.monotonic()-variant_started
+        if shard in (None, 'paired'):
+            receipt['repeat_stability']=compare_stability(evidence)
+            receipt['alpha_delta_p95']=compare_alpha(evidence)
+            receipt['glow_evidence']=compare_glow(evidence,receipt['repeat_stability']['uncertainty'])
         receipt['evidence_sha256']={str(p.relative_to(evidence)):hashlib.sha256(p.read_bytes()).hexdigest()
-                                    for p in evidence_files(evidence)}
+                                    for p in evidence_files(evidence, variants)}
         receipt['status']='pass'
     except BaseException as error:
         receipt['status']='fail';receipt['error']=str(error)
@@ -419,9 +450,9 @@ def run(target):
         visual.atomic_json(evidence/'result.json',receipt)
     return receipt
 
-def evidence_files(directory):
+def evidence_files(directory, variants=VARIANTS):
     paths=[]
-    for variant in VARIANTS:
+    for variant in variants:
         base=directory/variant
         paths += [base/name for name in ('expected-mods.json','graphics.json','measurements.json')]
         for scene in variant_scenarios(variant):
@@ -435,46 +466,69 @@ def evidence_files(directory):
 def verify_receipts(directory,head):
     paths=list(directory.rglob('result.json'))
     receipts=[json.loads(path.read_text()) for path in paths]
-    if len(receipts)!=len(TARGETS) or {r.get('target') for r in receipts}!=set(TARGETS):
-        raise ValueError('missing or duplicate shader targets')
+    sharded=any(r.get('shard') is not None for r in receipts)
+    expected={(target,shard) for target in TARGETS for shard in (SHARDS if sharded else (None,))}
+    identities=[(r.get('target'),r.get('shard')) for r in receipts]
+    if len(identities)!=len(expected) or set(identities)!=expected:
+        raise ValueError('missing or duplicate shader targets/shards')
     lock=load_lock()
+    source_hashes=set()
     for path,r in zip(paths,receipts):
-        if r.get('status')!='pass' or r.get('dirty') is not False or r.get('head')!=head:
-            raise ValueError('failed, dirty, or stale shader evidence')
-        if r.get('variants')!={v:'pass' for v in VARIANTS}: raise ValueError('incomplete shader controls')
-        if r.get('pack_options')!={v:pack_options(v) for v in VARIANTS}: raise ValueError('wrong deterministic shader profile')
-        validate_stability(r.get('repeat_stability',{}))
+        if r.get('schema')!=2 or r.get('status')!='pass' or r.get('dirty') is not False or r.get('head')!=head:
+            raise ValueError('failed, dirty, stale, or unsupported shader evidence')
+        source_hash=r.get('source_sha256','')
+        if not re.fullmatch('[0-9a-f]{64}',source_hash): raise ValueError('missing source identity')
+        source_hashes.add(source_hash)
+        variants=selected_variants(r.get('shard'))
+        if r.get('variants')!={v:'pass' for v in variants}: raise ValueError('incomplete shader controls')
+        if r.get('coverage')!={v:coverage_manifest()[v] for v in variants}: raise ValueError('changed scenario manifest')
+        if r.get('pack_options')!={v:pack_options(v) for v in variants}: raise ValueError('wrong deterministic shader profile')
         if r.get('stack')!=lock['stacks'][r['target']] or r.get('shaderpack')!=lock['shaderpack']:
             raise ValueError('unexpected shader dependencies')
         hashes=r.get('evidence_sha256',{})
-        expected_files=evidence_files(path.parent)
+        expected_files=evidence_files(path.parent,variants)
         if set(hashes)!={str(p.relative_to(path.parent)) for p in expected_files}:
             raise ValueError('missing shader framebuffer evidence')
         for file in expected_files:
             if not file.is_file() or hashlib.sha256(file.read_bytes()).hexdigest()!=hashes[str(file.relative_to(path.parent))]:
                 raise ValueError('missing or changed shader framebuffer evidence')
-        for variant in VARIANTS:
+        for variant in variants:
             base=path.parent/variant
             graphics=json.loads((base/'graphics.json').read_text())
             if graphics!=r.get('graphics') or not all(graphics.get(k) for k in ('graphicsVendor','graphicsRenderer','graphicsVersion')):
                 raise ValueError('missing or inconsistent graphics evidence')
             validate_variant(variant,json.loads((base/'measurements.json').read_text()),base)
-        alpha=r.get('alpha_delta_p95',{})
-        if set(alpha)!=set(ON_REPEATS) or any(not finite_samples(v,8) for v in alpha.values()):
-            raise ValueError('missing/failed transparency evidence')
-        validate_glow(r.get('glow_evidence',{}),validate_stability(r['repeat_stability']))
+        if r.get('shard') in (None,'paired'):
+            validate_stability(r.get('repeat_stability',{}))
+            alpha=r.get('alpha_delta_p95',{})
+            if set(alpha)!=set(ON_REPEATS) or any(not finite_samples(v,8) for v in alpha.values()):
+                raise ValueError('missing/failed transparency evidence')
+            validate_glow(r.get('glow_evidence',{}),validate_stability(r['repeat_stability']))
+    if len(source_hashes)!=1: raise ValueError('shader shards used different source snapshots')
+    # Hardware variation must never silently change the original backend contract.
+    for target in TARGETS:
+        graphics=[r['graphics'] for r in receipts if r['target']==target]
+        if any(g!=graphics[0] for g in graphics): raise ValueError('graphics backend changed between shader shards')
+
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--target',choices=TARGETS)
     parser.add_argument('--verify-receipts',type=Path)
     parser.add_argument('--head')
+    parser.add_argument('--shard', choices=SHARDS)
+    parser.add_argument('--matrix', action='store_true')
+    parser.add_argument('--manifest', action='store_true')
     args=parser.parse_args()
-    if args.verify_receipts:
+    if args.matrix:
+        print(json.dumps({'include':[dict(target=t,shard=s) for t in TARGETS for s in SHARDS]}))
+    elif args.manifest:
+        print(json.dumps(coverage_manifest(),sort_keys=True))
+    elif args.verify_receipts:
         if not args.head: parser.error('--head is required')
         verify_receipts(args.verify_receipts,args.head)
     elif args.target:
-        with visual.checkout_lock(ROOT): run(args.target)
+        with visual.checkout_lock(ROOT): run(args.target,args.shard)
     else: parser.error('--target or --verify-receipts required')
 
 if __name__=='__main__': main()

@@ -1,0 +1,1093 @@
+{
+  "shader-off": {
+    "options": {
+      "CLOUD_STYLE_DEFINE": "0",
+      "CLOUD_SPEED_MULT": "0",
+      "CLOUD_SHADOWS": "false",
+      "LIGHTSHAFT_QUALI_DEFINE": "0",
+      "MOTION_BLUR_EFFECT": "-1",
+      "WAVING_SPEED": "0.00",
+      "BLOOM_ENABLED": "1",
+      "BLOOM_STRENGTH": "0.32"
+    },
+    "scenarios": [
+      {
+        "id": "NORTH-8-0-False",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": true,
+        "samples": 4
+      },
+      {
+        "id": "NORTH-32-60-False",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "NORTH-8-0-True",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "NORTH-32-60-True",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "SOUTH-8-0-False",
+        "facing": "SOUTH",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "SOUTH-32-60-False",
+        "facing": "SOUTH",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "SOUTH-8-0-True",
+        "facing": "SOUTH",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "SOUTH-32-60-True",
+        "facing": "SOUTH",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "EAST-8-0-False",
+        "facing": "EAST",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "EAST-32-60-False",
+        "facing": "EAST",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "EAST-8-0-True",
+        "facing": "EAST",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "EAST-32-60-True",
+        "facing": "EAST",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "WEST-8-0-False",
+        "facing": "WEST",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "WEST-32-60-False",
+        "facing": "WEST",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "WEST-8-0-True",
+        "facing": "WEST",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "WEST-32-60-True",
+        "facing": "WEST",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "UP-8-0-False",
+        "facing": "UP",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "UP-32-60-False",
+        "facing": "UP",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "UP-8-0-True",
+        "facing": "UP",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "UP-32-60-True",
+        "facing": "UP",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "DOWN-8-0-False",
+        "facing": "DOWN",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "DOWN-32-60-False",
+        "facing": "DOWN",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "DOWN-8-0-True",
+        "facing": "DOWN",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "DOWN-32-60-True",
+        "facing": "DOWN",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "NORTH-reload",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 16,
+        "angle": 0,
+        "occluded": false,
+        "reload": true,
+        "samples": 8
+      },
+      {
+        "id": "NORTH-alpha",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 16,
+        "angle": 0,
+        "occluded": false,
+        "alpha": true,
+        "backdrop": true,
+        "samples": 4
+      }
+    ]
+  },
+  "original": {
+    "options": {
+      "CLOUD_STYLE_DEFINE": "0",
+      "CLOUD_SPEED_MULT": "0",
+      "CLOUD_SHADOWS": "false",
+      "LIGHTSHAFT_QUALI_DEFINE": "0",
+      "MOTION_BLUR_EFFECT": "-1",
+      "WAVING_SPEED": "0.00",
+      "BLOOM_ENABLED": "1",
+      "BLOOM_STRENGTH": "0.32"
+    },
+    "scenarios": [
+      {
+        "id": "NORTH-8-0-False",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": true,
+        "samples": 4
+      },
+      {
+        "id": "NORTH-32-60-False",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "NORTH-8-0-True",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "NORTH-32-60-True",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "SOUTH-8-0-False",
+        "facing": "SOUTH",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "SOUTH-32-60-False",
+        "facing": "SOUTH",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "SOUTH-8-0-True",
+        "facing": "SOUTH",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "SOUTH-32-60-True",
+        "facing": "SOUTH",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "EAST-8-0-False",
+        "facing": "EAST",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "EAST-32-60-False",
+        "facing": "EAST",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "EAST-8-0-True",
+        "facing": "EAST",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "EAST-32-60-True",
+        "facing": "EAST",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "WEST-8-0-False",
+        "facing": "WEST",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "WEST-32-60-False",
+        "facing": "WEST",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "WEST-8-0-True",
+        "facing": "WEST",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "WEST-32-60-True",
+        "facing": "WEST",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "UP-8-0-False",
+        "facing": "UP",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "UP-32-60-False",
+        "facing": "UP",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "UP-8-0-True",
+        "facing": "UP",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "UP-32-60-True",
+        "facing": "UP",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "DOWN-8-0-False",
+        "facing": "DOWN",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "DOWN-32-60-False",
+        "facing": "DOWN",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "DOWN-8-0-True",
+        "facing": "DOWN",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "DOWN-32-60-True",
+        "facing": "DOWN",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "NORTH-reload",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 16,
+        "angle": 0,
+        "occluded": false,
+        "reload": true,
+        "samples": 8
+      },
+      {
+        "id": "NORTH-alpha",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 16,
+        "angle": 0,
+        "occluded": false,
+        "alpha": true,
+        "backdrop": true,
+        "samples": 4
+      }
+    ]
+  },
+  "fixed": {
+    "options": {
+      "CLOUD_STYLE_DEFINE": "0",
+      "CLOUD_SPEED_MULT": "0",
+      "CLOUD_SHADOWS": "false",
+      "LIGHTSHAFT_QUALI_DEFINE": "0",
+      "MOTION_BLUR_EFFECT": "-1",
+      "WAVING_SPEED": "0.00",
+      "BLOOM_ENABLED": "1",
+      "BLOOM_STRENGTH": "0.32"
+    },
+    "scenarios": [
+      {
+        "id": "NORTH-8-0-False",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": true,
+        "samples": 4
+      },
+      {
+        "id": "NORTH-32-60-False",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "NORTH-8-0-True",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "NORTH-32-60-True",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "SOUTH-8-0-False",
+        "facing": "SOUTH",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "SOUTH-32-60-False",
+        "facing": "SOUTH",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "SOUTH-8-0-True",
+        "facing": "SOUTH",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "SOUTH-32-60-True",
+        "facing": "SOUTH",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "EAST-8-0-False",
+        "facing": "EAST",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "EAST-32-60-False",
+        "facing": "EAST",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "EAST-8-0-True",
+        "facing": "EAST",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "EAST-32-60-True",
+        "facing": "EAST",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "WEST-8-0-False",
+        "facing": "WEST",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "WEST-32-60-False",
+        "facing": "WEST",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "WEST-8-0-True",
+        "facing": "WEST",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "WEST-32-60-True",
+        "facing": "WEST",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "UP-8-0-False",
+        "facing": "UP",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "UP-32-60-False",
+        "facing": "UP",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "UP-8-0-True",
+        "facing": "UP",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "UP-32-60-True",
+        "facing": "UP",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "DOWN-8-0-False",
+        "facing": "DOWN",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "DOWN-32-60-False",
+        "facing": "DOWN",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": false,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "DOWN-8-0-True",
+        "facing": "DOWN",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "DOWN-32-60-True",
+        "facing": "DOWN",
+        "size": 8,
+        "distance": 32,
+        "angle": 60,
+        "occluded": true,
+        "backdrop": false,
+        "samples": 4
+      },
+      {
+        "id": "NORTH-reload",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 16,
+        "angle": 0,
+        "occluded": false,
+        "reload": true,
+        "samples": 8
+      },
+      {
+        "id": "NORTH-alpha",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 16,
+        "angle": 0,
+        "occluded": false,
+        "alpha": true,
+        "backdrop": true,
+        "samples": 4
+      }
+    ]
+  },
+  "original-static": {
+    "options": {
+      "CLOUD_STYLE_DEFINE": "0",
+      "CLOUD_SPEED_MULT": "0",
+      "CLOUD_SHADOWS": "false",
+      "LIGHTSHAFT_QUALI_DEFINE": "0",
+      "MOTION_BLUR_EFFECT": "-1",
+      "WAVING_SPEED": "0.00",
+      "BLOOM_ENABLED": "1",
+      "BLOOM_STRENGTH": "0.32",
+      "TAA_DEFINE": "0"
+    },
+    "scenarios": [
+      {
+        "id": "NORTH-8-0-False",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": true,
+        "settle": true,
+        "samples": 4
+      },
+      {
+        "id": "NORTH-alpha",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 16,
+        "angle": 0,
+        "occluded": false,
+        "alpha": true,
+        "backdrop": true,
+        "settle": true,
+        "samples": 4
+      }
+    ]
+  },
+  "fixed-static": {
+    "options": {
+      "CLOUD_STYLE_DEFINE": "0",
+      "CLOUD_SPEED_MULT": "0",
+      "CLOUD_SHADOWS": "false",
+      "LIGHTSHAFT_QUALI_DEFINE": "0",
+      "MOTION_BLUR_EFFECT": "-1",
+      "WAVING_SPEED": "0.00",
+      "BLOOM_ENABLED": "1",
+      "BLOOM_STRENGTH": "0.32",
+      "TAA_DEFINE": "0"
+    },
+    "scenarios": [
+      {
+        "id": "NORTH-8-0-False",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": true,
+        "settle": true,
+        "samples": 4
+      },
+      {
+        "id": "NORTH-alpha",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 16,
+        "angle": 0,
+        "occluded": false,
+        "alpha": true,
+        "backdrop": true,
+        "settle": true,
+        "samples": 4
+      }
+    ]
+  },
+  "fixed-repeat": {
+    "options": {
+      "CLOUD_STYLE_DEFINE": "0",
+      "CLOUD_SPEED_MULT": "0",
+      "CLOUD_SHADOWS": "false",
+      "LIGHTSHAFT_QUALI_DEFINE": "0",
+      "MOTION_BLUR_EFFECT": "-1",
+      "WAVING_SPEED": "0.00",
+      "BLOOM_ENABLED": "1",
+      "BLOOM_STRENGTH": "0.32",
+      "TAA_DEFINE": "0"
+    },
+    "scenarios": [
+      {
+        "id": "NORTH-8-0-False",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": true,
+        "settle": true,
+        "samples": 4
+      },
+      {
+        "id": "NORTH-alpha",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 16,
+        "angle": 0,
+        "occluded": false,
+        "alpha": true,
+        "backdrop": true,
+        "settle": true,
+        "samples": 4
+      }
+    ]
+  },
+  "fixed-repeat-2": {
+    "options": {
+      "CLOUD_STYLE_DEFINE": "0",
+      "CLOUD_SPEED_MULT": "0",
+      "CLOUD_SHADOWS": "false",
+      "LIGHTSHAFT_QUALI_DEFINE": "0",
+      "MOTION_BLUR_EFFECT": "-1",
+      "WAVING_SPEED": "0.00",
+      "BLOOM_ENABLED": "1",
+      "BLOOM_STRENGTH": "0.32",
+      "TAA_DEFINE": "0"
+    },
+    "scenarios": [
+      {
+        "id": "NORTH-8-0-False",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": true,
+        "settle": true,
+        "samples": 4
+      },
+      {
+        "id": "NORTH-alpha",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 16,
+        "angle": 0,
+        "occluded": false,
+        "alpha": true,
+        "backdrop": true,
+        "settle": true,
+        "samples": 4
+      }
+    ]
+  },
+  "bloom-off": {
+    "options": {
+      "CLOUD_STYLE_DEFINE": "0",
+      "CLOUD_SPEED_MULT": "0",
+      "CLOUD_SHADOWS": "false",
+      "LIGHTSHAFT_QUALI_DEFINE": "0",
+      "MOTION_BLUR_EFFECT": "-1",
+      "WAVING_SPEED": "0.00",
+      "BLOOM_ENABLED": "-1",
+      "BLOOM_STRENGTH": "0.32",
+      "TAA_DEFINE": "0"
+    },
+    "scenarios": [
+      {
+        "id": "NORTH-8-0-False",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": true,
+        "settle": true,
+        "samples": 4
+      },
+      {
+        "id": "NORTH-alpha",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 16,
+        "angle": 0,
+        "occluded": false,
+        "alpha": true,
+        "backdrop": true,
+        "settle": true,
+        "samples": 4
+      }
+    ]
+  },
+  "glow-source-off": {
+    "options": {
+      "CLOUD_STYLE_DEFINE": "0",
+      "CLOUD_SPEED_MULT": "0",
+      "CLOUD_SHADOWS": "false",
+      "LIGHTSHAFT_QUALI_DEFINE": "0",
+      "MOTION_BLUR_EFFECT": "-1",
+      "WAVING_SPEED": "0.00",
+      "BLOOM_ENABLED": "1",
+      "BLOOM_STRENGTH": "0.32",
+      "TAA_DEFINE": "0"
+    },
+    "scenarios": [
+      {
+        "id": "NORTH-8-0-False",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": true,
+        "settle": true,
+        "samples": 4
+      },
+      {
+        "id": "NORTH-alpha",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 16,
+        "angle": 0,
+        "occluded": false,
+        "alpha": true,
+        "backdrop": true,
+        "settle": true,
+        "samples": 4
+      }
+    ]
+  },
+  "source-and-bloom-off": {
+    "options": {
+      "CLOUD_STYLE_DEFINE": "0",
+      "CLOUD_SPEED_MULT": "0",
+      "CLOUD_SHADOWS": "false",
+      "LIGHTSHAFT_QUALI_DEFINE": "0",
+      "MOTION_BLUR_EFFECT": "-1",
+      "WAVING_SPEED": "0.00",
+      "BLOOM_ENABLED": "-1",
+      "BLOOM_STRENGTH": "0.32",
+      "TAA_DEFINE": "0"
+    },
+    "scenarios": [
+      {
+        "id": "NORTH-8-0-False",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 8,
+        "angle": 0,
+        "occluded": false,
+        "backdrop": true,
+        "settle": true,
+        "samples": 4
+      },
+      {
+        "id": "NORTH-alpha",
+        "facing": "NORTH",
+        "size": 8,
+        "distance": 16,
+        "angle": 0,
+        "occluded": false,
+        "alpha": true,
+        "backdrop": true,
+        "settle": true,
+        "samples": 4
+      }
+    ]
+  }
+}

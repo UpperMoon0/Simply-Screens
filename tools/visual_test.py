@@ -112,7 +112,7 @@ def checkout_lock(root):
                 fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
 
 
-def snapshot(root, destination):
+def snapshot(root, destination=None):
     paths = subprocess.check_output(["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"], cwd=root).decode().split("\0")
     # Gitlinks are directories, so the normal file list does not copy pinned library sources.
     paths += subprocess.check_output(["git", "ls-files", "-z", "--cached", "--recurse-submodules"], cwd=root).decode().split("\0")
@@ -125,9 +125,10 @@ def snapshot(root, destination):
             raise RuntimeError("snapshot refuses symlinks")
         data = source.read_bytes()
         digest.update(relative.encode()+b"\0"+data)
-        target = destination / relative
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, target)
+        if destination is not None:
+            target = destination / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
     return digest.hexdigest()
 
 

@@ -1,0 +1,16 @@
+// Test-only Authlib environment, configured only on the isolated join task.
+// All ordinary launches and published artifacts retain their native settings.
+def fixtureUrl=providers.gradleProperty('nativeServiceFixture')
+if(fixtureUrl.isPresent()) {
+    def uri=new URI(fixtureUrl.get())
+    if(uri.scheme != 'http' || uri.host != '127.0.0.1' || uri.port < 1 || uri.port > 65535 ||
+       uri.rawUserInfo != null || uri.rawQuery != null || uri.rawFragment != null || uri.rawPath != '')
+        throw new GradleException('Native CI service fixture must be an explicit loopback HTTP port')
+    def run=project.name.startsWith('fabric') ? loom.runs.liveJoinTestClient : minecraft.runs.liveJoinTestClient
+    ['auth','account','session','services'].each { host ->
+        run.property "minecraft.api.${host}.host", fixtureUrl.get()
+    }
+    run.property 'minecraft.api.env','SIMPLYSCREENS_CI_FIXTURE'
+    if(project.name.startsWith('fabric')) run.programArgs '--accessToken','SimplyScreensCiFixture'
+    else run.args '--accessToken','SimplyScreensCiFixture'
+}

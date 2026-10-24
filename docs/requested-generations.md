@@ -167,29 +167,41 @@ Reused isolated directories with an old `showLoadWarnings=false` configuration
 fail before launch. Actual logs remain part of each acceptance record; a joined
 client is not a warning-free-loading claim.
 
-For a calibrated 26.2 visual run, build the pinned native dependency artifacts,
+For a native 26.2 visual run, build the pinned native dependency artifacts,
 then use `python3 tools/requested_visual.py --target fabric-26.2` (or
-`neoforge-26.2`). It reuses the existing common case manifest, pixel oracle,
-frame-stability checks and fixed/plain/see-through negative controls. Native
-instrumentation is generated only into a disposable source snapshot. `--probe`
-and `--compile-only` are diagnostic modes and cannot produce a verifiable passing
-full-gate receipt. Use `--verify-receipt <result.json> --head <commit>` to reject
-stale, dirty, incomplete or diagnostic-only evidence. The adapted drivers have
-compiled against native Java 25 APIs. Actual Fabric 26.2 fixed-renderer
-samples passed on Mesa OpenGL, but the initial plain control did not reproduce
-z-fighting, so the full gate correctly failed as inconclusive. The native plain
-control has been restored from the hash-locked historical per-tile renderer; its
-new full-gate run remains pending. The 1.12 native UI/screenshot adapter is separate and does not
-yet establish the calibrated media-rendering gate.
+`neoforge-26.2`). The `native-reversed-z-v1` qualification retains every common
+fixed-renderer case, frame-stability check, reload/alpha/occlusion check and pixel
+threshold. It additionally requires rejection of a native wrong-depth comparison
+in all six orientations and all four samples per orientation (24 samples). Those
+near scenes are identical to scenes already required to pass in the fixed run.
+The only mutation is the depth comparison: native `GREATER_THAN_OR_EQUAL` becomes
+legacy `LESS_THAN_OR_EQUAL`; geometry, shaders, blending, depth writes and bias
+remain unchanged. Vanilla 26.2 uses reversed-Z, so this control represents an
+incorrect depth-state port rather than an invented historical geometry failure.
 
-The requested-generations CI additionally runs the full calibrated framebuffer
-oracle on representative Fabric 26.2 after its native join/UI smoke passes.
-It requires the fixed renderer plus plain and see-through negative controls,
-then verifies a clean exact-head receipt and preserves screenshots/measurements.
-A configured CI step is not a completed result: until that run succeeds, the
-new-target framebuffer, reload, transparency and occlusion acceptance remain
-unproven. This representative lane does not establish another backend, shaders
-or a production-jar launch.
+The hash-locked historical plain renderer still runs with the same cases. Its
+result is recorded separately as `pass` (historical defect reproduced) or
+`inconclusive` (not reproduced), never silently relabeled. Historical near-reference,
+infrastructure, incomplete-evidence or other failures remain fatal. On the observed
+26.2 Mesa backend the plain control rendered cleanly even at 64/160 blocks; this
+does not establish historical forward-Z z-fighting reproduction. Historical
+inconclusive evidence no longer substitutes for or blocks the explicitly approved
+native reversed-Z qualification; both meanings remain visible in schema-2 receipts.
+
+Instrumentation is generated only into a disposable source snapshot. `--probe`
+and `--compile-only` cannot produce a verifiable passing full-gate receipt.
+`--verify-receipt <result.json> --head <commit>` requires the explicit native
+qualification policy, complete fixed/occlusion/wrong-depth outcomes and case
+manifest, separate historical result, exact clean head/source/dependency identity
+and consistent graphics backend. No ordinary renderer or old five-target visual
+or shader acceptance contract changes.
+
+The requested-generations CI runs this full framebuffer qualification on
+representative Fabric 26.2 after its native join/UI smoke passes. A configured
+step is not a completed result: the actual native wrong-depth control and final
+receipt must pass before qualification is claimed. It does not establish another
+backend, shaders, production-JAR launch or the historical defect's reproduction.
+The 1.12 native UI/screenshot adapter remains separate from framebuffer qualification.
 
 ## Native acceptance checkpoint and separate legacy media probe
 
@@ -222,6 +234,35 @@ matching server/client media evidence. Its receipt explicitly remains neither a
 dedicated-server join nor a multi-client test; the original dedicated CI step
 remains failed. A configured integrated lane is not a completed gameplay result.
 
+## Isolated 1.16.5 CI service fixture
+
+The 1.16.5 CI jobs now explicitly use `requested_live_join.py --service-fixture`.
+This supersedes the dedicated CI refusal described above: the launcher defaults
+(`FabricMC` and `DONT_CRASH`) are development placeholders, not authenticated
+Minecraft sessions. CI must not depend on the public privileges service's response
+to those placeholders.
+
+The fixture uses Authlib 2.1.28's native `minecraft.api.*.host` configuration on
+only `runLiveJoinTestClient`. It binds an ephemeral IPv4 loopback port, accepts
+only the literal `SimplyScreensCiFixture` token and serves privileges/blocklist
+responses. No production source, Authlib bytecode, account, native permission
+flag or connection screen is changed. Ordinary client launches retain their
+original service settings.
+
+Every CI invocation first supplies `multiplayerServer.enabled=false` and requires
+the actual loaded client to report native refusal, consume the fixture and never
+enter gameplay. It then supplies `true` and requires the existing dedicated join,
+OpenUI, media identity, decode, texture, submission and clean shutdown contracts.
+Both phases preserve logs. Missing service requests, an unexpected denied join,
+crashes and teardown failures fail the job and leave no success receipt.
+
+The final receipt identifies `authentication.mode=loopback-service-fixture` and
+`realAccountQualified=false`. It proves native development networking with a
+simulated external service, **not real-account authentication or public-service
+eligibility**. Without the explicit option, the original native-refusal behavior
+remains unchanged. The separate Singleplayer fallback still requires an exact
+native refusal receipt; fixture failures cannot authorize it.
+
 ## Release delivery
 
 The release workflow builds all ten native targets, including the five requested
@@ -233,5 +274,5 @@ loader-specific relations (Forge 1.12.2 does not require Architectury).
 
 Publication does not convert incomplete runtime evidence into a pass: the
 1.16.5 dedicated-client eligibility restriction and Fabric 26.2 historical plain
-renderer calibration remain recorded in the requested-generation workflow.
+renderer calibration remain separately recorded in the requested-generation workflow.
 No account eligibility override or acceptance-gate weakening is introduced.

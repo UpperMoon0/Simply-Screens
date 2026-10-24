@@ -78,6 +78,7 @@ jobs:
           python3 -m unittest discover -s tools -p test_modern_screen_sources.py -v
           python3 -m unittest discover -s tools -p test_forge_1122_sources.py -v
           python3 -m unittest discover -s tools -p test_legacy_media_probe.py -v
+          python3 -m unittest discover -s tools -p test_native_service_fixture.py -v
       - name: Prefetch official legacy assets with bounded transport retries
         if: matrix.target == 'forge-1.12.2'
         working-directory: Simply-Screens
@@ -105,7 +106,12 @@ jobs:
         env:
           TARGET: ${{ matrix.target }}
           LIBGL_ALWAYS_SOFTWARE: 'true'
-        run: python3 tools/requested_live_join.py --target "$TARGET" --timeout 420
+        run: |
+          fixture=()
+          if [[ "$TARGET" == fabric-1.16.5 || "$TARGET" == forge-1.16.5 ]]; then
+            fixture=(--service-fixture)
+          fi
+          python3 tools/requested_live_join.py --target "$TARGET" --timeout 420 "${fixture[@]}"
       - name: Check the separately permitted native Singleplayer boundary
         id: integrated_boundary
         if: always() && steps.native_join.outcome == 'failure' && (matrix.target == 'fabric-1.16.5' || matrix.target == 'forge-1.16.5')
