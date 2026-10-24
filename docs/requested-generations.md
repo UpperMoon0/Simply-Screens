@@ -234,6 +234,35 @@ matching server/client media evidence. Its receipt explicitly remains neither a
 dedicated-server join nor a multi-client test; the original dedicated CI step
 remains failed. A configured integrated lane is not a completed gameplay result.
 
+## Isolated 1.16.5 CI service fixture
+
+The 1.16.5 CI jobs now explicitly use `requested_live_join.py --service-fixture`.
+This supersedes the dedicated CI refusal described above: the launcher defaults
+(`FabricMC` and `DONT_CRASH`) are development placeholders, not authenticated
+Minecraft sessions. CI must not depend on the public privileges service's response
+to those placeholders.
+
+The fixture uses Authlib 2.1.28's native `minecraft.api.*.host` configuration on
+only `runLiveJoinTestClient`. It binds an ephemeral IPv4 loopback port, accepts
+only the literal `SimplyScreensCiFixture` token and serves privileges/blocklist
+responses. No production source, Authlib bytecode, account, native permission
+flag or connection screen is changed. Ordinary client launches retain their
+original service settings.
+
+Every CI invocation first supplies `multiplayerServer.enabled=false` and requires
+the actual loaded client to report native refusal, consume the fixture and never
+enter gameplay. It then supplies `true` and requires the existing dedicated join,
+OpenUI, media identity, decode, texture, submission and clean shutdown contracts.
+Both phases preserve logs. Missing service requests, an unexpected denied join,
+crashes and teardown failures fail the job and leave no success receipt.
+
+The final receipt identifies `authentication.mode=loopback-service-fixture` and
+`realAccountQualified=false`. It proves native development networking with a
+simulated external service, **not real-account authentication or public-service
+eligibility**. Without the explicit option, the original native-refusal behavior
+remains unchanged. The separate Singleplayer fallback still requires an exact
+native refusal receipt; fixture failures cannot authorize it.
+
 ## Release delivery
 
 The release workflow builds all ten native targets, including the five requested
