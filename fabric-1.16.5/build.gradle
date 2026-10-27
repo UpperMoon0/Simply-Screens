@@ -17,7 +17,8 @@ loom {
             property 'simplyscreens.liveJoinTest','true'
             property 'simplyscreens.mediaSmokeTest','true'
             vmArgs '-Xmx1G'
-            programArgs '--username','ScreensProbe','--server','127.0.0.1','--port','25575'
+            property 'simplyscreens.connectAfterInitialReload','true'
+            programArgs '--username','ScreensProbe'
         }
         liveJoinTestServer { property 'simplyscreens.mediaSmokeTest','true'; server(); runDir 'run/live-join/server'; vmArgs '-Xmx1G'; programArg 'nogui' }
     }

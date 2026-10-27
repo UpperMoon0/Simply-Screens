@@ -227,6 +227,33 @@ class RequestedGenerationsTest(unittest.TestCase):
         self.assertIn('client.allowsMultiplayer()',source)
         self.assertNotIn('setScreen(',source)
         self.assertNotIn('ConnectScreen',source)
+    def test_fabric_116_join_waits_for_initial_reload_and_native_account_eligibility(self):
+        root=ROOT/'common-1.16.5/src/main/java/com/nstut/simplyscreens/client/testing'
+        acceptance=(root/'NativeClientAcceptance.java').read_text()
+        driver=(root/'NativeMultiplayerJoin.java').read_text()
+        self.assertIn('else NativeMultiplayerJoin.tick(client);',acceptance)
+        self.assertIn('!LiveJoinTestProtocol.isEnabled()',driver)
+        self.assertIn('Boolean.getBoolean("simplyscreens.integratedAcceptance")',driver)
+        self.assertIn('client.screen instanceof TitleScreen, client.getOverlay() != null, client.allowsMultiplayer()',driver)
+        self.assertLess(driver.index('if (!GATE.claim('),driver.index('new ConnectScreen('))
+        self.assertIn('new ConnectScreen(client.screen, client, "127.0.0.1", 25575)',driver)
+        import forge_1165_sources
+        native=forge_1165_sources.convert(driver)
+        self.assertIn('import net.minecraft.client.gui.screen.ConnectingScreen;',native)
+        self.assertIn('new ConnectingScreen(client.screen, client, "127.0.0.1", 25575)',native)
+        self.assertNotIn('net.minecraft.client.gui.screens.ConnectScreen',native)
+        import forge_1122_sources
+        with tempfile.TemporaryDirectory() as directory:
+            output=Path(directory)
+            forge_1122_sources.generate(output)
+            self.assertFalse(list(output.rglob('NativeMultiplayerJoin.java')))
+            for path in output.rglob('*.java'):
+                self.assertNotIn('NativeMultiplayerJoin.tick',path.read_text())
+        build=(ROOT/'fabric-1.16.5/build.gradle').read_text()
+        live=build[build.index('liveJoinTestClient {'):build.index('liveJoinTestServer {')]
+        self.assertIn("property 'simplyscreens.connectAfterInitialReload','true'",live)
+        self.assertNotIn("'--server'",live)
+        self.assertNotIn("'--port'",live)
     def test_only_isolated_native_server_tasks_forward_harness_input(self):
         for target in ('forge-1.12.2','fabric-1.16.5','forge-1.16.5','fabric-26.2','neoforge-26.2'):
             source=(ROOT/target/'build.gradle').read_text()

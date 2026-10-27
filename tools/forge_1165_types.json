@@ -24,6 +24,7 @@
   "net.minecraft.client.gui.components.Button": "net.minecraft.client.gui.widget.button.Button",
   "net.minecraft.client.gui.components.events.GuiEventListener": "net.minecraft.client.gui.IGuiEventListener",
   "net.minecraft.client.gui.components.toasts.Toast": "net.minecraft.client.gui.toasts.IToast",
+  "net.minecraft.client.gui.screens.ConnectScreen": "net.minecraft.client.gui.screen.ConnectingScreen",
   "net.minecraft.client.gui.screens.Screen": "net.minecraft.client.gui.screen.Screen",
   "net.minecraft.client.gui.screens.TitleScreen": "net.minecraft.client.gui.screen.MainMenuScreen",
   "net.minecraft.client.gui.screens.worldselection.CreateWorldScreen": "net.minecraft.client.gui.screen.CreateWorldScreen",
