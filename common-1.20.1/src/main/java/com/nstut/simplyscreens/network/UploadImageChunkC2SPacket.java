@@ -42,7 +42,7 @@ public class UploadImageChunkC2SPacket {
         UUID transactionId = buf.readUUID();
         int chunkIndex = buf.readVarInt();
         int totalChunks = buf.readVarInt();
-        byte[] data = buf.readByteArray(com.nstut.packetweave.api.ChunkedTransfer.CHUNK_BYTES);
+        byte[] data = buf.readByteArray(com.nstut.packetweave.api.OutboundTransfers.CHUNK_BYTES);
         String fileName = null;
         if (chunkIndex == 0) {
             fileName = buf.readUtf(com.nstut.simplyscreens.ImageNameSanitizer.MAX_LENGTH);
@@ -53,7 +53,7 @@ public class UploadImageChunkC2SPacket {
     public static void apply(UploadImageChunkC2SPacket msg, Supplier<NetworkManager.PacketContext> context) {
         ServerPlayer player = (ServerPlayer) context.get().getPlayer();
         context.get().queue(() -> {
-            ServerImageManager.handleImageChunk(player, msg.blockPos, msg.transactionId, msg.chunkIndex, msg.totalChunks, msg.data, msg.fileName);
+            ServerImageManager.receiveImageChunk(player, msg.blockPos, msg.transactionId, msg.chunkIndex, msg.totalChunks, msg.data, msg.fileName);
         });
     }
 }

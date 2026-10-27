@@ -91,7 +91,7 @@ class RequestedGenerationsTest(unittest.TestCase):
     def test_legacy_direction_is_checked_before_packet_decode(self):
         source=(ROOT/'common-1.20.1/src/main/java/com/nstut/simplyscreens/network/PacketRegistries.java').read_text()
         generated=legacy_screen_sources.convert(source,'PacketRegistries.java')
-        self.assertEqual(18,generated.count('DirectionalReceivers.register('))
+        self.assertEqual(20,generated.count('DirectionalReceivers.register('))
         guard=(ROOT/'common-1.16.5/src/main/java/com/nstut/simplyscreens/compat/DirectionalReceivers.java').read_text()
         self.assertIn('context.getEnvironment() == expected',guard)
         self.assertLess(guard.index('context.getEnvironment() == expected'),guard.index('receiver.receive(buffer, context)'))

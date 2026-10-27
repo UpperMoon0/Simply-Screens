@@ -9,13 +9,15 @@ import java.util.function.Supplier;
 
 public class ImageDownloadChunkS2CPacket implements IPacket {
     private final UUID imageId;
+    private final UUID transferId;
     private final int chunkIndex;
     private final int totalChunks;
     private final byte[] data;
     private final String extension;
 
-    public ImageDownloadChunkS2CPacket(UUID imageId, int chunkIndex, int totalChunks, byte[] data, String extension) {
+    public ImageDownloadChunkS2CPacket(UUID imageId, UUID transferId, int chunkIndex, int totalChunks, byte[] data, String extension) {
         this.imageId = imageId;
+        this.transferId = transferId;
         this.chunkIndex = chunkIndex;
         this.totalChunks = totalChunks;
         this.data = data;
@@ -24,9 +26,10 @@ public class ImageDownloadChunkS2CPacket implements IPacket {
 
     public ImageDownloadChunkS2CPacket(FriendlyByteBuf buf) {
         this.imageId = buf.readUUID();
+        this.transferId = buf.readUUID();
         this.chunkIndex = buf.readVarInt();
         this.totalChunks = buf.readVarInt();
-        this.data = buf.readByteArray(com.nstut.packetweave.api.ChunkedTransfer.CHUNK_BYTES);
+        this.data = buf.readByteArray(com.nstut.packetweave.api.OutboundTransfers.CHUNK_BYTES);
         if (this.chunkIndex == 0) {
             this.extension = buf.readUtf(4);
         } else {
@@ -37,6 +40,7 @@ public class ImageDownloadChunkS2CPacket implements IPacket {
     @Override
     public void write(FriendlyByteBuf buf) {
         buf.writeUUID(imageId);
+        buf.writeUUID(transferId);
         buf.writeVarInt(chunkIndex);
         buf.writeVarInt(totalChunks);
         buf.writeByteArray(data);
@@ -48,7 +52,7 @@ public class ImageDownloadChunkS2CPacket implements IPacket {
     @Override
     public void handle(Supplier<NetworkManager.PacketContext> context) {
         context.get().queue(() -> {
-            ClientImageManager.handleImageChunk(imageId, chunkIndex, totalChunks, data, extension);
+            ClientImageManager.handleImageChunk(imageId, transferId, chunkIndex, totalChunks, data, extension);
         });
     }
 }

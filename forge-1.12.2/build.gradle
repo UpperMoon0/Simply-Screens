@@ -21,7 +21,7 @@ repositories {
 // FG3 only remaps ExternalModuleDependency, never a FileCollection. flatDir's
 // name.jar fallback resolves these exact immutable dependency artifacts.
 def nativeOpenui=[group:'com.nstut.portdeps',name:portOpenuiJar.name.replaceFirst(/\.jar$/,''),version:'0.0.15']
-def nativePacketweave=[group:'com.nstut.portdeps',name:portPacketweaveJar.name.replaceFirst(/\.jar$/,''),version:'0.1.4']
+def nativePacketweave=[group:'com.nstut.portdeps',name:portPacketweaveJar.name.replaceFirst(/\.jar$/,''),version:'0.1.5']
 minecraft {
     mappings channel:'stable',version:'39-1.12'
 // ForgeGradle merges parents in lexical order, before server has its userdev

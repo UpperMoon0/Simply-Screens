@@ -809,17 +809,21 @@ public class ImageLoadScreen extends SimplyScreensUiScreen {
                         ClientServerConfig.maxUploadSize() / 1024 / 1024));
                 return;
             }
-            byte[] data = Files.readAllBytes(path);
-            if (data.length > ClientServerConfig.maxUploadSize()) {
-                showError(Component.translatable("gui.simplyscreens.screen.upload.error.size",
-                        ClientServerConfig.maxUploadSize() / 1024 / 1024));
-                return;
-            }
             UUID transactionId = UUID.randomUUID();
-            com.nstut.packetweave.api.ChunkedTransfer.send(data, CHUNK_SIZE, (index, totalChunks, chunk) ->
-                    PacketRegistries.sendToServer(new UploadImageChunkC2SPacket(
-                            blockEntityPos, transactionId, index, totalChunks, chunk,
-                            index == 0 ? path.getFileName().toString() : null)));
+            Object peer = Minecraft.getInstance().getConnection();
+            if (peer == null) return;
+            boolean admitted = com.nstut.packetweave.api.OutboundTransfers.shared().start(peer, transactionId, path,
+                    ClientServerConfig.maxUploadSize(), Minecraft.getInstance()::execute, (index, total, chunk) -> {
+                        if (Minecraft.getInstance().getConnection() != peer) throw new java.io.IOException("Connection changed");
+                        PacketRegistries.sendToServer(new UploadImageChunkC2SPacket(blockEntityPos, transactionId, index, total,
+                                chunk, index == 0 ? path.getFileName().toString() : null));
+                    }, failure -> {
+                        if (failure != null) Minecraft.getInstance().execute(() -> {
+                            if (Minecraft.getInstance().getConnection() == peer)
+                                showError(Component.literal("Image upload failed or timed out. Please retry."));
+                        });
+                    });
+            if (!admitted) { showError(Component.literal("Other media transfers are busy. Please retry.")); return; }
             tab.set(Tab.GALLERY);
             status.set(Component.translatable("gui.simplyscreens.status.uploading"));
         } catch (java.io.IOException | SecurityException exception) {

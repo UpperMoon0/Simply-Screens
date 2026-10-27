@@ -1,6 +1,6 @@
 package com.nstut.simplyscreens.helpers;
 
-import com.nstut.packetweave.api.ChunkedTransfer;
+import com.nstut.packetweave.api.OutboundTransfers;
 import com.nstut.packetweave.api.TransferId;
 import com.nstut.packetweave.api.TransferLimits;
 import com.nstut.packetweave.api.TransferRegistry;
@@ -21,7 +21,7 @@ public final class MediaDownloadReceiver {
     private final Map<UUID, Header> headers = new HashMap<>();
 
     public MediaDownloadReceiver() {
-        this(new TransferLimits(ChunkedTransfer.CHUNK_BYTES, Config.MAX_UPLOAD_SIZE_LIMIT,
+        this(new TransferLimits(OutboundTransfers.CHUNK_BYTES, Config.MAX_UPLOAD_SIZE_LIMIT,
                 32, 32, 128L * 1024 * 1024, Duration.ofSeconds(30)), System::nanoTime);
     }
 

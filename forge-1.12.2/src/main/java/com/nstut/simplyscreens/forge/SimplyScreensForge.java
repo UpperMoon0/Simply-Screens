@@ -13,7 +13,7 @@ import net.minecraftforge.fml.common.registry.GameRegistry;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 import net.minecraft.server.MinecraftServer;
-@Mod(modid="simply_screens",name="Simply Screens",useMetadata=true,acceptedMinecraftVersions="[1.12.2]",dependencies="required-after:packetweave@[0.1.4,);after:openui_mc@[0.0.15,)")
+@Mod(modid="simply_screens",name="Simply Screens",useMetadata=true,acceptedMinecraftVersions="[1.12.2]",dependencies="required-after:packetweave@[0.1.5,);after:openui_mc@[0.0.15,)")
 public final class SimplyScreensForge {
  @SidedProxy(clientSide="com.nstut.simplyscreens.forge.ClientProxy",serverSide="com.nstut.simplyscreens.forge.CommonProxy") public static CommonProxy proxy;
  private MinecraftServer server;
@@ -35,7 +35,7 @@ public final class SimplyScreensForge {
  @Mod.EventHandler public void stopping(FMLServerStoppingEvent event) { if(server!=null)com.nstut.simplyscreens.compat.LifecycleEvent.SERVER_STOPPING.fire(server); }
  @Mod.EventHandler public void stopped(FMLServerStoppedEvent event) { if(server!=null)com.nstut.simplyscreens.compat.LifecycleEvent.SERVER_STOPPED.fire(server);server=null; }
  @SubscribeEvent public void tick(TickEvent.ServerTickEvent event) { if(event.phase==TickEvent.Phase.END && server!=null)com.nstut.simplyscreens.compat.TickEvent.SERVER_POST.fire(server); }
- @SubscribeEvent public void logout(PlayerEvent.PlayerLoggedOutEvent event) { com.nstut.simplyscreens.helpers.ServerImageManager.cancelUploads(event.player.getUniqueID()); }
+ @SubscribeEvent public void logout(PlayerEvent.PlayerLoggedOutEvent event) { com.nstut.packetweave.api.OutboundTransfers.shared().cancelPeer(event.player); com.nstut.simplyscreens.helpers.ServerImageManager.cancelUploads(event.player.getUniqueID()); }
  @SubscribeEvent public void unload(WorldEvent.Unload event) { if(!event.getWorld().isRemote)com.nstut.simplyscreens.helpers.ScreenAccessService.clearLevel(event.getWorld()); }
  @SubscribeEvent public void login(PlayerEvent.PlayerLoggedInEvent event) { if(event.player instanceof net.minecraft.entity.player.EntityPlayerMP)com.nstut.simplyscreens.network.PacketRegistries.sendToPlayer((net.minecraft.entity.player.EntityPlayerMP)event.player,new com.nstut.simplyscreens.network.ServerConfigSyncS2CPacket(com.nstut.simplyscreens.Config.DISABLE_UPLOAD,com.nstut.simplyscreens.Config.DISABLE_URL_DOWNLOAD,com.nstut.simplyscreens.Config.MAX_UPLOAD_SIZE)); }
 }

@@ -18,13 +18,15 @@ public class ImageDownloadChunkS2CPacket implements CustomPacketPayload {
             StreamCodec.ofMember(ImageDownloadChunkS2CPacket::write, ImageDownloadChunkS2CPacket::new);
 
     private final UUID imageId;
+    private final UUID transferId;
     private final int chunkIndex;
     private final int totalChunks;
     private final byte[] data;
     private final String extension;
 
-    public ImageDownloadChunkS2CPacket(UUID imageId, int chunkIndex, int totalChunks, byte[] data, String extension) {
+    public ImageDownloadChunkS2CPacket(UUID imageId, UUID transferId, int chunkIndex, int totalChunks, byte[] data, String extension) {
         this.imageId = imageId;
+        this.transferId = transferId;
         this.chunkIndex = chunkIndex;
         this.totalChunks = totalChunks;
         this.data = data;
@@ -33,9 +35,10 @@ public class ImageDownloadChunkS2CPacket implements CustomPacketPayload {
 
     public ImageDownloadChunkS2CPacket(RegistryFriendlyByteBuf buf) {
         this.imageId = buf.readUUID();
+        this.transferId = buf.readUUID();
         this.chunkIndex = buf.readVarInt();
         this.totalChunks = buf.readVarInt();
-        this.data = buf.readByteArray(com.nstut.packetweave.api.ChunkedTransfer.CHUNK_BYTES);
+        this.data = buf.readByteArray(com.nstut.packetweave.api.OutboundTransfers.CHUNK_BYTES);
         if (this.chunkIndex == 0) {
             this.extension = buf.readUtf(4);
         } else {
@@ -45,6 +48,7 @@ public class ImageDownloadChunkS2CPacket implements CustomPacketPayload {
 
     public void write(RegistryFriendlyByteBuf buf) {
         buf.writeUUID(imageId);
+        buf.writeUUID(transferId);
         buf.writeVarInt(chunkIndex);
         buf.writeVarInt(totalChunks);
         buf.writeByteArray(data);
@@ -80,7 +84,7 @@ public class ImageDownloadChunkS2CPacket implements CustomPacketPayload {
 
     public static void handle(ImageDownloadChunkS2CPacket packet, NetworkManager.PacketContext context) {
         context.queue(() -> {
-            ClientImageManager.handleImageChunk(packet.imageId, packet.chunkIndex, packet.totalChunks, packet.data, packet.extension);
+            ClientImageManager.handleImageChunk(packet.imageId, packet.transferId, packet.chunkIndex, packet.totalChunks, packet.data, packet.extension);
         });
     }
 }

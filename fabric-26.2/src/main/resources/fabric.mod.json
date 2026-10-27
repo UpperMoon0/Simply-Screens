@@ -31,7 +31,7 @@
     "java": ">=25",
     "architectury": ">=21.1.12",
     "fabric-api": "*",
-    "packetweave": ">=0.1.4"
+    "packetweave": ">=0.1.5"
   },
   "suggests": {
     "patchouli": "*",

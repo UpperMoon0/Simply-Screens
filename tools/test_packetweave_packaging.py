@@ -90,7 +90,7 @@ class PacketWeaveModuleTests(unittest.TestCase):
             screens = work / "simply_screens.jar"
             core_jar(consumer, screens, "simply_screens", license_file)
             with zipfile.ZipFile(screens, "a") as archive:
-                archive.writestr("fabric.mod.json", json.dumps({"id": "simply_screens", "depends": {"packetweave": ">=0.1.1"}}))
+                archive.writestr("fabric.mod.json", json.dumps({"id": "simply_screens", "depends": {"packetweave": ">=0.1.5"}}))
             verify(screens, standalone, Path(os.environ["PACKETWEAVE_TEST_DEPENDENCY_CACHE"]))
 
 

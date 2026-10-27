@@ -34,6 +34,7 @@ public final class PacketRegistries {
     private static ResourceLocation id(String path) { return new ResourceLocation(SimplyScreens.MOD_ID, path); }
 
     public static void register() {
+        NetworkManager.registerReceiver(NetworkManager.c2s(), id("image_receipt_c2s"), (buf, ctx) -> new ImageTransferReceiptC2SPacket(buf).handle(() -> ctx));
         NetworkManager.registerReceiver(NetworkManager.c2s(), ACCESS_C2S, (buf, ctx) -> new ScreenAccessC2SPacket(buf).handle(() -> ctx));
         NetworkManager.registerReceiver(NetworkManager.c2s(), PLAYLIST_C2S, (buf, ctx) -> new ScreenPlaylistC2SPacket(buf).handle(() -> ctx));
         NetworkManager.registerReceiver(NetworkManager.c2s(), UPDATE_SELECTED, (buf, ctx) -> new UpdateScreenSelectedImageC2SPacket(buf).handle(() -> ctx));
@@ -47,6 +48,7 @@ public final class PacketRegistries {
     }
 
     public static void registerS2CPackets() {
+        NetworkManager.registerReceiver(NetworkManager.s2c(), id("image_receipt_s2c"), (buf, ctx) -> new ImageTransferReceiptS2CPacket(buf).handle(() -> ctx));
         NetworkManager.registerReceiver(NetworkManager.s2c(), ACCESS_S2C, (buf, ctx) -> new ScreenAccessS2CPacket(buf).handle(() -> ctx));
         NetworkManager.registerReceiver(NetworkManager.s2c(), PLAYLIST_S2C, (buf, ctx) -> new ScreenPlaylistS2CPacket(buf).handle(() -> ctx));
         NetworkManager.registerReceiver(NetworkManager.s2c(), PREFETCH_S2C, (buf, ctx) -> new ScreenPrefetchS2CPacket(buf).handle(() -> ctx));
@@ -68,6 +70,8 @@ public final class PacketRegistries {
     }
 
     private static ResourceLocation packetId(Object packet) {
+        if (packet instanceof ImageTransferReceiptC2SPacket) return id("image_receipt_c2s");
+        if (packet instanceof ImageTransferReceiptS2CPacket) return id("image_receipt_s2c");
         if (packet instanceof ScreenAccessC2SPacket) return ACCESS_C2S;
         if (packet instanceof ScreenPlaylistC2SPacket) return PLAYLIST_C2S;
         if (packet instanceof ScreenAccessS2CPacket) return ACCESS_S2C;
@@ -90,6 +94,8 @@ public final class PacketRegistries {
     }
 
     private static void write(Object packet, FriendlyByteBuf buf) {
+        if (packet instanceof ImageTransferReceiptC2SPacket p) { p.write(buf); return; }
+        if (packet instanceof ImageTransferReceiptS2CPacket p) { p.write(buf); return; }
         if (packet instanceof ScreenAccessC2SPacket p) p.write(buf);
         else if (packet instanceof ScreenPlaylistC2SPacket p) p.write(buf);
         else if (packet instanceof ScreenAccessS2CPacket p) p.write(buf);

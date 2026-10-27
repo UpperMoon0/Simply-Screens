@@ -30,7 +30,7 @@
     "minecraft": "1.16.5",
     "java": ">=8",
     "architectury": ">=1.32.68",
-    "packetweave": ">=0.1.4",
+    "packetweave": ">=0.1.5",
     "fabric": "*"
   },
   "suggests": {
