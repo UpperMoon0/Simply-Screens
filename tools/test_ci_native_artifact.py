@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import re
 import zipfile
 from unittest.mock import patch
 import ci_native_artifact as native
@@ -97,5 +98,41 @@ class NativeArtifactTest(unittest.TestCase):
         self.assertEqual(1,workflow.count('ci_native_artifact.py create'))
         self.assertEqual(1,workflow.count('ci_native_artifact.py consume'))
         self.assertEqual(1,workflow.count('./gradlew build --no-daemon'))
+
+    def test_shader_jobs_share_published_exact_toolchains_including_openui_and_runtime_restore(self):
+        workflow=(native.ROOT/'.github/workflows/shader-colors.yml').read_text()
+        prepare=workflow.split('  prepare:\n',1)[1].split('  native-build:\n',1)[0]
+        producer=workflow.split('  native-build:\n',1)[1].split('  shader:\n',1)[0]
+        consumer=workflow.split('  shader:\n',1)[1].split('  required:\n',1)[0]
+        for major in (17,21,25):
+            self.assertIn(f'java{major}: ${{{{ steps.java{major}.outputs.version }}}}',prepare)
+            setup=prepare.split(f'id: java{major}\n',1)[1].split('- name:',1)[0]
+            self.assertIn(f"java-version: '{major}'",setup)
+            self.assertIn('check-latest: true',setup)
+            self.assertIn('distribution: temurin',setup)
+        for job in (producer,consumer):
+            versions=re.findall(r'^\s+java-version: (.+)$',job,re.MULTILINE)
+            self.assertEqual([
+                "${{ matrix.target == 'forge-1.20.1' && needs.prepare.outputs.java17 || needs.prepare.outputs.java25 }}",
+                '${{ needs.prepare.outputs.java21 }}',  # OpenUI must not reset to a cached major-only JDK.
+                '${{ needs.prepare.outputs.java17 }}',  # Fabric 1.20 runtime installation.
+                '${{ needs.prepare.outputs.java21 }}',  # Restore the same build launcher afterwards.
+            ],versions)
+        action=(native.ROOT/'.github/actions/openui/action.yml').read_text()
+        self.assertIn("default: '21'",action)  # Unrelated callers retain their existing major selection.
+        self.assertIn('java-version: ${{ inputs.java-version }}',action)
+        self.assertIn('jdk-${{ inputs.java-version }}-',action)
+
+    def test_exact_patch_drift_is_still_rejected_before_native_artifact_use(self):
+        identity=dict(head='current',source_sha256='source',packetweave_source='pinned')
+        packet={'java':'openjdk version "25.0.5" Temurin-25.0.5+8','system':'Linux','architecture':'x86_64'}
+        build={'java':'openjdk version "21.0.13" Temurin-21.0.13+9','system':'Linux','architecture':'x86_64'}
+        receipt=dict(schema=1,status='pass',target='fabric-1.20.1',identity=identity,
+                     packet_launcher=packet,build_launcher=build)
+        for field in ('packet_launcher','build_launcher'):
+            changed=copy.deepcopy(receipt)
+            changed[field]['java']=changed[field]['java'].replace('+8','+1').replace('+9','+1')
+            with self.assertRaisesRegex(ValueError,'toolchain mismatch'):
+                native.validate(changed,identity,'fabric-1.20.1',packet,build,Path('unused'))
 
 if __name__=='__main__':unittest.main()

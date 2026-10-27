@@ -21,6 +21,9 @@ jobs:
     outputs:
       matrix: ${{ steps.matrix.outputs.value }}
       targets: ${{ steps.matrix.outputs.targets }}
+      java17: ${{ steps.java17.outputs.version }}
+      java21: ${{ steps.java21.outputs.version }}
+      java25: ${{ steps.java25.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,6 +34,29 @@ jobs:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: tools/visual/requirements.txt
+      # Resolve published builds once; separate hosted runners can cache different patches.
+      # Finish on Java 17 for the existing harness fixtures before OpenUI switches to 21.
+      - name: Resolve Java 25 toolchain
+        id: java25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          check-latest: true
+      - name: Resolve Java 21 toolchain
+        id: java21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          check-latest: true
+      - name: Resolve Java 17 toolchain
+        id: java17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          check-latest: true
       - name: Verify harness and generate required target matrix
         id: matrix
         run: |
@@ -40,6 +66,8 @@ jobs:
           echo "value=$(python tools/shader_test.py --matrix)" >> "$GITHUB_OUTPUT"
           echo "targets=$(python tools/visual_test.py --matrix)" >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/openui
+        with:
+          java-version: ${{ steps.java21.outputs.version }}
 
   native-build:
     needs: prepare
@@ -63,7 +91,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: ${{ matrix.target == 'forge-1.20.1' && '17' || '25' }}
+          java-version: ${{ matrix.target == 'forge-1.20.1' && needs.prepare.outputs.java17 || needs.prepare.outputs.java25 }}
           cache: gradle
           cache-dependency-path: |
             vendor/PacketWeave/**/*.gradle*
@@ -79,18 +107,20 @@ jobs:
             --init-script "$GITHUB_WORKSPACE/tools/ci_packet_compiler.init.gradle" \
             -PciPacketCompilerReport="$GITHUB_WORKSPACE/build/packet-compiler.json"
       - uses: ./.github/actions/openui
+        with:
+          java-version: ${{ needs.prepare.outputs.java21 }}
       - name: Provide Minecraft 1.20.1 runtime JDK
         if: matrix.target == 'fabric-1.20.1'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: ${{ needs.prepare.outputs.java17 }}
       - name: Restore build JDK after runtime installation
         if: matrix.target == 'fabric-1.20.1'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: ${{ needs.prepare.outputs.java21 }}
       - name: Verify production artifact and package exact-source prerequisite
         run: python tools/ci_native_artifact.py create --target '${{ matrix.target }}' --package build/native-package --toolchain-file build/packet-toolchain.json
       - uses: actions/upload-artifact@v4
@@ -131,7 +161,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: ${{ matrix.target == 'forge-1.20.1' && '17' || '25' }}
+          java-version: ${{ matrix.target == 'forge-1.20.1' && needs.prepare.outputs.java17 || needs.prepare.outputs.java25 }}
           cache: gradle
           cache-dependency-path: |
             vendor/PacketWeave/**/*.gradle*
@@ -140,18 +170,20 @@ jobs:
       - name: Record standalone PacketWeave toolchain
         run: python tools/ci_native_artifact.py toolchain --toolchain-file build/packet-toolchain.json
       - uses: ./.github/actions/openui
+        with:
+          java-version: ${{ needs.prepare.outputs.java21 }}
       - name: Provide Minecraft 1.20.1 runtime JDK
         if: matrix.target == 'fabric-1.20.1'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: ${{ needs.prepare.outputs.java17 }}
       - name: Restore build JDK after runtime installation
         if: matrix.target == 'fabric-1.20.1'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: ${{ needs.prepare.outputs.java21 }}
       - name: Install graphics and pixel analysis runtime
         run: |
           sudo apt-get update

@@ -99,7 +99,9 @@ class OpenUiDependencyTest(unittest.TestCase):
         self.assertIn('OpenUI MC ' + minimum + ' or newer', (ROOT / 'README.md').read_text(encoding='utf-8'))
         action = (ROOT / '.github/actions/openui/action.yml').read_text(encoding='utf-8')
         pin, = re.findall(r'^        ref: ([a-f0-9]{40})$', action, re.M)
-        self.assertIn('-jdk21-' + pin, action)
+        self.assertIn('-jdk-${{ inputs.java-version }}-' + pin, action)
+        self.assertIn("default: '21'", action)
+        self.assertIn('java-version: ${{ inputs.java-version }}', action)
         for workflow in ('release.yml', 'cold-openui.yml'):
             text = (ROOT / '.github/workflows' / workflow).read_text(encoding='utf-8')
             self.assertTrue(re.findall(r'repository: UpperMoon0/OpenUI-MC', text))
