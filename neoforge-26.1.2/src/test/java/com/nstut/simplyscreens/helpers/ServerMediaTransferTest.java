@@ -108,4 +108,73 @@ class ServerMediaTransferTest {
         }
     }
 
+    @Test void queuedUploadGenerationIsRevokedOnDisconnectAndServerStop() throws Exception {
+        var stateType = Class.forName(ServerImageManager.class.getName() + "$UploadState");
+        var constructor = stateType.getDeclaredConstructor(UUID.class, ServerLevel.class, BlockPos.class,
+                int.class, Object.class, long.class);
+        constructor.setAccessible(true);
+        var connectionsField = ServerImageManager.class.getDeclaredField("UPLOAD_CONNECTIONS");
+        connectionsField.setAccessible(true);
+        @SuppressWarnings("unchecked") var connections = (java.util.Map<UUID, Object>) connectionsField.get(null);
+        var epochField = ServerImageManager.class.getDeclaredField("transferEpoch");
+        epochField.setAccessible(true);
+        var current = ServerImageManager.class.getDeclaredMethod("isCurrentUpload", stateType);
+        current.setAccessible(true);
+        Object token = new Object();
+        connections.put(owner, token);
+        Object state = constructor.newInstance(owner, player.level(), screen, 1, token, epochField.getLong(null));
+        assertEquals(true, current.invoke(null, state));
+        ServerImageManager.cancelUploads(owner);
+        assertEquals(false, current.invoke(null, state));
+        connections.put(owner, new Object()); // A reconnect must not revive queued work.
+        assertEquals(false, current.invoke(null, state));
+        Object next = constructor.newInstance(owner, player.level(), screen, 1, connections.get(owner), epochField.getLong(null));
+        assertEquals(true, current.invoke(null, next));
+        var clear = ServerImageManager.class.getDeclaredMethod("clearUploads");
+        clear.setAccessible(true);
+        clear.invoke(null);
+        assertEquals(false, current.invoke(null, next));
+    }
+
+    @Test void disconnectedUploadWaitingForStorageDoesNotWrite() throws Exception {
+        var stateType = Class.forName(ServerImageManager.class.getName() + "$UploadState");
+        var constructor = stateType.getDeclaredConstructor(UUID.class, ServerLevel.class, BlockPos.class,
+                int.class, Object.class, long.class);
+        constructor.setAccessible(true);
+        var connectionsField = ServerImageManager.class.getDeclaredField("UPLOAD_CONNECTIONS");
+        connectionsField.setAccessible(true);
+        @SuppressWarnings("unchecked") var connections = (java.util.Map<UUID, Object>) connectionsField.get(null);
+        var epochField = ServerImageManager.class.getDeclaredField("transferEpoch");
+        epochField.setAccessible(true);
+        Object token = new Object();
+        connections.put(owner, token);
+        Object state = constructor.newInstance(owner, player.level(), screen, 1, token, epochField.getLong(null));
+        var imageData = stateType.getDeclaredField("imageData");
+        imageData.setAccessible(true);
+        imageData.set(state, new byte[16]);
+        var acquire = ServerImageManager.class.getDeclaredMethod("tryAcquireProcessingSlot", UUID.class, long.class);
+        acquire.setAccessible(true);
+        assertEquals(true, acquire.invoke(null, owner, 16L));
+        var finish = ServerImageManager.class.getDeclaredMethod("finishImageUpload", net.minecraft.server.MinecraftServer.class,
+                ServerPlayer.class, BlockPos.class, stateType, String.class);
+        finish.setAccessible(true);
+        var server = mock(net.minecraft.server.MinecraftServer.class);
+        var executor = java.util.concurrent.Executors.newSingleThreadExecutor();
+        try {
+            java.util.concurrent.Future<?> work;
+            var entered = new java.util.concurrent.CountDownLatch(1);
+            synchronized (ServerImageManager.class) {
+                work = executor.submit(() -> {
+                    entered.countDown();
+                    try { finish.invoke(null, server, player, screen, state, owner.toString()); }
+                    catch (ReflectiveOperationException error) { throw new RuntimeException(error); }
+                });
+                assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS));
+                ServerImageManager.cancelUploads(owner);
+            }
+            work.get(5, java.util.concurrent.TimeUnit.SECONDS);
+            verifyNoInteractions(server);
+        } finally { executor.shutdownNow(); }
+    }
+
 }

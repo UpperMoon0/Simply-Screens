@@ -72,4 +72,20 @@ class MediaDownloadReceiverTest {
         assertFalse(receiver.isPending(ids[0]));
         assertNotNull(receiver.accept(ids[0],0,1,new byte[]{8},"jpeg"));
     }
+    @Test void delayedWorkerCannotMixPreviousRequestIntoRetry() {
+        var receiver = receiver();
+        UUID image = UUID.randomUUID(), previous = UUID.randomUUID(), retry = UUID.randomUUID();
+        receiver.expect(image, previous);
+        assertNull(receiver.accept(image, previous, 0, 2, new byte[]{1,2,3,4}, "png"));
+        receiver.cancel(image);
+        receiver.expect(image, retry);
+        assertNull(receiver.accept(image, previous, 1, 2, new byte[]{5}, null));
+        assertFalse(receiver.isPending(image));
+        assertNull(receiver.accept(image, retry, 0, 2, new byte[]{6,7,8,9}, "png"));
+        assertNull(receiver.accept(image, previous, 1, 2, new byte[]{5}, null));
+        assertTrue(receiver.isPending(image));
+        assertArrayEquals(new byte[]{6,7,8,9,10}, receiver.accept(image, retry, 1, 2, new byte[]{10}, null).bytes());
+        assertNull(receiver.accept(image, retry, 0, 1, new byte[]{1}, "png"));
+    }
+
 }

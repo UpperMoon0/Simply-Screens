@@ -10,7 +10,7 @@ import sys
 import tomllib
 import zipfile
 
-MINIMUM_PACKETWEAVE = "0.1.1"
+MINIMUM_PACKETWEAVE = "0.1.5"
 PACKETWEAVE_PACKAGES = ("com/nstut/packetweave/", "com/nstut/simplyscreens/internal/packetweave/")
 
 
@@ -37,7 +37,7 @@ def packetweave_dependency_errors(jar: Path) -> list[str]:
                 if data.get("environment", "*") != "*":
                     errors.append("Screens must load on both sides")
                 if data.get("depends", {}).get("packetweave") != ">=" + MINIMUM_PACKETWEAVE:
-                    errors.append("Fabric requires depends.packetweave >=0.1.1")
+                    errors.append("Fabric requires depends.packetweave >=0.1.5")
                 return errors
             data = tomllib.loads(text)
             dependencies = [entry for entry in data.get("dependencies", {}).get("simply_screens", [])
@@ -47,7 +47,7 @@ def packetweave_dependency_errors(jar: Path) -> list[str]:
             dependency = dependencies[0]
             errors = []
             if dependency.get("versionRange") != "[" + MINIMUM_PACKETWEAVE + ",)":
-                errors.append("PacketWeave versionRange must be [0.1.1,)")
+                errors.append("PacketWeave versionRange must be [0.1.5,)")
             if dependency.get("side") != "BOTH":
                 errors.append("PacketWeave must be required on BOTH sides")
             if name == "META-INF/mods.toml" and dependency.get("mandatory") is not True:
@@ -161,7 +161,7 @@ def main() -> int:
     if problems:
         print(f"Invalid Simply Screens production jar {jar}:\n  " + "\n  ".join(problems), file=sys.stderr)
         return 1
-    print(f"{jar}: required standalone PacketWeave >=0.1.1 on both sides; no embedded API, obsolete mixins, or visual drivers")
+    print(f"{jar}: required standalone PacketWeave >=0.1.5 on both sides; no embedded API, obsolete mixins, or visual drivers")
     return 0
 
 

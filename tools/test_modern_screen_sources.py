@@ -80,7 +80,7 @@ class ModernSourceReuseTest(unittest.TestCase):
             output = Path(tmp)
             generator.generate(output, tests=True)
             tests = list(output.rglob('*.java'))
-            self.assertEqual(14, len(tests))
+            self.assertEqual(15, len(tests))
             for path in tests:
                 text = path.read_text()
                 self.assertEqual(1, text.count('void bootstrapMinecraft()'))

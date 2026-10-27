@@ -348,4 +348,18 @@ class ScreenAccessServiceTest {
         assertEquals(display, split.getDisplayId());
     }
 
+    @Test void perChunkAccessUsesCapturedMetadataAndStillRechecksRevocation() {
+        tracked();
+        var metadata = new ImageMetadata("private", image.toString(), "png", owner.toString());
+        media.clearInvocations();
+        assertTrue(ScreenAccessService.canReadImage(player, image, metadata));
+        media.verifyNoInteractions();
+        assertTrue(ScreenRegistry.networks().access(key,new Actor(owner,false),0,"VIEW","OWNER_ONLY"));
+        assertFalse(ScreenAccessService.canReadImage(player, image, metadata));
+        media.verifyNoInteractions();
+        when(server.getPlayerList().getPlayer(visitor)).thenReturn(null);
+        assertFalse(ScreenAccessService.canReadImage(player, image,
+                new ImageMetadata("mine", image.toString(), "png", visitor.toString())));
+    }
+
 }

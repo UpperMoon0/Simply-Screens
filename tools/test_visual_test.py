@@ -286,7 +286,7 @@ class EvidenceTests(unittest.TestCase):
                 path = root / target / "result.json"
                 path.parent.mkdir()
                 payload = dict(target=target, head="abc", dirty=False, status="pass",
-                               packetweave={"version": "0.1.1", "sha256": "a" * 64},
+                               packetweave={"version": "0.1.5", "sha256": "a" * 64},
                                variants={v:"pass" for v in variants(target)})
                 atomic_json(path, payload)
             verify_receipts(root, "abc")

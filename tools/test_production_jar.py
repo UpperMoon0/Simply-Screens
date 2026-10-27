@@ -8,7 +8,7 @@ import zipfile
 from assert_production_jar import color_mixin_registration_errors, loader_metadata, obsolete_entries, packetweave_dependency_errors, COLOR_MIXIN_CLASS, COLOR_MIXIN_CONFIG, COLOR_REFMAP
 
 
-def metadata(target, minimum="0.1.1", required=True, side="BOTH"):
+def metadata(target, minimum="0.1.5", required=True, side="BOTH"):
     if target.startswith("fabric-"):
         return json.dumps({"id": "simply_screens", "environment": "*" if side == "BOTH" else "client",
                            "depends" if required else "suggests": {"packetweave": ">=" + minimum}})
@@ -90,7 +90,7 @@ class ProductionJarTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             jar = Path(directory) / "production.jar"
             for target in ("fabric-1.20.1", "fabric-1.21.1", "forge-1.20.1", "neoforge-1.21.1", "neoforge-26.1.2"):
-                for changes in ({}, {"minimum": "0.1.0"}, {"required": False}, {"side": "CLIENT"}):
+                for changes in ({}, {"minimum": "0.1.0"}, {"minimum": "0.1.1"}, {"required": False}, {"side": "CLIENT"}):
                     with self.subTest(target=target, changes=changes):
                         with zipfile.ZipFile(jar, "w") as archive:
                             archive.writestr(loader_metadata(target), metadata(target, **changes))

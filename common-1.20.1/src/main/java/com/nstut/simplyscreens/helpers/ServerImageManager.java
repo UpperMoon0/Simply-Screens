@@ -81,8 +81,8 @@ public class ServerImageManager {
     }
 
     public static void initTransfers() {
-        dev.architectury.event.events.common.PlayerEvent.PLAYER_QUIT.register(player -> { com.nstut.packetweave.api.OutboundTransfers.shared().cancelPeer(player); cancelUploads(player.getUUID()); });
-        dev.architectury.event.events.common.LifecycleEvent.SERVER_STOPPED.register(server -> clearUploads());
+        dev.architectury.event.events.common.PlayerEvent.PLAYER_QUIT.register(player -> { com.nstut.packetweave.api.OutboundTransfers.shared().cancelPeer(player); cancelUploads(player.getUUID()); com.nstut.simplyscreens.network.RequestImageDownloadC2SPacket.cancelPending(player); });
+        dev.architectury.event.events.common.LifecycleEvent.SERVER_STOPPED.register(server -> { clearUploads(); com.nstut.simplyscreens.network.RequestImageDownloadC2SPacket.cancelServer(server); });
     }
 
     private static void reapUploads() {
@@ -124,6 +124,7 @@ public class ServerImageManager {
         }
         ServerLevel level = player.serverLevel();
         MinecraftServer server = player.getServer();
+        if (server.getPlayerList().getPlayer(player.getUUID()) != player) return;
         long epoch = transferEpoch;
         Object token = UPLOAD_CONNECTIONS.computeIfAbsent(player.getUUID(), ignored -> new Object());
         try {
@@ -161,7 +162,7 @@ public class ServerImageManager {
             UploadState state = UPLOADS.get(uploadKey);
             if (state == null) {
                 if (!UPLOAD_TRANSFERS.beginBounded(uploadKey, totalChunks, Config.MAX_UPLOAD_SIZE)) return -1;
-                state = new UploadState(player.getUUID(), intendedLevel, blockPos.immutable(), totalChunks);
+                state = new UploadState(player.getUUID(), intendedLevel, blockPos.immutable(), totalChunks, token, transferEpoch);
                 UPLOADS.put(uploadKey, state);
             }
             if (state.level != intendedLevel || !state.blockPos.equals(blockPos) || state.totalChunks != totalChunks || state.nextIndex != chunkIndex
@@ -185,18 +186,22 @@ public class ServerImageManager {
         } catch (java.util.concurrent.RejectedExecutionException rejected) {
             releaseProcessingSlot(player.getUUID(), finished.imageData.length);
             SimplyScreens.LOGGER.warn("Rejecting image upload because the processing queue is full");
+            return -1;
         }
         return (long) chunkIndex * UPLOAD_CHUNK_SIZE + data.length;
     }
 
     private static void finishImageUpload(MinecraftServer server, ServerPlayer player, BlockPos blockPos, UploadState state, String ownerUUID) {
         try {
-            byte[] imageData = state.imageData;
-
-            UUID imageId = saveImage(server, state.originalName, imageData, null, ownerUUID);
+            UUID imageId;
+            synchronized (ServerImageManager.class) {
+                if (!isCurrentUpload(state)) return;
+                imageId = saveImage(server, state.originalName, state.imageData, null, ownerUUID);
+            }
             if (imageId != null) {
                 List<ImageMetadata> images = getImageListForPlayer(server, ownerUUID);
                 server.execute(() -> {
+                    if (!isCurrentUpload(state) || server.getPlayerList().getPlayer(state.owner) != player) return;
                     if (player.level() == state.level && ScreenPacketSecurity.canModify(player, blockPos) &&
                             state.level.getBlockEntity(blockPos) instanceof com.nstut.simplyscreens.blocks.entities.ScreenBlockEntity screen) {
                         screen.setImageId(imageId);
@@ -210,6 +215,11 @@ public class ServerImageManager {
         } finally {
             releaseProcessingSlot(state.owner, state.imageData.length);
         }
+    }
+
+    private static boolean isCurrentUpload(UploadState state) {
+        return state.epoch == transferEpoch
+                && (state.connection == null || UPLOAD_CONNECTIONS.get(state.owner) == state.connection);
     }
 
     private static boolean tryAcquireProcessingSlot(UUID playerId, long bytes) {
@@ -284,16 +294,17 @@ public class ServerImageManager {
             }
 
             File imageFile = imagesDir.resolve(imageId + "." + extension).toFile();
-            try (FileOutputStream fos = new FileOutputStream(imageFile)) {
-                fos.write(data);
-            }
+            MediaFiles.writeAtomically(imageFile.toPath(), data);
 
             File metadataFile = imagesDir.resolve(imageId + ".json").toFile();
             String safeOriginalName = originalName;
             String nameWithoutExtension = safeOriginalName.contains(".") ? safeOriginalName.substring(0, safeOriginalName.lastIndexOf('.')) : safeOriginalName;
             ImageMetadata metadata = new ImageMetadata(nameWithoutExtension, imageId.toString(), extension, ownerUUID);
-            try (FileWriter writer = new FileWriter(metadataFile)) {
-                GSON.toJson(metadata, writer);
+            try {
+                MediaFiles.writeAtomically(metadataFile.toPath(), GSON.toJson(metadata).getBytes(java.nio.charset.Charset.defaultCharset()));
+            } catch (IOException failure) {
+                Files.deleteIfExists(imageFile.toPath());
+                throw failure;
             }
 
             cachedImageList = null;
@@ -471,7 +482,12 @@ public class ServerImageManager {
             return null;
         }
 
-        return getImagesDir(server).resolve(imageId + "." + metadata.getExtension());
+        return getImageFilePath(server, imageId, metadata);
+    }
+
+    public static Path getImageFilePath(MinecraftServer server, UUID imageId, ImageMetadata metadata) {
+        return MediaFiles.isImageExtension(metadata.getExtension())
+                ? getImagesDir(server).resolve(imageId + "." + metadata.getExtension()) : null;
     }
 
     public static List<ImageMetadata> getImageList(MinecraftServer server) {
@@ -552,11 +568,15 @@ public class ServerImageManager {
         private final ServerLevel level;
         private final BlockPos blockPos;
         private final int totalChunks;
+        private final Object connection;
+        private final long epoch;
         private int nextIndex;
         private String originalName;
         private byte[] imageData;
 
-        private UploadState(UUID owner, ServerLevel level, BlockPos blockPos, int totalChunks) {
+        private UploadState(UUID owner, ServerLevel level, BlockPos blockPos, int totalChunks, Object connection, long epoch) {
+            this.connection = connection;
+            this.epoch = epoch;
             this.owner = owner;
             this.level = level;
             this.blockPos = blockPos;

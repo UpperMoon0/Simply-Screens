@@ -30,7 +30,7 @@ those flags, they use matching sibling target build/libs artifacts. Do not
 substitute a library jar from another Minecraft generation or loader.
 
 PacketWeave reference: UpperMoon0/PacketWeave PR #4, commit
-88046f276ed059df4b9c2f1c0e1d643d26472b1c. OpenUI source pin:
+73a7ade839191fde0fcccc66e1d88ad1b86cb447. OpenUI source pin:
 UpperMoon0/OpenUI-MC commit 672b5b2b7169bef30f5f10b34f296812abe31460.
 The machine-readable `tools/requested-dependencies.lock.json` is checked against
 both this document and the workflow so native source pins cannot silently drift.

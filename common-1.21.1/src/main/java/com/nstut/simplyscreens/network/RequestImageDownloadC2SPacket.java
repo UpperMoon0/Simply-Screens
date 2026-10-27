@@ -22,6 +22,17 @@ public class RequestImageDownloadC2SPacket implements CustomPacketPayload {
     public static final StreamCodec<RegistryFriendlyByteBuf, RequestImageDownloadC2SPacket> CODEC = 
             StreamCodec.ofMember(RequestImageDownloadC2SPacket::write, RequestImageDownloadC2SPacket::new);
 
+    private static final java.util.Map<Preparation, ServerPlayer> PREPARING = new java.util.IdentityHashMap<>();
+    private static final java.util.concurrent.ExecutorService PREPARE = com.nstut.simplyscreens.helpers.MediaExecutors
+            .newDaemonBoundedThreadPool(2, 32, "Simply Screens Download Preparation");
+    private static final class Preparation {
+        final MinecraftServer server;
+        Preparation(MinecraftServer server) { this.server = server; }
+    }
+    public static void cancelPending(Object player) { synchronized (PREPARING) { PREPARING.values().removeIf(owner -> owner == player); } }
+    public static void cancelServer(MinecraftServer server) {
+        synchronized (PREPARING) { PREPARING.keySet().removeIf(work -> work.server == server); }
+    }
     private final UUID imageId;
     private final UUID transferId;
 
@@ -51,30 +62,70 @@ public class RequestImageDownloadC2SPacket implements CustomPacketPayload {
 
     public static void handle(RequestImageDownloadC2SPacket packet, NetworkManager.PacketContext context) {
         ServerPlayer player = (ServerPlayer) context.getPlayer();
-        context.queue(() -> {
-            MinecraftServer server = player.getServer();
-            UUID imageId = packet.imageId;
-            if (!com.nstut.simplyscreens.helpers.ScreenAccessService.canReadImage(player, packet.imageId)) return;
-            Path requestedPath = ServerImageManager.getImageFilePath(server, packet.imageId);
-            if (requestedPath == null || !Files.isRegularFile(requestedPath)) return;
-            com.nstut.simplyscreens.helpers.ImageMetadata metadata = ServerImageManager.getImageMetadata(server, imageId);
-            if (metadata == null) return;
-            boolean admitted = com.nstut.packetweave.api.OutboundTransfers.shared().start(player, packet.transferId, requestedPath,
+        context.queue(() -> packet.prepare(player, player.getServer()));
+    }
+
+    private void prepare(ServerPlayer player, MinecraftServer server) {
+            if (server == null || !server.isRunning() || server.getPlayerList().getPlayer(player.getUUID()) != player) return;
+            Preparation preparation = new Preparation(server);
+            synchronized (PREPARING) {
+                int peerPreparations = 0;
+                for (ServerPlayer owner : PREPARING.values()) if (owner == player) peerPreparations++;
+                if (PREPARING.size() >= 32 || peerPreparations >= 2) { reject(player); return; }
+                PREPARING.put(preparation, player);
+            }
+            try {
+                PREPARE.execute(() -> {
+                    com.nstut.simplyscreens.helpers.ImageMetadata metadata;
+                    Path requestedPath;
+                    try {
+                        metadata = ServerImageManager.getImageMetadata(server, imageId);
+                        requestedPath = metadata == null ? null : ServerImageManager.getImageFilePath(server, imageId, metadata);
+                        if (requestedPath != null && !Files.isRegularFile(requestedPath)) requestedPath = null;
+                    } catch (RuntimeException failure) { metadata = null; requestedPath = null; }
+                    var snapshot = metadata;
+                    var path = requestedPath;
+                    try { server.execute(() -> {
+                        try {
+                            synchronized (PREPARING) { if (PREPARING.get(preparation) != player) return; }
+                            if (server == null || !server.isRunning() || server.getPlayerList().getPlayer(player.getUUID()) != player) return;
+                            if (snapshot == null || path == null
+                                    || !com.nstut.simplyscreens.helpers.ScreenAccessService.canReadImage(player, imageId, snapshot)) {
+                                reject(player); return;
+                            }
+                            send(player, server, path, snapshot);
+                        } finally { synchronized (PREPARING) { PREPARING.remove(preparation, player); } }
+                    }); } catch (RuntimeException stopped) {
+                        synchronized (PREPARING) { PREPARING.remove(preparation, player); }
+                    }
+                });
+            } catch (java.util.concurrent.RejectedExecutionException busy) {
+                synchronized (PREPARING) { PREPARING.remove(preparation, player); }
+                reject(player);
+            }
+    }
+
+    private void reject(ServerPlayer player) {
+        PacketRegistries.sendToPlayer(player, new ImageDownloadChunkS2CPacket(imageId, transferId, -1, 0, new byte[0], null));
+    }
+
+    private void send(ServerPlayer player, MinecraftServer server, Path requestedPath,
+                      com.nstut.simplyscreens.helpers.ImageMetadata metadata) {
+            boolean admitted = com.nstut.packetweave.api.OutboundTransfers.shared().start(player, transferId, requestedPath,
                     Math.max(Config.MAX_UPLOAD_SIZE, Config.MAX_URL_DOWNLOAD_SIZE), server::execute,
                     (index, total, chunk) -> {
                         if (server.getPlayerList().getPlayer(player.getUUID()) != player
-                                || !com.nstut.simplyscreens.helpers.ScreenAccessService.canReadImage(player, imageId))
+                                || !com.nstut.simplyscreens.helpers.ScreenAccessService.canReadImage(player, imageId, metadata))
                             throw new java.io.IOException("Image connection or access changed");
-                        PacketRegistries.sendToPlayer(player, new ImageDownloadChunkS2CPacket(imageId, packet.transferId,
+                        PacketRegistries.sendToPlayer(player, new ImageDownloadChunkS2CPacket(imageId, transferId,
                                 index, total, chunk, index == 0 ? metadata.getExtension() : null));
                     }, failure -> {
                         if (failure != null) server.execute(() -> {
                             if (server.getPlayerList().getPlayer(player.getUUID()) == player)
-                                PacketRegistries.sendToPlayer(player, new ImageDownloadChunkS2CPacket(imageId, packet.transferId, -1, 0, new byte[0], null));
+                                PacketRegistries.sendToPlayer(player, new ImageDownloadChunkS2CPacket(imageId, transferId, -1, 0, new byte[0], null));
                         });
                     });
-            if (!admitted) PacketRegistries.sendToPlayer(player, new ImageDownloadChunkS2CPacket(imageId, packet.transferId, -1, 0, new byte[0], null));
-        });
+            if (!admitted) PacketRegistries.sendToPlayer(player, new ImageDownloadChunkS2CPacket(imageId, transferId, -1, 0, new byte[0], null));
     }
 
 }

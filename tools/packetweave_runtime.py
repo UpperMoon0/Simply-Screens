@@ -92,12 +92,12 @@ def assert_dependency_rejected(output: str, returncode: int | None, mode: str) -
     lines = lowered.splitlines()
     expected_actual = "[missing]" if mode == "missing" else "0.1.0"
     row = re.compile(r"mod id:\s*'packetweave',\s*requested by:\s*'simply_screens',\s*"
-                     r"expected range:\s*'\[0\.1\.1,\)',\s*actual version:\s*'([^']+)'")
+                     r"expected range:\s*'\[0\.1\.5,\)',\s*actual version:\s*'([^']+)'")
     for index, line in enumerate(lines):
         match = row.search(line)
         if match and match.group(1) == expected_actual:
             diagnostic = True
-        if all(token in line for token in ("simply_screens", "requires", "packetweave", "0.1.1")):
+        if all(token in line for token in ("simply_screens", "requires", "packetweave", "0.1.5")):
             if mode == "missing" and "which is missing" in line:
                 diagnostic = True
             if mode == "incompatible" and "0.1.0" in line and "version" in line:
