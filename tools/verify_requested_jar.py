@@ -39,7 +39,7 @@ def verify(path,target):
             if meta['id']!='simply_screens' or meta['depends']['minecraft']!=version:raise ValueError('Wrong Fabric identity/version')
             if '${' in str(meta):raise ValueError('Unexpanded Fabric metadata')
             if not meta['entrypoints'].get('client') or not meta['entrypoints'].get('main'):raise ValueError('Missing loader entrypoints')
-            if meta['depends'].get('packetweave')!='>=0.1.4':raise ValueError('Wrong native PacketWeave dependency')
+            if meta['depends'].get('packetweave')!='>=0.1.5':raise ValueError('Wrong native PacketWeave dependency')
         elif loader=='forge' and version=='1.12.2':
             meta=jar.read('mcmod.info').decode()
             if 'simply_screens' not in meta or '${' in meta:raise ValueError('Wrong Forge 1.12 identity')

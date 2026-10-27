@@ -21,7 +21,7 @@ Architectury is not required for this target.
 export JAVA_HOME=/path/to/jdk8
 export JAVA17_HOME=/path/to/jdk17
 ./gradlew build --no-daemon \
-  -PpacketweaveJar=/path/to/packetweave-forge-1.12.2-0.1.4.jar \
+  -PpacketweaveJar=/path/to/packetweave-forge-1.12.2-0.1.5.jar \
   -PopenuiJar=/path/to/openui-mc-forge-1.12.2-0.0.15.jar
 ```
 

@@ -12,7 +12,7 @@ file('../gradle.properties').withInputStream { rootProperties.load(it) }
 group=rootProperties.getProperty('maven_group');version=rootProperties.getProperty('mod_version')
 archivesBaseName='simply_screens-forge-1.12.2'
 def portOpenuiJar=file(findProperty('openuiJar') ?: '../../OpenUI-MC/forge-1.12.2/build/libs/openui-mc-forge-1.12.2-0.0.15.jar')
-def portPacketweaveJar=file(findProperty('packetweaveJar') ?: '../../PacketWeave/targets/forge-1.12.2/build/libs/packetweave-forge-1.12.2-0.1.4.jar')
+def portPacketweaveJar=file(findProperty('packetweaveJar') ?: '../../PacketWeave/targets/forge-1.12.2/build/libs/packetweave-forge-1.12.2-0.1.5.jar')
 sourceCompatibility=targetCompatibility='1.8'
 repositories {
     mavenLocal();mavenCentral()

@@ -16,7 +16,7 @@ unofficial Legacy Fabric dependency. 26.2 uses Fabric and NeoForge, not Forge.
 
 ## Dependencies are separate mods
 
-The ports require native PacketWeave 0.1.4 and OpenUI MC 0.0.15. Their native stable releases are now published. The release workflow verifies
+The ports require native PacketWeave 0.1.5 and OpenUI MC 0.0.15. PacketWeave 0.1.5 is supplied by the linked transfer-safety PR and must be published before releasing these ports. The release workflow verifies
 all five requested artifacts in each dependency release before building these
 exact source pins; the existing target dependency floors remain unchanged. PacketWeave's API is compile-only and must never be shaded into Screens.
 Fabric checks OpenUI before client entrypoints load. Forge 1.12.2 also declares
@@ -30,7 +30,7 @@ those flags, they use matching sibling target build/libs artifacts. Do not
 substitute a library jar from another Minecraft generation or loader.
 
 PacketWeave reference: UpperMoon0/PacketWeave PR #4, commit
-b9af8be1c8dae497a852342a0d323f811b80b54a. OpenUI source pin:
+88046f276ed059df4b9c2f1c0e1d643d26472b1c. OpenUI source pin:
 UpperMoon0/OpenUI-MC commit 672b5b2b7169bef30f5f10b34f296812abe31460.
 The machine-readable `tools/requested-dependencies.lock.json` is checked against
 both this document and the workflow so native source pins cannot silently drift.

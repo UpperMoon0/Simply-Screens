@@ -45,7 +45,7 @@ def validate_wrong_depth(results):
 
 def dependency_paths(root,target):
     paths={
-        'packetweave':root.parent/'PacketWeave/targets'/target/'build/libs'/f'packetweave-{target}-0.1.4.jar',
+        'packetweave':root.parent/'PacketWeave/targets'/target/'build/libs'/f'packetweave-{target}-0.1.5.jar',
         'openui':root.parent/'OpenUI-MC'/target/'build/libs'/f'openui-mc-{target}-0.0.15.jar',
     }
     for name,path in paths.items():
@@ -79,7 +79,7 @@ def run(root,target,compile_only=False,probe=False):
     started=time.monotonic()
     try:
         dependencies=dependency_paths(root,target)
-        if visual.live.native_version(dependencies['packetweave'],target)!='0.1.4':
+        if visual.live.native_version(dependencies['packetweave'],target)!='0.1.5':
             raise RuntimeError('Wrong native PacketWeave version')
         receipt['dependencies']={key:dict(sha256=hashlib.sha256(path.read_bytes()).hexdigest(),file=path.name)
                                  for key,path in dependencies.items()}

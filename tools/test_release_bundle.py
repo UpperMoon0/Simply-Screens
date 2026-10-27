@@ -54,7 +54,7 @@ class ReleaseBundleTests(unittest.TestCase):
                     collect(source, root / 'out', '0.10.1')
 
     def test_requested_dependencies_require_all_native_assets(self):
-        for artifact, version in [('packetweave', '0.1.4'), ('openui-mc', '0.0.15')]:
+        for artifact, version in [('packetweave', '0.1.5'), ('openui-mc', '0.0.15')]:
             release = {'tag_name': 'v' + version, 'draft': False, 'prerelease': False,
                        'assets': [{'name': f'{artifact}-{target}-{version}.jar', 'state': 'uploaded', 'size': 10} for target in REQUESTED_TARGETS]}
             verify_release(release, version, REQUESTED_TARGETS, artifact)
@@ -84,7 +84,7 @@ class ReleaseBundleTests(unittest.TestCase):
         self.assertTrue({'release-bundle', 'live-client'} <= needs('publish-curseforge'))
         self.assertTrue({'release-bundle', 'live-client', 'publish-curseforge'} <= needs('release'))
         requested = (ROOT / '.github/workflows/requested-generations.yml').read_text()
-        for pin in ('b9af8be1c8dae497a852342a0d323f811b80b54a', '672b5b2b7169bef30f5f10b34f296812abe31460'):
+        for pin in ('88046f276ed059df4b9c2f1c0e1d643d26472b1c', '672b5b2b7169bef30f5f10b34f296812abe31460'):
             self.assertIn(pin, requested)
             self.assertIn(pin, serialized)
         self.assertIn('verify_requested_jar.py', serialized)

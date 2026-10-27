@@ -71,7 +71,7 @@ Patchouli is optional. Install the matching loader/version on the server and cli
 
 ## Development & Building
 
-The requested **Forge 1.12.2, Fabric/Forge 1.16.5, and Fabric/NeoForge 26.2** ports are separate native projects. They require source-built **PacketWeave 0.1.4** and **OpenUI MC 0.0.15** dependencies while the dependency PRs are under review. See [native port builds and verification levels](docs/requested-generations.md). The existing release lanes and their installation requirements remain unchanged.
+The requested **Forge 1.12.2, Fabric/Forge 1.16.5, and Fabric/NeoForge 26.2** ports are separate native projects. They require source-built **PacketWeave 0.1.5** and **OpenUI MC 0.0.15** dependencies with the receipt-driven transfer API. See [native port builds and verification levels](docs/requested-generations.md). The existing release lanes and their installation requirements remain unchanged.
 
 Simply Screens uses Architectury Loom for 1.20.1/1.21.1 and a standalone ModDevGradle target for NeoForge 26.1.2. Start with Java 21 and initialize pinned sources:
 

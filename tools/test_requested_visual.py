@@ -94,7 +94,7 @@ class RequestedVisualTest(unittest.TestCase):
                 if variant=='plain':raise failure
             with patch.object(runner,'dependency_paths',return_value={'packetweave':dependency,'openui':dependency}), \
                  patch.object(runner.subprocess,'check_output',side_effect=['head\n','']), \
-                 patch.object(runner.visual.live,'native_version',return_value='0.1.4'), \
+                 patch.object(runner.visual.live,'native_version',return_value='0.1.5'), \
                  patch.object(runner.visual,'snapshot',return_value='a'*64), \
                  patch.object(runner,'prepare_snapshot'),patch.object(adapter,'mutable_paths',return_value=[]), \
                  patch.object(adapter,'set_variant'),patch.object(runner.visual,'run_variant',side_effect=run_variant),patch('builtins.print'):
