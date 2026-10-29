@@ -24,6 +24,24 @@ public final class MediaFiles {
         }
         return output.toByteArray();
     }
+    /** Decode before publishing: rejected image data must never poison a durable cache entry. */
+    public static <T extends AutoCloseable> T decodeAndWriteAtomically(
+            Path destination, byte[] bytes, Decoder<T> decoder) throws IOException {
+        T decoded = decoder.decode(bytes);
+        try {
+            writeAtomically(destination, bytes);
+            return decoded;
+        } catch (IOException | RuntimeException failure) {
+            try { decoded.close(); } catch (Exception cleanup) { failure.addSuppressed(cleanup); }
+            throw failure;
+        }
+    }
+
+    @FunctionalInterface
+    public interface Decoder<T> {
+        T decode(byte[] bytes) throws IOException;
+    }
+
     public static void writeAtomically(Path destination, byte[] bytes) throws IOException {
         Path parent = destination.toAbsolutePath().getParent();
         Files.createDirectories(parent);
