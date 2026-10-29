@@ -53,6 +53,15 @@ public final class ExpiringRequestSet<K> {
         return acquired.get();
     }
 
+    /** True only while an entry's timeout is active; expired entries are removed on inspection. */
+    public synchronized boolean isPending(K key) {
+        Long started = requests.get(key);
+        if (started == null) return false;
+        if (nanoTime.getAsLong() - started < timeoutNanos) return true;
+        requests.remove(key, started);
+        return false;
+    }
+
     public synchronized void release(K key) {
         requests.remove(key);
     }
