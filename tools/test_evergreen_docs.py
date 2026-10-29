@@ -24,8 +24,8 @@ class EvergreenDocsTest(unittest.TestCase):
         # Minecraft targets and JDK/compiler versions are compatibility identifiers;
         # historical/release-specific dependency pins belong in changelog or lockfiles.
         release_pin = re.compile(
-            r"(?:(?:PacketWeave|OpenUI(?: MC)?|Screens|Sable)\\s+v?\\d+\\.\\d+(?:\\.\\d+)?\\b"
-            r"|\\bv?0\\.(?:8|9|10)\\.\\d+\\b)"
+            r"(?:(?:PacketWeave|OpenUI(?: MC)?|Screens|Sable)\s+v?\d+\.\d+(?:\.\d+)?\b"
+            r"|\bv?0\.(?:8|9|10)\.\d+\b)"
         )
         for name in EVERGREEN_DOCS:
             with self.subTest(document=name):
