@@ -85,7 +85,7 @@ class OpenUiDependencyTest(unittest.TestCase):
                 self.assertRegex(block, r'side\s*=\s*"CLIENT"')
                 self.assertRegex(block, r'(?:mandatory\s*=\s*true|type\s*=\s*"required")')
 
-    def test_minimum_is_consistent_across_loaders_docs_and_ci_pins(self):
+    def test_minimum_is_consistent_across_loaders_and_ci_pins(self):
         minimum = properties()['openui_version']
         for path in ROOT.glob('fabric-*/src/main/resources/fabric.mod.json'):
             self.assertEqual('>=' + required_minimum(path, minimum), json.loads(path.read_text(encoding='utf-8'))['suggests']['openui_mc'], str(path))
@@ -96,7 +96,11 @@ class OpenUiDependencyTest(unittest.TestCase):
             blocks = re.split(r'\[\[dependencies\.[^\]]+\]\]', path.read_text(encoding='utf-8'))[1:]
             block, = [b for b in blocks if re.search(r'modId\s*=\s*"openui_mc"', b)]
             self.assertRegex(block, r'versionRange\s*=\s*"' + re.escape('[' + required_minimum(path, minimum) + ',)') + '"', str(path))
-        self.assertIn('OpenUI MC ' + minimum + ' or newer', (ROOT / 'README.md').read_text(encoding='utf-8'))
+        readme = (ROOT / 'README.md').read_text(encoding='utf-8')
+        self.assertIn('OpenUI MC', readme)
+        self.assertIn('dependency metadata', readme)
+        self.assertNotIn('OpenUI MC ' + minimum + ' or newer', readme,
+                         'Evergreen README must not hard-code dependency minimums')
         action = (ROOT / '.github/actions/openui/action.yml').read_text(encoding='utf-8')
         pin, = re.findall(r'^        ref: ([a-f0-9]{40})$', action, re.M)
         self.assertIn('-jdk-${{ inputs.java-version }}-' + pin, action)
