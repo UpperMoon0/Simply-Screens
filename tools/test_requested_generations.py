@@ -193,7 +193,11 @@ class RequestedGenerationsTest(unittest.TestCase):
         docs=(ROOT/'docs/requested-generations.md').read_text()
         self.assertIn('tools/requested-dependencies.lock.json',docs)
         for dependency in lock['dependencies'].values():
-            self.assertRegex(dependency['commit'],r'^[a-f0-9]{40}
+            self.assertRegex(dependency['commit'],r'^[a-f0-9]{40}$')
+            expression=r'repository: '+re.escape(dependency['repository'])+r'\n\s+ref: ([a-f0-9]{40})'
+            self.assertEqual([dependency['commit']],re.findall(expression,workflow))
+            self.assertNotIn(dependency['commit'],docs,
+                             'Evergreen guidance must not duplicate source pins')
     def test_representative_visual_ci_requires_full_receipt_and_preserves_evidence(self):
         workflow=(ROOT/'.github/workflows/requested-generations.yml').read_text()
         step=workflow.split('name: Calibrated native framebuffer acceptance',1)[1].split('      - name:',1)[0]
