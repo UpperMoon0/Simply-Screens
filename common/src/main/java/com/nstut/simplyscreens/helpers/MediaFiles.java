@@ -52,9 +52,10 @@ public final class MediaFiles {
             Path destination, byte[] bytes, Decoder<T> decoder,
             Object publicationLock, java.util.function.BooleanSupplier mayPublish) throws IOException {
         T decoded = decoder.decode(bytes);
-        boolean published = false;
+        boolean handedOff = false;
         try {
             Path staged = stage(destination, bytes);
+            boolean published = false;
             try {
                 synchronized (publicationLock) {
                     if (mayPublish.getAsBoolean()) {
@@ -65,14 +66,12 @@ public final class MediaFiles {
             } finally {
                 Files.deleteIfExists(staged);
             }
-            return published ? decoded : null;
-        } catch (IOException | RuntimeException failure) {
-            try { decoded.close(); } catch (Exception cleanup) { failure.addSuppressed(cleanup); }
-            throw failure;
+            if (!published) return null;
+            handedOff = true;
+            return decoded;
         } finally {
-            if (!published) {
-                // An invalidation is not an exceptional outcome; release decoded pixels.
-                // Exceptions already close above; NativeImage.close() is idempotent.
+            if (!handedOff) {
+                // An invalidation or failed staging/publication owns no texture.
                 try { decoded.close(); } catch (Exception ignored) { }
             }
         }
