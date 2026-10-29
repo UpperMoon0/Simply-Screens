@@ -42,16 +42,65 @@ public final class MediaFiles {
         T decode(byte[] bytes) throws IOException;
     }
 
+    /**
+     * Decode and stage outside the publication lock. Only the final generation check and
+     * atomic rename hold the lock shared with cache invalidation and peer transitions.
+     * Returns null for a cancelled transfer, closing its decoded image and deleting its
+     * temporary file. A cancelled worker never replaces a newer cache entry.
+     */
+    public static <T extends AutoCloseable> T decodeAndWriteAtomically(
+            Path destination, byte[] bytes, Decoder<T> decoder,
+            Object publicationLock, java.util.function.BooleanSupplier mayPublish) throws IOException {
+        T decoded = decoder.decode(bytes);
+        boolean published = false;
+        try {
+            Path staged = stage(destination, bytes);
+            try {
+                synchronized (publicationLock) {
+                    if (mayPublish.getAsBoolean()) {
+                        publish(staged, destination);
+                        published = true;
+                    }
+                }
+            } finally {
+                Files.deleteIfExists(staged);
+            }
+            return published ? decoded : null;
+        } catch (IOException | RuntimeException failure) {
+            try { decoded.close(); } catch (Exception cleanup) { failure.addSuppressed(cleanup); }
+            throw failure;
+        } finally {
+            if (!published) {
+                // An invalidation is not an exceptional outcome; release decoded pixels.
+                // Exceptions already close above; NativeImage.close() is idempotent.
+                try { decoded.close(); } catch (Exception ignored) { }
+            }
+        }
+    }
+
     public static void writeAtomically(Path destination, byte[] bytes) throws IOException {
+        Path staged = stage(destination, bytes);
+        try { publish(staged, destination); }
+        finally { Files.deleteIfExists(staged); }
+    }
+
+    private static Path stage(Path destination, byte[] bytes) throws IOException {
         Path parent = destination.toAbsolutePath().getParent();
         Files.createDirectories(parent);
         Path temporary = Files.createTempFile(parent, ".simply-screens-", ".part");
         try {
             Files.write(temporary, bytes);
-            try { Files.move(temporary, destination, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
-            catch (AtomicMoveNotSupportedException unsupported) {
-                Files.move(temporary, destination, StandardCopyOption.REPLACE_EXISTING);
-            }
-        } finally { Files.deleteIfExists(temporary); }
+            return temporary;
+        } catch (IOException | RuntimeException failure) {
+            try { Files.deleteIfExists(temporary); } catch (IOException cleanup) { failure.addSuppressed(cleanup); }
+            throw failure;
+        }
+    }
+
+    private static void publish(Path staged, Path destination) throws IOException {
+        try { Files.move(staged, destination, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
+        catch (AtomicMoveNotSupportedException unsupported) {
+            Files.move(staged, destination, StandardCopyOption.REPLACE_EXISTING);
+        }
     }
 }
