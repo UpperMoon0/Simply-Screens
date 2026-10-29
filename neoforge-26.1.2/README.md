@@ -1,25 +1,35 @@
+# Simply Screens — NeoForge 26.1.2
 
-Installation information
-=======
+This is the native NeoForge edition of Simply Screens. It shares gameplay and
+media logic with the common modules and supplies NeoForge-specific startup,
+networking, and rendering adapters. Loader and dependency versions are defined
+by this module's build files, root `gradle.properties`, and mod metadata.
 
-This template repository can be directly cloned to get you started with a new
-mod. Simply create a new repository cloned from this one, by following the
-instructions provided by [GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
+## Install and upgrade
 
-Once you have your clone, simply open the repository in the IDE of your choice. The usual recommendation for an IDE is either IntelliJ IDEA or Eclipse.
+Install the Screens jar matching NeoForge and Minecraft 26.1.2 on both clients
+and dedicated servers. The matching native **PacketWeave** and **Architectury
+API** mods are required on both sides; **OpenUI MC** is client-only. Check the
+selected release's loader metadata and changelog for exact dependency minima,
+and keep client and server Screens releases aligned as media packets can change.
 
-If at any point you are missing libraries in your IDE, or you've run into problems you can
-run `gradlew --refresh-dependencies` to refresh the local cache. `gradlew clean` to reset everything 
-{this does not affect your code} and then start the process again.
+Back up the world, images, network registry, configuration and playlists before
+upgrading. See [installation and upgrades](../README.md) and
+[ownership and recovery](../docs/network-access.md).
 
-Mapping Names:
-============
-By default, the MDK is configured to use the official mapping names from Mojang for methods and fields 
-in the Minecraft codebase. These names are covered by a specific license. All modders should be aware of this
-license. For the latest license text, refer to the mapping file itself, or the reference copy here:
-https://github.com/NeoForged/NeoForm/blob/main/Mojang.md
+## Build and verify
 
-Additional Resources: 
-==========
-Community Documentation: https://docs.neoforged.net/  
-NeoForged Discord: https://discord.neoforged.net/
+From the repository root, with the target's configured JDK/toolchain:
+
+```sh
+git submodule update --init --recursive
+./gradlew :neoforge-26.1.2:test --no-daemon
+./gradlew :neoforge-26.1.2:build --no-daemon
+```
+
+Follow the root instructions for matching standalone native development
+dependencies. The PacketWeave API/core test jar is not a substitute for the
+native runtime mod. See [TESTING.md](../TESTING.md) for dependency-rejection
+checks, real client/server join tests, visual/shader checks, and their
+qualification limits. A successful compilation does not prove gameplay
+behavior. Exact release-specific changes are in the [changelogs](../changelog/).

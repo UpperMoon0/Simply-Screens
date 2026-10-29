@@ -144,25 +144,23 @@ are built. Renderer changes also require **Required shader color evidence** on
 the final exact PR head. Existing vanilla depth evidence does not imply shader
 compatibility, and source/unit tests do not imply a successful game launch.
 
-## Sable version compatibility
+## Optional Sable integration regressions
 
 Run `./gradlew :common-1.21.1:test --tests '*SableCompatibilityMetadataTest'`
-for loader metadata regression coverage, and the complete `:common-1.21.1:test`
-suite for the existing spatial transform tests. The range tests read both actual
-loader declarations and use Fabric Loader's `VersionPredicate` and the Maven
-`VersionRange` semantics used by NeoForge. They admit 2.0.5, stable 2.0.6 and
-later 2.x examples, reject older versions and Sable 3, and retain optional loading.
-Fabric's `suggests` declaration is advisory; NeoForge's optional dependency is
-checked when Sable is installed.
+to check actual loader dependency declarations, and run the complete
+`:common-1.21.1:test` suite for spatial transform behavior. The range
+tests exercise Fabric Loader's `VersionPredicate` and NeoForge's Maven
+`VersionRange` semantics: supported releases must be admitted, unsupported
+releases rejected, and Sable loading kept optional. Fabric's `suggests`
+declaration is advisory; NeoForge checks the optional dependency if installed.
 
-Sable release tags `mc1.21.1-2.0.5-neoforge` and
-`mc1.21.1-2.0.6-neoforge` use the same Companion 1.6.0 dependency, and their
-`ActiveSableCompanion` and `ClientSubLevel` implementations are unchanged.
-Those files and the Companion dependency are also unchanged on upstream main
-`227077f7f528c9beab1336a9fad2e27b754e4e70`. This supports the 2.x range;
-it does not prove compatibility with every future release. The metadata tests
-and transform tests do not establish a full All of Create Aeronautics 2.8 playtest.
-# Network access regressions
+Consult the selected release's loader metadata and release notes for currently
+supported integrations. Past source comparisons, exact Sable/Companion versions,
+release tags and qualification limits are archived in the
+[compatibility history](docs/native-acceptance-history.md#sable-compatibility-checkpoint),
+not pinned in this evergreen testing guide.
+
+## Network access regressions
 
 `testAllVersions` includes `ScreenNetworkServiceTest` and `ScreenAccessServiceTest` for all three Minecraft adapters. They test permission separation, legacy migration, empty-content restart recovery, backup corruption and failed-write rollback, immutable/bounded trust membership, private download packet rejection before file scheduling, tracked displays, chunk/dimension/disconnect revocation, replaced tiles, local content overrides, and source/destination ownership on relinks. See [the access guide](docs/network-access.md) for the complete contract and manual multiplayer limits. Existing live-join, framebuffer and shader checks still apply to all five loader targets.
 

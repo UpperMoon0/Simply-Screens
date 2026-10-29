@@ -182,3 +182,20 @@ eligibility**. Without the explicit option, the original native-refusal behavior
 remains unchanged. The separate Singleplayer fallback still requires an exact
 native refusal receipt; fixture failures cannot authorize it.
 
+
+## Sable compatibility checkpoint
+
+The earlier optional Sable metadata review checked Sable 2.0.5 and stable
+2.0.6 on the supported Minecraft 1.21.1 loaders. The range admitted those
+releases and later 2.x examples, rejected older releases and Sable 3, and
+retained optional loading.
+
+The Sable tags `mc1.21.1-2.0.5-neoforge` and
+`mc1.21.1-2.0.6-neoforge` used the same Companion 1.6.0 dependency.
+At inspected upstream main commit
+`227077f7f528c9beab1336a9fad2e27b754e4e70`, the relevant
+`ActiveSableCompanion` and `ClientSubLevel` implementations and the
+Companion dependency remained unchanged. This is historical metadata/source
+evidence, **not** proof of future release compatibility or a complete All of
+Create Aeronautics 2.8 playtest. Current compatibility must come from loader
+metadata and the selected release's qualification results.

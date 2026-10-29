@@ -5,11 +5,14 @@ root Loom projects, and do not remove or change the existing 1.20.1, 1.21.1, or
 26.1.2 release lanes. The public Screen API, operator commands, playlist and
 ownership/security behavior on current main remain part of every port.
 
-| Minecraft | Native loaders | Runtime | Build runner |
+| Minecraft | Native loaders | Runtime | Build/toolchain policy |
 | --- | --- | --- | --- |
-| 1.12.2 | Forge 14.23.5.2864 | Java 8 | Gradle 5.6.4 on Java 8; Java 17/Jabel compiler |
-| 1.16.5 | Fabric; Forge 36.2.42 | Java 8 | Fabric Gradle 9.5.1; Forge Gradle 8.14; Java 17/Jabel compiler |
-| 26.2 | Fabric; NeoForge 26.2.0.93 | Java 25 | Gradle 9.5.1 on Java 25 |
+| 1.12.2 | Forge | Java 8 | Legacy loader wrapper; separate Jabel-compatible compiler JDK |
+| 1.16.5 | Fabric; Forge | Java 8 | Per-loader Gradle wrapper and legacy backport toolchain |
+| 26.2 | Fabric; NeoForge | Java 25 | Native loader wrapper and target-specific toolchain |
+
+Exact loader, mapping, Gradle and compiler versions come from the target's
+build files and CI toolchain matrix, not this evergreen guide.
 
 There is no official Fabric 1.12.2 release, so this project does not introduce an
 unofficial Legacy Fabric dependency. 26.2 uses Fabric and NeoForge, not Forge.
