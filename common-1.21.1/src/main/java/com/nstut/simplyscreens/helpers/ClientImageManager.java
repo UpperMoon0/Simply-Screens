@@ -76,6 +76,9 @@ public class ClientImageManager {
     private static final Set<UUID> FAILED_IMAGES = ConcurrentHashMap.newKeySet();
     private static final TransferRequestCoordinator<UUID> PENDING_DOWNLOADS =
             new TransferRequestCoordinator<>(Duration.ofSeconds(30));
+    // A failed request must release the in-flight timer, but should not retry every render frame.
+    private static final ExpiringRequestSet<UUID> RETRY_BACKOFF =
+            new ExpiringRequestSet<>(Duration.ofSeconds(2));
     private static DynamicTexture errorTexture;
     private static ResourceLocation errorTextureLocation;
 
@@ -83,8 +86,7 @@ public class ClientImageManager {
         if (!REQUEST_IDS.touch(imageId, transferId)) return;
         Object peer = Minecraft.getInstance().getConnection();
         long epoch = cacheEpoch;
-        // Keep the request timer on failure so a busy peer is not retried every render frame.
-        if (chunkIndex == -1 && data.length == 0) { REQUEST_IDS.remove(imageId, transferId); DOWNLOADS.cancel(imageId); return; }
+        if (chunkIndex == -1 && data.length == 0) { failDownload(imageId, transferId); return; }
         try {
             CACHE_IO.execute(() -> {
                 if (epoch != cacheEpoch || !transferId.equals(REQUEST_IDS.get(imageId))) return;
@@ -98,14 +100,26 @@ public class ClientImageManager {
                             || !transferId.equals(REQUEST_IDS.get(imageId))) return;
                     PacketRegistries.sendToServer(new com.nstut.simplyscreens.network.ImageTransferReceiptC2SPacket(transferId, receipt));
                     if (!accepted || download != null) {
-                        if (REQUEST_IDS.remove(imageId, transferId) && accepted) PENDING_DOWNLOADS.release(imageId);
+                        if (!accepted) failDownload(imageId, transferId);
+                        else if (REQUEST_IDS.remove(imageId, transferId)) {
+                            PENDING_DOWNLOADS.release(imageId);
+                            RETRY_BACKOFF.release(imageId);
+                        }
                     }
                 });
             });
         } catch (java.util.concurrent.RejectedExecutionException busy) {
-            REQUEST_IDS.remove(imageId, transferId); DOWNLOADS.cancel(imageId);
+            failDownload(imageId, transferId);
             PacketRegistries.sendToServer(new com.nstut.simplyscreens.network.ImageTransferReceiptC2SPacket(transferId, -1));
         }
+    }
+
+    private static void failDownload(UUID imageId, UUID transferId) {
+        // Ignore stale worker completions: they must not cancel a newer retry.
+        if (!REQUEST_IDS.remove(imageId, transferId)) return;
+        DOWNLOADS.cancel(imageId);
+        PENDING_DOWNLOADS.release(imageId);
+        RETRY_BACKOFF.tryAcquire(imageId);
     }
 
     public static void invalidateImage(UUID imageId) {
@@ -122,6 +136,7 @@ public class ClientImageManager {
         REQUEST_IDS.remove(imageId); DOWNLOADS.cancel(imageId);
         FAILED_IMAGES.remove(imageId);
         PENDING_DOWNLOADS.release(imageId);
+        RETRY_BACKOFF.release(imageId);
         try {
             for (String ext : List.of("png", "jpg", "jpeg")) {
                 Files.deleteIfExists(getImagePath(imageId, ext));
@@ -158,7 +173,7 @@ public class ClientImageManager {
             Object currentPeer = Minecraft.getInstance().getConnection();
             if (currentPeer != transferPeer) {
                 if (transferPeer != null) com.nstut.packetweave.api.OutboundTransfers.shared().cancelPeer(transferPeer);
-                cacheEpoch++; REQUEST_IDS.clear(); CACHE_LOADS.clear(); DOWNLOADS.clear(); PENDING_DOWNLOADS.clear();
+                cacheEpoch++; REQUEST_IDS.clear(); CACHE_LOADS.clear(); DOWNLOADS.clear(); PENDING_DOWNLOADS.clear(); RETRY_BACKOFF.clear();
                 transferPeer = currentPeer;
             }
             for (UUID expired : DOWNLOADS.reapExpired()) { REQUEST_IDS.remove(expired); PENDING_DOWNLOADS.release(expired); }
@@ -193,6 +208,7 @@ public class ClientImageManager {
             }
         }
 
+        if (RETRY_BACKOFF.isPending(imageId)) return null;
         DOWNLOADS.requestIfIdle(imageId, PENDING_DOWNLOADS,
                 () -> {
                     UUID request = REQUEST_IDS.begin(imageId);
@@ -233,10 +249,8 @@ public class ClientImageManager {
                 || !java.util.Objects.equals(request, REQUEST_IDS.get(imageId))) return false;
         Path imagePath = getImagePath(imageId, extension);
         try {
-            Files.createDirectories(CACHE_DIR);
-            MediaFiles.writeAtomically(imagePath, imageData);
-            NativeImage nativeImage;
-            try (InputStream input = Files.newInputStream(imagePath)) { nativeImage = loadImage(input, extension); }
+            NativeImage nativeImage = MediaFiles.decodeAndWriteAtomically(imagePath, imageData,
+                    bytes -> loadImage(new ByteArrayInputStream(bytes), extension));
             Minecraft.getInstance().execute(() -> {
                 if (epoch != cacheEpoch || !java.util.Objects.equals(request, REQUEST_IDS.get(imageId))) { nativeImage.close(); return; }
                 CACHED_EXTENSIONS.put(imageId, extension);
@@ -364,6 +378,7 @@ public class ClientImageManager {
         TEXTURE_BUDGET.clear(); CACHED_EXTENSIONS.clear(); prefetchWindow = 0; prefetchRequests = 0;
         DOWNLOADS.clear();
         PENDING_DOWNLOADS.clear();
+        RETRY_BACKOFF.clear();
         METADATA_CACHE.clear();
         FAILED_IMAGES.clear();
         for (Map.Entry<UUID, ResourceLocation> entry : TEXTURE_LOCATIONS.entrySet()) {
