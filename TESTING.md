@@ -22,18 +22,18 @@ The verifier has negative self-tests so a broken verifier cannot silently bless 
 
 ## PacketWeave media regression checks
 
-Initialize the pinned library with `git submodule update --init --recursive`. The shared tests cover reordered download chunks, malformed counts/indices, duplicates, changed counts, safe extensions, expiry, invalidation, disconnect, and retry. Native tests cover capped packet decoding and upload binding/permission revocation. The pinned sources build a compile/test-only `:packetweave-api` project. Screens calls PacketWeave's public API from the separately installed native library and embeds neither public nor private PacketWeave classes. The production-jar check rejects both packages, including nested jars, and verifies the required loader dependency and minimum version in every target. Shared progress tests exercise real file streaming through backpressured dispatch beyond the request timeout; native upload tests hold the image-storage monitor while checking transfer bookkeeping independently.
+Initialize the pinned library with `git submodule update --init --recursive`. Shared tests cover reordered download chunks, malformed counts/indices, duplicates, changed envelopes, safe extensions, expiry, invalidation, disconnect and retry. Cache regression tests verify malformed complete downloads cannot poison disk, successful retries can publish, failed writes close decoded images, and latch-controlled invalidation/disconnect during decode cannot recreate deleted files. A clock-controlled test distinguishes the short failure retry cooldown from the longer in-flight request timeout. Native tests cover bounded packet decoding, upload binding and permission revocation. The pinned sources build a compile/test-only `:packetweave-api` project. Screens calls PacketWeave's public API from the separately installed native library and embeds neither public nor private PacketWeave classes. Production-jar checks reject both packages, including nested jars, and verify each target's declared runtime dependency floor. Shared progress tests exercise real file streaming through receipt-driven backpressure; native upload tests hold the image-storage monitor while checking transfer bookkeeping independently.
 
 PacketWeave itself tests sender/receiver parity, global/per-owner budgets, dispatch failure/timeout, short reads, and file-size changes. Run `vendor/PacketWeave/gradlew :core:test -p vendor/PacketWeave --no-daemon` separately. A live join only checks connection/codec registration; it does not by itself prove a media upload/download.
 
-Run the focused compiled-core co-installation regression with Java 21 and curl:
+Run the focused compiled-core co-installation regression with the JDK configured in CI and curl:
 
 ```bash
 PACKETWEAVE_TEST_DEPENDENCY_CACHE="$PWD/.gradle/packetweave-coinstallation" \
   python3 -m unittest discover -s tools -p 'test_packetweave_packaging.py' -v
 ```
 
-This opt-in test downloads checksum-pinned SecureJarHandler 3.0.8/ASM dependencies, compiles the pinned core and a separate consumer fixture, and exercises `JarModuleFinder` plus `resolveAndBind`. Its duplicate-core negative control must fail specifically for the public API split package. The consumer must resolve alongside the standalone library and invoke its public API from that provider. It is a module-resolution check, not a game launch. Without the environment variable, the regular Python suite skips this dependency-requiring test.
+This opt-in test downloads checksum-pinned SecureJarHandler/ASM dependencies, compiles the pinned core and a separate consumer fixture, and exercises `JarModuleFinder` plus `resolveAndBind`. Its duplicate-core negative control must fail specifically for the public API split package. The consumer must resolve alongside the standalone library and invoke its public API from that provider. It is a module-resolution check, not a game launch. Without the environment variable, the regular Python suite skips this dependency-requiring test.
 
 ## 2. JVM unit tests
 
@@ -130,7 +130,7 @@ The five jobs share one OpenUI dependency build. Cheap harness/source checks run
 
 ## Release dependencies and upgrade documentation
 
-Screens 0.8.10 and newer require PacketWeave 0.1.1 or newer on both sides. Publish PacketWeave first, verify all five matching native artifacts on GitHub and CurseForge, and only then publish Screens. `tools/release_dependencies.py verify-release` blocks Screens release builds if the required GitHub release/artifacts are unavailable. The CurseForge upload step checks the official dependency catalog for the exact PacketWeave project ID/slug and declares `requiredDependency` for every target; minimum versions remain enforced by loader metadata because CurseForge relations cannot express them.
+Screens requires the **compatible native PacketWeave release on both sides**. Resolve the precise minimum from `gradle.properties`, target loader metadata and the release changelog rather than copying a version into this evergreen testing guide. Publish the matching PacketWeave artifacts first, verify all required native targets on GitHub and CurseForge, and only then publish Screens. `tools/release_dependencies.py verify-release` blocks Screens releases if required GitHub artifacts are unavailable. The CurseForge upload step checks the official dependency catalog for the exact PacketWeave project ID/slug and declares `requiredDependency` for every target; version floors remain enforced by loader metadata because CurseForge relations cannot express them.
 
 Accepted uploads retain per-target file-ID/source-SHA/relation receipts. They do not prove moderation approval or public download availability. Inspect those public file pages and their dependency relations before declaring publication complete. An ambiguous failed upload is not automatically retried as a POST or reported as success.
 
