@@ -3,7 +3,7 @@
   "dependencies": {
     "packetweave": {
       "repository": "UpperMoon0/PacketWeave",
-      "commit": "73a7ade839191fde0fcccc66e1d88ad1b86cb447",
+      "commit": "25be4e44b3718812e369519989762e5d1bccda25",
       "version": "0.1.5"
     },
     "openui": {
