@@ -95,7 +95,7 @@ class LegacyMediaProbeSourceTest(unittest.TestCase):
         generated = legacy.convert(source, 'ClientImageManager.java')
         self.assertLess(generated.index('DOWNLOADS.accept('), generated.index('LegacyMediaClientProbe.downloaded('))
         self.assertIn('saveImageToCache(imageId, download.extension(), download.bytes(), epoch, transferId)', generated)
-        self.assertLess(generated.index('nativeImage = loadImage('), generated.index('LegacyMediaClientProbe.downloaded('))
+        self.assertLess(generated.index('nativeImage = MediaFiles.decodeAndWriteAtomically('), generated.index('LegacyMediaClientProbe.downloaded('))
         for generator in (legacy, forge112):
             canonical = (ROOT / 'common-1.20.1/src/main/java' / PACKAGE / 'network/PacketRegistries.java').read_text()
             result = generator.convert(canonical, 'PacketRegistries.java')
