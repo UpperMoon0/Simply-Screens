@@ -2,13 +2,13 @@
 
 A Minecraft mod that adds configurable screen blocks capable of displaying images from local files or the web, supporting dynamic multi-block structures and synchronized screen networks.
 
-The client interface is powered by **OpenUI MC 0.0.14 or newer**, which is a required client-side dependency matching your Minecraft version and loader. Dedicated servers do not require OpenUI; Fabric checks the dependency during client startup.
+The client interface requires **OpenUI MC** on clients, with a compatible build for the selected Minecraft version and loader. Dedicated servers do not require OpenUI; Fabric checks the dependency during client startup. Use the selected release's dependency metadata for the required minimum version.
 
 [![CurseForge](https://cf.way2muchnoise.eu/simply-screens.svg)](https://www.curseforge.com/minecraft/mc-mods/simply-screens)
 
 ## Sable compatibility
 
-Minecraft 1.21.1 builds support optional **Sable 2.0.5 and 2.0.6** on Fabric and NeoForge. The dependency range allows later 2.x releases using the same Companion 1.6.0 API; those future releases are not yet runtime-verified. Sable 3 requires a new compatibility review. Sable is not required for ordinary screens.
+Sable integration is optional on supported Fabric and NeoForge builds. Check the selected release's compatibility notes and dependency metadata for tested Sable/Companion combinations; future releases are not implicitly runtime-qualified. Sable is not required for ordinary screens.
 
 ## Features
 
@@ -17,8 +17,8 @@ Minecraft 1.21.1 builds support optional **Sable 2.0.5 and 2.0.6** on Fabric and
 - **Synchronized Screen Networks:** Group screens using a **Screen ID** to display identical media in real-time across your server.
 - **Aspect Ratio Control:** Choose between full stretching or aspect-ratio preservation.
 - **Ownership and Access:** Own standalone displays and networks, trust players, transfer ownership, and configure separate viewing/content-control policies in Settings. Management and relinking stay with owners and operators.
-- **Server-Side Screen API (0.10.0):** Actor-aware Java API for network discovery, image selection and slideshow transport, plus logical image/playback events. See [integration documentation](docs/screen-api.md).
-- **Operator Commands (0.10.0):** Use `/screens` or `/simplyscreens` for networks, images, playback controls, multi-dimension loaded-display inspection, and troubleshooting.
+- **Server-Side Screen API:** Actor-aware Java API for network discovery, image selection and slideshow transport, plus logical image/playback events. See [integration documentation](docs/screen-api.md).
+- **Operator Commands:** Use `/screens` or `/simplyscreens` for networks, images, playback controls, multi-dimension loaded-display inspection, and troubleshooting.
 - **Local Image Overrides:** Let an individual linked display show different content while keeping its aspect ratio and the rest of the network independent.
 - **In-Game Media Management:**
   - Upload PNG, JPG, and JPEG images directly from your computer via an in-game file dialog.
@@ -32,20 +32,20 @@ Minecraft 1.21.1 builds support optional **Sable 2.0.5 and 2.0.6** on Fabric and
   - Per-player upload concurrency and rate limits, bounded processing queues, and full image decode checks.
   - Atomic registry operations with automated `.bak` backups and crash recovery.
 
-## Installation and upgrade to 0.10.0
+## Installation and upgrades
 
 Install the artifact matching **both** your Minecraft version and loader. The following mods are required:
 
-- **PacketWeave 0.1.1 or newer**, matching the same Minecraft version and loader, on the client **and** dedicated server.
+- **PacketWeave**, matching the selected Screens release, Minecraft version and loader, on the client **and** dedicated server. Check the release's enforced dependency minimum.
 - **Architectury API**, matching the same Minecraft version and loader, on both sides.
 - **Fabric API** on Fabric.
-- **OpenUI MC 0.0.14 or newer** on clients.
+- **OpenUI MC**, at the compatible minimum declared for the selected Screens build, on clients.
 
-Download PacketWeave from its [release assets](https://github.com/UpperMoon0/PacketWeave/releases) or its approved [CurseForge files](https://www.curseforge.com/minecraft/mc-mods/packetweave/files). Do not install the development-only API/core jar as a substitute for the native loader jar. Missing PacketWeave or a version below 0.1.1 must be resolved before the loader can start Screens.
+Download the matching native PacketWeave jar from its [release assets](https://github.com/UpperMoon0/PacketWeave/releases) or approved [CurseForge files](https://www.curseforge.com/minecraft/mc-mods/packetweave/files). Do not substitute the development-only API/core jar for a native loader jar. The correct minimum is defined by the mod's loader metadata and the release changelog; a missing or incompatible dependency must be resolved before launching.
 
-When upgrading from 0.8.9, add PacketWeave to every client and server before launching. Keep the existing world, `simply_screens_images` directory, screen registry, and configuration. Version 0.9.0 automatically imports existing registry images/owners into a versioned `screen_networks.json`; existing media files and Screen IDs are preserved. Legacy unowned networks and blank-ID displays require an operator claim before editing. New player-placed displays belong to their placer. Added access and playlist packets require matching client/server Screens versions. Version 0.9.1 stores personal playlists and active timelines in `screen_playlists.dat` with a validated backup; keep both with the world. 0.10.0 adds a server-side API and commands without changing saved data; no additional runtime mod is required. Back up worlds before upgrading; see [ownership, migration, and recovery](docs/network-access.md) before changing permissions or restoring data.
+Before upgrading, back up the world, `simply_screens_images`, screen registry, configuration, and `screen_playlists.dat` (including its backup when present). Preserve existing media, Screen IDs, ownership and playlists; older data is migrated by the mod where supported. Legacy unowned networks and blank-ID displays may require an operator claim before editing. Install the **same Screens release on every client and server**, together with that release's required native dependencies: media packet formats are not universally compatible across releases. See the [release changelogs](changelog/) for release-specific migration steps and [ownership, migration, and recovery](docs/network-access.md) before changing permissions or restoring data.
 
-## Shader compatibility in 0.8.11
+## Shader compatibility
 
 Fully opaque screen image pixels retain their source RGB after Iris/Oculus shader
 processing, while the original world image can still contribute surrounding bloom.
@@ -57,8 +57,6 @@ Semi-transparent and filtered edge pixels keep the shader's existing appearance
 to avoid double blending. Packs that rewrite depth, warp geometry, or apply later
 postprocessing can exceed this guarantee. The precise contract, empirical glow
 controls and reproducible development setup are documented in the matrix above.
-Upgrading from 0.8.10 needs no additional required mod or saved-data migration.
-
 Patchouli is optional. Install the matching loader/version on the server and clients to use the guide; see [guide integration and development setup](docs/patchouli.md).
 
 ## Getting Started
@@ -71,9 +69,9 @@ Patchouli is optional. Install the matching loader/version on the server and cli
 
 ## Development & Building
 
-The requested **Forge 1.12.2, Fabric/Forge 1.16.5, and Fabric/NeoForge 26.2** ports are separate native projects. They require source-built **PacketWeave 0.1.5** and **OpenUI MC 0.0.15** dependencies with the receipt-driven transfer API. See [native port builds and verification levels](docs/requested-generations.md). The existing release lanes and their installation requirements remain unchanged.
+The requested legacy and newer-generation ports are standalone native projects. Build them with the **matching source-pinned PacketWeave and OpenUI artifacts** defined by [the dependency lockfile](tools/requested-dependencies.lock.json) and their native target instructions. See [native port builds and verification levels](docs/requested-generations.md). Dependency minimums for existing and requested release targets must also follow their loader metadata; do not assume an earlier Screens release has identical requirements.
 
-Simply Screens uses Architectury Loom for 1.20.1/1.21.1 and a standalone ModDevGradle target for NeoForge 26.1.2. Start with Java 21 and initialize pinned sources:
+Simply Screens uses Architectury Loom for the maintained Fabric/Forge/NeoForge targets and standalone Gradle projects for requested native ports. Use the JDK and toolchains specified by the selected target's build files and CI workflow, then initialize pinned sources:
 
 ```bash
 git submodule update --init --recursive
@@ -82,7 +80,7 @@ git submodule update --init --recursive
 ./gradlew build --no-daemon
 ```
 
-The `packetweave-api` project compiles the pinned public API for compile-time and unit-test use only. It is never shipped in Screens. Production and development game launches need the matching native PacketWeave mod. Build it with the target's wrapper in `vendor/PacketWeave/targets/<loader-version>` (Java 17 for Forge; Java 25 for PacketWeave's newer target builds), then put that jar in the game's `mods` directory. For a Gradle development launch, alternatively pass `-PpacketweaveRuntimeJar=/absolute/path/to/the-native.jar`; do not also install the same jar in `mods`.
+The `packetweave-api` project compiles the pinned public API for compile-time and unit-test use only. It is never shipped in Screens. Production and development game launches need the matching native PacketWeave mod. Build it with the selected target's wrapper in `vendor/PacketWeave/targets/<loader-version>` using that target's configured JDK, then place the jar in the game's `mods` directory. For a Gradle development launch, alternatively pass `-PpacketweaveRuntimeJar=/absolute/path/to/the-native.jar`; do not also install the same jar in `mods`.
 
 See [TESTING.md](TESTING.md) for source/JVM contracts, missing/incompatible dependency checks, real client/server joins, and visual evidence.
 
@@ -98,11 +96,13 @@ This project is distributed under the MIT license.
 
 ## Media transport
 
-Screens calls the **standalone PacketWeave** public API for chunk splitting and bounded upload/download reassembly on all five targets. Screens jars contain neither a public nor a relocated copy of that API. This avoids split packages and gives every consuming mod one runtime library. Screens retains native packet registration, screen permissions, image validation, metadata, and storage policy.
+Screens calls the **standalone PacketWeave** public API for bounded upload/download transfers across supported targets. Screens jars contain neither a public nor a relocated copy of that API. This avoids split packages and gives every consuming mod one runtime library. Screens retains native packet registration, screen permissions, image validation, metadata, and storage policy.
 
 Clone with `git clone --recurse-submodules`, or initialize the submodule before building. The immutable source pin supplies a compile-only API without relying on unpublished Maven artifacts. The pinned version, loader minimum, and CurseForge required dependency must remain aligned; release PacketWeave's matching native artifacts before releasing Screens.
 
-Packets remain wire-compatible. Chunk arrays are decoded with a 30 KiB cap; receivers enforce byte and session limits, reject duplicate/changed envelopes, and release state on expiry or disconnect. Uploads stay bound to the authenticated sender, world, and original screen position. Download workers wait for game-thread dispatch of each chunk to avoid filling the server task queue with an entire file. This is local dispatch backpressure, not remote delivery acknowledgement.
+The media packet format can change between Screens releases; upgrade clients and servers together. PacketWeave's shared outbound scheduler limits active media sends and advances bounded chunks on **receiver receipts**, preventing pending file transfers from monopolizing gameplay traffic. Receivers enforce byte/session bounds, reject stale, duplicate or malformed packets, and release state on failure, expiry or disconnect. Uploads remain bound to the authenticated sender, world and original screen position. Download failures use a short bounded retry cooldown rather than retaining the full in-flight timeout.
+
+Client image bytes are decoded before atomic cache publication. The final publication check is synchronized with invalidation and peer changes so an obsolete worker cannot restore an invalidated or disconnected image. UI/texture ownership stays on the game thread; file work uses bounded workers. See [testing guidance](TESTING.md) and the [current release notes](changelog/) for implementation and compatibility details.
 
 ## Configuration
 
@@ -121,7 +121,7 @@ Edit `config/simply_screens.properties`; server limits remain authoritative. Nam
 | `maxStoragePerPlayer` | `536870912` | Stored bytes per player; 512 MiB |
 | `maxStorageTotal` | `2147483648` | Total stored bytes; 2 GiB |
 
-Both transfer-size limits are clamped to 1 KiB–100 MiB. The properties are `disableUrlDownload` and `maxUrlDownloadSize`; `disableDownload` and `maxDownloadSize` are not read by this version.
+Both transfer-size limits are clamped to 1 KiB–100 MiB. The properties are `disableUrlDownload` and `maxUrlDownloadSize`; `disableDownload` and `maxDownloadSize` are not recognized configuration keys.
 
 ### OpenUI on clients and dedicated servers
 
@@ -137,7 +137,7 @@ Open a screen and choose **Settings > Your display settings** to change screen r
 without screen-management permissions. Existing mod-config values are imported once. Server
 visibility policies still apply. See [the settings audit](docs/settings.md) for all configuration options.
 
-## Named slide playlists (0.9.1)
+## Named slide playlists
 
 Open a screen and use a gallery image's **…** menu to add it to a saved playlist. In **Playlists**, choose or create a list, then select **Start** to display it. Drag slide rows to reorder them; each slide's menu changes its duration (1–86400 seconds) or removes it.
 
