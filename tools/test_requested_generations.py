@@ -191,11 +191,84 @@ class RequestedGenerationsTest(unittest.TestCase):
         self.assertEqual({'packetweave','openui'},set(lock['dependencies']))
         workflow=(ROOT/'.github/workflows/requested-generations.yml').read_text()
         docs=(ROOT/'docs/requested-generations.md').read_text()
+        self.assertIn('tools/requested-dependencies.lock.json',docs)
         for dependency in lock['dependencies'].values():
-            self.assertRegex(dependency['commit'],r'^[a-f0-9]{40}$')
+            self.assertRegex(dependency['commit'],r'^[a-f0-9]{40}
+    def test_representative_visual_ci_requires_full_receipt_and_preserves_evidence(self):
+        workflow=(ROOT/'.github/workflows/requested-generations.yml').read_text()
+        step=workflow.split('name: Calibrated native framebuffer acceptance',1)[1].split('      - name:',1)[0]
+        self.assertIn("matrix.target == 'fabric-26.2'",step)
+        self.assertIn('tools/requested_visual.py --target fabric-26.2',step)
+        self.assertNotIn('--probe',step)
+        self.assertNotIn('--compile-only',step)
+        self.assertIn('--verify-receipt',step)
+        self.assertIn('--head "$EXPECTED_HEAD"',step)
+        self.assertIn('Simply-Screens/build/requested-visual-evidence/${{ matrix.target }}/**',workflow)
+    def test_fabric_116_external_display_keeps_java8_native_classpath(self):
+        build=(ROOT/'fabric-1.16.5/build.gradle').read_text()
+        self.assertIn('JavaLanguageVersion.of(8)',build)
+        self.assertIn('tasks.withType(net.fabricmc.loom.task.AbstractRunTask).configureEach { useXvfb.set(false) }',build)
+        runner=(ROOT/'tools/requested_live_join.py').read_text()
+        self.assertIn("prefix=[xvfb,'-a']",runner)
+        self.assertIn('return prefix+cmd',runner)
+    def test_native_build_runs_the_complete_requested_contract_suite(self):
+        workflow=(ROOT/'.github/workflows/requested-generations.yml').read_text()
+        step=workflow.split('name: Build complete Screens native target',1)[1].split('      - name:',1)[0]
+        self.assertIn("python3 -m unittest discover -s tools -p 'test_requested*.py' -v",step)
+        self.assertIn('-p test_modern_screen_sources.py',step)
+        self.assertIn('-p test_forge_1122_sources.py',step)
+    def test_legacy_prejoin_diagnostics_do_not_dismiss_native_error_screens(self):
+        source=(ROOT/'common-1.16.5/src/main/java/com/nstut/simplyscreens/client/testing/NativeClientAcceptance.java').read_text()
+        self.assertIn('if (!LiveJoinTestProtocol.isEnabled() && !integrated) return;',source)
+        self.assertIn('Native join probe waiting: {}',source)
+        self.assertIn('client.screen.getClass().getName()',source)
+        self.assertIn('client.allowsMultiplayer()',source)
+        self.assertNotIn('setScreen(',source)
+        self.assertNotIn('ConnectScreen',source)
+    def test_fabric_116_join_waits_for_initial_reload_and_native_account_eligibility(self):
+        root=ROOT/'common-1.16.5/src/main/java/com/nstut/simplyscreens/client/testing'
+        acceptance=(root/'NativeClientAcceptance.java').read_text()
+        driver=(root/'NativeMultiplayerJoin.java').read_text()
+        self.assertIn('else NativeMultiplayerJoin.tick(client);',acceptance)
+        self.assertIn('!LiveJoinTestProtocol.isEnabled()',driver)
+        self.assertIn('Boolean.getBoolean("simplyscreens.integratedAcceptance")',driver)
+        self.assertIn('client.screen instanceof TitleScreen, client.getOverlay() != null, client.allowsMultiplayer()',driver)
+        self.assertLess(driver.index('if (!GATE.claim('),driver.index('new ConnectScreen('))
+        self.assertIn('new ConnectScreen(client.screen, client, "127.0.0.1", 25575)',driver)
+        import forge_1165_sources
+        native=forge_1165_sources.convert(driver)
+        self.assertIn('import net.minecraft.client.gui.screen.ConnectingScreen;',native)
+        self.assertIn('new ConnectingScreen(client.screen, client, "127.0.0.1", 25575)',native)
+        self.assertNotIn('net.minecraft.client.gui.screens.ConnectScreen',native)
+        import forge_1122_sources
+        with tempfile.TemporaryDirectory() as directory:
+            output=Path(directory)
+            forge_1122_sources.generate(output)
+            self.assertFalse(list(output.rglob('NativeMultiplayerJoin.java')))
+            for path in output.rglob('*.java'):
+                self.assertNotIn('NativeMultiplayerJoin.tick',path.read_text())
+        build=(ROOT/'fabric-1.16.5/build.gradle').read_text()
+        live=build[build.index('liveJoinTestClient {'):build.index('liveJoinTestServer {')]
+        self.assertIn("property 'simplyscreens.connectAfterInitialReload','true'",live)
+        self.assertNotIn("'--server'",live)
+        self.assertNotIn("'--port'",live)
+    def test_only_isolated_native_server_tasks_forward_harness_input(self):
+        for target in ('forge-1.12.2','fabric-1.16.5','forge-1.16.5','fabric-26.2','neoforge-26.2'):
+            source=(ROOT/target/'build.gradle').read_text()
+            self.assertEqual(1,source.count('standardInput=System.in'))
+            self.assertIn("if(name == 'runLiveJoinTestServer') standardInput=System.in",source)
+            self.assertIn('tasks.withType(JavaExec).configureEach',source)
+    def test_shutdown_watchdog_is_failure_not_a_success_exit(self):
+        source=(ROOT/'common/src/main/java/com/nstut/simplyscreens/testing/LiveJoinTestProtocol.java').read_text()
+        self.assertIn('System.exit(1)',source);self.assertNotIn('System.exit(0)',source)
+        self.assertIn('SIMPLYSCREENS_LIVE_JOIN_TEST_FAIL clean shutdown watchdog expired',source)
+    def test_no_unofficial_112_fabric_target(self):
+        self.assertFalse((ROOT/'fabric-1.12.2').exists())
+if __name__=='__main__':unittest.main()
+)
             expression=r'repository: '+re.escape(dependency['repository'])+r'\n\s+ref: ([a-f0-9]{40})'
             self.assertEqual([dependency['commit']],re.findall(expression,workflow))
-            self.assertIn(dependency['commit'],docs)
+            self.assertNotIn(dependency['commit'],docs, 'Evergreen guidance must not duplicate source pins')
     def test_representative_visual_ci_requires_full_receipt_and_preserves_evidence(self):
         workflow=(ROOT/'.github/workflows/requested-generations.yml').read_text()
         step=workflow.split('name: Calibrated native framebuffer acceptance',1)[1].split('      - name:',1)[0]
