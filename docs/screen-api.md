@@ -1,4 +1,4 @@
-# Simply Screens 0.10.0 — server API and operator commands
+# Simply Screens — server API and operator commands
 
 Simply Screens exposes `com.nstut.simplyscreens.api.ScreenApi` for server-side
 mod integrations on Fabric/Forge 1.20.1, Fabric/NeoForge 1.21.1 and NeoForge 26.1.2.
