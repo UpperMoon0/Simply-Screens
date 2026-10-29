@@ -72,6 +72,8 @@ public class ClientImageManager {
     private static final MediaDownloadRequests REQUEST_IDS = new MediaDownloadRequests();
     private static final Map<UUID, Object> CACHE_LOADS = new ConcurrentHashMap<>();
     private static final java.util.concurrent.ExecutorService CACHE_IO = MediaExecutors.newDaemonBoundedThreadPool(2, 32, "Simply Screens Cache IO");
+    // Shared with invalidation, peer resets and cache clear; disk staging never holds this lock.
+    private static final Object CACHE_PUBLICATION_LOCK = new Object();
     private static volatile long cacheEpoch;
     private static Object transferPeer;
     private static final Set<UUID> FAILED_IMAGES = ConcurrentHashMap.newKeySet();
@@ -93,7 +95,7 @@ public class ClientImageManager {
                 if (epoch != cacheEpoch || !transferId.equals(REQUEST_IDS.get(imageId))) return;
                 MediaDownloadReceiver.Download download = DOWNLOADS.accept(imageId, transferId, chunkIndex, totalChunks, data, extension);
                 boolean accepted = transferId.equals(REQUEST_IDS.get(imageId)) && (download != null
-                        ? saveImageToCache(imageId, download.extension(), download.bytes(), epoch, transferId)
+                        ? saveImageToCache(imageId, download.extension(), download.bytes(), epoch, transferId, peer)
                         : DOWNLOADS.isPending(imageId));
                 long receipt = accepted ? (long)chunkIndex * com.nstut.packetweave.api.OutboundTransfers.CHUNK_BYTES + data.length : -1;
                 Minecraft.getInstance().execute(() -> {
@@ -117,7 +119,9 @@ public class ClientImageManager {
 
     private static void failDownload(UUID imageId, UUID transferId) {
         // Ignore stale worker completions: they must not cancel a newer retry.
-        if (!REQUEST_IDS.remove(imageId, transferId)) return;
+        synchronized (CACHE_PUBLICATION_LOCK) {
+            if (!REQUEST_IDS.remove(imageId, transferId)) return;
+        }
         DOWNLOADS.cancel(imageId);
         PENDING_DOWNLOADS.release(imageId);
         RETRY_BACKOFF.tryAcquire(imageId);
@@ -134,15 +138,20 @@ public class ClientImageManager {
             texture.close();
         }
         METADATA_CACHE.remove(imageId);
-        REQUEST_IDS.remove(imageId); DOWNLOADS.cancel(imageId);
+        synchronized (CACHE_PUBLICATION_LOCK) {
+            REQUEST_IDS.remove(imageId);
+            try {
+                for (String ext : List.of("png", "jpg", "jpeg")) {
+                    Files.deleteIfExists(getImagePath(imageId, ext));
+                }
+            } catch (IOException error) {
+                SimplyScreens.LOGGER.warn("Could not remove invalidated cached image {}", imageId, error);
+            }
+        }
+        DOWNLOADS.cancel(imageId);
         FAILED_IMAGES.remove(imageId);
         PENDING_DOWNLOADS.release(imageId);
         RETRY_BACKOFF.release(imageId);
-        try {
-            for (String ext : List.of("png", "jpg", "jpeg")) {
-                Files.deleteIfExists(getImagePath(imageId, ext));
-            }
-        } catch (IOException ignored) {}
     }
 
     public static void updateImageCache(List<ImageMetadata> images) {
@@ -174,11 +183,16 @@ public class ClientImageManager {
             Object currentPeer = Minecraft.getInstance().getConnection();
             if (currentPeer != transferPeer) {
                 if (transferPeer != null) com.nstut.packetweave.api.OutboundTransfers.shared().cancelPeer(transferPeer);
-                cacheEpoch++; REQUEST_IDS.clear(); CACHE_LOADS.clear(); DOWNLOADS.clear(); PENDING_DOWNLOADS.clear(); RETRY_BACKOFF.clear();
-                transferPeer = currentPeer;
+                synchronized (CACHE_PUBLICATION_LOCK) {
+                    cacheEpoch++; REQUEST_IDS.clear();
+                    transferPeer = currentPeer;
+                }
+                CACHE_LOADS.clear(); DOWNLOADS.clear(); PENDING_DOWNLOADS.clear(); RETRY_BACKOFF.clear();
             }
-            for (UUID expired : DOWNLOADS.reapExpired()) { REQUEST_IDS.remove(expired); PENDING_DOWNLOADS.release(expired); }
-            for (UUID expired : REQUEST_IDS.reapExpired()) { DOWNLOADS.cancel(expired); PENDING_DOWNLOADS.release(expired); }
+            synchronized (CACHE_PUBLICATION_LOCK) {
+                for (UUID expired : DOWNLOADS.reapExpired()) { REQUEST_IDS.remove(expired); PENDING_DOWNLOADS.release(expired); }
+                for (UUID expired : REQUEST_IDS.reapExpired()) { DOWNLOADS.cancel(expired); PENDING_DOWNLOADS.release(expired); }
+            }
         });
         try {
             Files.createDirectories(CACHE_DIR);
@@ -242,18 +256,25 @@ public class ClientImageManager {
     }
 
     public static void saveImageToCache(UUID imageId, String extension, byte[] imageData) {
-        saveImageToCache(imageId, extension, imageData, cacheEpoch, REQUEST_IDS.get(imageId));
+        saveImageToCache(imageId, extension, imageData, cacheEpoch, REQUEST_IDS.get(imageId),
+                Minecraft.getInstance().getConnection());
     }
 
-    private static boolean saveImageToCache(UUID imageId, String extension, byte[] imageData, long epoch, UUID request) {
-        if (!MediaFiles.isImageExtension(extension) || epoch != cacheEpoch
-                || !java.util.Objects.equals(request, REQUEST_IDS.get(imageId))) return false;
+    private static boolean saveImageToCache(UUID imageId, String extension, byte[] imageData,
+                                            long epoch, UUID request, Object peer) {
+        if (!MediaFiles.isImageExtension(extension) || request == null || epoch != cacheEpoch
+                || !request.equals(REQUEST_IDS.get(imageId)) || peer != Minecraft.getInstance().getConnection()) return false;
         Path imagePath = getImagePath(imageId, extension);
         try {
             NativeImage nativeImage = MediaFiles.decodeAndWriteAtomically(imagePath, imageData,
-                    bytes -> loadImage(new ByteArrayInputStream(bytes), extension));
+                    bytes -> loadImage(new ByteArrayInputStream(bytes), extension),
+                    CACHE_PUBLICATION_LOCK,
+                    () -> epoch == cacheEpoch && request.equals(REQUEST_IDS.get(imageId))
+                            && peer == Minecraft.getInstance().getConnection());
+            if (nativeImage == null) return false;
             Minecraft.getInstance().execute(() -> {
-                if (epoch != cacheEpoch || !java.util.Objects.equals(request, REQUEST_IDS.get(imageId))) { nativeImage.close(); return; }
+                if (epoch != cacheEpoch || !request.equals(REQUEST_IDS.get(imageId))
+                        || peer != Minecraft.getInstance().getConnection()) { nativeImage.close(); return; }
                 CACHED_EXTENSIONS.put(imageId, extension);
                 cacheTexture(imageId, new DynamicTexture(() -> "Simply Screens image " + imageId, nativeImage));
             });
@@ -378,7 +399,8 @@ public class ClientImageManager {
     }
 
     public static void clearCache() {
-        cacheEpoch++; REQUEST_IDS.clear(); CACHE_LOADS.clear();
+        synchronized (CACHE_PUBLICATION_LOCK) { cacheEpoch++; REQUEST_IDS.clear(); }
+        CACHE_LOADS.clear();
         TEXTURE_BUDGET.clear(); CACHED_EXTENSIONS.clear(); prefetchWindow = 0; prefetchRequests = 0;
         DOWNLOADS.clear();
         PENDING_DOWNLOADS.clear();
