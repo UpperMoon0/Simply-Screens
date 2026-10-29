@@ -26,6 +26,45 @@ class MediaFilesTest {
         assertArrayEquals(bytes, Files.readAllBytes(target));
         try (var files = Files.list(directory)) { assertEquals(1, files.count()); }
     }
+    @Test void corruptCompleteDownloadCannotPoisonCacheAndValidRetrySucceeds() throws Exception {
+        Path target = directory.resolve("retriable.png");
+        byte[] corrupt = {1, 2, 3, 4};
+        var output = new java.io.ByteArrayOutputStream();
+        assertTrue(javax.imageio.ImageIO.write(
+                new java.awt.image.BufferedImage(1, 1, java.awt.image.BufferedImage.TYPE_INT_ARGB),
+                "png", output));
+        byte[] valid = output.toByteArray();
+
+        assertThrows(java.io.IOException.class, () -> MediaFiles.decodeAndWriteAtomically(
+                target, corrupt, MediaFilesTest::decodeImage));
+        assertFalse(Files.exists(target), "Malformed complete transfers must not create a cache file");
+
+        try (var decoded = MediaFiles.decodeAndWriteAtomically(target, valid, MediaFilesTest::decodeImage)) {
+            assertArrayEquals(valid, Files.readAllBytes(target));
+        }
+        assertThrows(java.io.IOException.class, () -> MediaFiles.decodeAndWriteAtomically(
+                target, corrupt, MediaFilesTest::decodeImage));
+        assertArrayEquals(valid, Files.readAllBytes(target), "A later corrupt transfer must preserve the valid cache");
+        try (var files = Files.list(directory)) { assertEquals(1, files.count()); }
+    }
+
+    @Test void failedPublicationClosesDecodedImageAndPreservesExistingFiles() throws Exception {
+        Path target = directory.resolve("occupied");
+        Files.createDirectory(target);
+        Files.write(target.resolve("preserved"), new byte[]{42});
+        var closed = new java.util.concurrent.atomic.AtomicBoolean();
+        assertThrows(java.io.IOException.class, () -> MediaFiles.decodeAndWriteAtomically(
+                target, new byte[]{1}, bytes -> (AutoCloseable) () -> closed.set(true)));
+        assertTrue(closed.get(), "A decoded native image must be closed when publication fails");
+        assertArrayEquals(new byte[]{42}, Files.readAllBytes(target.resolve("preserved")));
+    }
+
+    private static AutoCloseable decodeImage(byte[] bytes) throws java.io.IOException {
+        var image = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(bytes));
+        if (image == null) throw new java.io.IOException("Invalid image encoding");
+        return image::flush;
+    }
+
     @Test void failedPublicationCleansTemporaryFileAndPreservesDestination() throws Exception {
         Path target = directory.resolve("occupied");
         Files.createDirectory(target);
