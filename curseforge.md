@@ -33,26 +33,25 @@ Simply Screens adds configurable screen blocks that display images from your loc
 
 ## Required Dependencies
 
-- **PacketWeave 0.1.1 or newer**, matching your Minecraft version and loader, on clients and dedicated servers
+- **PacketWeave**, at the compatible minimum declared by the selected Screens release, matching the Minecraft version and loader on clients and dedicated servers
 - **Architectury API** matching your Minecraft version and loader
 - **Fabric API** on Fabric
-- **OpenUI MC 0.0.8 or newer** matching your Minecraft version and loader (clients only)
+- **OpenUI MC**, matching the Minecraft version and loader and the selected Screens release's required minimum (clients only)
 
-## Upgrading to 0.9.0
+## Upgrading
 
-Add the matching native PacketWeave jar to every client and server. Screens uses its public transfer API and does not bundle a second copy. Back up the world before upgrading. Existing media and Screen IDs are preserved; the registry is automatically imported into a versioned network store. Legacy unowned displays/networks require an operator claim in Settings before editing. Private unused images cannot be downloaded merely by knowing their UUID; viewing a permitted tracked display remains supported. Install matching Screens versions on clients and servers. The loader requires PacketWeave 0.1.1 or newer, and release files declare it as a required CurseForge dependency. See the [access and recovery guide](https://github.com/UpperMoon0/Simply-Screens/blob/main/docs/network-access.md) for policy and backup details.
+Install the matching native PacketWeave jar on every client and server, and the compatible OpenUI jar on clients. Screens uses PacketWeave's public transfer API and does not bundle a second copy. **Check the selected release's dependency metadata and changelog for exact minimums and wire-protocol compatibility**; update Screens on both sides together. Back up the world, images, network registry and playlists before upgrading. Existing media and Screen IDs are preserved where supported; legacy ownerless displays/networks may require operator claims before editing. Private unused images cannot be downloaded by merely knowing their UUID. See the [access and recovery guide](https://github.com/UpperMoon0/Simply-Screens/blob/main/docs/network-access.md) for policy and backup details.
 
 ## Shader image colors
 
-Version 0.8.11 preserves fully opaque image colors on the Iris/Oculus path while
+Supported shader integrations preserve fully opaque image colors on the Iris/Oculus path while
 retaining surrounding shader bloom. Complementary is tested with matching
-Sodium/Embeddium and Extra stacks across the five supported targets. Shader mods
+Sodium/Embeddium and Extra stacks on the documented loader targets. Shader mods
 remain optional; do not mix Fabric, Forge and NeoForge variants.
 
 Semi-transparent/filtered edges remain shader-processed. Arbitrary depth changes,
 geometric warps and later postprocessing are outside the guarantee. See the
 [compatibility matrix and limits](https://github.com/UpperMoon0/Simply-Screens/blob/main/tools/shader/README.md).
-Existing 0.8.10 installations need no new required dependency or data migration.
 
 ## Configuration
 
