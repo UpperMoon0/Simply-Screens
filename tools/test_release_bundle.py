@@ -84,10 +84,9 @@ class ReleaseBundleTests(unittest.TestCase):
         self.assertTrue({'release-bundle', 'live-client'} <= needs('publish-curseforge'))
         self.assertTrue({'release-bundle', 'live-client', 'publish-curseforge'} <= needs('release'))
         requested = (ROOT / '.github/workflows/requested-generations.yml').read_text()
-        # Both native checkout workflows must use the authoritative dependency
-        # lock. A hard-coded expected SHA makes a legitimate dependency upgrade
-        # fail this test, and checking for mere substring presence could accept
-        # an obsolete checkout ref elsewhere in the workflow.
+        # Keep native checkout refs aligned with the authoritative lockfile.
+        # Exact checkout matching rejects a stale pin even if a new SHA appears
+        # elsewhere in the workflow (for example, in a comment).
         lock = json.loads((ROOT / 'tools/requested-dependencies.lock.json').read_text())['dependencies']
         for key, repository in (
             ('packetweave', 'UpperMoon0/PacketWeave'),
@@ -95,24 +94,10 @@ class ReleaseBundleTests(unittest.TestCase):
         ):
             self.assertEqual(repository, lock[key]['repository'])
             pin = lock[key]['commit']
-            self.assertRegex(pin, r'^[0-9a-f]{40}        self.assertIn('verify_requested_jar.py', serialized)
-        self.assertIn('verify-requested-releases', serialized)
-        self.assertIn('name: verified-release-bundle', serialized)
-        self.assertNotIn('files: artifacts/**/*.jar', serialized)
-
-
-if __name__ == '__main__': unittest.main()
-)
+            self.assertRegex(pin, r'^[0-9a-f]{40}$')
             checkout = re.compile(
-                r'^\\s*repository: ' + re.escape(repository) +
-                r'\\s*\\n\\s*ref: ([0-9a-f]{40})\\s*        self.assertIn('verify_requested_jar.py', serialized)
-        self.assertIn('verify-requested-releases', serialized)
-        self.assertIn('name: verified-release-bundle', serialized)
-        self.assertNotIn('files: artifacts/**/*.jar', serialized)
-
-
-if __name__ == '__main__': unittest.main()
-,
+                r'^\s*repository: ' + re.escape(repository) +
+                r'\s*\n\s*ref: ([0-9a-f]{40})\s*$',
                 re.M,
             )
             for label, workflow in (
