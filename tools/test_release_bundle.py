@@ -84,9 +84,44 @@ class ReleaseBundleTests(unittest.TestCase):
         self.assertTrue({'release-bundle', 'live-client'} <= needs('publish-curseforge'))
         self.assertTrue({'release-bundle', 'live-client', 'publish-curseforge'} <= needs('release'))
         requested = (ROOT / '.github/workflows/requested-generations.yml').read_text()
-        for pin in ('73a7ade839191fde0fcccc66e1d88ad1b86cb447', '672b5b2b7169bef30f5f10b34f296812abe31460'):
-            self.assertIn(pin, requested)
-            self.assertIn(pin, serialized)
+        # Both native checkout workflows must use the authoritative dependency
+        # lock. A hard-coded expected SHA makes a legitimate dependency upgrade
+        # fail this test, and checking for mere substring presence could accept
+        # an obsolete checkout ref elsewhere in the workflow.
+        lock = json.loads((ROOT / 'tools/requested-dependencies.lock.json').read_text())['dependencies']
+        for key, repository in (
+            ('packetweave', 'UpperMoon0/PacketWeave'),
+            ('openui', 'UpperMoon0/OpenUI-MC'),
+        ):
+            self.assertEqual(repository, lock[key]['repository'])
+            pin = lock[key]['commit']
+            self.assertRegex(pin, r'^[0-9a-f]{40}        self.assertIn('verify_requested_jar.py', serialized)
+        self.assertIn('verify-requested-releases', serialized)
+        self.assertIn('name: verified-release-bundle', serialized)
+        self.assertNotIn('files: artifacts/**/*.jar', serialized)
+
+
+if __name__ == '__main__': unittest.main()
+)
+            checkout = re.compile(
+                r'^\\s*repository: ' + re.escape(repository) +
+                r'\\s*\\n\\s*ref: ([0-9a-f]{40})\\s*        self.assertIn('verify_requested_jar.py', serialized)
+        self.assertIn('verify-requested-releases', serialized)
+        self.assertIn('name: verified-release-bundle', serialized)
+        self.assertNotIn('files: artifacts/**/*.jar', serialized)
+
+
+if __name__ == '__main__': unittest.main()
+,
+                re.M,
+            )
+            for label, workflow in (
+                ('requested-generations', requested),
+                ('release requested-build', jobs['requested-build']),
+            ):
+                with self.subTest(dependency=key, workflow=label):
+                    refs = checkout.findall(workflow)
+                    self.assertEqual([pin], refs, f'{label} must checkout the locked {key} commit')
         self.assertIn('verify_requested_jar.py', serialized)
         self.assertIn('verify-requested-releases', serialized)
         self.assertIn('name: verified-release-bundle', serialized)
