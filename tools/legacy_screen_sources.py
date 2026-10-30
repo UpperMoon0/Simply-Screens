@@ -71,8 +71,8 @@ def legacy_media_hooks(text, name):
         once('                    PacketRegistries.sendToPlayer(player, new UpdateImageListS2CPacket(images));',
              '                    if (' + test + 'LegacyMediaProbeProtocol.ENABLED) ' + test + 'LegacyMediaServerProbe.uploadStored(player, state.level, blockPos, imageId, state.originalName);\n                    PacketRegistries.sendToPlayer(player, new UpdateImageListS2CPacket(images));')
     if name == 'ClientImageManager.java':
-        once('        if (download != null) saveImageToCache(imageId, download.extension(), download.bytes());',
-             '        if (download != null) {\n            if (' + test + 'LegacyMediaProbeProtocol.ENABLED) ' + client + '.downloaded(imageId, download.extension(), download.bytes());\n            saveImageToCache(imageId, download.extension(), download.bytes());\n        }')
+        once('                CACHED_EXTENSIONS.put(imageId, extension);',
+             '                if (' + test + 'LegacyMediaProbeProtocol.ENABLED) ' + client + '.downloaded(imageId, extension, imageData);\n                CACHED_EXTENSIONS.put(imageId, extension);')
     if name == 'ScreenBlockEntityRenderer.java':
         once('        renderTextureQuad(texture, tile, poseStack, bufferSource, packedOverlay);',
              '        renderTextureQuad(texture, tile, poseStack, bufferSource, packedOverlay);\n        if (' + test + 'LegacyMediaProbeProtocol.ENABLED) ' + client + '.geometrySubmitted(blockEntity, imageId, texture, tile);')

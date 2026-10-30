@@ -86,11 +86,10 @@ results; actual exact-head CI results belong in the PR validation record.
 
 ## Integration with requested-generation ports
 
-The optimization is integrated with main `7d9d3e1a640aefeb9a8e9c081d9ed2ea375d8dec`.
-The ten-target release workflow, requested-generation workflow and production
-version 0.10.1 remain unchanged from that main. The optimization continues to
-apply to the original five-target native acceptance matrix; it does not replace
-the separate port qualification or claim new native runtime coverage. Legacy
+The optimization applies to the maintained native acceptance matrix; it must not
+change the configured release version, dependency floors, target manifests or
+requested-generation qualification. It does not replace separate native-port
+acceptance or imply runtime coverage beyond the recorded checks. Legacy
 1.16.5 retains Java 8. Existing dedicated-client eligibility limitations remain
 explicit in the port documentation.
 Historical 26.2 render calibration remains a separate qualification limit;

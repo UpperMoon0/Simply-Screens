@@ -19,13 +19,13 @@ class PacketWeaveRuntimeTests(unittest.TestCase):
             for target in ("fabric-1.20.1", "forge-1.20.1", "neoforge-1.21.1", "neoforge-26.1.2"):
                 source, invalid = root / "source.jar", root / "invalid.jar"
                 path = loader_metadata(target)
-                text = (json.dumps({"id": "packetweave", "version": "0.1.1"}) if target.startswith("fabric-") else
-                        '[[mods]]\nmodId="packetweave"\nversion="0.1.1"\n')
+                text = (json.dumps({"id": "packetweave", "version": "0.1.5"}) if target.startswith("fabric-") else
+                        '[[mods]]\nmodId="packetweave"\nversion="0.1.5"\n')
                 with zipfile.ZipFile(source, "w") as archive:
                     archive.writestr(path, text)
                     archive.writestr("com/nstut/packetweave/api/TransferRegistry.class", b"unchanged native bytecode")
                 incompatible_jar(source, invalid, target)
-                self.assertEqual("0.1.1", native_version(source, target))
+                self.assertEqual("0.1.5", native_version(source, target))
                 self.assertEqual("0.1.0", native_version(invalid, target))
                 with zipfile.ZipFile(invalid) as archive:
                     self.assertEqual(b"unchanged native bytecode", archive.read("com/nstut/packetweave/api/TransferRegistry.class"))
@@ -34,10 +34,10 @@ class PacketWeaveRuntimeTests(unittest.TestCase):
         for mode, actual in (("missing", "[MISSING]"), ("incompatible", "0.1.0")):
             forge = ("Missing or unsupported mandatory dependencies:\n"
                      "Mod ID: 'packetweave', Requested by: 'simply_screens', "
-                     f"Expected range: '[0.1.1,)', Actual version: '{actual}'")
-            fabric = ("Mod 'Simply Screens' (simply_screens) requires version 0.1.1 or later of "
+                     f"Expected range: '[0.1.5,)', Actual version: '{actual}'")
+            fabric = ("Mod 'Simply Screens' (simply_screens) requires version 0.1.5 or later of "
                       "mod 'PacketWeave' (packetweave), " + ("which is missing!" if mode == "missing" else "but only version 0.1.0 is present!"))
-            neo = ("Mod §esimply_screens§r requires §epacketweave§r 0.1.1 or above\n"
+            neo = ("Mod §esimply_screens§r requires §epacketweave§r 0.1.5 or above\n"
                    "Currently, packetweave is " + ("not installed" if mode == "missing" else "0.1.0"))
             forge += "\nFailed to start the minecraft server"
             neo += "\nFailed to start the minecraft server"
@@ -57,9 +57,9 @@ class PacketWeaveRuntimeTests(unittest.TestCase):
             target = "forge-1.20.1"
             mods = root / target / "run/live-join/server/mods"
             mods.mkdir(parents=True)
-            native = root / "packetweave-forge-1.20.1-0.1.1.jar"
+            native = root / "packetweave-forge-1.20.1-0.1.5.jar"
             with zipfile.ZipFile(native, "w") as archive:
-                archive.writestr(loader_metadata(target), '[[mods]]\nmodId="packetweave"\nversion="0.1.1"\n')
+                archive.writestr(loader_metadata(target), '[[mods]]\nmodId="packetweave"\nversion="0.1.5"\n')
                 archive.writestr("com/nstut/packetweave/api/TransferRegistry.class", b"unchanged")
             installed = mods / native.name
             installed.write_bytes(native.read_bytes())
@@ -73,7 +73,7 @@ class PacketWeaveRuntimeTests(unittest.TestCase):
                 launches.append(mode)
                 actual = "[MISSING]" if mode == "missing" else "0.1.0"
                 output = ("Missing or unsupported mandatory dependencies:\nMod ID: 'packetweave', "
-                          "Requested by: 'simply_screens', Expected range: '[0.1.1,)', Actual version: '" + actual + "'")
+                          "Requested by: 'simply_screens', Expected range: '[0.1.5,)', Actual version: '" + actual + "'")
                 return SimpleNamespace(returncode=1, communicate=lambda **kwargs: (output, None))
             def observe(process, mode, timeout, log, prefix):
                 output, _ = process.communicate()
@@ -133,7 +133,7 @@ class PacketWeaveRuntimeTests(unittest.TestCase):
         for mode, actual in (("missing", "[MISSING]"), ("incompatible", "0.1.0")):
             output = ("Missing or unsupported mandatory dependencies:\n"
                       "Mod ID: 'packetweave', Requested by: 'simply_screens', "
-                      f"Expected range: '[0.1.1,)', Actual version: '{actual}'\n"
+                      f"Expected range: '[0.1.5,)', Actual version: '{actual}'\n"
                       "Failed to start the minecraft server")
             self.run_streaming_fixture(output, mode=mode, linger=True, should_pass=True)
 
@@ -145,22 +145,22 @@ class PacketWeaveRuntimeTests(unittest.TestCase):
         for mode,actual in (("missing","[MISSING]"),("incompatible","0.1.0")):
             diagnostic=("Missing or unsupported mandatory dependencies:\n"
                         "Mod ID: 'packetweave', Requested by: 'simply_screens', "
-                        f"Expected range: '[0.1.1,)', Actual version: '{actual}'\n")
+                        f"Expected range: '[0.1.5,)', Actual version: '{actual}'\n")
             self.run_streaming_fixture(diagnostic+terminal,mode=mode,linger=True,should_pass=True)
             for wrong in (terminal,diagnostic+terminal.replace('simplyscreens-color','other-mod'),
                           diagnostic.replace("'packetweave'","'other_mod'")+terminal,
-                          diagnostic.replace(actual,'0.1.1')+terminal,
+                          diagnostic.replace(actual,'0.1.5')+terminal,
                           diagnostic+terminal+"\nDone (1.2s)!",diagnostic+"NullPointerException"):
                 with self.assertRaises(RuntimeError):assert_dependency_rejected(wrong,1,mode)
 
     def test_diagnostic_without_fatal_completion_never_passes(self):
-        diagnostic = ("Mod simply_screens requires packetweave 0.1.1 or above\n"
+        diagnostic = ("Mod simply_screens requires packetweave 0.1.5 or above\n"
                       "Currently, packetweave is not installed")
         self.run_streaming_fixture(diagnostic, linger=True)
         self.run_streaming_fixture(diagnostic + "\nNullPointerException", linger=False)
 
     def test_unrelated_fatal_download_failure_and_ready_after_rejection_never_pass(self):
-        diagnostic = ("Mod simply_screens requires packetweave 0.1.1 or above\n"
+        diagnostic = ("Mod simply_screens requires packetweave 0.1.5 or above\n"
                       "Currently, packetweave is not installed")
         for output in ("Failed to start the minecraft server\nother_mod is not installed",
                        "Could not download packetweave: connection timed out",
@@ -168,7 +168,7 @@ class PacketWeaveRuntimeTests(unittest.TestCase):
             self.run_streaming_fixture(output)
 
     def test_incomplete_output_drain_never_certifies_rejection_and_keeps_log(self):
-        diagnostic = ("Mod simply_screens requires packetweave 0.1.1 or above\n"
+        diagnostic = ("Mod simply_screens requires packetweave 0.1.5 or above\n"
                       "Currently, packetweave is not installed\nFailed to start the minecraft server\n")
         pump = SimpleNamespace(history=[diagnostic], thread=SimpleNamespace(
             is_alive=lambda: True, join=lambda **kwargs: None))
@@ -181,12 +181,12 @@ class PacketWeaveRuntimeTests(unittest.TestCase):
             self.assertEqual(diagnostic, log.read_text())
 
     def test_generic_crashes_and_timeouts_never_pass_negative_controls(self):
-        for output in ("Gradle download timed out", "NullPointerException packetweave simply_screens 0.1.1",
-                       "requires PacketWeave 0.1.1 but another_mod is missing", "Server stopped",
+        for output in ("Gradle download timed out", "NullPointerException packetweave simply_screens 0.1.5",
+                       "requires PacketWeave 0.1.5 but another_mod is missing", "Server stopped",
                        "Missing or unsupported mandatory dependencies:\n"
-                       "Mod ID: 'other', Requested by: 'simply_screens', Expected range: '[0.1.1,)', Actual version: '[MISSING]'\n"
-                       "Mod ID: 'packetweave', Requested by: 'simply_screens', Expected range: '[0.1.1,)', Actual version: '0.1.0'",
-                       "Mod simply_screens requires packetweave 0.1.1 or above\nCurrently, other is not installed"):
+                       "Mod ID: 'other', Requested by: 'simply_screens', Expected range: '[0.1.5,)', Actual version: '[MISSING]'\n"
+                       "Mod ID: 'packetweave', Requested by: 'simply_screens', Expected range: '[0.1.5,)', Actual version: '0.1.0'",
+                       "Mod simply_screens requires packetweave 0.1.5 or above\nCurrently, other is not installed"):
             with self.assertRaises(RuntimeError):
                 assert_dependency_rejected(output, 1, "missing")
 

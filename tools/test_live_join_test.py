@@ -82,14 +82,14 @@ class LiveJoinHarnessTest(unittest.TestCase):
             for target in live_join_test.TARGETS:
                 libs = root / "vendor/PacketWeave/targets" / target / "build/libs"
                 libs.mkdir(parents=True)
-                jar = libs / f"packetweave-{target}-0.1.1.jar"
+                jar = libs / f"packetweave-{target}-0.1.5.jar"
                 metadata = ("fabric.mod.json" if target.startswith("fabric-") else
                             "META-INF/mods.toml" if target.startswith("forge-") else "META-INF/neoforge.mods.toml")
                 with zipfile.ZipFile(jar, "w") as archive:
-                    archive.writestr(metadata, json.dumps({"id": "packetweave", "version": "0.1.1"})
-                                     if target.startswith("fabric-") else '[[mods]]\nmodId="packetweave"\nversion="0.1.1"\n')
+                    archive.writestr(metadata, json.dumps({"id": "packetweave", "version": "0.1.5"})
+                                     if target.startswith("fabric-") else '[[mods]]\nmodId="packetweave"\nversion="0.1.5"\n')
                     archive.writestr("com/nstut/packetweave/api/TransferRegistry.class", b"class fixture")
-                (libs / f"packetweave-{target}-0.1.1-sources.jar").write_bytes(b"not a runtime artifact")
+                (libs / f"packetweave-{target}-0.1.5-sources.jar").write_bytes(b"not a runtime artifact")
                 self.assertEqual(jar, live_join_test.packetweave_jar(root, target))
                 live_join_test.install_packetweave(root / target, target, jar)
                 for side in ("server", "client"):

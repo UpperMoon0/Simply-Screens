@@ -2,7 +2,7 @@
 
 Install Patchouli for the same Minecraft version and loader on the server and clients. The Simply Screens Guide appears in the Screens creative tab. Craft another copy with one book and one amethyst shard, placed side by side in that order. Without Patchouli, Screens works normally and the guide recipe is skipped.
 
-The guide covers setup, image imports, the gallery, linked Screen IDs, aspect ratio, local image overrides, viewing/control permissions, trusted players, ownership transfer, privacy, and troubleshooting. It documents static images only; playlists are not part of this release.
+The guide covers setup, image imports, the gallery, linked Screen IDs, aspect ratio, local image overrides, viewing/control permissions, trusted players, ownership transfer, privacy, and troubleshooting. The guide currently covers static images; playlist controls are documented separately in the main user guide.
 
 ## Development
 

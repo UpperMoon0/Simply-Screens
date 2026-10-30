@@ -69,21 +69,67 @@ public class ClientImageManager {
     private static final Map<UUID, Identifier> TEXTURE_LOCATIONS = new ConcurrentHashMap<>();
     private static final Map<UUID, ImageMetadata> METADATA_CACHE = new ConcurrentHashMap<>();
     private static final MediaDownloadReceiver DOWNLOADS = new MediaDownloadReceiver();
+    private static final MediaDownloadRequests REQUEST_IDS = new MediaDownloadRequests();
+    private static final Map<UUID, Object> CACHE_LOADS = new ConcurrentHashMap<>();
+    private static final java.util.concurrent.ExecutorService CACHE_IO = MediaExecutors.newDaemonBoundedThreadPool(2, 32, "Simply Screens Cache IO");
+    // Shared with invalidation, peer resets and cache clear; disk staging never holds this lock.
+    private static final Object CACHE_PUBLICATION_LOCK = new Object();
+    private static volatile long cacheEpoch;
+    private static Object transferPeer;
     private static final Set<UUID> FAILED_IMAGES = ConcurrentHashMap.newKeySet();
     private static final TransferRequestCoordinator<UUID> PENDING_DOWNLOADS =
             new TransferRequestCoordinator<>(Duration.ofSeconds(30));
+    // A failed request must release the in-flight timer, but should not retry every render frame.
+    private static final ExpiringRequestSet<UUID> RETRY_BACKOFF =
+            new ExpiringRequestSet<>(Duration.ofSeconds(2));
     private static DynamicTexture errorTexture;
     private static Identifier errorTextureLocation;
 
-    public static void handleImageChunk(UUID imageId, int chunkIndex, int totalChunks, byte[] data, String extension) {
-        MediaDownloadReceiver.Download download = DOWNLOADS.accept(imageId, chunkIndex, totalChunks, data, extension);
-        if (!DOWNLOADS.isPending(imageId)) PENDING_DOWNLOADS.release(imageId);
-        if (download != null) saveImageToCache(imageId, download.extension(), download.bytes());
+    public static void handleImageChunk(UUID imageId, UUID transferId, int chunkIndex, int totalChunks, byte[] data, String extension) {
+        if (!REQUEST_IDS.touch(imageId, transferId)) return;
+        Object peer = Minecraft.getInstance().getConnection();
+        long epoch = cacheEpoch;
+        if (chunkIndex == -1 && data.length == 0) { failDownload(imageId, transferId); return; }
+        try {
+            CACHE_IO.execute(() -> {
+                if (epoch != cacheEpoch || !transferId.equals(REQUEST_IDS.get(imageId))) return;
+                MediaDownloadReceiver.Download download = DOWNLOADS.accept(imageId, transferId, chunkIndex, totalChunks, data, extension);
+                boolean accepted = transferId.equals(REQUEST_IDS.get(imageId)) && (download != null
+                        ? saveImageToCache(imageId, download.extension(), download.bytes(), epoch, transferId, peer)
+                        : DOWNLOADS.isPending(imageId));
+                long receipt = accepted ? (long)chunkIndex * com.nstut.packetweave.api.OutboundTransfers.CHUNK_BYTES + data.length : -1;
+                Minecraft.getInstance().execute(() -> {
+                    if (epoch != cacheEpoch || peer != Minecraft.getInstance().getConnection()
+                            || !transferId.equals(REQUEST_IDS.get(imageId))) return;
+                    PacketRegistries.sendToServer(new com.nstut.simplyscreens.network.ImageTransferReceiptC2SPacket(transferId, receipt));
+                    if (!accepted || download != null) {
+                        if (!accepted) failDownload(imageId, transferId);
+                        else if (REQUEST_IDS.remove(imageId, transferId)) {
+                            PENDING_DOWNLOADS.release(imageId);
+                            RETRY_BACKOFF.release(imageId);
+                        }
+                    }
+                });
+            });
+        } catch (java.util.concurrent.RejectedExecutionException busy) {
+            failDownload(imageId, transferId);
+            PacketRegistries.sendToServer(new com.nstut.simplyscreens.network.ImageTransferReceiptC2SPacket(transferId, -1));
+        }
+    }
+
+    private static void failDownload(UUID imageId, UUID transferId) {
+        // Ignore stale worker completions: they must not cancel a newer retry.
+        synchronized (CACHE_PUBLICATION_LOCK) {
+            if (!REQUEST_IDS.remove(imageId, transferId)) return;
+        }
+        DOWNLOADS.cancel(imageId);
+        PENDING_DOWNLOADS.release(imageId);
+        RETRY_BACKOFF.tryAcquire(imageId);
     }
 
     public static void invalidateImage(UUID imageId) {
         if (imageId == null) return;
-        TEXTURE_BUDGET.remove(imageId); CACHED_EXTENSIONS.remove(imageId);
+        TEXTURE_BUDGET.remove(imageId); CACHED_EXTENSIONS.remove(imageId); CACHE_LOADS.remove(imageId);
         DynamicTexture texture = IN_MEMORY_CACHE.remove(imageId);
         Identifier location = TEXTURE_LOCATIONS.remove(imageId);
         if (location != null) {
@@ -92,14 +138,20 @@ public class ClientImageManager {
             texture.close();
         }
         METADATA_CACHE.remove(imageId);
+        synchronized (CACHE_PUBLICATION_LOCK) {
+            REQUEST_IDS.remove(imageId);
+            try {
+                for (String ext : List.of("png", "jpg", "jpeg")) {
+                    Files.deleteIfExists(getImagePath(imageId, ext));
+                }
+            } catch (IOException error) {
+                SimplyScreens.LOGGER.warn("Could not remove invalidated cached image {}", imageId, error);
+            }
+        }
         DOWNLOADS.cancel(imageId);
         FAILED_IMAGES.remove(imageId);
         PENDING_DOWNLOADS.release(imageId);
-        try {
-            for (String ext : List.of("png", "jpg", "jpeg")) {
-                Files.deleteIfExists(getImagePath(imageId, ext));
-            }
-        } catch (IOException ignored) {}
+        RETRY_BACKOFF.release(imageId);
     }
 
     public static void updateImageCache(List<ImageMetadata> images) {
@@ -128,7 +180,19 @@ public class ClientImageManager {
 
     public static void initialize() {
         dev.architectury.event.events.client.ClientTickEvent.CLIENT_POST.register(client -> {
-            for (UUID expired : DOWNLOADS.reapExpired()) PENDING_DOWNLOADS.release(expired);
+            Object currentPeer = Minecraft.getInstance().getConnection();
+            if (currentPeer != transferPeer) {
+                if (transferPeer != null) com.nstut.packetweave.api.OutboundTransfers.shared().cancelPeer(transferPeer);
+                synchronized (CACHE_PUBLICATION_LOCK) {
+                    cacheEpoch++; REQUEST_IDS.clear();
+                    transferPeer = currentPeer;
+                }
+                CACHE_LOADS.clear(); DOWNLOADS.clear(); PENDING_DOWNLOADS.clear(); RETRY_BACKOFF.clear();
+            }
+            synchronized (CACHE_PUBLICATION_LOCK) {
+                for (UUID expired : DOWNLOADS.reapExpired()) { REQUEST_IDS.remove(expired); PENDING_DOWNLOADS.release(expired); }
+                for (UUID expired : REQUEST_IDS.reapExpired()) { DOWNLOADS.cancel(expired); PENDING_DOWNLOADS.release(expired); }
+            }
         });
         try {
             Files.createDirectories(CACHE_DIR);
@@ -150,43 +214,74 @@ public class ClientImageManager {
         ImageMetadata metadata = METADATA_CACHE.get(imageId);
         if (metadata == null && CACHED_EXTENSIONS.containsKey(imageId))
             metadata = new ImageMetadata(imageId.toString(), imageId.toString(), CACHED_EXTENSIONS.get(imageId));
-        if (metadata != null) {
+        if (metadata != null && MediaFiles.isImageExtension(metadata.getExtension())) {
+            if (CACHE_LOADS.containsKey(imageId)) return null;
             Path imagePath = getImagePath(imageId, metadata.getExtension());
             if (Files.exists(imagePath)) {
-                try (InputStream inputStream = Files.newInputStream(imagePath)) {
-                    NativeImage nativeImage = loadImage(inputStream, metadata.getExtension());
-                    DynamicTexture texture = new DynamicTexture(() -> "Simply Screens image " + imageId, nativeImage);
-                    cacheTexture(imageId, texture);
-                    return texture;
-                } catch (IOException e) {
-                    SimplyScreens.LOGGER.error("Failed to load image from disk cache", e);
-                    FAILED_IMAGES.add(imageId);
-                }
+                queueCachedImage(imageId, imagePath, metadata.getExtension());
+                return null;
             }
         }
 
+        if (RETRY_BACKOFF.isPending(imageId)) return null;
         DOWNLOADS.requestIfIdle(imageId, PENDING_DOWNLOADS,
-                () -> PacketRegistries.sendToServer(new RequestImageDownloadC2SPacket(imageId)));
+                () -> {
+                    UUID request = REQUEST_IDS.begin(imageId);
+                    if (request == null) { PENDING_DOWNLOADS.release(imageId); return; }
+                    DOWNLOADS.expect(imageId, request);
+                    PacketRegistries.sendToServer(new RequestImageDownloadC2SPacket(imageId, request));
+                });
         return null;
     }
 
+    private static void queueCachedImage(UUID imageId, Path path, String extension) {
+        Object token = new Object();
+        if (CACHE_LOADS.putIfAbsent(imageId, token) != null) return;
+        long epoch = cacheEpoch;
+        try {
+            CACHE_IO.execute(() -> {
+                try (InputStream input = Files.newInputStream(path)) {
+                    NativeImage image = loadImage(input, extension);
+                    Minecraft.getInstance().execute(() -> {
+                        if (epoch != cacheEpoch || !CACHE_LOADS.remove(imageId, token)) { image.close(); return; }
+                        cacheTexture(imageId, new DynamicTexture(() -> "Simply Screens image " + imageId, image));
+                    });
+                } catch (IOException | RuntimeException error) {
+                    Minecraft.getInstance().execute(() -> {
+                        if (epoch == cacheEpoch && CACHE_LOADS.remove(imageId, token)) FAILED_IMAGES.add(imageId);
+                    });
+                }
+            });
+        } catch (java.util.concurrent.RejectedExecutionException busy) { CACHE_LOADS.remove(imageId, token); }
+    }
+
     public static void saveImageToCache(UUID imageId, String extension, byte[] imageData) {
+        saveImageToCache(imageId, extension, imageData, cacheEpoch, REQUEST_IDS.get(imageId),
+                Minecraft.getInstance().getConnection());
+    }
+
+    private static boolean saveImageToCache(UUID imageId, String extension, byte[] imageData,
+                                            long epoch, UUID request, Object peer) {
+        if (!MediaFiles.isImageExtension(extension) || request == null || epoch != cacheEpoch
+                || !request.equals(REQUEST_IDS.get(imageId)) || peer != Minecraft.getInstance().getConnection()) return false;
         Path imagePath = getImagePath(imageId, extension);
         try {
-            Files.write(imagePath, imageData);
-            CACHED_EXTENSIONS.put(imageId, extension);
-
-            try (InputStream inputStream = Files.newInputStream(imagePath)) {
-                NativeImage nativeImage = loadImage(inputStream, extension);
-                DynamicTexture texture = new DynamicTexture(() -> "Simply Screens image " + imageId, nativeImage);
-                cacheTexture(imageId, texture);
-            } catch (IOException e) {
-                SimplyScreens.LOGGER.error("Failed to load image from disk cache after saving", e);
-                FAILED_IMAGES.add(imageId);
-                Files.deleteIfExists(imagePath);
-            }
-        } catch (IOException e) {
-            SimplyScreens.LOGGER.error("Failed to save image to disk cache", e);
+            NativeImage nativeImage = MediaFiles.decodeAndWriteAtomically(imagePath, imageData,
+                    bytes -> loadImage(new ByteArrayInputStream(bytes), extension),
+                    CACHE_PUBLICATION_LOCK,
+                    () -> epoch == cacheEpoch && request.equals(REQUEST_IDS.get(imageId))
+                            && peer == Minecraft.getInstance().getConnection());
+            if (nativeImage == null) return false;
+            Minecraft.getInstance().execute(() -> {
+                if (epoch != cacheEpoch || !request.equals(REQUEST_IDS.get(imageId))
+                        || peer != Minecraft.getInstance().getConnection()) { nativeImage.close(); return; }
+                CACHED_EXTENSIONS.put(imageId, extension);
+                cacheTexture(imageId, new DynamicTexture(() -> "Simply Screens image " + imageId, nativeImage));
+            });
+            return true;
+        } catch (IOException | RuntimeException error) {
+            SimplyScreens.LOGGER.error("Failed saving image cache", error);
+            return false;
         }
     }
 
@@ -228,7 +323,8 @@ public class ClientImageManager {
     }
 
     private static NativeImage loadImage(InputStream inputStream, String extension) throws IOException {
-        byte[] encoded = inputStream.readAllBytes();
+        int limit = com.nstut.simplyscreens.Config.MAX_UPLOAD_SIZE_LIMIT;
+        byte[] encoded = MediaFiles.readBounded(inputStream, limit);
         try (var imageInput = ImageIO.createImageInputStream(new ByteArrayInputStream(encoded))) {
             var readers = ImageIO.getImageReaders(imageInput);
             if (!readers.hasNext()) throw new IOException("Unsupported image encoding");
@@ -303,9 +399,12 @@ public class ClientImageManager {
     }
 
     public static void clearCache() {
+        synchronized (CACHE_PUBLICATION_LOCK) { cacheEpoch++; REQUEST_IDS.clear(); }
+        CACHE_LOADS.clear();
         TEXTURE_BUDGET.clear(); CACHED_EXTENSIONS.clear(); prefetchWindow = 0; prefetchRequests = 0;
         DOWNLOADS.clear();
         PENDING_DOWNLOADS.clear();
+        RETRY_BACKOFF.clear();
         METADATA_CACHE.clear();
         FAILED_IMAGES.clear();
         for (Map.Entry<UUID, Identifier> entry : TEXTURE_LOCATIONS.entrySet()) {

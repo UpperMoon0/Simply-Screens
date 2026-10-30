@@ -1,8 +1,9 @@
 # Simply Screens on Forge 1.12.2
 
-This native target uses Forge 14.23.5.2864, stable MCP 39, and Java 8.
-ForgeGradle 3 runs under Java 8; the owned-source backport compiler uses Java 17
-with Jabel and `--release 8`. No Minecraft code or binaries are included here.
+This native target uses the Forge release and MCP mappings configured in its
+build files. The game and tests run on the legacy Java runtime, while the
+owned-source backport compiler uses a separate JDK with Jabel and the target
+runtime API compatibility level. No Minecraft code or binaries are included here.
 
 The maintained shared services and 1.20.1 gameplay implementation are generated
 at build time. Ownership, server-authoritative permissions, transfers, quotas,
@@ -10,24 +11,27 @@ URL filtering, persistence, playlists, commands and the public API use the same
 implementation. Native adapters supply Forge events, packet transport, tile
 lifecycle, rendering, file selection and OpenUI's 1.12.2 graphics/text classes.
 
-Build the pinned requested-generation branches of PacketWeave and OpenUI first. See the root requested-generations guide for their exact source pins.
-Their native jars are development dependencies, not publicly released versions.
+Build the native PacketWeave and OpenUI dependencies at the source pins recorded
+in [`tools/requested-dependencies.lock.json`](../tools/requested-dependencies.lock.json).
+Follow the [native-port guide](../docs/requested-generations.md) for the required
+build steps. Development artifacts are not substitutes for published compatible
+runtime jars.
 OpenUI is required by clients; its inert native container is also included in
 the development dedicated-server acceptance classpath. PacketWeave is required
 on both sides.
 Architectury is not required for this target.
 
 ```sh
-export JAVA_HOME=/path/to/jdk8
-export JAVA17_HOME=/path/to/jdk17
+export JAVA_HOME=/path/to/legacy-runtime-jdk
+export JAVA17_HOME=/path/to/backport-compiler-jdk
 ./gradlew build --no-daemon \
-  -PpacketweaveJar=/path/to/packetweave-forge-1.12.2-0.1.4.jar \
-  -PopenuiJar=/path/to/openui-mc-forge-1.12.2-0.0.15.jar
+  -PpacketweaveJar=/absolute/path/to/matching-native-packetweave.jar \
+  -PopenuiJar=/absolute/path/to/matching-native-openui.jar
 ```
 
 `build` runs the shared contract tests on Java 8 and the native adapter tests,
-then reobfuscates the production jar. The result is
-`build/libs/simply_screens-forge-1.12.2-0.10.1.jar`.
+then reobfuscates the production jar. The resulting filename is derived from
+the current `mod_version` in the root `gradle.properties` (under `build/libs/`).
 
 The optional Patchouli guide uses a book and quartz because amethyst does not
 exist in 1.12.2. The six facing directions are stored in block metadata; visual

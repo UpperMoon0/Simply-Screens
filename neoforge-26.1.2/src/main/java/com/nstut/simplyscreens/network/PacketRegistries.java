@@ -7,6 +7,7 @@ import net.minecraft.server.level.ServerPlayer;
 
 public class PacketRegistries {
     public static void register() {
+        NetworkManager.registerReceiver(NetworkManager.c2s(), ImageTransferReceiptC2SPacket.TYPE, ImageTransferReceiptC2SPacket.CODEC, ImageTransferReceiptC2SPacket::handle);
         if (Platform.getEnvironment() == Env.SERVER) registerS2CPayloadTypes();
 
         NetworkManager.registerReceiver(NetworkManager.c2s(), ScreenAccessC2SPacket.TYPE, ScreenAccessC2SPacket.CODEC, ScreenAccessC2SPacket::handle);
@@ -55,6 +56,7 @@ public class PacketRegistries {
     }
 
     static void registerS2CPayloadTypes() {
+        NetworkManager.registerS2CPayloadType(ImageTransferReceiptS2CPacket.TYPE, ImageTransferReceiptS2CPacket.CODEC);
         NetworkManager.registerS2CPayloadType(ScreenAccessS2CPacket.TYPE, ScreenAccessS2CPacket.CODEC);
         NetworkManager.registerS2CPayloadType(ScreenPlaylistS2CPacket.TYPE, ScreenPlaylistS2CPacket.CODEC);
         NetworkManager.registerS2CPayloadType(ScreenPrefetchS2CPacket.TYPE, ScreenPrefetchS2CPacket.CODEC);
@@ -66,6 +68,7 @@ public class PacketRegistries {
     }
     
     public static void registerS2CPackets() {
+        NetworkManager.registerReceiver(NetworkManager.s2c(), ImageTransferReceiptS2CPacket.TYPE, ImageTransferReceiptS2CPacket.CODEC, ImageTransferReceiptS2CPacket::handle);
         NetworkManager.registerReceiver(NetworkManager.s2c(), ScreenAccessS2CPacket.TYPE, ScreenAccessS2CPacket.CODEC, ScreenAccessS2CPacket::handle);
         NetworkManager.registerReceiver(NetworkManager.s2c(), ScreenPlaylistS2CPacket.TYPE, ScreenPlaylistS2CPacket.CODEC, ScreenPlaylistS2CPacket::handle);
         NetworkManager.registerReceiver(NetworkManager.s2c(), ScreenPrefetchS2CPacket.TYPE, ScreenPrefetchS2CPacket.CODEC, ScreenPrefetchS2CPacket::handle);

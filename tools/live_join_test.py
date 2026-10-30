@@ -203,8 +203,8 @@ def packetweave_jar(root: Path, target: str) -> Path:
 
 def install_packetweave(module_dir: Path, target: str, jar: Path) -> None:
     version = native_version(jar, target)
-    if not version.replace(".", "").isdigit() or tuple(map(int, version.split("."))) < (0, 1, 1):
-        raise RuntimeError(f"Standalone PacketWeave >=0.1.1 required, found {version}")
+    if not version.replace(".", "").isdigit() or tuple(map(int, version.split("."))) < (0, 1, 5):
+        raise RuntimeError(f"Standalone PacketWeave >=0.1.5 required, found {version}")
     for side in ("server", "client"):
         mods = module_dir / "run" / "live-join" / side / "mods"
         mods.mkdir(parents=True, exist_ok=True)

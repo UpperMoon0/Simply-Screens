@@ -40,7 +40,7 @@ public class UploadImageChunkC2SPacket implements CustomPacketPayload {
         this.transactionId = buf.readUUID();
         this.chunkIndex = buf.readVarInt();
         this.totalChunks = buf.readVarInt();
-        this.data = buf.readByteArray(com.nstut.packetweave.api.ChunkedTransfer.CHUNK_BYTES);
+        this.data = buf.readByteArray(com.nstut.packetweave.api.OutboundTransfers.CHUNK_BYTES);
         if (this.chunkIndex == 0) {
             this.fileName = buf.readUtf(com.nstut.simplyscreens.ImageNameSanitizer.MAX_LENGTH);
         } else {
@@ -91,7 +91,7 @@ public class UploadImageChunkC2SPacket implements CustomPacketPayload {
     public static void handle(UploadImageChunkC2SPacket packet, NetworkManager.PacketContext context) {
         ServerPlayer player = (ServerPlayer) context.getPlayer();
         context.queue(() -> {
-            ServerImageManager.handleImageChunk(
+            ServerImageManager.receiveImageChunk(
                     player, packet.blockPos, packet.transactionId, packet.chunkIndex, 
                     packet.totalChunks, packet.data, packet.fileName);
         });

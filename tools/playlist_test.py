@@ -433,7 +433,7 @@ def verify_receipts(directory: Path, head: str) -> None:
         if receipt.get("scenarios") != dict.fromkeys(SCENARIOS, "pass"):
             raise ValueError("Missing required playlist scenarios")
         dependency = receipt.get("packetweave", {})
-        if dependency.get("version") != "0.1.1" or not re.fullmatch(r"[a-f0-9]{64}", dependency.get("sha256", "")):
+        if dependency.get("version") != "0.1.5" or not re.fullmatch(r"[a-f0-9]{64}", dependency.get("sha256", "")):
             raise ValueError("Missing standalone PacketWeave runtime evidence")
         if not re.fullmatch(r"[a-f0-9]{64}", receipt.get("source_sha256", "")):
             raise ValueError("Missing frozen-source identity")

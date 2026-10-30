@@ -595,7 +595,7 @@ def verify_receipts(directory, head):
         if r.get("head") != head or r.get("dirty") is not False or r.get("status") != "pass":
             raise ValueError("stale, dirty or failed visual receipt")
         dependency = r.get("packetweave", {})
-        if dependency.get("version") != "0.1.1" or not re.fullmatch(r"[a-f0-9]{64}", dependency.get("sha256", "")):
+        if dependency.get("version") != "0.1.5" or not re.fullmatch(r"[a-f0-9]{64}", dependency.get("sha256", "")):
             raise ValueError("missing standalone PacketWeave runtime evidence")
         expected_variants = {v:"pass" for v in variants(r["target"])}
         if r.get("variants") != expected_variants:

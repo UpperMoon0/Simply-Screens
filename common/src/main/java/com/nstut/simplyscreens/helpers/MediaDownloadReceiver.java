@@ -1,6 +1,6 @@
 package com.nstut.simplyscreens.helpers;
 
-import com.nstut.packetweave.api.ChunkedTransfer;
+import com.nstut.packetweave.api.OutboundTransfers;
 import com.nstut.packetweave.api.TransferId;
 import com.nstut.packetweave.api.TransferLimits;
 import com.nstut.packetweave.api.TransferRegistry;
@@ -19,9 +19,10 @@ public final class MediaDownloadReceiver {
     private final TransferRegistry transfers;
     private final long byteLimit;
     private final Map<UUID, Header> headers = new HashMap<>();
+    private final Map<UUID, UUID> generations = new HashMap<>();
 
     public MediaDownloadReceiver() {
-        this(new TransferLimits(ChunkedTransfer.CHUNK_BYTES, Config.MAX_UPLOAD_SIZE_LIMIT,
+        this(new TransferLimits(OutboundTransfers.CHUNK_BYTES, Config.MAX_UPLOAD_SIZE_LIMIT,
                 32, 32, 128L * 1024 * 1024, Duration.ofSeconds(30)), System::nanoTime);
     }
 
@@ -31,6 +32,19 @@ public final class MediaDownloadReceiver {
     }
 
     private TransferId id(UUID image) { return new TransferId("simply_screens_download", SERVER, image); }
+
+    /** Establish the new request before sending it; queued old workers cannot recreate its receiver. */
+    public synchronized void expect(UUID image, UUID request) {
+        cancel(image);
+        generations.put(image, request);
+    }
+
+    public synchronized Download accept(UUID image, UUID request, int index, int count, byte[] bytes, String extension) {
+        if (!request.equals(generations.get(image))) return null;
+        Download result = accept(image, index, count, bytes, extension);
+        if (result != null) generations.remove(image, request);
+        return result;
+    }
 
     public synchronized Download accept(UUID image, int index, int count, byte[] bytes, String extension) {
         reapExpired();
@@ -62,14 +76,15 @@ public final class MediaDownloadReceiver {
     }
 
     public synchronized boolean isPending(UUID image) { return transfers.contains(id(image)); }
-    public synchronized void cancel(UUID image) { transfers.cancel(id(image)); headers.remove(image); }
-    public synchronized void clear() { transfers.clear(); headers.clear(); }
+    public synchronized void cancel(UUID image) { transfers.cancel(id(image)); headers.remove(image); generations.remove(image); }
+    public synchronized void clear() { transfers.clear(); headers.clear(); generations.clear(); }
     public synchronized List<UUID> reapExpired() {
         transfers.reapExpired();
         List<UUID> expired = new ArrayList<>();
         headers.keySet().removeIf(image -> {
             if (transfers.contains(id(image))) return false;
             expired.add(image);
+            generations.remove(image);
             return true;
         });
         return expired;

@@ -89,7 +89,13 @@ public final class ScreenAccessService {
     }
     public static boolean canReadImage(ServerPlayer player, UUID image) {
         if (player == null || player.level().getServer().getPlayerList().getPlayer(player.getUUID()) != player) return false;
-        if (library(player, image)) return true;
+        return canReadImage(player, image, ServerImageManager.getImageMetadata(player.level().getServer(), image));
+    }
+    /** Recheck live connection/display permissions without reading metadata for every 4 KiB chunk. */
+    public static boolean canReadImage(ServerPlayer player, UUID image, ImageMetadata metadata) {
+        if (player == null || player.level().getServer().getPlayerList().getPlayer(player.getUUID()) != player) return false;
+        if (metadata != null && (actor(player).operator() || metadata.getOwnerUUID() == null
+                || metadata.getOwnerUUID().equals(player.getUUID().toString()))) return true;
         Set<ScreenBlockEntity> refs = MEDIA.get(image);
         if (refs == null) refs = Set.of();
         Set<ScreenBlockEntity> candidates = new HashSet<>(refs);

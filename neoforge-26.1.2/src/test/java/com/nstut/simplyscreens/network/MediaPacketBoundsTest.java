@@ -21,7 +21,7 @@ class MediaPacketBoundsTest {
             buf.writeBlockPos(BlockPos.ZERO);
             buf.writeUUID(UUID.randomUUID());
             buf.writeVarInt(0); buf.writeVarInt(1);
-            buf.writeByteArray(new byte[ChunkedTransfer.CHUNK_BYTES + 1]);
+            buf.writeByteArray(new byte[com.nstut.packetweave.api.OutboundTransfers.CHUNK_BYTES + 1]);
             assertThrows(DecoderException.class, () -> new UploadImageChunkC2SPacket(buf));
         } finally { buf.release(); }
     }
@@ -29,21 +29,22 @@ class MediaPacketBoundsTest {
         RegistryFriendlyByteBuf buf = buffer();
         try {
             buf.writeUUID(UUID.randomUUID());
+            buf.writeUUID(UUID.randomUUID());
             buf.writeVarInt(0); buf.writeVarInt(1);
-            buf.writeByteArray(new byte[ChunkedTransfer.CHUNK_BYTES + 1]);
+            buf.writeByteArray(new byte[com.nstut.packetweave.api.OutboundTransfers.CHUNK_BYTES + 1]);
             assertThrows(DecoderException.class, () -> new ImageDownloadChunkS2CPacket(buf));
         } finally { buf.release(); }
     }
-    @Test void validMediaEnvelopesRemainWireCompatible() {
+    @Test void acknowledgedMediaEnvelopesRoundTrip() {
         RegistryFriendlyByteBuf upload = buffer(), download = buffer();
         try {
             UUID id = UUID.randomUUID();
-            byte[] bytes = new byte[ChunkedTransfer.CHUNK_BYTES];
+            byte[] bytes = new byte[com.nstut.packetweave.api.OutboundTransfers.CHUNK_BYTES];
             new UploadImageChunkC2SPacket(BlockPos.ZERO,id,0,2,bytes,"image.png").write(upload);
             UploadImageChunkC2SPacket decodedUpload = new UploadImageChunkC2SPacket(upload);
             assertArrayEquals(bytes,decodedUpload.getData());
             assertEquals("image.png",decodedUpload.getFileName());
-            new ImageDownloadChunkS2CPacket(id,0,2,bytes,"png").write(download);
+            new ImageDownloadChunkS2CPacket(id,UUID.randomUUID(),0,2,bytes,"png").write(download);
             ImageDownloadChunkS2CPacket decodedDownload = new ImageDownloadChunkS2CPacket(download);
             assertArrayEquals(bytes,decodedDownload.getData());
             assertEquals("png",decodedDownload.getExtension());

@@ -63,6 +63,13 @@ class Forge1122SourceTests(unittest.TestCase):
   result=port.convert(text,'Sample.java')
   self.assertIn('new net.minecraft.util.text.TextComponentString("gui.simplyscreens.screen.title")',result)
   self.assertNotIn('ITextnew',result)
+ def test_client_executor_method_reference_uses_native_scheduler(self):
+  result=port.convert('Minecraft.getInstance()::execute, server::execute, server.isRunning()', 'Sample.java')
+  self.assertIn('Minecraft.getMinecraft()::addScheduledTask', result)
+  self.assertIn('server::addScheduledTask', result)
+  self.assertNotIn('::execute', result)
+  self.assertIn('server.isServerRunning()', result)
+  self.assertNotIn('server.isRunning()', result)
  def test_client_screen_field_not_screen_id_or_translation(self):
   result=port.convert('client.screen; value.screenId(); "gui.simplyscreens.screen.title";','Sample.java')
   self.assertIn('client.currentScreen;',result);self.assertIn('value.screenId()',result);self.assertIn('"gui.simplyscreens.screen.title"',result)

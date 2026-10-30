@@ -5,20 +5,21 @@ root Loom projects, and do not remove or change the existing 1.20.1, 1.21.1, or
 26.1.2 release lanes. The public Screen API, operator commands, playlist and
 ownership/security behavior on current main remain part of every port.
 
-| Minecraft | Native loaders | Runtime | Build runner |
+| Minecraft | Native loaders | Runtime | Build/toolchain policy |
 | --- | --- | --- | --- |
-| 1.12.2 | Forge 14.23.5.2864 | Java 8 | Gradle 5.6.4 on Java 8; Java 17/Jabel compiler |
-| 1.16.5 | Fabric; Forge 36.2.42 | Java 8 | Fabric Gradle 9.5.1; Forge Gradle 8.14; Java 17/Jabel compiler |
-| 26.2 | Fabric; NeoForge 26.2.0.93 | Java 25 | Gradle 9.5.1 on Java 25 |
+| 1.12.2 | Forge | Java 8 | Legacy loader wrapper; separate Jabel-compatible compiler JDK |
+| 1.16.5 | Fabric; Forge | Java 8 | Per-loader Gradle wrapper and legacy backport toolchain |
+| 26.2 | Fabric; NeoForge | Java 25 | Native loader wrapper and target-specific toolchain |
+
+Exact loader, mapping, Gradle and compiler versions come from the target's
+build files and CI toolchain matrix, not this evergreen guide.
 
 There is no official Fabric 1.12.2 release, so this project does not introduce an
 unofficial Legacy Fabric dependency. 26.2 uses Fabric and NeoForge, not Forge.
 
 ## Dependencies are separate mods
 
-The ports require native PacketWeave 0.1.4 and OpenUI MC 0.0.15. Their native stable releases are now published. The release workflow verifies
-all five requested artifacts in each dependency release before building these
-exact source pins; the existing target dependency floors remain unchanged. PacketWeave's API is compile-only and must never be shaded into Screens.
+The ports require native PacketWeave and OpenUI MC matching the [source lockfile](../tools/requested-dependencies.lock.json) and each target's loader metadata. Publish the required matching native dependency artifacts before releasing these ports. The release workflow verifies the requested artifacts for each dependency before building the locked sources. PacketWeave's API is compile-only and must never be shaded into Screens. Minimum compatible versions are defined by the selected release's metadata, not by this evergreen guide.
 Fabric checks OpenUI before client entrypoints load. Forge 1.12.2 also declares
 OpenUI as a loader dependency on servers, where its entrypoint is inert.
 Dedicated servers do not initialize UI, image textures or renderers.
@@ -29,20 +30,18 @@ its own directory. Each target has its own wrapper. The modern targets accept
 those flags, they use matching sibling target build/libs artifacts. Do not
 substitute a library jar from another Minecraft generation or loader.
 
-PacketWeave reference: UpperMoon0/PacketWeave PR #4, commit
-b9af8be1c8dae497a852342a0d323f811b80b54a. OpenUI source pin:
-UpperMoon0/OpenUI-MC commit 672b5b2b7169bef30f5f10b34f296812abe31460.
-The machine-readable `tools/requested-dependencies.lock.json` is checked against
-both this document and the workflow so native source pins cannot silently drift.
+Exact PacketWeave and OpenUI source commits are maintained in the machine-readable
+[`tools/requested-dependencies.lock.json`](../tools/requested-dependencies.lock.json).
+The verification suite checks that the lockfile and native CI workflow agree; the
+evergreen documentation deliberately avoids duplicating release-specific pins.
 The requested-generations workflow builds both immutable source pins separately,
 then each native Screens target; it never publishes a release or deploys a server.
 
 For each target, run its wrapper with `-p <target> build --no-daemon --max-workers=2`.
 Build OpenUI with the same target wrapper and `build publishToMavenLocal`; the
-consumer uses the resulting native file, not an assumed remote release. Use
-Java 25 to drive Fabric/26.2 builds, Java 21 for Forge 1.16.5, and Java 8 plus
-`JAVA17_HOME` for Forge 1.12.2. The Java 8 test launcher remains distinct from the
-Java 17 source compiler.
+consumer uses the resulting native file, not an assumed remote release. Select
+JDKs using the per-target build files and CI toolchain matrix. Legacy runtimes
+can require a separate compiler JDK from their runtime/test launcher.
 
 ## Native adaptations
 
@@ -89,190 +88,31 @@ separately. It also does not establish source-image pixel accuracy, shader
 compatibility, Vulkan/OpenGL parity, resource reload, transparency or world
 occlusion. Those remain separate live-world/framebuffer acceptance checks.
 
-## Initial source validation (2026-10-21)
-
-Before native CI, the cloud workspace completed these independent checks against
-real mapped game libraries and native loader APIs (not API stubs):
-
-- Forge 1.12.2: 101 complete production sources and 32 test sources compiled;
-  180 JUnit cases passed on Java 8, zero skipped. The game classpath had the exact
-  official Forge merge/binary patches and MCP stable 39 remapping applied.
-- Fabric 1.16.5: 97 complete production sources compiled with Java 8 platform
-  APIs; Forge 1.16.5: 96 complete production sources compiled with the native MCP
-  class identities and official member names. All 162 shared/legacy tests passed
-  on Java 8, zero skipped.
-- Fabric 26.2: 95 complete production sources compiled; NeoForge 26.2: 94.
-  All 248 shared and modern adapter tests passed on Java 25 after real Minecraft
-  registry bootstrap, zero skipped. This direct run does not include NeoForge's
-  loader-specific PacketWeave provider test; the native CI lane runs that test.
-- The existing Python suite completed 163 cases with 157 passing and six explicit
-  environment skips (five optional Java/toolchain harness cases and the optional
-  SecureJarHandler compiled-core check). The four real Fabric prelaunch guards
-  passed server/client dependency contracts. Additional Gradle input/version
-  parser regressions passed after that suite.
-
-These are compile/test results, not native Gradle packaging or live acceptance.
-The workflow must establish remapping, loader discovery, real dedicated-server
-startup and client join/UI evidence separately. No production-jar live launch,
-rendered media pixel comparison, shader parity, GL/Vulkan parity, resource reload,
-transparency or occlusion result is claimed by this initial record.
-
 ## Shared-code ownership and drift prevention
 
-The 26.2 runtime reuses the maintained 26.1.2 gameplay implementation through
-`tools/modern_screen_sources.py`. Protocol codecs, security, commands, public API,
-UI state, media/persistence logic and the block-entity renderer are not separately
-maintained copies. Only five native pipeline/mixin adapter files and one native
-render-state test remain under `common-26.2`. Common domain services continue to
-come directly from `common/`. The existing 26.1.2 release source is not changed.
+The newer-generation ports derive maintained gameplay behavior from the canonical
+implementation through `tools/modern_screen_sources.py` with narrowly scoped native
+rendering adapters. Legacy ports likewise derive shared services and behavior from
+canonical sources through the legacy generators. Generated source is not an
+independently maintained fork. Tests check generator completeness, reproducibility,
+native overlay boundaries, and stale-output cleanup.
 
-The generator performs only receiver-specific Minecraft GUI routing substitutions
-outside those native overlays. It also derives the 14 existing modern test classes
-with real registry bootstrap and reuses canonical modern resources. Regression
-checks require the full class set, exact canonical transformation, deterministic
-output, stale-output removal and native-only overlay boundaries. The first
-migration was additionally checked token-for-token against all 54 production
-sources and all 14 tests that had already passed the complete compile/test run.
+## Native testing and release limitations
 
-The single-source 26.2 refactor was revalidated after generation: all 95 Fabric
-and 94 NeoForge production sources compile, and all 248 shared/native Java 25
-regressions pass with zero skipped. At remote head `8076df49`, Fabric 26.2 also
-completed native packaging, jar checks, and an actual dedicated-server/client
-join with the OpenUI tab/resize smoke probe. That development-runtime receipt is
-not framebuffer, media, shader, or production-jar runtime acceptance.
+Native packaging, dedicated-server startup, authenticated or fixture-based client
+joining, GUI/media checks, and framebuffer qualification are distinct gates. A
+successful build or unit test is not evidence of actual network impairment,
+visual correctness, production-jar launch, or real-account multiplayer eligibility.
+CI test fixtures must identify simulated authentication explicitly. Preserve source
+identity, logs, dependency manifests and exact-head receipts for every claimed
+acceptance result.
 
-## Review corrections and native launch diagnostics
+The release workflow builds the native target matrix using pinned dependency
+artifacts, validates required production JARs and dependency relations, and blocks
+release when a prerequisite is unavailable. Update the selected release's
+changelog with wire-format changes and installation requirements; never treat a
+configured workflow as a passing acceptance result.
 
-The legacy texture-ownership correction is shared by both source generators.
-Owned registrations are removed by identity before one native close; failed media
-share a single dedicated error texture. Stable locations do not grow the native
-texture manager's prefix counter. A subsequent full native compilation passed
-with 168 Java 8 tests for 1.16 and 184 Java 8 tests for Forge 1.12. These ownership
-tests use real native manager registrations with mocked GPU textures, not a live
-GL context or a resource-reload rendering acceptance result.
-
-ForgeGradle 3's notch-obfuscated path otherwise chooses the old plain 1.12.2 MCP
-merge config, which injects an incompatible three-value Side enum. The narrow
-build repository adapter selects Forge userdev's official timestamped
-1.12.2-20200226.224830 merge instead (`--inject false`). A comment-only access
-transformer supplies a build-local cache identity; it changes no game access
-flags, ships no game classes, and does not delete global caches. The helper has
-passed offline Gradle 5.6.4 / Java 8 configuration and fail-closed negative
-fixtures. A missing or failed pin never selects the known-bad legacy fallback;
-corrected native packaging and launch subsequently passed on Forge 1.12.2 at
-`bb44c3726adaea17b729b5baa635057f923dad11`.
-
-The native probes do not suppress loader warnings or dismiss native error screens.
-Reused isolated directories with an old `showLoadWarnings=false` configuration
-fail before launch. Actual logs remain part of each acceptance record; a joined
-client is not a warning-free-loading claim.
-
-For a native 26.2 visual run, build the pinned native dependency artifacts,
-then use `python3 tools/requested_visual.py --target fabric-26.2` (or
-`neoforge-26.2`). The `native-reversed-z-v1` qualification retains every common
-fixed-renderer case, frame-stability check, reload/alpha/occlusion check and pixel
-threshold. It additionally requires rejection of a native wrong-depth comparison
-in all six orientations and all four samples per orientation (24 samples). Those
-near scenes are identical to scenes already required to pass in the fixed run.
-The only mutation is the depth comparison: native `GREATER_THAN_OR_EQUAL` becomes
-legacy `LESS_THAN_OR_EQUAL`; geometry, shaders, blending, depth writes and bias
-remain unchanged. Vanilla 26.2 uses reversed-Z, so this control represents an
-incorrect depth-state port rather than an invented historical geometry failure.
-
-The hash-locked historical plain renderer still runs with the same cases. Its
-result is recorded separately as `pass` (historical defect reproduced) or
-`inconclusive` (not reproduced), never silently relabeled. Historical near-reference,
-infrastructure, incomplete-evidence or other failures remain fatal. On the observed
-26.2 Mesa backend the plain control rendered cleanly even at 64/160 blocks; this
-does not establish historical forward-Z z-fighting reproduction. Historical
-inconclusive evidence no longer substitutes for or blocks the explicitly approved
-native reversed-Z qualification; both meanings remain visible in schema-2 receipts.
-
-Instrumentation is generated only into a disposable source snapshot. `--probe`
-and `--compile-only` cannot produce a verifiable passing full-gate receipt.
-`--verify-receipt <result.json> --head <commit>` requires the explicit native
-qualification policy, complete fixed/occlusion/wrong-depth outcomes and case
-manifest, separate historical result, exact clean head/source/dependency identity
-and consistent graphics backend. No ordinary renderer or old five-target visual
-or shader acceptance contract changes.
-
-The requested-generations CI runs this full framebuffer qualification on
-representative Fabric 26.2 after its native join/UI smoke passes. A configured
-step is not a completed result: the actual native wrong-depth control and final
-receipt must pass before qualification is claimed. It does not establish another
-backend, shaders, production-JAR launch or the historical defect's reproduction.
-The 1.12 native UI/screenshot adapter remains separate from framebuffer qualification.
-
-## Native acceptance checkpoint and separate legacy media probe
-
-At `bb44c3726adaea17b729b5baa635057f923dad11`, Forge 1.12.2 completed native
-packaging/resource checks, dedicated-server startup, actual client join and
-OpenUI tab/resize smoke with wrapper exit zero. The evidence is in
-[run 39622599645](https://github.com/UpperMoon0/Simply-Screens/actions/runs/39622599645).
-This run did not yet enable the newer legacy media probe. Ignored ASM module-info
-scan errors, the existing FML test-exit rerouting warning, and unavailable headless
-OpenAL/narrator libraries remain visible in logs; this is not warning-free loading.
-
-The shared opt-in legacy media probe is authoritative under `common-legacy-game`.
-Both legacy generators adapt it rather than maintaining separate tests. It uses
-existing production image-upload/download packets, verifies stored ownership and
-PNG identity, checks decoded native pixels and registered texture, observes
-submission by the actual screen renderer, and requires identity-scoped cleanup.
-It does not claim framebuffer pixel correctness, reload, alpha/occlusion, shader
-compatibility, or production-jar runtime qualification. The additional source
-has compiled on all three legacy loaders, with 11 Java 8 neutral tests passing;
-its actual media runtime receipt is still required.
-
-The real 1.16 clients reported native multiplayer eligibility false. The dedicated
-lane fails closed, records the observed refusal only after clean teardown, and
-never changes account/service state or forces a connection. A separately
-permitted `requested_integrated_acceptance.py` lane requires that exact target/head
-refusal receipt. It clicks only enabled, visible ordinary vanilla Singleplayer
-and Create World controls, then exercises OpenUI and the shared native media
-probe in the actual integrated server. It requires wrapper exit zero and complete
-matching server/client media evidence. Its receipt explicitly remains neither a
-dedicated-server join nor a multi-client test; the original dedicated CI step
-remains failed. A configured integrated lane is not a completed gameplay result.
-
-## Isolated 1.16.5 CI service fixture
-
-The 1.16.5 CI jobs now explicitly use `requested_live_join.py --service-fixture`.
-This supersedes the dedicated CI refusal described above: the launcher defaults
-(`FabricMC` and `DONT_CRASH`) are development placeholders, not authenticated
-Minecraft sessions. CI must not depend on the public privileges service's response
-to those placeholders.
-
-The fixture uses Authlib 2.1.28's native `minecraft.api.*.host` configuration on
-only `runLiveJoinTestClient`. It binds an ephemeral IPv4 loopback port, accepts
-only the literal `SimplyScreensCiFixture` token and serves privileges/blocklist
-responses. No production source, Authlib bytecode, account, native permission
-flag or connection screen is changed. Ordinary client launches retain their
-original service settings.
-
-Every CI invocation first supplies `multiplayerServer.enabled=false` and requires
-the actual loaded client to report native refusal, consume the fixture and never
-enter gameplay. It then supplies `true` and requires the existing dedicated join,
-OpenUI, media identity, decode, texture, submission and clean shutdown contracts.
-Both phases preserve logs. Missing service requests, an unexpected denied join,
-crashes and teardown failures fail the job and leave no success receipt.
-
-The final receipt identifies `authentication.mode=loopback-service-fixture` and
-`realAccountQualified=false`. It proves native development networking with a
-simulated external service, **not real-account authentication or public-service
-eligibility**. Without the explicit option, the original native-refusal behavior
-remains unchanged. The separate Singleplayer fallback still requires an exact
-native refusal receipt; fixture failures cannot authorize it.
-
-## Release delivery
-
-The release workflow builds all ten native targets, including the five requested
-standalone generations, with their own pinned dependency artifacts and Java
-contracts. It rejects missing, duplicate, corrupt or unexpected production JARs
-before either publisher runs. GitHub receives only the verified ten-JAR bundle,
-its manifest and SHA-256 checksums; CurseForge retains the same project and uses
-loader-specific relations (Forge 1.12.2 does not require Architectury).
-
-Publication does not convert incomplete runtime evidence into a pass: the
-1.16.5 dedicated-client eligibility restriction and Fabric 26.2 historical plain
-renderer calibration remain separately recorded in the requested-generation workflow.
-No account eligibility override or acceptance-gate weakening is introduced.
+For dated build evidence, native renderer investigations, past test outcomes, and
+account/CI fixture history, consult [native acceptance history](native-acceptance-history.md).
+These historical results are not statements about the current PR head.

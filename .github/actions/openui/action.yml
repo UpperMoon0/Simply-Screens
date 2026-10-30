@@ -1,5 +1,10 @@
 name: Pinned OpenUI dependencies
 description: Cache all five published OpenUI artifacts by immutable source and build environment.
+inputs:
+  java-version:
+    description: OpenUI build JDK; cross-job artifact workflows supply one resolved exact version.
+    required: false
+    default: '21'
 runs:
   using: composite
   steps:
@@ -7,14 +12,14 @@ runs:
       uses: actions/setup-java@v4
       with:
         distribution: temurin
-        java-version: '21'
+        java-version: ${{ inputs.java-version }}
         cache: gradle
     - name: Restore pinned OpenUI Maven-local artifacts
       id: openui
       uses: actions/cache@v4
       with:
         path: ~/.m2/repository/com/nstut/
-        key: openui-v3-${{ runner.os }}-${{ runner.arch }}-jdk21-cb4610a1598d476123b731f5eef4d8e569057ffa-${{ hashFiles('tools/build_openui.py', '.github/actions/openui/action.yml') }}
+        key: openui-v3-${{ runner.os }}-${{ runner.arch }}-jdk-${{ inputs.java-version }}-cb4610a1598d476123b731f5eef4d8e569057ffa-${{ hashFiles('tools/build_openui.py', '.github/actions/openui/action.yml') }}
     - name: Checkout pinned OpenUI source
       if: steps.openui.outputs.cache-hit != 'true'
       uses: actions/checkout@v4

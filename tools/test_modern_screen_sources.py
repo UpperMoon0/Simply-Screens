@@ -53,7 +53,7 @@ class ModernSourceReuseTest(unittest.TestCase):
             generator.generate(output)
             actual = {p.relative_to(output) for p in output.rglob('*.java')}
             self.assertEqual(set(canonical) | overrides, actual)
-            self.assertEqual(54, len(actual))
+            self.assertEqual(56, len(actual))
             for relative, source in canonical.items():
                 if relative not in overrides:
                     self.assertEqual(generator.convert(source.read_text()), (output / relative).read_text())
@@ -80,7 +80,7 @@ class ModernSourceReuseTest(unittest.TestCase):
             output = Path(tmp)
             generator.generate(output, tests=True)
             tests = list(output.rglob('*.java'))
-            self.assertEqual(14, len(tests))
+            self.assertEqual(15, len(tests))
             for path in tests:
                 text = path.read_text()
                 self.assertEqual(1, text.count('void bootstrapMinecraft()'))

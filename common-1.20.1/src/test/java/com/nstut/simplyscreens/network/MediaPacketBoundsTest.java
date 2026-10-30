@@ -20,7 +20,7 @@ class MediaPacketBoundsTest {
             buf.writeBlockPos(BlockPos.ZERO);
             buf.writeUUID(UUID.randomUUID());
             buf.writeVarInt(0); buf.writeVarInt(1);
-            buf.writeByteArray(new byte[ChunkedTransfer.CHUNK_BYTES + 1]);
+            buf.writeByteArray(new byte[com.nstut.packetweave.api.OutboundTransfers.CHUNK_BYTES + 1]);
             assertThrows(DecoderException.class, () -> UploadImageChunkC2SPacket.read(buf));
         } finally { buf.release(); }
     }
@@ -28,8 +28,9 @@ class MediaPacketBoundsTest {
         FriendlyByteBuf buf = buffer();
         try {
             buf.writeUUID(UUID.randomUUID());
+            buf.writeUUID(UUID.randomUUID());
             buf.writeVarInt(0); buf.writeVarInt(1);
-            buf.writeByteArray(new byte[ChunkedTransfer.CHUNK_BYTES + 1]);
+            buf.writeByteArray(new byte[com.nstut.packetweave.api.OutboundTransfers.CHUNK_BYTES + 1]);
             assertThrows(DecoderException.class, () -> new ImageDownloadChunkS2CPacket(buf));
         } finally { buf.release(); }
     }

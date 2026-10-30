@@ -16,6 +16,7 @@ public final class NativeClientAcceptance {
         if (!LiveJoinTestProtocol.isEnabled() && !integrated) return;
         LegacyMediaClientProbe.validateActiveLifecycle(client);
         if (integrated) VanillaSingleplayerDriver.tick(client);
+        else NativeMultiplayerJoin.tick(client);
         if (client.player == null || client.level == null) {
             String state = "screen=" + (client.screen == null ? "none" : client.screen.getClass().getName())
                     + ", overlay=" + (client.getOverlay() == null ? "none" : client.getOverlay().getClass().getName())
