@@ -150,3 +150,8 @@ A removed image is removed from saved and running references. An image that cann
 Linked screens use one authoritative content timeline, even with all their chunks unloaded. A local override has its own timeline. World saves preserve slide timers, temporary slides, loop settings and slide order; server downtime does not advance them. Normal autosave checkpoints are every five seconds, with immediate persistence on commands and clean shutdown. Selecting a static gallery image discards that display/network's previous slideshow. Ownership transfer discards resumable timelines belonging to that access group. Other access changes preserve playback but immediately govern future control and image downloads.
 
 Playlists are private to their creator (64 lists, 256 slides each). Starting a slideshow or showing temporary images requires current screen control permission and image-library access; sharing a visible display never grants ownership of its media. Upcoming-image prefetch uses the same current tracking/view checks as display downloads and does not expose library names. Prefetch is capped at two images per viewer per two-second batch, each at most 8 MiB encoded. Client GPU cache is capped at 32 textures/128 MiB and a single decoded image at 16 megapixels.
+
+
+### Sable compatibility policy
+
+Sable is an **optional** integration on Minecraft 1.21.1. Dependency metadata accepts Sable **2.0.5 or newer** without an arbitrary major-version ceiling on Fabric and NeoForge. The adapter uses the pinned Sable Companion API; loader acceptance alone does not certify future Sable API or gameplay behavior. Test plot/sublevel transforms against newer Sable releases before claiming runtime support.
